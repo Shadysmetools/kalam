@@ -1,0 +1,110 @@
+# Task 45 (headless core): Pong with two computer players, integer physics, fixed ticks.
+# The left player rests every fifth tick, so rallies end. Output is deterministic.
+# The browser case of this task (std/game, Screen, 60 fps) is added at beta.
+ليكن WIDTH: عدد = 80
+ليكن HEIGHT: عدد = 24
+ليكن PADDLE: عدد = 5
+ليكن WIN_SCORE: عدد = 3
+ليكن MAX_TICKS: عدد = 5000
+
+هيكل Ball:
+    x: عدد
+    y: عدد
+    dx: عدد
+    dy: عدد
+
+هيكل Game:
+    ball: Ball
+    left: عدد
+    right: عدد
+    left_score: عدد
+    right_score: عدد
+    hits: عدد
+    tick: عدد
+
+دالة clamp_paddle(top: عدد) -> عدد:
+    إذا top < 0:
+        أرجع 0
+    إذا top > HEIGHT - PADDLE:
+        أرجع HEIGHT - PADDLE
+    أرجع top
+
+دالة follow(top: عدد، target: عدد) -> عدد:
+    ليكن center = top + PADDLE // 2
+    إذا target < center:
+        أرجع clamp_paddle(top - 1)
+    إذا target > center:
+        أرجع clamp_paddle(top + 1)
+    أرجع top
+
+دالة serve(points: عدد، toward_right: منطقي) -> Ball:
+    ليكن dx = إذا toward_right: 2 وإلا: -2
+    ليكن dy = إذا points % 2 == 0: 1 وإلا: -1
+    أرجع Ball(x: WIDTH // 2، y: HEIGHT // 2، dx: dx، dy: dy)
+
+دالة covers(top: عدد، y: عدد) -> منطقي => y >= top و y < top + PADDLE
+
+دالة spin(top: عدد، y: عدد، dy: عدد) -> عدد:
+    ليكن offset = y - (top + PADDLE // 2)
+    أرجع إذا offset == 0: -dy وإلا: offset
+
+دالة step(game: Game) -> Game:
+    متغير g = game
+    g.tick += 1
+    إذا g.ball.dx < 0 و g.tick % 5 != 0:
+        g.left = follow(g.left، g.ball.y)
+    إذا g.ball.dx > 0:
+        g.right = follow(g.right، g.ball.y)
+    g.ball.x += g.ball.dx
+    g.ball.y += g.ball.dy
+    إذا g.ball.y < 0:
+        g.ball.y = -g.ball.y
+        g.ball.dy = -g.ball.dy
+    إذا g.ball.y > HEIGHT - 1:
+        g.ball.y = 2 * (HEIGHT - 1) - g.ball.y
+        g.ball.dy = -g.ball.dy
+    إذا g.ball.x <= 0:
+        إذا covers(g.left، g.ball.y):
+            g.ball.x = -g.ball.x
+            g.ball.dx = -g.ball.dx
+            g.ball.dy = spin(g.left، g.ball.y، g.ball.dy)
+            g.hits += 1
+        وإلا:
+            g.right_score += 1
+            g.ball = serve(g.left_score + g.right_score، خطأ)
+    وإلا إذا g.ball.x >= WIDTH:
+        إذا covers(g.right، g.ball.y):
+            g.ball.x = 2 * WIDTH - g.ball.x
+            g.ball.dx = -g.ball.dx
+            g.ball.dy = spin(g.right، g.ball.y، g.ball.dy)
+            g.hits += 1
+        وإلا:
+            g.left_score += 1
+            g.ball = serve(g.left_score + g.right_score، صح)
+    أرجع g
+
+دالة new_game() -> Game:
+    ليكن start = HEIGHT // 2 - PADDLE // 2
+    أرجع Game(
+        ball: serve(0، صح)،
+        left: start،
+        right: start،
+        left_score: 0،
+        right_score: 0،
+        hits: 0،
+        tick: 0،
+    )
+
+دالة running(game: Game) -> منطقي:
+    ليكن no_winner = game.left_score < WIN_SCORE و game.right_score < WIN_SCORE
+    أرجع no_winner و game.tick < MAX_TICKS
+
+دالة رئيسي():
+    متغير game = new_game()
+    طالما running(game):
+        ليكن before = game.left_score + game.right_score
+        game = step(game)
+        إذا game.left_score + game.right_score > before:
+            اطبع("tick {game.tick}: left {game.left_score} - right {game.right_score}")
+    ليكن winner = إذا game.left_score > game.right_score: "left" وإلا: "right"
+    اطبع("{winner} wins after {game.tick} ticks and {game.hits} paddle hits")

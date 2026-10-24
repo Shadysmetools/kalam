@@ -1,0 +1,44 @@
+# Task 12: records, sum types and exhaustive match. Every printed number is an Int.
+enum Shape:
+    Rect(width: Int, height: Int)
+    Square(side: Int)
+    Triangle(base: Int, height: Int)
+    Empty
+
+type Item:
+    label: String
+    shape: Shape
+    count: Int = 1
+
+fn area(shape: Shape) -> Int:
+    return match shape:
+        case .Rect(w, h): w * h
+        case .Square(s): s * s
+        case .Triangle(b, h): b * h // 2
+        case .Empty: 0
+
+fn describe(shape: Shape) -> String:
+    return match shape:
+        case .Rect(w, h) if w == h: "square-ish rect"
+        case .Rect(_, _) | .Square(_): "four sides"
+        case .Triangle(..): "three sides"
+        case .Empty: "nothing"
+
+fn main():
+    let items = [
+        Item(label: "door", shape: .Rect(width: 90, height: 210)),
+        Item(label: "tile", shape: .Square(side: 30), count: 12),
+        Item(label: "sail", shape: .Triangle(base: 5, height: 7)),
+        Item(label: "box", shape: .Rect(width: 4, height: 4)),
+        Item(label: "gap", shape: .Empty),
+    ]
+    var total = 0
+    for item in items:
+        let one = area(item.shape)
+        total += one * item.count
+        print("{item.label}: {describe(item.shape)}, area {one} x{item.count}")
+    print("total area: {total}")
+    let bigger = items[1].with(count: 20)
+    print("{bigger.label} now x{bigger.count}, original x{items[1].count}")
+    let same = items[0] == Item(label: "door", shape: .Rect(width: 90, height: 210))
+    print(if same: "equal records" else: "different records")

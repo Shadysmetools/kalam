@@ -1,0 +1,4 @@
+# Task 01: hello world. Output text is data, so it is identical in every skin.
+دالة رئيسي():
+    اطبع("Hello, world!")
+    اطبع("مرحبا بالعالم")

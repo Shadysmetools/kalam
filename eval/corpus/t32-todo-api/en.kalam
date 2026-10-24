@@ -1,0 +1,75 @@
+# Task 32: REST API, CRUD on /todos, in memory, JSON. Every route states its access rule.
+# Route patterns escape their braces: an unescaped {id} in a string is interpolation (spec 5.7).
+use std/http.{self, HttpError, Request, Response, Router}
+
+@derive(Encode)
+type Todo:
+    id: Int
+    title: String
+    done: Bool
+
+@derive(Decode)
+type NewTodo:
+    title: String
+
+@derive(Decode)
+type TodoUpdate:
+    title: String
+    done: Bool
+
+type Store:
+    next_id: Int
+    todos: List[Todo]
+
+type App:
+    store: Cell[Store]
+
+fn list_todos(req: Request[App]) -> Result[Response, HttpError]:
+    return Ok(Response.json(req.app.store.get().todos))
+
+fn show_todo(req: Request[App]) -> Result[Response, HttpError]:
+    let id = req.path_int("id")?
+    return match req.app.store.get().todos.find(fn(t) => t.id == id):
+        case Some(todo): Ok(Response.json(todo))
+        case None: Err(.NotFound)
+
+fn create_todo(req: Request[App]) -> Result[Response, HttpError]:
+    let input: NewTodo = req.json()?
+    if input.title.is_empty():
+        return Err(.BadRequest(message: "title is required"))
+    let store = req.app.store.get()
+    let todo = Todo(id: store.next_id, title: input.title, done: false)
+    req.app.store.set(store.with(next_id: store.next_id + 1, todos: store.todos.append(todo)))
+    return Ok(Response.json(todo).status(201))
+
+fn update_todo(req: Request[App]) -> Result[Response, HttpError]:
+    let id = req.path_int("id")?
+    let input: TodoUpdate = req.json()?
+    let store = req.app.store.get()
+    if not store.todos.any(fn(t) => t.id == id):
+        return Err(.NotFound)
+    let todo = Todo(id: id, title: input.title, done: input.done)
+    req.app.store.set(store.with(todos: store.todos.map(fn(t) => if t.id == id: todo else: t)))
+    return Ok(Response.json(todo))
+
+fn delete_todo(req: Request[App]) -> Result[Response, HttpError]:
+    let id = req.path_int("id")?
+    let store = req.app.store.get()
+    let kept = store.todos.filter(fn(t) => t.id != id)
+    if kept.len() == store.todos.len():
+        return Err(.NotFound)
+    req.app.store.set(store.with(todos: kept))
+    return Ok(Response.text("").status(204))
+
+fn routes() -> Router[App]:
+    return http.router()
+        .get("/todos", list_todos, access: .Public)
+        .post("/todos", create_todo, access: .Public)
+        .get("/todos/\{id\}", show_todo, access: .Public)
+        .put("/todos/\{id\}", update_todo, access: .Public)
+        .delete("/todos/\{id\}", delete_todo, access: .Public)
+
+fn main(world: World) -> Result[(), AnyError]:
+    let app = App(store: Cell.new(Store(next_id: 1, todos: [])))
+    http.serve(world.net, port: 8080, router: routes(), app: app)?
+    return Ok(())

@@ -24,7 +24,7 @@
   - Accept English keywords in every skin.
   - Fold Arabic orthographic variants for keywords and identifiers.
   - Ban bidi controls.
-  - Compile to a large existing ecosystem (Python or JS/TS) instead of building a standard library from scratch.
+  - Compile to a large existing ecosystem (JS/TS first, as `03-implementation-strategy.md` recommends) instead of building a standard library from scratch.
 
 ---
 
@@ -38,7 +38,7 @@ Legend: **Status** = Active (push in the last 6 months) / Dormant (no push in mo
 |---|---|---|---|---|---|---|
 | **Sakhr Arabic BASIC** | Al Alamiah / Sakhr (Kuwait), 1987 | MSX-BASIC firmware extension on Yamaha-made MSX machines | Dead (hardware line ended) | Shipped on every Sakhr MSX sold across the Arab world | Hobby programs and games on MSX | Tied to one hardware platform. Died with MSX. [msx.org AX-350](https://msx.org/wiki/Sakhr_AX-350) |
 | **قلب Qalb ('alb)** | Ramsey Nasser (Lebanese-American), 2012 | Scheme-like. Interpreter in JS based on Norvig's *Lispy*, PEG.js parser, browser REPL | Dormant: last push 2024-03, art project | **800★ / 84 forks**, the most-starred Arabic language | No. Conceptual art about English bias in computing | By design an art piece. Nasser chose Lisp because it needs almost no Latin punctuation. GitHub and editors could not render the code properly. [repo](https://github.com/nasser/---), [Wikipedia](https://en.wikipedia.org/wiki/Qalb_(programming_language)), [Engadget 2014](https://www.engadget.com/2014-05-07-ramsey-nasser-arabic-programming-language.html), [The Register](https://www.theregister.com/2013/01/25/arabic_programming_language) |
-| **ألف Alif** | Idea by **حسن دراكه (Hassan Drakeh)** in 2010. v1 2018, v2 2019, v3 2020 (abandoned 2022). v5 rewrite since 2022 by Mohammed & Abdulrahman Al-Khatib | v1–v3: Arabic-to-C++ transpiler with a Qt IDE (Flathub app). v5: interpreter written from scratch in C++, Python-like grammar | **Active** (push 2026-09) | alifcommunity/Alif **74★**, older albari54/alif 32★. Telegram community | Educational only so far. v5 states it aims to "compete with world languages" | Each major version was a full rewrite and incompatible with the previous one. There is no ecosystem, so every library is reimplemented. Flathub build is on an EOL runtime. [repo README](https://github.com/alifcommunity/Alif), [aliflang.org](https://aliflang.org), [Flathub](https://flathub.org/zh-Hant/apps/org.aliflang.lang) |
+| **ألف Alif** | Idea by **حسن دراكه (Hassan Drakeh)** in 2010. v1 2018, v2 2019, v3 2020 (abandoned 2022). v5 rewrite since 2022 by Mohammed & Abdulrahman Al-Khatib | v1–v3 were educational and shipped as a desktop app on Flathub; their internal design is **(unverified)**. v5 is an interpreter written from scratch in C++ with a Python-like grammar (README) | **Active** (push 2026-09) | alifcommunity/Alif **74★**, older albari54/alif 32★. Telegram community | Educational only so far. v5 states it aims to "compete with world languages" | Each major version was a full rewrite and incompatible with the previous one. There is no ecosystem, so every library is reimplemented. Flathub build is on an EOL runtime. [repo README](https://github.com/alifcommunity/Alif), [aliflang.org](https://aliflang.org), [Flathub](https://flathub.org/zh-Hant/apps/org.aliflang.lang) |
 | **كلمات Kalimat** | Mohamed Samy (Egypt), ~2010–2012 | C++ with its own bytecode VM (`smallvm/` in the mirror), IDE, 2D sprites and a physics engine | Dormant/dead. Mirror last pushed 2021 | mobadarah/kalimat-lang 14★, baronleonardo/kalimat 2★ | Kids' games and graphics | Aimed at schools but never got curriculum adoption. Single maintainer. [ArabNet 2012](https://arabnet.me/english/editorials/business/industry/kalimat-first-arabic-programming-language-for-kids), [mirror](https://github.com/mobadarah/kalimat-lang) |
 | **عمّوريا Ammoria (Arab)** | SourceForge project, mid-2000s | OOP language with Arabic keywords, LGPLv2. Planned Urdu and Farsi support | Dead | SourceForge only | No | Educational, single team, no ecosystem. [SourceForge](https://sourceforge.net/p/ammoria/), [Arabic page](https://ammoria.sourceforge.net/ar/ar_index.html) |
 | **جيم Jeem** | Mohammad Ammar Alsalka, 2006 | Procedural C/Pascal hybrid with simple graphics | **Dead**: the jeemlang.com reference in Wikipedia now points to a "NameBright – Coming Soon" parked page | — | Educational | Domain lapsed, no open source. [Wikipedia list](https://en.wikipedia.org/wiki/Non-English-based_programming_languages) |
@@ -122,8 +122,8 @@ Legend: **Status** = Active (push in the last 6 months) / Dormant (no push in mo
 
 | Language | Locale | Year / Impl | Scale | Lesson |
 |---|---|---|---|---|
-| **Wenyan 文言** | Classical Chinese | 2019. TypeScript, compiles to JS, Python and Ruby | **20,283★**, but **last push 2023-10** | Most-starred localized language ever, and still dormant. Stars measure novelty, not adoption. Fully localized grammar and numerals, but **English error messages** (Swidan & Hermans), which hurts the very learners it targets. [repo](https://github.com/wenyan-lang/wenyan) |
-| **易语言 Easy Programming Language (EPL)** | Simplified Chinese | ~2000–2004. Proprietary RAD IDE, Windows/Win32 | The largest real user base of any non-English language **(no audited numbers)** | It was popular because it was a complete RAD environment for Windows desktop apps. Its reputation was hurt by heavy use for game cheats and malware, which led to **antivirus false positives on any EPL-compiled binary**. A ransomware once infected its core static libraries (supply-chain attack). Closed, Windows-only, isolated. [Wikipedia](https://en.wikipedia.org/wiki/Easy_Programming_Language), [secrss incident report](https://www.secrss.com/articles/6873), [V2EX discussion](https://www.v2ex.com/t/560518) |
+| **Wenyan 文言** | Classical Chinese | 2019. TypeScript, compiles to JS and Python | **20,283★**, but **last push 2023-10** | The most-starred localized language found on GitHub, and still dormant. Stars measure novelty, not adoption. Fully localized grammar and numerals, but **English error messages** (Swidan & Hermans), which hurts the very learners it targets. [repo](https://github.com/wenyan-lang/wenyan) |
+| **易语言 Easy Programming Language (EPL)** | Simplified Chinese | ~2000–2004. Proprietary RAD IDE, Windows/Win32 | Widely reported as one of the largest non-English user bases, alongside 1C **(no audited numbers for either)** | It was popular because it was a complete RAD environment for Windows desktop apps. Its reputation was hurt by heavy use for game cheats and malware, which led to **antivirus false positives on any EPL-compiled binary**. A ransomware once infected its core static libraries (supply-chain attack). Closed, Windows-only, isolated. [Wikipedia](https://en.wikipedia.org/wiki/Easy_Programming_Language), [secrss incident report](https://www.secrss.com/articles/6873), [V2EX discussion](https://www.v2ex.com/t/560518) |
 | **1C:Enterprise** | Russian (**and English keywords**) | 1990s to present. Business platform | "300,000+ engineers", "1,000+ solutions" **(vendor claim)** | **The strongest commercial success of a non-English language.** It worked because it was captive inside a platform people *had* to use (accounting/ERP), not because of the keywords. Accepting both languages' keywords is the precedent for "skins". [Wikipedia](https://en.wikipedia.org/wiki/1C:Enterprise), [1C-DN](https://1c-dn.com/1c_enterprise/1c_enterprise_script/) |
 | **Nadeshiko なでしこ** | Japanese | 2004 to present. v3 in JS | Included in a Japanese junior-high technology textbook | Survived 20 years by targeting office automation, a real job to do. [Mynavi](https://news.mynavi.jp/article/nadeshiko-1/), [docs.rs](https://docs.rs/nadesiko3) |
 | **Excel formulas** | 40+ locales | — | Billions of users | **Canonical storage with localized display.** Localized function names and decimal separators, and non-English numerals work. You cannot mix locales in one sheet (Swidan & Hermans §4.7). This is projectional skinning at scale. |
@@ -191,7 +191,7 @@ Supporting evidence: Guo's CHI 2018 survey of 840 non-native speakers found barr
 
 - Arabic letters have bidi class **AL**. Arabic-Indic digits are **AN**, Western digits **EN**, and `+` is **ES**. Verified with `unicodedata.bidirectional` in CPython 3.12.
 - Operators, brackets, spaces and digits are *weak or neutral*, so their display position depends on the surrounding strong characters. UAX #31 §4.1.1 gives the canonical example: `x + תו == 1` *displays* as if comparing `(x + 1)` with `תו`, but it logically compares `(x + תו)` with `1`. The same happens with any Arabic identifier.
-  - **UAX #31 remedy:** LRM/RLM (and ALM U+061C) are in `Pattern_White_Space`, so tools may insert them between tokens to fix the display without changing meaning. ([UAX #31](https://www.unicode.org/reports/tr31/))
+  - **UAX #31 remedy:** LRM (U+200E) and RLM (U+200F) are in `Pattern_White_Space`, so tools may insert them between tokens to fix the display without changing meaning. ALM (U+061C) is **not** in that set; it is a bidi control. ([UAX #31](https://www.unicode.org/reports/tr31/)) Unicode's later **UTS #55 "Unicode Source Code Handling"** recommends that editors isolate tokens when rendering, so no characters need to be stored in the file ([UTS #55](https://unicode.org/reports/tr55/)). Our policy (§7.5) follows `04-security-by-design.md` and uses rendering-side isolation instead of stored marks.
 - **Bidi_Mirrored brackets:** in an RTL run, `(` is drawn as `)` and so on. That is correct in a pure-RTL line, but it confuses users when an Arabic line is pasted into an LTR context such as a terminal, a diff tool or chat.
 - **Paragraph direction matters.** An Arabic-skin file should be displayed with an RTL base direction, and an English or Franco file with LTR. Terminals generally do no bidi or shaping, so tracebacks print reversed or disconnected letters. That is why Franco and English error output must be first-class.
 
@@ -280,15 +280,17 @@ source ───► │  skin lexer ── skin: ar  (فصحى)           إذا
 - **What gets translated:** keywords, built-in functions and literals (`true`, `none`), punctuation aliases (`،`↔`,`, `؛`↔`;`, `؟`), and digit glyphs (optional, per skin preference).
 - **What never gets translated:** user identifiers, string literals, comments, and library and module names. An optional **identifier glossary file** (`names.ar.toml`) can map project identifiers for teaching.
 - **Round-trip guarantee:** `fmt(A) → B → A` is byte-identical to `fmt(A)`. Aliases are normalized to the canonical spelling by design, and that is the formatter's job.
+- **English keywords inside an Arabic or Franco file count as aliases.** They compile as-is, and `fmt` rewrites them to the file's skin canonical (an opt-out flag can keep them, for teaching mixed code). This makes the round-trip guarantee hold.
+- **The keyword map must be 1:1 across skins.** Each concept has exactly one canonical word per skin and no word serves two concepts, so translation never needs context. This is why `else` and `default` are separate rows in §8.
 - **Excel model for packages:** publish packages in a canonical form (English skin). Editors, LSP and docs render any skin on demand.
 - **LLM bonus:** models write excellent English-skin code. A deterministic skin translator makes that code readable in فصحى or Franco without trusting an LLM as a compiler, which is the APL anti-pattern.
 
 ### 7.3 Interop with a big ecosystem (the decisive factor)
 
-- Compile to an existing runtime instead of building a standard library from scratch. Option detail is in `03-implementation-strategy.md`, but the research here points the same way:
-  - **Python** (Ya, lughat-althuban, Hedy, JugaadLang) is fastest to "real products" for scripting, data and AI.
-  - **JS/TS** reaches web, Node, mobile (React Native) and npm.
-  - JVM (Naftah) and Rust (Seen) are the alternatives.
+- Compile to an existing runtime instead of building a standard library from scratch. `03-implementation-strategy.md` recommends **emitting TypeScript/JavaScript first** (npm, browser, Node) with a native C backend later and a Rust-written compiler. The Arabic-language evidence fits that choice. Every Arabic project that reached "could build real things", even in principle, did it by borrowing a host:
+  - **Python** hosts: Ya, lughat-althuban, Hedy, JugaadLang.
+  - **C** host: NashmiC. **JVM**: Naftah. **Rust**: Seen.
+  - Isolated runtimes (Alif, Baa, Kalimat) never got past the standard-library wall.
 - **Library APIs stay in English.** Optionally ship **alias packs** (`ektb` → `print`, `مكتبة.طلبات` → `requests`) as *thin, versioned wrappers*, as lughat-althuban does. Never fork the library.
 - **Error messages in all three skins**, mapped from host errors (translated tracebacks, as lughat-althuban does). This is the #1 barrier per the 71% Libyan data point.
 
@@ -307,8 +309,8 @@ Apply in order. The result is the comparison key. The source text is never rewri
 
 ### 7.5 Bidi and security policy
 
-- **Hard error:** U+202A–202E and U+2066–2069 anywhere except as escapes inside strings (`\u{202E}`). Same for U+200B, U+FEFF and other invisible format characters in identifiers.
-- **Allowed as whitespace only** (per UAX #31): LRM U+200E, RLM U+200F, ALM U+061C. The formatter may insert them to stabilize display of mixed lines. The CST keeps them as trivia.
+- **Hard error:** U+202A–202E, U+2066–2069, **ALM U+061C, LRM U+200E and RLM U+200F** anywhere in code, and raw in comments. In strings they are allowed only as escapes (`\u{202E}`). Same for U+200B, U+FEFF and other invisible format characters in identifiers. This is stricter than UAX #31, which permits LRM/RLM as whitespace. It matches requirement U1 in `04-security-by-design.md`, which takes precedence.
+- **Display is fixed by tooling, not by stored characters.** `fmt`, the LSP and the playground render each token in a bidi isolate (UTS #55). Diff and review views show the LTR-token-ordered canonical view.
 - **UTS #39 "Highly Restrictive" identifiers:** one script per identifier, plus a confusable-skeleton check across the module.
 - **Numerals:** accept ASCII, Arabic-Indic and Persian digits, but **reject mixed systems within one literal** (`1٢3`). Decimal separator is `.` or `٫` (U+066B). Never `،`.
 - **Diff and review tooling:** `x fmt --show-bidi` renders hidden characters, and CI fails on any bidi warning.
@@ -339,6 +341,8 @@ Apply in order. The result is the comparison key. The source text is never rewri
 ## 8. Draft keyword table (35 core keywords)
 
 Canonical spelling is listed first. Aliases are what the lexer also accepts, and the formatter rewrites them to the canonical form. English is accepted in every skin. The Arabic column shows the form after the §7.4 folding; hamza is optional on input.
+
+> **The English column is a placeholder.** `01-english-like-languages.md` proposes its own minimal English keyword set (`type`, `has`, `make`, `each`, `in`, `return`, `when`, `is`, `on`, `if`, `reply`, `none`). Where the two differ, 01 decides the English words. The Arabic and Franco columns should then be re-mapped concept by concept, keeping the 1:1 rule from §7.2.
 
 | # | Concept | English skin | Arabic skin (فصحى), canonical / aliases | Franco skin (Egyptian), canonical / aliases |
 |---|---|---|---|---|
@@ -375,7 +379,7 @@ Canonical spelling is listed first. Aliases are what the lexer also accepts, and
 | 31 | throw / raise | `throw` | `ارم` / `ارمِ` | `ermi` / `ermy`, `2rmy`, `irmi` |
 | 32 | match / switch | `match` | `طابق` / `حسب` | `hasab` / `7asab` |
 | 33 | case | `case` | `حالة` / `حاله` | `hala` / `7ala` |
-| 34 | default | `else` (inside match) | `غير_ذلك` | `ay_haga` / `ay_7aga`, `ay7aga`, `3adi` (digit-leading alias, closed list) |
+| 34 | default (in match) | `default` | `افتراضي` / `أي_شيء` | `ay_haga` / `ay_7aga`, `ay7aga`, `3adi` (digit-leading alias, closed list) |
 | 35 | await | `await` | `انتظر` | `estanna` / `istanna`, `2stanna` |
 
 **Punctuation aliases (Arabic skin):** `،`=`,`, `؛`=`;` (optional terminator, as Ya does), `؟`=`?`, `٫`=decimal point. Brackets and operators stay ASCII in all skins.
@@ -410,7 +414,8 @@ Translating between these files changes only keywords (`func/دالة/dala`, `if
 
 ## 9. Open questions for the design phase
 
-1. **Which host ecosystem** (Python vs TS vs JVM)? This decides library reach and the alias-pack strategy. See `03-implementation-strategy.md`.
+1. **Host ecosystem:** `03-implementation-strategy.md` recommends TS/JS first. The alias-pack strategy for npm APIs still needs to be designed.
+1b. **Normalization form conflict:** `01-english-like-languages.md` says identifiers are normalized with **NFC**. This report (§6.5, §7.4) and `04-security-by-design.md` rely on **NFKC** plus Arabic skeleton folding. Decide on one; NFKC is recommended because it folds Arabic presentation forms.
 2. **Glossary scope:** should the standard library ship official Arabic and Franco alias packs, or only keywords and errors?
 3. **Franco orthography governance:** publish a versioned "Franco keyword spec", perhaps aligned with the *compliant-franco* draft, and run a community survey of 200+ Egyptian developers to choose canonical spellings.
 4. **Arabic skin direction:** pure RTL files only, or allow LTR files with Arabic identifiers? Recommended: base direction per file from the skin.

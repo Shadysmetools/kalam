@@ -1,0 +1,10 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T48
+case: main
+kind: compile-error
+command: kalam check --json
+exit: nonzero
+diagnostic: code=K1601 line=12 token=query
+fix: required
+fix-check: if applicability=machine, applying it must give a file that passes `kalam check` (no K1602)
+others: none

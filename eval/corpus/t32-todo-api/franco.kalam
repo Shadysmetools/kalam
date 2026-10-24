@@ -1,0 +1,75 @@
+# Task 32: REST API, CRUD on /todos, in memory, JSON. Every route states its access rule.
+# Route patterns escape their braces: an unescaped {id} in a string is interpolation (spec 5.7).
+hat std/http.{nafso, HttpError, Request, Response, Router}
+
+@derive(Encode)
+haykal Todo:
+    id: adad
+    title: nass
+    done: mante2i
+
+@derive(Decode)
+haykal NewTodo:
+    title: nass
+
+@derive(Decode)
+haykal TodoUpdate:
+    title: nass
+    done: mante2i
+
+haykal Store:
+    next_id: adad
+    todos: qayma[Todo]
+
+haykal App:
+    store: Cell[Store]
+
+dala list_todos(req: Request[App]) -> natiga[Response, HttpError]:
+    rag3 naga7(Response.json(req.app.store.get().todos))
+
+dala show_todo(req: Request[App]) -> natiga[Response, HttpError]:
+    khali id = req.path_int("id")?
+    rag3 hasab req.app.store.get().todos.find(dala(t) => t.id == id):
+        lama mawgood(todo): naga7(Response.json(todo))
+        lama mafeesh: fashal(.NotFound)
+
+dala create_todo(req: Request[App]) -> natiga[Response, HttpError]:
+    khali input: NewTodo = req.json()?
+    law input.title.is_empty():
+        rag3 fashal(.BadRequest(message: "title is required"))
+    khali store = req.app.store.get()
+    khali todo = Todo(id: store.next_id, title: input.title, done: ghalat)
+    req.app.store.set(store.with(next_id: store.next_id + 1, todos: store.todos.append(todo)))
+    rag3 naga7(Response.json(todo).status(201))
+
+dala update_todo(req: Request[App]) -> natiga[Response, HttpError]:
+    khali id = req.path_int("id")?
+    khali input: TodoUpdate = req.json()?
+    khali store = req.app.store.get()
+    law mesh store.todos.any(dala(t) => t.id == id):
+        rag3 fashal(.NotFound)
+    khali todo = Todo(id: id, title: input.title, done: input.done)
+    req.app.store.set(store.with(todos: store.todos.map(dala(t) => law t.id == id: todo walla: t)))
+    rag3 naga7(Response.json(todo))
+
+dala delete_todo(req: Request[App]) -> natiga[Response, HttpError]:
+    khali id = req.path_int("id")?
+    khali store = req.app.store.get()
+    khali kept = store.todos.filter(dala(t) => t.id != id)
+    law kept.len() == store.todos.len():
+        rag3 fashal(.NotFound)
+    req.app.store.set(store.with(todos: kept))
+    rag3 naga7(Response.text("").status(204))
+
+dala routes() -> Router[App]:
+    rag3 http.router()
+        .get("/todos", list_todos, access: .Public)
+        .post("/todos", create_todo, access: .Public)
+        .get("/todos/\{id\}", show_todo, access: .Public)
+        .put("/todos/\{id\}", update_todo, access: .Public)
+        .delete("/todos/\{id\}", delete_todo, access: .Public)
+
+dala ra2isi(world: donya) -> natiga[(), AnyError]:
+    khali app = App(store: Cell.new(Store(next_id: 1, todos: [])))
+    http.serve(world.net, port: 8080, router: routes(), app: app)?
+    rag3 naga7(())

@@ -1,0 +1,26 @@
+# Task 49 (positive twin): safe string kinds. Hostile input reaches each sink only as data.
+dala ra2isi():
+    khali payload = "<script>alert(1)</script>"
+    khali names = ["Tom & Jerry", "<b>bold</b>", "سارة"]
+    khali items = names.map(dala(name) => html"<li>{name}</li>")
+    khali page = html"<p>{payload}</p><ul>{items}</ul>"
+    ektb(page.render())
+
+    khali term = "tea&cakes=1#top"
+    khali link = url"https://example.com/search?q={term}"
+    khali anchor = html"""<a href="{link}">search</a>"""
+    ektb(anchor.render())
+
+    lekol candidate fi ["report.pdf", "../etc/passwd", "a/b", ""]:
+        khali verdict = hasab PathSegment.parse(candidate):
+            lama naga7(_): "accepted"
+            lama fashal(_): "rejected"
+        ektb("segment \"{candidate}\": {verdict}")
+
+    khali username = regex"^[a-z0-9_]\{3,20\}$"
+    lekol candidate fi ["sara_99", "x", "robert'); DROP TABLE students;--"]:
+        khali verdict = law username.matches(candidate): "valid" walla: "invalid"
+        ektb("username \"{candidate}\": {verdict}")
+
+    khali password = Secret.new("hunter2")
+    ektb("password: {password}")

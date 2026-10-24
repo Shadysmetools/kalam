@@ -1,0 +1,11 @@
+# Task 02: FizzBuzz from 1 to 100 inclusive.
+dala ra2isi():
+    lekol n fi 1..=100:
+        law n % 15 == 0:
+            ektb("FizzBuzz")
+        walla law n % 3 == 0:
+            ektb("Fizz")
+        walla law n % 5 == 0:
+            ektb("Buzz")
+        walla:
+            ektb("{n}")

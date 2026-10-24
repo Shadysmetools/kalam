@@ -1,0 +1,44 @@
+# Task 12: records, sum types and exhaustive match. Every printed number is an Int.
+ta3dad Shape:
+    Rect(width: adad, height: adad)
+    Square(side: adad)
+    Triangle(base: adad, height: adad)
+    Empty
+
+haykal Item:
+    label: nass
+    shape: Shape
+    count: adad = 1
+
+dala area(shape: Shape) -> adad:
+    rag3 hasab shape:
+        lama .Rect(w, h): w * h
+        lama .Square(s): s * s
+        lama .Triangle(b, h): b * h // 2
+        lama .Empty: 0
+
+dala describe(shape: Shape) -> nass:
+    rag3 hasab shape:
+        lama .Rect(w, h) law w == h: "square-ish rect"
+        lama .Rect(_, _) | .Square(_): "four sides"
+        lama .Triangle(..): "three sides"
+        lama .Empty: "nothing"
+
+dala ra2isi():
+    khali items = [
+        Item(label: "door", shape: .Rect(width: 90, height: 210)),
+        Item(label: "tile", shape: .Square(side: 30), count: 12),
+        Item(label: "sail", shape: .Triangle(base: 5, height: 7)),
+        Item(label: "box", shape: .Rect(width: 4, height: 4)),
+        Item(label: "gap", shape: .Empty),
+    ]
+    motghayer total = 0
+    lekol item fi items:
+        khali one = area(item.shape)
+        total += one * item.count
+        ektb("{item.label}: {describe(item.shape)}, area {one} x{item.count}")
+    ektb("total area: {total}")
+    khali bigger = items[1].with(count: 20)
+    ektb("{bigger.label} now x{bigger.count}, original x{items[1].count}")
+    khali same = items[0] == Item(label: "door", shape: .Rect(width: 90, height: 210))
+    ektb(law same: "equal records" walla: "different records")

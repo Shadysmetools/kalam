@@ -1,0 +1,13 @@
+[package]
+name = "kalam-diagnostics"
+description = "Diagnostic model, three-language message catalog, renderers"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+kalam-base.workspace = true
+kalam-skins.workspace = true
+serde_json.workspace = true

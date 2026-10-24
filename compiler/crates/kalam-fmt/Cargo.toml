@@ -1,0 +1,16 @@
+[package]
+name = "kalam-fmt"
+description = "Printer, formatter and lossless skin converter"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+kalam-base.workspace = true
+kalam-skins.workspace = true
+kalam-lexer.workspace = true
+kalam-syntax.workspace = true
+kalam-parser.workspace = true
+kalam-diagnostics.workspace = true

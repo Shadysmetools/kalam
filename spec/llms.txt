@@ -1,0 +1,390 @@
+# Kalam (كلام) v0.1: compact guide for writing correct code
+
+> Kalam is a statically typed, indentation-based language for full-stack web and SaaS. It compiles to ES2022 JavaScript.
+> Write the **canonical English skin** (`.kl` files), formatted as `kalam fmt` prints it. After every edit, run `kalam check --json` and apply every fix marked `"applicability": "machine"`.
+> Full spec: spec/KALAM-SPEC.md. Keyword table: spec/keywords.json.
+
+## 1. Files and skins
+
+- One file is one module and one skin. The extension sets the skin: `.kl` English, `.ar.kl` Arabic, `.franco.kl` Egyptian Franco. All three skins share one grammar.
+- `kalam convert --to ar|franco|en` translates keywords, core names, `،`/`؟` punctuation and (optionally) digits, losslessly. Identifiers, strings and comments never change.
+- Source is UTF-8 NFC. Indentation is 4 spaces, with no tabs. There are no semicolons and no braces for blocks. Every block opens with `:`.
+- Comments: `#` line comment, `##` doc comment. There are no block comments.
+- **Never write** raw invisible or bidi characters (U+200E/200F/061C/202A-202E/2066-2069, ZWSP, NBSP). Inside strings, use `\u{…}` escapes.
+
+## 2. Syntax cheat sheet
+
+```kalam
+use std/http.{self, HttpError, Request, Response}   # absolute paths; no globs, no relative imports
+use std/sql.{self, Db}
+
+let MAX_ITEMS: Int = 100                  # module constant (pure); there is no module-level var
+
+type User:                                # record: named fields, immutable
+    id: Int
+    name: String
+    role: Role = .Member                  # field default
+
+type UserId = Int                         # transparent alias
+
+enum Role:                                # sum type
+    Admin
+    Member
+    Guest(invited_by: String)
+
+trait Show:
+    fn show(self) -> String
+
+impl User as Show:                        # trait impl: `impl Type as Trait:`  (NOT `impl Trait for Type`)
+    fn show(self) -> String => "{self.name} #{self.id}"
+
+impl User:                                # inherent methods / associated functions
+    fn is_admin(self) -> Bool => self.role == .Admin
+    fn guest(name: String) -> User => User(id: 0, name: name, role: .Guest(invited_by: "system"))
+
+fn total(prices: List[Decimal], tax: Decimal = 0.14) -> Decimal:   # top-level signatures are fully typed
+    var sum: Decimal = 0                  # var = rebindable local
+    for p in prices:
+        sum += p
+    return sum + sum * tax                # block bodies need an explicit `return`
+
+fn double(x: Int) -> Int => x * 2         # expression body
+
+fn label(n: Int) -> String:
+    let word = if n == 1: "item" else: "items"     # inline if-expression (one line, `else` required)
+    return "{n} {word}"                            # string interpolation with {expr}
+
+fn describe(role: Role) -> String:
+    return match role:                    # match is exhaustive; arms are `case pattern:`
+        case .Admin: "admin"              # variants ALWAYS use a leading dot (or Role.Admin)
+        case .Guest(invited_by: who): "guest of {who}"
+        case _: "member"
+```
+
+**Blocks and statements**
+
+```kalam
+if x < 0: return Err(.Negative)           # one-line block (one simple statement)
+if a:
+    do_a()
+else if b:
+    do_b()
+else:
+    pass                                  # `pass` = empty body
+for i in 0..n:                            # 0..n excludes n; 0..=n includes n
+    print("{i}")
+for (key, value) in scores:               # Map iteration yields (key, value)
+    print("{key}={value}")
+for (i, item) in items.enumerate():
+    print("{i}: {item}")
+while running:
+    running = step()
+let fee = match plan:                     # multi-line value form: each arm yields its last expression
+    case .Free: 0
+    case .Pro(seats):
+        let base = 10 * seats
+        base - base // 10
+```
+
+**Method chains across lines:** a line that starts with `.` and is indented deeper than the statement continues it.
+
+```kalam
+let names = users
+    .filter(fn(u) => u.active)
+    .map(fn(u) => u.name)
+```
+
+**Lambdas are one expression:** `fn(x) => x + 1`. For multi-statement logic, declare a **local `fn`** and pass its name. There are no multi-line lambdas.
+
+```kalam
+fn transfer(db: Db, from: Int, to: Int, amount: Decimal) -> Result[(), DbError]:
+    fn move(tx: Db) -> Result[(), DbError]:
+        tx.exec(sql"UPDATE accounts SET balance = balance - {amount} WHERE id = {from}")?
+        tx.exec(sql"UPDATE accounts SET balance = balance + {amount} WHERE id = {to}")?
+        return Ok(())
+    return db.transaction(move)
+```
+
+**Operators:** `+ - * / // % == != < <= > >= and or not .. ..= ?`. Assignment: `= += -= *= /=`.
+- `/` on two `Int`s gives a `Float`. `//` is floor division. `%` follows Python semantics.
+- These do not exist: `&& || ! === ++ -- ?: ** |>` and bitwise operators. Use `and`/`or`/`not`, `x += 1`, `if c: a else: b`, `.pow()` and `.bit_and()`.
+- Comparisons do not chain: `a < b < c` is an error.
+
+## 3. Types
+
+| Type | Notes |
+|---|---|
+| `Int` | range ±(2^53−1). Overflow **panics**. `checked_add`, `wrapping_add`, `saturating_add` exist |
+| `BigInt` | arbitrary precision (opt-in) |
+| `Float` | IEEE binary64. **Not Eq/Ord/Hash**: no Map keys, sort with `.total_cmp()`, compare with `.near(x, tol:)` |
+| `Decimal` | exact, 34 digits, for money. `let p: Decimal = 19.99` is exact. **No `/`**: use `a.div(b, scale: 2, rounding: .HalfEven)` |
+| `Bool` | `true`, `false`. Conditions must be `Bool` (no truthiness) |
+| `String` | immutable. Interpolation `"{x}"`. **No `s[i]`**: use `.chars()`, `.graphemes()`, `.slice(a, b)`. A literal `{` is written `\{` |
+| `Bytes`, `()` (unit), `Never` | |
+| `(A, B)` | tuple: `t.0`, `t.1`, or `let (a, b) = t` |
+| `List[T]` | `[1, 2]`. `xs[i]` panics when out of bounds, `xs.get(i)` returns `Option` |
+| `Map[K, V]` | `{"a": 1}`. `{}` needs an expected type. `m[k]` panics if missing, `m.get(k)` returns `Option` |
+| `Set[T]` | `Set.of([…])` |
+| `Option[T]` | `Some(x)` / `None`. **There is no null** |
+| `Result[T, E]` | `Ok(x)` / `Err(e)`. **Must be used**: write `let _ = r` to discard |
+| `fn(A) -> R` | function type. `@sync fn(A) -> R` = must not suspend |
+
+- **Numbers never convert implicitly.** `count + price` (Int + Float) is an error. Write `count.to_float() + price`.
+- `==` works only between two values of the **same** type that implements `Eq` (or two `Float`s).
+- Record construction **always uses named arguments**: `User(id: 1, name: "Sara")`. Update a record with `u.with(name: "Omar")`.
+- Values are immutable. `p.x = 3`, `xs[i] = v` and `m[k] = v` are allowed only when the root is a `var`. They rebind (value semantics), and nothing is mutated in place.
+- Collection methods return **new** collections. Write `var items = []` and then `items = items.append(x)`. A bare `items.append(x)` statement is an error (unused value).
+- Generic: `fn first[T](xs: List[T]) -> Option[T]`, with bounds `T: Ord`, `T: Eq + Hash`. **Call sites never write type arguments.** Use an annotation instead: `let u: User = json.decode(text)?`.
+- Derives are explicit: `@derive(Encode, Decode)` (JSON/forms), `@derive(Row)` (SQL rows), `@derive(Ord)`, `@derive(Message)` (live UI). `Eq`, `Hash` and `Show` are automatic when every field supports them.
+- `export type` exports a type and its fields. `export opaque type` hides its fields and constructor (use it for validated types with `parse` functions). Use `@decode_with(T.parse)` to make an opaque type decodable.
+- Traits are coherent (one impl per type/trait; the impl lives with the trait or the type). There are no trait objects: use enums.
+
+## 4. Names and scoping rules (common sources of errors)
+
+- **One namespace per scope.** Types, functions and values share it.
+- **No shadowing at all**: a new binding may not reuse any visible name (locals, parameters, module items, imports). Pick a new name.
+- **Closures may not capture a `var`.** Bind `let snapshot = v` first.
+- Variants are `.Variant` (when the type is known) or `Type.Variant`. **A bare identifier in a pattern always binds a new variable.** `Some`, `None`, `Ok` and `Err` are the only bare constructors.
+- `match` must be exhaustive, and an unreachable arm is an error. There is no `if let` and no `let … else`. Use `match`, `?` or `Option` methods.
+- Method call `x.m()` must resolve to exactly one method (inherent or trait). Otherwise write `Trait.m(x)`.
+- An `export`ed function with two adjacent parameters of the same type must be called with labels: `transfer(db, from: a, to: b, amount: x)`. The receiver doesn't count, and stdlib methods with a conventional order (`slice(a, b)`, `replace(old, new)`, `min`, `max`, `div`) need no labels.
+- A keyword is an ordinary name after `.`, as an argument label, and as a field name (`x.type`, `f(match: 1)`).
+
+## 5. Errors: Result, ?, panic
+
+```kalam
+enum ConfigError:
+    Missing(key: String)
+    NotANumber(key: String, value: String)
+
+fn read_port(env: Env) -> Result[Int, ConfigError]:
+    let raw = env.get("PORT").ok_or(ConfigError.Missing(key: "PORT"))?   # Option → Result, then ?
+    return match raw.to_int():
+        case Ok(port): Ok(port)
+        case Err(_): Err(.NotANumber(key: "PORT", value: raw))
+```
+
+- `e?` returns early with the error. The error type converts if `impl Target as From[Source]` exists, or if the function returns `AnyError` (which boxes any `E: Error`).
+- `result.context("loading config")` adds a message and turns the result into `Result[T, AnyError]`. `.map_err(fn(e) => …)` converts errors by hand.
+- `?` on an `Option` works only in a function returning `Option`. Inside a `Result` function, use `.ok_or(err)?`.
+- `main` returns `()` or `Result[(), AnyError]`.
+- Bugs panic: `panic("msg")`, `assert(cond, "msg")`, `x.expect("why this cannot fail")`. **There is no `.unwrap()`.** Kalam code cannot catch a panic. An HTTP handler that panics returns 500, and the server keeps running.
+- There are no exceptions: no `try`, `catch`, `throw` or `raise`.
+
+## 6. Concurrency (no async/await)
+
+- Write sequential code. I/O calls simply return their results. **Never write `async` or `await`.** The compiler infers which functions suspend.
+- To run work concurrently: `task.both(fn() => a(), fn() => b())` returns a tuple. `task.all([…])` runs a list. `task.race([…])` takes the first to finish. `task.timeout(clock, 2000, fn() => …)` adds a deadline. `task.scope(fn(s) => …)` with `s.spawn(f)` starts children and waits for them.
+- There is no fire-and-forget task. Background work goes to `std/jobs` (a DB-backed queue).
+- Shared mutable state: `Cell.new(v)`, `.get()`, `.set(v)`, `.update(fn(v) => …)`. The update callback cannot suspend, so `update` is atomic.
+- Function-typed record fields suspend by default. Write `@sync fn(…) -> R` when the function must stay synchronous (game `update`/`view`, comparators).
+
+## 7. Capabilities (I/O is passed in, never ambient)
+
+```kalam
+fn main(world: World) -> Result[(), AnyError]:
+    let db = sql.sqlite(world.fs, "app.db")?
+    http.serve(world.net, port: 8080, router: routes(), app: App(db: db))?
+    return Ok(())
+```
+
+- `world.net` (Net), `world.fs` (Fs), `world.env` (Env), `world.clock` (Clock), `world.rand` (Rand, a CSPRNG), `world.proc` (Proc), `world.stdin` (Stdin), `world.screen(width:, height:)` (Screen, browser only).
+- A function can do I/O only if it receives a capability, so pass `db: Db`, `net: Net` and so on as parameters. Web apps put them in an `App` record and read them in handlers through `req.app`.
+- `print("…")` and `log.info/warn/error(…)` need no capability.
+- Narrow a capability before passing it on: `net.only(hosts: ["api.stripe.com"])`, `fs.dir(path"uploads")?`, `fs.read_only()`.
+- Secrets: `env.secret("API_KEY")` returns `Option[Secret[String]]`. A `Secret` prints as `[REDACTED]`, cannot be JSON-encoded, and is compared with `crypto.equal(a, b)`. `.expose()` reads the value (and is audited).
+- `Rand.seeded(n)` is a deterministic RNG for games and tests. Tokens come from `world.rand.token(bytes: 32)`.
+
+## 8. Safe strings: sinks never take `String`
+
+| Write | Type | Holes `{x}` become |
+|---|---|---|
+| `sql"SELECT * FROM t WHERE id = {id}"` | `Sql` | bound parameters (never spliced) |
+| `html"<p>{name}</p>"` | `Html` | contextually escaped |
+| `cmd"git log -n {count} -- {file}"` | `Command` | exactly one argv element each; **no shell, ever** |
+| `url"https://api.x.com/users/{id}?q={q}"` | `Url` | percent-encoded |
+| `path"uploads/{seg}"` | `Path` | must be a `PathSegment` (`PathSegment.parse(s)?`) |
+| `regex"^[a-z]+$"` | `Regex` | RE2 (linear time) |
+
+- **Never build SQL, HTML, commands or URLs by concatenating strings.** It is a compile error.
+- SQL: don't quote holes (`'{x}'` is an error). Holes never go in identifier positions (use `sql.ident(name, allowed: […])?`). Write one statement per literal. For `LIKE`, use `sql.like_contains(s)`. `IN {ids}` expands a list. Compose queries with `sql"… {other_sql} …"`.
+- HTML: always quote attribute holes (`class="{c}"`). URL attributes (`href`, `src`, `action`, `k-get`, `k-post`) need a `Url`, not a `String`. There are no holes inside `<script>`, `<style>` or `on*=`. Insert child elements as `Html`/`List[Html]` holes.
+- `cmd"…"`: the program name must be literal, and shell metacharacters (`| ; & > < $ *`) are errors. Put `--` before user-supplied paths.
+- Escape hatches (audited, avoid them): `unsafe.raw_sql(s)`, `unsafe.raw_html(s)`, `unsafe.raw_url(s)`.
+
+## 9. Web: routes, JSON, SQL, live UI
+
+```kalam
+use std/http.{self, HttpError, Request, Response, Router}
+use std/sql.{self, Db}
+
+type App:
+    db: Db
+
+@derive(Encode, Row)
+type Note:
+    id: Int
+    title: String
+
+@derive(Decode)                           # separate input type (never decode requests into a Row type)
+type NewNote:
+    title: String
+
+fn show_note(req: Request[App]) -> Result[Response, HttpError]:
+    let id = req.path_int("id")?                                   # 400 on bad input
+    let found: Option[Note] = req.app.db.one(sql"SELECT id, title FROM notes WHERE id = {id}")?
+    return match found:
+        case Some(note): Ok(Response.json(note))
+        case None: Err(.NotFound)
+
+fn create_note(req: Request[App]) -> Result[Response, HttpError]:
+    let input: NewNote = req.json()?                               # unknown fields rejected
+    if input.title.is_empty():
+        return Err(.BadRequest(message: "title is required"))
+    let created: Option[Note] = req.app.db.one(sql"INSERT INTO notes (title) VALUES ({input.title}) RETURNING id, title")?
+    return Ok(Response.json(created.expect("RETURNING yields one row")).status(201))
+
+fn routes() -> Router[App]:
+    return http.router()
+        .get("/notes/\{id\}", show_note, access: .Public)          # access: is REQUIRED; {…} in a plain string is a hole, so escape route braces
+        .post("/notes", create_note, access: .LoggedIn)            # .Public | .LoggedIn | .Role(name: "admin")
+
+fn main(world: World) -> Result[(), AnyError]:
+    let db = sql.sqlite(world.fs, "notes.db")?
+    http.serve(world.net, port: 8080, router: routes(), app: App(db: db))?
+    return Ok(())
+```
+
+**In-memory state** (no module-level `var`): put a `Cell` in the app record.
+
+```kalam
+type App:
+    todos: Cell[List[Todo]]
+
+fn add_todo(req: Request[App]) -> Result[Response, HttpError]:
+    let todo: Todo = req.json()?
+    req.app.todos.update(fn(ts) => ts.append(todo))      # atomic
+    return Ok(Response.json(todo).status(201))
+
+# in main:  app: App(todos: Cell.new([]))
+```
+
+- `HttpError`: `.BadRequest(message:)`, `.Unauthorized`, `.Forbidden`, `.NotFound`, `.Conflict(message:)`, `.Internal`. `?` converts `DbError` (500) and `DecodeError` (400) automatically.
+- `Db`: `db.all(q) -> Result[List[T], DbError]`, `db.one(q) -> Result[Option[T], DbError]`, `db.exec(q) -> Result[Int, DbError]`, `db.transaction(f)`. The row type `T` comes from the expected type.
+- `Response.json(x)`, `.html(h)`, `.text(s)`, `.redirect(to: url)`, `.status(code)`. `Request`: `.path_int`, `.path`, `.query_param(name)` (→ `Option[String]`), `.query()`, `.json()`, `.form()`, `.session`.
+
+**Live component** (server-driven UI): state + `update(State, Msg) -> State` + `view(State) -> Html`.
+
+```kalam
+type Model:
+    count: Int
+
+@derive(Message)
+enum Msg:
+    Increment
+    Reset
+
+fn update(model: Model, msg: Msg) -> Model:
+    return match msg:
+        case .Increment: model.with(count: model.count + 1)
+        case .Reset: Model(count: 0)
+
+fn view(model: Model) -> Html:
+    return html"""
+        <section dir="auto">
+          <h1>Clicks: {model.count}</h1>
+          <button k-click="{Msg.Increment}">+</button>
+          <button k-click="{Msg.Reset}">Reset</button>
+        </section>
+    """
+
+fn main(world: World) -> Result[(), AnyError]:
+    let routes = http.router().live("/counter", init: Model(count: 0), update: update, view: view, access: .Public)
+    http.serve(world.net, port: 8080, router: routes, app: ())?
+    return Ok(())
+```
+
+- The event attributes `k-click`, `k-submit`, `k-input` and `k-change` take a `Message` value. Write it qualified (`Msg.Increment`), because a view has no expected type for it. The value travels as a signed token, never as JS.
+- The htmx-style directives are `k-get="{url}"`, `k-post="{url}"`, `k-target="#id"` and `k-swap="append"`. CSRF tokens are added to POST forms automatically.
+
+## 10. JavaScript / npm interop
+
+```kalam
+@js(module: "nanoid", name: "nanoid")
+extern fn nanoid(size: Int) -> String
+
+@js(member: "checkout.sessions.create", async: true, throws: true)
+extern fn create_session(client: StripeClient, params: SessionParams) -> Result[Session, JsError]
+```
+
+- The npm package must be listed in `[npm]` in `kalam.toml`. `async: true` means the call suspends. `throws: true` turns JS exceptions into `Err(JsError)`. Without it, a JS exception becomes a panic. `extern type X` declares an opaque JS object.
+- Every value coming back from JS is validated, and an `Int` must be a safe integer. Untyped JS values are `JsValue` and are read with `js.decode(v)`.
+- Prefer `kalam bind npm:pkg` (generated bindings) or a `@kalam-bind/*` package over writing externs by hand.
+
+## 11. Stdlib quick reference (all names are English in every skin)
+
+- String: `len_chars byte_len chars graphemes slice split join trim is_empty starts_with contains replace to_upper to_lower to_int to_float to_decimal`
+- List/Map/Set: `len is_empty get set append insert remove map filter fold find any all sort_by sorted enumerate zip take skip first last group_by sum`
+- Option: `map or ok_or expect is_some is_none`. Result: `map map_err ok expect context is_ok`
+- `json.encode(x)`, `json.decode(text)` (type from annotation). `log.info("…")`. `clock.now()`. `task.*`. `proc.run(cmd)`. `password.hash/verify`. `crypto.equal`.
+- Tests: `test "adds tax":` + block with `expect_eq(total([100], tax: 0.14), 114)`, `test.expect_panic(fn() => …)`, plus fakes `test.clock(at:)`, `test.net(routes)`, `test.fs(files)`, `test.env(map)`.
+
+## 12. Mistakes the compiler rejects (fix shown)
+
+| Don't write | Write |
+|---|---|
+| `def f(x):` / `function f` / `func f` | `fn f(x: T) -> R:` |
+| `elif` / `else if (c) {` | `else if c:` |
+| `null` / `nil` / `undefined` | `None` with `Option[T]` |
+| `async fn` / `await x` | nothing: suspension is inferred |
+| `try` / `catch` / `throw` / `raise` | `Result` + `?`, or `return Err(…)` |
+| `c ? a : b` | `if c: a else: b` |
+| `&&` `\|\|` `!x` `===` | `and` `or` `not x` `==` |
+| `x++` | `x += 1` |
+| `let mut x` / `const x` | `var x` / `let x` |
+| `f"…{x}"` / `` `${x}` `` / `'single'` | `"…{x}"` |
+| `List<T>` / `Vec<T>` / `T[]` | `List[T]` |
+| `x.unwrap()` | `x.expect("reason")` or `?` |
+| `print(a, b)` | `print("{a} {b}")` |
+| `Circle(r)` (variant) | `.Circle(r)` or `Shape.Circle(r)` |
+| `len(xs)` / `str(x)` / `int(s)` | `xs.len()` / `"{x}"` / `s.to_int()?` |
+| `impl Show for Money:` | `impl Money as Show:` |
+| `class X:` / `struct X {` / `record X:` | `type X:` |
+| `fn(x):` + block, `lambda x:` | a local `fn` declared before use |
+| `f[T](x)` (type arguments) | `let r: T = f(x)` |
+| `a ** b` | `a.pow(b)` |
+| `switch` / `x => …` arms | `match x:` + `case p:` |
+| `for (i = 0; …)` / `range(n)` | `for i in 0..n:` |
+| `"SELECT … " + id` | `sql"SELECT … {id}"` |
+| `1..n` meaning inclusive | `1..=n` (`..` excludes the end) |
+| `xs.push(x)` / bare `xs.append(x)` | `xs = xs.append(x)` (with `var xs`) |
+| `.length` / `.size` / `.includes` | `.len()` / `.len()` / `.contains` |
+| module-level `var` / global state | a `Cell` in the `App` record (see §9) |
+| shadowing `let x = …` twice | a new name |
+| block body ending in a bare value | `return value` |
+
+## 13. Keywords in the three skins (for reading other skins)
+
+| en | ar | franco | | en | ar | franco |
+|---|---|---|---|---|---|---|
+| let | ليكن | khali | | and | و | we |
+| var | متغير | motghayer | | or | أو | aw |
+| fn | دالة | dala | | not | ليس | mesh |
+| return | أرجع | rag3 | | true | صح | sa7 |
+| if | إذا | law | | false | خطأ | ghalat |
+| else | وإلا | walla | | type | هيكل | haykal |
+| match | حسب | hasab | | enum | تعداد | ta3dad |
+| case | عندما | lama | | trait | سمة | sefa |
+| for | لكل | lekol | | impl | نفذ | naffez |
+| in | في | fi | | use | استخدم | hat |
+| while | طالما | tool_ma | | as | بصفة | ka |
+| break | اخرج | kfaya | | export | علني | talla3 |
+| continue | استمر | kammel | | opaque | مغلق | ma2fool |
+| pass | تخطى | fot | | test | اختبار | ekhtebar |
+| self | ذات | nafso | | unsafe, extern | (ASCII in every skin) | |
+
+Core names: Int عدد adad · Float كسري kasri · Decimal عشري ashri · Bool منطقي mante2i · String نص nass · List قائمة qayma · Map قاموس qamoos · Set مجموعة magmoo3a · Option اختياري ekhtiyari · Result نتيجة natiga · Some موجود mawgood · None لا_شيء mafeesh · Ok نجاح naga7 · Err فشل fashal · print اطبع ektb · panic انهيار enhyar · assert تحقق et2aked · main رئيسي ra2isi · World عالم donya.
+
+- Arabic files print `،` for `,` and `؟` for `?`. Stdlib names, tags and `@attributes` stay ASCII in every skin.
+- **No name may start with a digit**, in any skin. In Franco, write `ameel`, not `3amil`. The compiler suggests the right spelling.
+- In Arabic, name values with the article (`العالم: عالم`), because types and values share one namespace.

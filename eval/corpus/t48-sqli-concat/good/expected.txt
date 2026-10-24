@@ -1,0 +1,15 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T48
+case: good
+kind: run
+command: kalam run
+fixtures: empty-cwd (fresh temp dir; Fs rooted there)
+stdin: empty
+exit: 0
+stderr: ignore
+--- stdout
+Cairo: 2 customer(s)
+Cairo' OR '1'='1: 0 customer(s)
+Giza'; DROP TABLE customers; --: 0 customer(s)
+- Amal
+- Camelia

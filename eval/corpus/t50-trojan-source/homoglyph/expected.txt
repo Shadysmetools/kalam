@@ -1,0 +1,9 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T50
+case: homoglyph
+kind: compile-error
+command: kalam check --json
+exit: nonzero
+diagnostic: code=SEC0104 line=5|6
+diagnostic: code=SEC0104 line=7|8
+others: none

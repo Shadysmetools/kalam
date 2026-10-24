@@ -1,0 +1,18 @@
+# Task 48 (must fail): a query built by string concatenation never reaches the database.
+# Expected: K1601 on the db.all(query) line, with a fix that rewrites the query as sql"...".
+hat std/sql.{nafso, Db, DbError}
+
+@derive(Row)
+haykal Customer:
+    id: adad
+    name: nass
+
+dala find_by_city(db: Db, city: nass) -> natiga[qayma[Customer], DbError]:
+    khali query = "SELECT id, name FROM customers WHERE city = '" + city + "'"
+    rag3 db.all(query)
+
+dala ra2isi(world: donya) -> natiga[(), AnyError]:
+    khali db = sql.sqlite(world.fs, "shop.db")?
+    lekol customer fi find_by_city(db, "Cairo' OR '1'='1")?:
+        ektb("{customer.name}")
+    rag3 naga7(())

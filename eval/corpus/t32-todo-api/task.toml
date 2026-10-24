@@ -1,0 +1,18 @@
+# Task manifest (schema: eval/corpus/INDEX.md section 4)
+id = "T32"
+title = "REST API: CRUD /todos in memory, JSON"
+tier = "mvp"
+split = "dev"
+kind = "pos"
+section = "E"
+features = ["http.router", "http.access_required", "http.json", "http.path_int", "cell", "derive.encode_decode", "lambda", "capability.net"]
+spec = ["§20.2", "§15.6", "§16.3", "§18.3"]
+assumptions = ["G1", "G10", "G11"]   # INDEX.md section 6
+files = { en = "en.kalam", ar = "ar.kalam", franco = "franco.kalam" }
+reference = "ref.py"   # Python baseline (D4 ratios); its stdout generated expected.txt
+provenance = "EN written by hand from the spec; ar/franco produced by the bootstrap converter (converter mode: keywords, core names and ar punctuation only; identifiers, strings and comments unchanged). Re-verify with `kalam convert` at stage S2; native-speaker review pending."
+
+[[case]]
+name = "main"
+path = "."
+expect = "http"

@@ -1,0 +1,19 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T14
+case: main
+kind: run
+command: kalam run
+fixtures: none
+stdin: empty
+exit: 0
+stderr: ignore
+--- stdout
+"42" -> ok 42
+"٤٢" -> ok 42
+"-7" -> out of range: -7
+"abc" -> not a number: abc
+"" -> empty input
+"9007199254740992" -> not a number: 9007199254740992
+"200" -> out of range: 200
+total = 49
+stopped: not a number: x1

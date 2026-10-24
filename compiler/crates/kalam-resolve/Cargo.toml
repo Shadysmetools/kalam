@@ -1,0 +1,13 @@
+[package]
+name = "kalam-resolve"
+description = "Module graph, scopes and name resolution producing HIR"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+kalam-base.workspace = true
+kalam-syntax.workspace = true
+kalam-diagnostics.workspace = true

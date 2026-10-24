@@ -1,0 +1,14 @@
+[package]
+name = "kalam-ir"
+description = "KIR: typed target-neutral IR, lowering, passes, Backend trait"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+kalam-base.workspace = true
+kalam-resolve.workspace = true
+kalam-typeck.workspace = true
+kalam-effects.workspace = true

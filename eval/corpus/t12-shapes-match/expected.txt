@@ -1,0 +1,18 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T12
+case: main
+kind: run
+command: kalam run
+fixtures: none
+stdin: empty
+exit: 0
+stderr: ignore
+--- stdout
+door: four sides, area 18900 x1
+tile: four sides, area 900 x12
+sail: three sides, area 17 x1
+box: square-ish rect, area 16 x1
+gap: nothing, area 0 x1
+total area: 29733
+tile now x20, original x12
+equal records

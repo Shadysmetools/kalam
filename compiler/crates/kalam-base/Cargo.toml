@@ -1,0 +1,10 @@
+[package]
+name = "kalam-base"
+description = "Foundation types: skins, file ids, spans, line index"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]

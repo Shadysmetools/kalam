@@ -1,0 +1,38 @@
+# Task 14: expected errors are values. Parse, validate and propagate with ?.
+enum AgeError:
+    Empty
+    NotANumber(text: String)
+    OutOfRange(value: Int)
+
+fn parse_age(text: String) -> Result[Int, AgeError]:
+    if text.is_empty():
+        return Err(.Empty)
+    let value = text.to_int().map_err(fn(_) => AgeError.NotANumber(text: text))?
+    if value < 0 or value > 150:
+        return Err(.OutOfRange(value: value))
+    return Ok(value)
+
+fn total_age(texts: List[String]) -> Result[Int, AgeError]:
+    var total = 0
+    for text in texts:
+        total += parse_age(text)?
+    return Ok(total)
+
+fn explain(error: AgeError) -> String:
+    return match error:
+        case .Empty: "empty input"
+        case .NotANumber(text): "not a number: {text}"
+        case .OutOfRange(value): "out of range: {value}"
+
+fn report(texts: List[String]):
+    match total_age(texts):
+        case Ok(total): print("total = {total}")
+        case Err(error): print("stopped: {explain(error)}")
+
+fn main():
+    for text in ["42", "٤٢", "-7", "abc", "", "9007199254740992", "200"]:
+        match parse_age(text):
+            case Ok(age): print("\"{text}\" -> ok {age}")
+            case Err(error): print("\"{text}\" -> {explain(error)}")
+    report(["30", "12", "٧"])
+    report(["30", "x1", "12"])

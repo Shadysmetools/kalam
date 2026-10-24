@@ -1,0 +1,11 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T49
+case: bad
+kind: compile-error
+command: kalam check --json
+exit: nonzero
+diagnostic: code=K1601 line=9 token=name
+diagnostic: code=K1641 line=12 token=name
+diagnostic: code=K1601 line=15 token=file
+fix: required
+others: none

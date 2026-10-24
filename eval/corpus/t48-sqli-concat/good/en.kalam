@@ -1,0 +1,22 @@
+# Task 48 (good twin): the same lookup with sql"..." holes. Each payload stays data.
+use std/sql.{self, Db, DbError}
+
+@derive(Row)
+type Customer:
+    id: Int
+    name: String
+
+fn find_by_city(db: Db, city: String) -> Result[List[Customer], DbError]:
+    return db.all(sql"SELECT id, name FROM customers WHERE city = {city} ORDER BY id")
+
+fn main(world: World) -> Result[(), AnyError]:
+    let db = sql.sqlite(world.fs, "shop.db")?
+    let _ = db.exec(sql"CREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT)")?
+    for (name, city) in [("Amal", "Cairo"), ("Badr", "Giza"), ("Camelia", "Cairo")]:
+        let _ = db.exec(sql"INSERT INTO customers (name, city) VALUES ({name}, {city})")?
+    for city in ["Cairo", "Cairo' OR '1'='1", "Giza'; DROP TABLE customers; --"]:
+        let found = find_by_city(db, city)?
+        print("{city}: {found.len()} customer(s)")
+    for customer in find_by_city(db, "Cairo")?:
+        print("- {customer.name}")
+    return Ok(())

@@ -1,0 +1,110 @@
+# Task 45 (headless core): Pong with two computer players, integer physics, fixed ticks.
+# The left player rests every fifth tick, so rallies end. Output is deterministic.
+# The browser case of this task (std/game, Screen, 60 fps) is added at beta.
+khali WIDTH: adad = 80
+khali HEIGHT: adad = 24
+khali PADDLE: adad = 5
+khali WIN_SCORE: adad = 3
+khali MAX_TICKS: adad = 5000
+
+haykal Ball:
+    x: adad
+    y: adad
+    dx: adad
+    dy: adad
+
+haykal Game:
+    ball: Ball
+    left: adad
+    right: adad
+    left_score: adad
+    right_score: adad
+    hits: adad
+    tick: adad
+
+dala clamp_paddle(top: adad) -> adad:
+    law top < 0:
+        rag3 0
+    law top > HEIGHT - PADDLE:
+        rag3 HEIGHT - PADDLE
+    rag3 top
+
+dala follow(top: adad, target: adad) -> adad:
+    khali center = top + PADDLE // 2
+    law target < center:
+        rag3 clamp_paddle(top - 1)
+    law target > center:
+        rag3 clamp_paddle(top + 1)
+    rag3 top
+
+dala serve(points: adad, toward_right: mante2i) -> Ball:
+    khali dx = law toward_right: 2 walla: -2
+    khali dy = law points % 2 == 0: 1 walla: -1
+    rag3 Ball(x: WIDTH // 2, y: HEIGHT // 2, dx: dx, dy: dy)
+
+dala covers(top: adad, y: adad) -> mante2i => y >= top we y < top + PADDLE
+
+dala spin(top: adad, y: adad, dy: adad) -> adad:
+    khali offset = y - (top + PADDLE // 2)
+    rag3 law offset == 0: -dy walla: offset
+
+dala step(game: Game) -> Game:
+    motghayer g = game
+    g.tick += 1
+    law g.ball.dx < 0 we g.tick % 5 != 0:
+        g.left = follow(g.left, g.ball.y)
+    law g.ball.dx > 0:
+        g.right = follow(g.right, g.ball.y)
+    g.ball.x += g.ball.dx
+    g.ball.y += g.ball.dy
+    law g.ball.y < 0:
+        g.ball.y = -g.ball.y
+        g.ball.dy = -g.ball.dy
+    law g.ball.y > HEIGHT - 1:
+        g.ball.y = 2 * (HEIGHT - 1) - g.ball.y
+        g.ball.dy = -g.ball.dy
+    law g.ball.x <= 0:
+        law covers(g.left, g.ball.y):
+            g.ball.x = -g.ball.x
+            g.ball.dx = -g.ball.dx
+            g.ball.dy = spin(g.left, g.ball.y, g.ball.dy)
+            g.hits += 1
+        walla:
+            g.right_score += 1
+            g.ball = serve(g.left_score + g.right_score, ghalat)
+    walla law g.ball.x >= WIDTH:
+        law covers(g.right, g.ball.y):
+            g.ball.x = 2 * WIDTH - g.ball.x
+            g.ball.dx = -g.ball.dx
+            g.ball.dy = spin(g.right, g.ball.y, g.ball.dy)
+            g.hits += 1
+        walla:
+            g.left_score += 1
+            g.ball = serve(g.left_score + g.right_score, sa7)
+    rag3 g
+
+dala new_game() -> Game:
+    khali start = HEIGHT // 2 - PADDLE // 2
+    rag3 Game(
+        ball: serve(0, sa7),
+        left: start,
+        right: start,
+        left_score: 0,
+        right_score: 0,
+        hits: 0,
+        tick: 0,
+    )
+
+dala running(game: Game) -> mante2i:
+    khali no_winner = game.left_score < WIN_SCORE we game.right_score < WIN_SCORE
+    rag3 no_winner we game.tick < MAX_TICKS
+
+dala ra2isi():
+    motghayer game = new_game()
+    tool_ma running(game):
+        khali before = game.left_score + game.right_score
+        game = step(game)
+        law game.left_score + game.right_score > before:
+            ektb("tick {game.tick}: left {game.left_score} - right {game.right_score}")
+    khali winner = law game.left_score > game.right_score: "left" walla: "right"
+    ektb("{winner} wins after {game.tick} ticks and {game.hits} paddle hits")

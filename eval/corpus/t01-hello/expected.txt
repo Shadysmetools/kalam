@@ -1,0 +1,12 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T01
+case: main
+kind: run
+command: kalam run
+fixtures: none
+stdin: empty
+exit: 0
+stderr: ignore
+--- stdout
+Hello, world!
+مرحبا بالعالم

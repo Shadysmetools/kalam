@@ -1,0 +1,22 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T15
+case: main
+kind: run
+command: kalam run
+fixtures: none
+stdin: empty
+exit: 0
+stderr: ignore
+--- stdout
+Sara (#7) lives in Cairo
+2 tags, first tag admin
+round-trip: equal
+moved to Alexandria, zip still 11511
+valid: accepted
+unknown field: rejected
+duplicate key: rejected
+missing field: rejected
+string for Int: rejected
+fraction for Int: rejected
+Int out of range: rejected
+truncated: rejected

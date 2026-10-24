@@ -1,0 +1,26 @@
+# Task 49 (positive twin): safe string kinds. Hostile input reaches each sink only as data.
+دالة رئيسي():
+    ليكن payload = "<script>alert(1)</script>"
+    ليكن names = ["Tom & Jerry"، "<b>bold</b>"، "سارة"]
+    ليكن items = names.map(دالة(name) => html"<li>{name}</li>")
+    ليكن page = html"<p>{payload}</p><ul>{items}</ul>"
+    اطبع(page.render())
+
+    ليكن term = "tea&cakes=1#top"
+    ليكن link = url"https://example.com/search?q={term}"
+    ليكن anchor = html"""<a href="{link}">search</a>"""
+    اطبع(anchor.render())
+
+    لكل candidate في ["report.pdf"، "../etc/passwd"، "a/b"، ""]:
+        ليكن verdict = حسب PathSegment.parse(candidate):
+            عندما نجاح(_): "accepted"
+            عندما فشل(_): "rejected"
+        اطبع("segment \"{candidate}\": {verdict}")
+
+    ليكن username = regex"^[a-z0-9_]\{3,20\}$"
+    لكل candidate في ["sara_99"، "x"، "robert'); DROP TABLE students;--"]:
+        ليكن verdict = إذا username.matches(candidate): "valid" وإلا: "invalid"
+        اطبع("username \"{candidate}\": {verdict}")
+
+    ليكن password = Secret.new("hunter2")
+    اطبع("password: {password}")

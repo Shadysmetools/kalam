@@ -1,0 +1,1492 @@
+{
+  "schema": "kalam-scorecard/1",
+  "eval_version": "eval-v0.1-draft",
+  "status": "draft until the freeze step in eval/LOOP.md writes eval/FREEZE.json",
+  "sources": [
+    "research/05-evaluation-methodology.md section 4",
+    "spec/KALAM-SPEC.md",
+    "DECISIONS.md"
+  ],
+  "milestones": [
+    "mvp",
+    "beta",
+    "1.0"
+  ],
+  "dimensions": [
+    {
+      "id": "D1",
+      "name": "Correctness and conformance",
+      "weight": 18
+    },
+    {
+      "id": "D2",
+      "name": "Security by default",
+      "weight": 16
+    },
+    {
+      "id": "D3",
+      "name": "LLM-writability",
+      "weight": 16
+    },
+    {
+      "id": "D4",
+      "name": "Simplicity and learnability",
+      "weight": 12
+    },
+    {
+      "id": "D5",
+      "name": "Diagnostics quality",
+      "weight": 8
+    },
+    {
+      "id": "D6",
+      "name": "Performance",
+      "weight": 10
+    },
+    {
+      "id": "D7",
+      "name": "Tooling",
+      "weight": 10
+    },
+    {
+      "id": "D8",
+      "name": "Production readiness and ecosystem",
+      "weight": 10
+    }
+  ],
+  "normalization": {
+    "anchors": {
+      "floor": 0,
+      "mvp": 60,
+      "beta": 75,
+      "1.0": 90,
+      "stretch": 100
+    },
+    "higher": "piecewise-linear through (floor,0) (mvp,60) (beta,75) (1.0,90) (stretch,100); clamp 0..100",
+    "lower": "same with the value axis inverted",
+    "ties": "when two anchors share a value, a value meeting it gets the higher score",
+    "stretch_default": "if stretch is null: if the 1.0 threshold is the metric's natural bound (100%, a full count, 0 failures) meeting it scores 100; otherwise stretch = 1.0 + (1.0 - beta) on the metric axis",
+    "binary": "pass = 100, fail = 0",
+    "ladder": "level index; the level required by a milestone scores that milestone's anchor; the top level (or the level required by 1.0) scores 100",
+    "n/a": "excluded from the dimension mean for that target milestone",
+    "report_only": "recorded, weight 0",
+    "unavailable": "a metric that is not n/a for the target milestone but cannot be measured (tool or stage missing, judge uncalibrated) scores 0"
+  },
+  "dimension_score": "mean of normalized metrics not excluded for the target milestone",
+  "composite": "sum(weight_d * score_d) / 100; advisory - gates are binding",
+  "milestone_rule": {
+    "gates": "G-INT, G-PAR (P1-P10), G-SEC and G-FUZZ pass on the frozen eval set incl. held-out",
+    "dimension_min": {
+      "mvp": 55,
+      "beta": 70,
+      "1.0": 85
+    },
+    "composite_min": {
+      "mvp": 60,
+      "beta": 75,
+      "1.0": 90
+    },
+    "human_gates": {
+      "mvp": [],
+      "beta": [
+        "H-RCT",
+        "H-CD"
+      ],
+      "1.0": [
+        "H-RCT",
+        "H-CD"
+      ]
+    },
+    "founder_approval": "required (DECISIONS D17); the loop stops when the rule is met"
+  },
+  "human_gates": [
+    {
+      "id": "H-RCT",
+      "name": "Novice RCT accuracy vs a placebo (Randomo-style) skin",
+      "beta": "significantly above placebo in all 3 skins (~20 novices per skin)",
+      "1.0": ">= Python baseline"
+    },
+    {
+      "id": "H-CD",
+      "name": "Cognitive Dimensions walkthrough (PLIERS-style expert panel)",
+      "beta": "no dimension rated severe",
+      "1.0": "no dimension rated poor"
+    }
+  ],
+  "noise": {
+    "exact": "deterministic; any change counts",
+    "ci95": "change counts only if the 95% bootstrap CIs of old and new do not overlap",
+    "mannwhitney": "change counts only if > 5% and Mann-Whitney U p < 0.01 over >= 10 runs"
+  },
+  "gates": [
+    {
+      "id": "G-INT",
+      "name": "Eval integrity",
+      "schedule": "every iteration, first step",
+      "checks": [
+        "eval/MANIFEST.sha256 matches every protected file",
+        "no change under protected paths without a recorded reviewer sign-off",
+        "history.jsonl is append-only (previous lines byte-identical)",
+        "no corpus leak: compiler/ and stdlib sources contain no task id, corpus file path or expected-output line of >= 20 characters",
+        "eval/FREEZE.json eval_version equals the version being scored"
+      ],
+      "on_fail": "iteration void; nothing is committed; loop stops and escalates"
+    },
+    {
+      "id": "G-PAR",
+      "name": "Multilingual parity (report 05 section 2)",
+      "schedule": "P1-P3, P5-P9 every iteration (fast); P4 every iteration (deep); P10 nightly and at milestones",
+      "checks": [
+        "P1 canonical identity: KCF SHA-256 of en/ar/franco parse of every corpus case is identical",
+        "P2 pairwise round-trip: all 6 ordered skin pairs and the 3-hop cycles give equal KCF, comments and blank lines preserved",
+        "P3 source fixpoint: print_Y(parse(print_Y(parse_X(s)))) == print_Y(parse_X(s)) byte for byte",
+        "P4 property round-trip: >=10k generated programs per run through P1-P3, 0 failures",
+        "P5 behavioural identity: identical stdout, exit code and http transcript across skins; diagnostics compared by code and line",
+        "P6 diagnostic catalog parity: every code has en/ar/franco message, help and explain page",
+        "P7 keyword-table integrity: spec section 7.4 rules over spec/keywords.json",
+        "P8 mixed-skin policy: other-skin keywords give K0201; two skin files for one module give K0301",
+        "P9 docs parity: every docs page exists x3 and its code blocks compile in its own skin",
+        "P10 LLM skin gap within the D3.skin_gap_pp threshold of the target milestone"
+      ],
+      "scope_rule": "run/http cases: a case the parser rejects in all three skins is unsupported (it costs D1), not a parity failure; a case accepted in some skins but not others is a parity failure. compile-error cases: P1-P3 apply only when the file parses (T48 main, T49 bad, T50 homoglyph); P5 compares the set of (code, line) error diagnostics across skins, and an identical correct rejection in all three skins passes (T50 main fails before parsing by design).",
+      "on_fail": "the iteration's change is rejected; if already failing, the next iteration must target it"
+    },
+    {
+      "id": "G-SEC",
+      "name": "Security hard gates",
+      "schedule": "every iteration (fast)",
+      "checks": [
+        "0 Vulnerable cases: MVP for CWE-89 and CWE-79; beta adds CWE-78, CWE-22, CWE-918; 1.0 covers every CWE in the security corpus",
+        "D2.trojan_source_suite passes (100% bad rejected, 100% good accepted)",
+        "D2.lexing_hazard_suite passes (100%)"
+      ],
+      "on_fail": "as G-PAR"
+    },
+    {
+      "id": "G-FUZZ",
+      "name": "Fuzzing",
+      "schedule": "every iteration (deep) and at milestones",
+      "checks": [
+        "deep job: 15 min per fuzz target finds no new crash",
+        "milestone: D1.fuzz_crash_free_hours and D2.stdlib_parser_fuzz_hours meet the milestone threshold"
+      ],
+      "on_fail": "crash input saved as a regression test; the iteration is rejected"
+    },
+    {
+      "id": "G-RATCHET",
+      "name": "Ratchets",
+      "schedule": "every iteration",
+      "checks": [
+        "a metric that has met its target-milestone threshold may not fall below it by more than its noise band",
+        "performance: a regression > 5% with Mann-Whitney U p < 0.01 fails"
+      ],
+      "on_fail": "iteration rejected even if the composite rose"
+    }
+  ],
+  "stages": [
+    {
+      "id": "S0",
+      "name": "Eval harness (eval/harness, reviewer-gated) and data-only metrics",
+      "after": []
+    },
+    {
+      "id": "S1",
+      "name": "Source-text checks and three-skin lexer (keywords.json)",
+      "after": [
+        "S0"
+      ]
+    },
+    {
+      "id": "S2",
+      "name": "Parser, lossless CST, KCF, printer (fmt, convert)",
+      "after": [
+        "S1"
+      ]
+    },
+    {
+      "id": "S3",
+      "name": "Resolver, type checker, sinks, exhaustiveness, diagnostic catalog",
+      "after": [
+        "S2"
+      ]
+    },
+    {
+      "id": "S4",
+      "name": "JS backend + node runtime (kalam build/run)",
+      "after": [
+        "S3"
+      ]
+    },
+    {
+      "id": "S5",
+      "name": "Stdlib slices driven by corpus task features",
+      "after": [
+        "S4"
+      ]
+    },
+    {
+      "id": "S6",
+      "name": "Reference interpreter (differential oracle)",
+      "after": [
+        "S3"
+      ]
+    },
+    {
+      "id": "S7",
+      "name": "Tooling: LSP, package manager, debugger, editor grammars",
+      "after": [
+        "S3"
+      ]
+    },
+    {
+      "id": "S8",
+      "name": "LLM-eval harness (needs a runnable compiler and llms.txt)",
+      "after": [
+        "S4"
+      ]
+    },
+    {
+      "id": "S9",
+      "name": "Performance harness and benchmark ports",
+      "after": [
+        "S5"
+      ]
+    },
+    {
+      "id": "S10",
+      "name": "Fuzzing infrastructure",
+      "after": [
+        "S2"
+      ]
+    },
+    {
+      "id": "S11",
+      "name": "Docs, deploy targets, soak",
+      "after": [
+        "S5"
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "id": "D1.spec_clause_coverage",
+      "dimension": "D1",
+      "name": "Spec clause coverage",
+      "direction": "higher",
+      "unit": "%",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 60,
+        "beta": 90,
+        "1.0": 100
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S2",
+      "compute": "kalam-eval conformance --coverage: clauses = every numbered ### subsection of KALAM-SPEC.md sections 4-22; a clause is covered when >=1 positive and >=1 negative test under conformance/** carries `clause: <section>` front-matter. value = covered / clauses * 100.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D1.conformance_pass_rate",
+      "dimension": "D1",
+      "name": "Conformance pass rate (x3 skins)",
+      "direction": "higher",
+      "unit": "%",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 95,
+        "beta": 99.5,
+        "1.0": 100
+      },
+      "stretch": 100,
+      "job": "fast",
+      "stage": "S2",
+      "compute": "kalam-eval conformance --run --skins en,ar,franco: passed / total test-skin pairs * 100. A test that cannot run because a stage is missing counts as failed.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D1.corpus_tier_pass",
+      "dimension": "D1",
+      "name": "Corpus pass count, tier-ordered (dev + held-out, x3 skins)",
+      "direction": "higher",
+      "unit": "tasks",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 21,
+        "beta": 46,
+        "1.0": 50
+      },
+      "stretch": null,
+      "job": "deep",
+      "stage": "S4",
+      "compute": "kalam-eval corpus --skins all --split dev, plus the sealed holdout runner (aggregates only). A task passes only if every case passes in all three skins. value = p_mvp + (p_mvp==21 ? p_beta + (p_beta==25 ? p_1_0 : 0) : 0), so a later-tier pass never substitutes for an earlier-tier failure.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D1.differential_mismatches",
+      "dimension": "D1",
+      "name": "Differential execution (scope with 0 mismatches)",
+      "direction": "ladder",
+      "unit": "level",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 1,
+        "beta": 2,
+        "1.0": 3
+      },
+      "stretch": null,
+      "job": "deep",
+      "stage": "S6",
+      "compute": "kalam-eval differential: run corpus + generated programs on each backend pair and compare stdout/stderr/exit. value = highest level whose scope had 0 mismatches.",
+      "noise": "exact",
+      "gate": null,
+      "levels": [
+        "none",
+        "MVP: JS(node) vs reference interpreter on the corpus + 1k generated programs",
+        "beta: + JS(browser, Playwright) and 10k generated programs per iteration",
+        "1.0: + WASM/C backend when present and 1M generated programs per week"
+      ]
+    },
+    {
+      "id": "D1.fuzz_crash_free_hours",
+      "dimension": "D1",
+      "name": "Compiler fuzzing, crash-free hours",
+      "direction": "higher",
+      "unit": "h",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 24,
+        "beta": 168,
+        "1.0": 720
+      },
+      "stretch": null,
+      "job": "continuous-fuzz",
+      "stage": "S10",
+      "compute": "kalam-eval fuzz-status: hours since the last new unfixed crash across the lexer, parser, type checker and formatter targets (AFL++/cargo-fuzz), counted on the current commit lineage.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D1.property_tests",
+      "dimension": "D1",
+      "name": "Property suites pass (fmt idempotence, round-trip, stdlib laws)",
+      "direction": "binary",
+      "unit": "bool",
+      "floor": 0,
+      "thresholds": {
+        "mvp": true,
+        "beta": true,
+        "1.0": true
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S2",
+      "compute": "cargo test -p kalam-props --release; value = all properties pass on >=10k cases each.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D1.compiler_line_coverage",
+      "dimension": "D1",
+      "name": "Compiler line coverage",
+      "direction": "higher",
+      "unit": "%",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 60,
+        "beta": 80,
+        "1.0": 90
+      },
+      "stretch": null,
+      "job": "deep",
+      "stage": "S1",
+      "compute": "cargo llvm-cov --workspace --json over the full test run; value = lines.percent.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D1.compiler_branch_coverage",
+      "dimension": "D1",
+      "name": "Compiler branch coverage",
+      "direction": "higher",
+      "unit": "%",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 45,
+        "beta": 65,
+        "1.0": 75
+      },
+      "stretch": null,
+      "job": "deep",
+      "stage": "S1",
+      "compute": "cargo llvm-cov --workspace --branch --json; value = branches.percent.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D2.secure_by_default_rate",
+      "dimension": "D2",
+      "name": "Secure-by-default rate (inverted OWASP/Juliet corpus)",
+      "direction": "higher",
+      "unit": "%",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 80,
+        "beta": 95,
+        "1.0": 100
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S3",
+      "compute": "kalam-eval seccorpus: ~150 'bad' cases x 3 skins (CWE-89/78/94/79/22/918/502/601/798/862/352/1333; T48-T50 included). Each case is classified Impossible (typed compile error), Escaped (compiles only via unsafe.*/extern/.expose()), Mitigated (compiles; exploit payload neutralized at runtime) or Vulnerable (payload succeeds or case not decidable). value = (I+E+M)/total*100.",
+      "noise": "exact",
+      "gate": "G-SEC"
+    },
+    {
+      "id": "D2.impossible_share",
+      "dimension": "D2",
+      "name": "Share of bad cases that are Impossible",
+      "direction": "higher",
+      "unit": "%",
+      "floor": 0,
+      "thresholds": {
+        "mvp": "report_only",
+        "beta": "report_only",
+        "1.0": 70
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S3",
+      "compute": "same run as D2.secure_by_default_rate; value = Impossible/total*100.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D2.good_variant_pass",
+      "dimension": "D2",
+      "name": "Good-twin usability",
+      "direction": "higher",
+      "unit": "%",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 90,
+        "beta": 98,
+        "1.0": 100
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S4",
+      "compute": "kalam-eval seccorpus --good: the secure twin of each case compiles and passes its tests.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D2.trojan_source_suite",
+      "dimension": "D2",
+      "name": "Trojan Source suite (~60 cases incl. T50)",
+      "direction": "binary",
+      "unit": "bool",
+      "floor": 0,
+      "thresholds": {
+        "mvp": true,
+        "beta": true,
+        "1.0": true
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S1",
+      "compute": "kalam-eval trojan: every bad case rejected with the expected SEC code naming the code point; every good case (escaped controls, legitimate Arabic text, emoji ZWJ) accepted.",
+      "noise": "exact",
+      "gate": "G-SEC"
+    },
+    {
+      "id": "D2.lexing_hazard_suite",
+      "dimension": "D2",
+      "name": "Arabic/Franco lexing hazard suite",
+      "direction": "binary",
+      "unit": "bool",
+      "floor": 0,
+      "thresholds": {
+        "mvp": true,
+        "beta": true,
+        "1.0": true
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S1",
+      "compute": "kalam-eval lexhaz: normalization, alef/hamza and ى/ي folding in keywords, tatweel/harakat, Arabic-Indic and Persian digits, U+066B/U+066C, Franco digit-letter boundaries (3ala, 7asab, 2ktb) with did_you_mean.",
+      "noise": "exact",
+      "gate": "G-SEC"
+    },
+    {
+      "id": "D2.escape_hatch_density",
+      "dimension": "D2",
+      "name": "Escape hatches per KLOC of reference corpus",
+      "direction": "lower",
+      "unit": "per KLOC",
+      "floor": 6,
+      "thresholds": {
+        "mvp": 2,
+        "beta": 1,
+        "1.0": 0.5
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S3",
+      "compute": "kalam audit --json over all dev corpus programs (en skin): count(unsafe.* + extern + .expose()) / KLOC. Counted on the AST, never by grep (spec P10).",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D2.stdlib_parser_fuzz_hours",
+      "dimension": "D2",
+      "name": "Stdlib parser fuzzing, crash-free hours",
+      "direction": "higher",
+      "unit": "h",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 24,
+        "beta": 168,
+        "1.0": 720
+      },
+      "stretch": null,
+      "job": "continuous-fuzz",
+      "stage": "S10",
+      "compute": "kalam-eval fuzz-status --stdlib: JSON, URL, HTTP request parser, html literal runtime, regex (with a linear-time/ReDoS oracle).",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D2.supply_chain_scorecard",
+      "dimension": "D2",
+      "name": "OpenSSF Scorecard on project repos",
+      "direction": "higher",
+      "unit": "score",
+      "floor": 0,
+      "thresholds": {
+        "mvp": "n/a",
+        "beta": 6,
+        "1.0": 8
+      },
+      "stretch": null,
+      "job": "milestone",
+      "stage": "S11",
+      "compute": "scorecard --repo=<public repo> --format json; value = aggregate score. Measurable once the repo is public (DECISIONS D13).",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D3.pass1_c1_en_frontier",
+      "dimension": "D3",
+      "name": "pass@1, docs in context (C1), EN skin, frontier model",
+      "direction": "higher",
+      "unit": "%",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 50,
+        "beta": 70,
+        "1.0": 80
+      },
+      "stretch": null,
+      "job": "llm-eval",
+      "stage": "S8",
+      "compute": "kalam-eval llm: MultiPL-E-style HumanEval-164 + MBPP-sanitized translated to all three skins; pinned model panel and doc snapshot from eval/FREEZE.json; n=10, T=0.2, 95% bootstrap CI; held-out 30% of problems only. Condition C1 = spec/llms.txt in context.",
+      "noise": "ci95",
+      "gate": null
+    },
+    {
+      "id": "D3.relative_gap_python",
+      "dimension": "D3",
+      "name": "pass@1(Kalam, C1) / pass@1(Python), same model",
+      "direction": "higher",
+      "unit": "ratio",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 0.6,
+        "beta": 0.8,
+        "1.0": 0.9
+      },
+      "stretch": 1.0,
+      "job": "llm-eval",
+      "stage": "S8",
+      "compute": "kalam-eval llm: MultiPL-E-style HumanEval-164 + MBPP-sanitized translated to all three skins; pinned model panel and doc snapshot from eval/FREEZE.json; n=10, T=0.2, 95% bootstrap CI; held-out 30% of problems only. Python ceiling run on the same held-out problems.",
+      "noise": "ci95",
+      "gate": null
+    },
+    {
+      "id": "D3.skin_gap_pp",
+      "dimension": "D3",
+      "name": "Skin gap: max-min pass@1 across EN/AR/FR",
+      "direction": "lower",
+      "unit": "pp",
+      "floor": 45,
+      "thresholds": {
+        "mvp": 15,
+        "beta": 8,
+        "1.0": 5
+      },
+      "stretch": null,
+      "job": "llm-eval",
+      "stage": "S8",
+      "compute": "kalam-eval llm: MultiPL-E-style HumanEval-164 + MBPP-sanitized translated to all three skins; pinned model panel and doc snapshot from eval/FREEZE.json; n=10, T=0.2, 95% bootstrap CI; held-out 30% of problems only. Same as parity check P10.",
+      "noise": "ci95",
+      "gate": "G-PAR"
+    },
+    {
+      "id": "D3.self_repair_rate",
+      "dimension": "D3",
+      "name": "Self-repair within 3 turns from compiler output only (C3)",
+      "direction": "higher",
+      "unit": "%",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 40,
+        "beta": 60,
+        "1.0": 75
+      },
+      "stretch": null,
+      "job": "llm-eval",
+      "stage": "S8",
+      "compute": "kalam-eval llm: MultiPL-E-style HumanEval-164 + MBPP-sanitized translated to all three skins; pinned model panel and doc snapshot from eval/FREEZE.json; n=10, T=0.2, 95% bootstrap CI; held-out 30% of problems only. Failures of C1 re-prompted with `kalam check --json` output only.",
+      "noise": "ci95",
+      "gate": null
+    },
+    {
+      "id": "D3.syntax_valid_rate",
+      "dimension": "D3",
+      "name": "Samples that parse",
+      "direction": "higher",
+      "unit": "%",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 85,
+        "beta": 95,
+        "1.0": 99
+      },
+      "stretch": 100,
+      "job": "llm-eval",
+      "stage": "S8",
+      "compute": "kalam-eval llm: MultiPL-E-style HumanEval-164 + MBPP-sanitized translated to all three skins; pinned model panel and doc snapshot from eval/FREEZE.json; n=10, T=0.2, 95% bootstrap CI; held-out 30% of problems only. value = samples accepted by `kalam check --parse-only` / samples.",
+      "noise": "ci95",
+      "gate": null
+    },
+    {
+      "id": "D3.hallucinated_api_rate",
+      "dimension": "D3",
+      "name": "Calls to stdlib names that do not exist",
+      "direction": "lower",
+      "unit": "%",
+      "floor": 45,
+      "thresholds": {
+        "mvp": 15,
+        "beta": 5,
+        "1.0": 2
+      },
+      "stretch": null,
+      "job": "llm-eval",
+      "stage": "S8",
+      "compute": "kalam-eval llm: MultiPL-E-style HumanEval-164 + MBPP-sanitized translated to all three skins; pinned model panel and doc snapshot from eval/FREEZE.json; n=10, T=0.2, 95% bootstrap CI; held-out 30% of problems only. value = samples with >=1 K0420 or unknown-module K0401 / samples.",
+      "noise": "ci95",
+      "gate": null
+    },
+    {
+      "id": "D3.agent_app_success",
+      "dimension": "D3",
+      "name": "Agent builds corpus apps from task text + docs (agentic)",
+      "direction": "higher",
+      "unit": "apps of 10",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 3,
+        "beta": 7,
+        "1.0": 10
+      },
+      "stretch": null,
+      "job": "llm-eval",
+      "stage": "S8",
+      "compute": "kalam-eval agent-apps: fixed set {T31,T32,T33,T34,T38,T41,T42,T45,T46,T47}; a separate eval agent (never the fixer) gets the task text, llms.txt and `kalam mcp`; success = the task's expected.txt passes in the EN skin within the turn budget.",
+      "noise": "ci95",
+      "gate": null
+    },
+    {
+      "id": "D3.context_footprint_tokens",
+      "dimension": "D3",
+      "name": "Tokens in spec/llms.txt",
+      "direction": "lower",
+      "unit": "tokens",
+      "floor": 45000,
+      "thresholds": {
+        "mvp": 15000,
+        "beta": 13500,
+        "1.0": 12000
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S0",
+      "compute": "kalam-eval tokens spec/llms.txt with the tokenizer pinned in eval/harness/requirements.lock (tiktoken o200k_base). Spec section 21.2 budget.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D3.open_weights_pass1",
+      "dimension": "D3",
+      "name": "pass@1 C1, pinned open-weights model",
+      "direction": "higher",
+      "unit": "%",
+      "floor": 0,
+      "thresholds": {
+        "mvp": "report_only",
+        "beta": 40,
+        "1.0": 55
+      },
+      "stretch": null,
+      "job": "llm-eval",
+      "stage": "S8",
+      "compute": "kalam-eval llm: MultiPL-E-style HumanEval-164 + MBPP-sanitized translated to all three skins; pinned model panel and doc snapshot from eval/FREEZE.json; n=10, T=0.2, 95% bootstrap CI; held-out 30% of problems only. Open-weights member of the panel.",
+      "noise": "ci95",
+      "gate": null
+    },
+    {
+      "id": "D4.keywords_per_skin",
+      "dimension": "D4",
+      "name": "Reserved keywords per skin",
+      "direction": "lower",
+      "unit": "count",
+      "floor": 120,
+      "thresholds": {
+        "mvp": 40,
+        "beta": 35,
+        "1.0": 35
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S0",
+      "compute": "kalam-eval keywords: rows of spec/keywords.json with kind in {keyword, ascii_fixed}; max over skins.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D4.reserved_spellings_per_skin",
+      "dimension": "D4",
+      "name": "Keywords + unshadowable core names per skin",
+      "direction": "lower",
+      "unit": "count",
+      "floor": 150,
+      "thresholds": {
+        "mvp": "report_only",
+        "beta": "report_only",
+        "1.0": "report_only"
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S0",
+      "compute": "kalam-eval keywords --with-core: kinds keyword, ascii_fixed, core_name. Report-only until founder question F8 decides whether core names count against the keyword budget.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D4.grammar_productions",
+      "dimension": "D4",
+      "name": "Grammar productions",
+      "direction": "lower",
+      "unit": "count",
+      "floor": 360,
+      "thresholds": {
+        "mvp": 120,
+        "beta": 110,
+        "1.0": 100
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S0",
+      "compute": "kalam-eval grammar: count `name = ... ;` productions in compiler/grammar/kalam.ebnf, or in the spec section 8.2 EBNF block until that file exists; CI fails if the two disagree.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D4.synonym_count",
+      "dimension": "D4",
+      "name": "Concepts with more than one keyword (en, ar)",
+      "direction": "binary",
+      "unit": "bool",
+      "floor": 0,
+      "thresholds": {
+        "mvp": true,
+        "beta": true,
+        "1.0": true
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S0",
+      "compute": "kalam-eval keywords --synonyms: value = (no concept has two en spellings and no concept has two ar spellings after arabic_fold). Franco closed spelling-variant lists are exempt (spec DR-20).",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D4.tokens_vs_python",
+      "dimension": "D4",
+      "name": "Median tokens per corpus solution vs Python",
+      "direction": "lower",
+      "unit": "ratio",
+      "floor": 3.9,
+      "thresholds": {
+        "mvp": 1.3,
+        "beta": 1.15,
+        "1.0": 1.1
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S0",
+      "compute": "kalam-eval tokens --corpus: for every dev task with ref.py, tokens(en.kalam) / tokens(ref.py), comments and blank lines stripped from both, pinned tokenizer; value = median.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D4.cyclomatic_vs_python",
+      "dimension": "D4",
+      "name": "Median cyclomatic complexity vs Python",
+      "direction": "lower",
+      "unit": "ratio",
+      "floor": 3.6,
+      "thresholds": {
+        "mvp": 1.2,
+        "beta": 1.1,
+        "1.0": 1.0
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S2",
+      "compute": "kalam-eval complexity: per function, 1 + if/else-if/case-arm/for/while/and/or/? count from `kalam check --ast-json`; Python side from radon (pinned) on ref.py; value = median per-task ratio.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D4.hello_web_concepts",
+      "dimension": "D4",
+      "name": "Distinct spec concepts in the hello-web program",
+      "direction": "lower",
+      "unit": "count",
+      "floor": 36,
+      "thresholds": {
+        "mvp": 12,
+        "beta": 10,
+        "1.0": 8
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S3",
+      "compute": "kalam check --concepts --json conformance/budget/hello_web.kl (the spec section 26.2 program): number of distinct concept IDs used.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D5.diag_completeness",
+      "dimension": "D5",
+      "name": "Diagnostic completeness (code, span, help, docs link, x3 languages)",
+      "direction": "higher",
+      "unit": "%",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 70,
+        "beta": 95,
+        "1.0": 100
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S3",
+      "compute": "kalam-eval diag --catalog: denominator = union of codes in spec section 27 and `kalam explain --catalog --json`; a code is complete when it has a stable code, en/ar/franco message and help text, and an explain page in all three languages. Spec codes not yet implemented count as incomplete.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D5.golden_coverage",
+      "dimension": "D5",
+      "name": "Codes with golden UI tests in all three skins",
+      "direction": "higher",
+      "unit": "%",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 70,
+        "beta": 100,
+        "1.0": 100
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S3",
+      "compute": "kalam-eval diag --goldens: codes with >=1 .en/.ar/.franco .stderr golden / catalog codes.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D5.machine_fix_rate",
+      "dimension": "D5",
+      "name": "Diagnostics whose machine fix compiles after applying",
+      "direction": "higher",
+      "unit": "%",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 20,
+        "beta": 40,
+        "1.0": 60
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S3",
+      "compute": "kalam-eval diag --fixes: over all golden cases, apply every applicability=machine fix with `kalam fix`, re-run `kalam check`; value = cases whose fix exists and yields no error / cases.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D5.judge_score",
+      "dimension": "D5",
+      "name": "Becker-rubric judge score",
+      "direction": "higher",
+      "unit": "0-5",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 3.0,
+        "beta": 3.8,
+        "1.0": 4.2
+      },
+      "stretch": 5.0,
+      "job": "deep",
+      "stage": "S3",
+      "compute": "kalam-eval diag --judge: pinned judge model and rubric (eval/FREEZE.json) grade each golden diagnostic 0-5 on the Becker et al. checklist; unavailable unless the milestone calibration on 50 human-graded diagnostics has mean absolute error <= 0.5.",
+      "noise": "ci95",
+      "gate": null
+    },
+    {
+      "id": "D5.error_recovery_precision",
+      "dimension": "D5",
+      "name": "Error recovery: genuine / reported errors",
+      "direction": "higher",
+      "unit": "ratio",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 0.5,
+        "beta": 0.8,
+        "1.0": 0.9
+      },
+      "stretch": 1.0,
+      "job": "fast",
+      "stage": "S2",
+      "compute": "kalam-eval diag --recovery over eval/diagnostics/broken/ (>=30 files x 3 skins with seeded errors); genuine = reported diagnostics matching a seeded (code, line); the first seeded error must be found or the file scores 0.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D6.bench_game_speedup",
+      "dimension": "D6",
+      "name": "Benchmarks Game geomean speedup vs CPython",
+      "direction": "higher",
+      "unit": "x",
+      "floor": 0.33,
+      "thresholds": {
+        "mvp": 1,
+        "beta": 3,
+        "1.0": 10
+      },
+      "stretch": null,
+      "job": "deep",
+      "stage": "S9",
+      "compute": "Dedicated runner, pinned governor, >=10 runs, median reported; hyperfine where applicable. 10 ports (n-body, spectral-norm, fannkuch-redux, binary-trees, fasta, k-nucleotide, regex-redux, mandelbrot, pidigits, reverse-complement); value = geomean(CPython time / Kalam time).",
+      "noise": "mannwhitney",
+      "gate": null
+    },
+    {
+      "id": "D6.techempower_vs_express",
+      "dimension": "D6",
+      "name": "TechEmpower json+fortunes rps vs Node/Express",
+      "direction": "higher",
+      "unit": "x",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 0.5,
+        "beta": 1,
+        "1.0": 2
+      },
+      "stretch": null,
+      "job": "deep",
+      "stage": "S9",
+      "compute": "Dedicated runner, pinned governor, >=10 runs, median reported; hyperfine where applicable. wrk against std/http vs Express on the same box; value = geomean rps ratio.",
+      "noise": "mannwhitney",
+      "gate": null
+    },
+    {
+      "id": "D6.hello_cold_start_ms",
+      "dimension": "D6",
+      "name": "Hello-world cold start",
+      "direction": "lower",
+      "unit": "ms",
+      "floor": 600,
+      "thresholds": {
+        "mvp": 200,
+        "beta": 50,
+        "1.0": 20
+      },
+      "stretch": null,
+      "job": "deep",
+      "stage": "S4",
+      "compute": "Dedicated runner, pinned governor, >=10 runs, median reported; hyperfine where applicable. hyperfine on the built artifact (node dist/main.js), compile time excluded.",
+      "noise": "mannwhitney",
+      "gate": null
+    },
+    {
+      "id": "D6.http_first_response_ms",
+      "dimension": "D6",
+      "name": "HTTP server time to first response",
+      "direction": "lower",
+      "unit": "ms",
+      "floor": 3000,
+      "thresholds": {
+        "mvp": 1000,
+        "beta": 200,
+        "1.0": 100
+      },
+      "stretch": null,
+      "job": "deep",
+      "stage": "S5",
+      "compute": "Dedicated runner, pinned governor, >=10 runs, median reported; hyperfine where applicable. spawn T32 build, poll until the first 200 on GET /todos.",
+      "noise": "mannwhitney",
+      "gate": null
+    },
+    {
+      "id": "D6.hello_bundle_mb",
+      "dimension": "D6",
+      "name": "Hello-world artifact size (emitted JS + runtime, excl. Node)",
+      "direction": "lower",
+      "unit": "MB",
+      "floor": 90,
+      "thresholds": {
+        "mvp": 30,
+        "beta": 10,
+        "1.0": 5
+      },
+      "stretch": null,
+      "job": "deep",
+      "stage": "S4",
+      "compute": "kalam build --release T01; size of the output directory.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D6.idle_server_rss_mb",
+      "dimension": "D6",
+      "name": "Idle HTTP server RSS",
+      "direction": "lower",
+      "unit": "MB",
+      "floor": 300,
+      "thresholds": {
+        "mvp": 100,
+        "beta": 40,
+        "1.0": 20
+      },
+      "stretch": null,
+      "job": "deep",
+      "stage": "S5",
+      "compute": "Dedicated runner, pinned governor, >=10 runs, median reported; hyperfine where applicable. T32 server idle 10 s after start; RSS via psutil.",
+      "noise": "mannwhitney",
+      "gate": null
+    },
+    {
+      "id": "D6.game_frame_p99_ms",
+      "dimension": "D6",
+      "name": "10k-sprite scene p99 frame time (browser)",
+      "direction": "lower",
+      "unit": "ms",
+      "floor": 100,
+      "thresholds": {
+        "mvp": 33,
+        "beta": 16.7,
+        "1.0": 16.7
+      },
+      "stretch": null,
+      "job": "deep",
+      "stage": "S9",
+      "compute": "Dedicated runner, pinned governor, >=10 runs, median reported; hyperfine where applicable. headless Chromium via Playwright, 600 frames, performance trace.",
+      "noise": "mannwhitney",
+      "gate": null
+    },
+    {
+      "id": "D6.game_gc_p99_ms",
+      "dimension": "D6",
+      "name": "10k-sprite scene GC pause p99",
+      "direction": "lower",
+      "unit": "ms",
+      "floor": 20,
+      "thresholds": {
+        "mvp": "n/a",
+        "beta": "n/a",
+        "1.0": 2
+      },
+      "stretch": null,
+      "job": "deep",
+      "stage": "S9",
+      "compute": "Dedicated runner, pinned governor, >=10 runs, median reported; hyperfine where applicable. same trace as D6.game_frame_p99_ms.",
+      "noise": "mannwhitney",
+      "gate": null
+    },
+    {
+      "id": "D6.compile_corpus_s",
+      "dimension": "D6",
+      "name": "Cold build of the dev corpus (en skin)",
+      "direction": "lower",
+      "unit": "s",
+      "floor": 15,
+      "thresholds": {
+        "mvp": 5,
+        "beta": 2,
+        "1.0": 1
+      },
+      "stretch": null,
+      "job": "deep",
+      "stage": "S4",
+      "compute": "Dedicated runner, pinned governor, >=10 runs, median reported; hyperfine where applicable. kalam build on every dev corpus program, cold cache.",
+      "noise": "mannwhitney",
+      "gate": null
+    },
+    {
+      "id": "D6.incremental_rebuild_ms",
+      "dimension": "D6",
+      "name": "Incremental rebuild after a one-line edit",
+      "direction": "lower",
+      "unit": "ms",
+      "floor": 6000,
+      "thresholds": {
+        "mvp": 2000,
+        "beta": 500,
+        "1.0": 200
+      },
+      "stretch": null,
+      "job": "deep",
+      "stage": "S4",
+      "compute": "Dedicated runner, pinned governor, >=10 runs, median reported; hyperfine where applicable. edit one function body in T32, rebuild.",
+      "noise": "mannwhitney",
+      "gate": null
+    },
+    {
+      "id": "D7.lsp_capabilities",
+      "dimension": "D7",
+      "name": "LSP capabilities working in all three skins",
+      "direction": "higher",
+      "unit": "of 8",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 3,
+        "beta": 6,
+        "1.0": 8
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S7",
+      "compute": "kalam-eval lsp: scripted client exercises diagnostics, hover, definition, completion, rename, code actions, semantic tokens, formatting on one en, one ar and one franco file; a capability counts only if it works in all three.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D7.lsp_completion_p95_ms",
+      "dimension": "D7",
+      "name": "LSP completion p95 on a 10k-line project",
+      "direction": "lower",
+      "unit": "ms",
+      "floor": 1500,
+      "thresholds": {
+        "mvp": 500,
+        "beta": 150,
+        "1.0": 50
+      },
+      "stretch": null,
+      "job": "deep",
+      "stage": "S7",
+      "compute": "kalam-eval lsp --latency: 200 completion requests.",
+      "noise": "mannwhitney",
+      "gate": null
+    },
+    {
+      "id": "D7.formatter_idempotence",
+      "dimension": "D7",
+      "name": "Formatter idempotence and skin parity",
+      "direction": "binary",
+      "unit": "bool",
+      "floor": 0,
+      "thresholds": {
+        "mvp": true,
+        "beta": true,
+        "1.0": true
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S2",
+      "compute": "fmt(fmt(x)) == fmt(x) and kcf(fmt(x)) == kcf(x) for every corpus and conformance file, all skins.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D7.skin_convert",
+      "dimension": "D7",
+      "name": "`kalam convert` round-trips the corpus",
+      "direction": "binary",
+      "unit": "bool",
+      "floor": 0,
+      "thresholds": {
+        "mvp": true,
+        "beta": true,
+        "1.0": true
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S2",
+      "compute": "Parity checks P2 and P3 run through the real `kalam convert` command.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D7.pkg_features",
+      "dimension": "D7",
+      "name": "Package manager features",
+      "direction": "higher",
+      "unit": "of 6",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 2,
+        "beta": 5,
+        "1.0": 6
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S7",
+      "compute": "kalam-eval pkg: scripted checks for lockfile, semver resolution, offline mode, workspaces, publish (to a local registry), audit.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D7.debugger",
+      "dimension": "D7",
+      "name": "Debugger (DAP)",
+      "direction": "ladder",
+      "unit": "level",
+      "floor": 0,
+      "thresholds": {
+        "mvp": "n/a",
+        "beta": 1,
+        "1.0": 2
+      },
+      "stretch": null,
+      "job": "deep",
+      "stage": "S7",
+      "compute": "kalam-eval dap: scripted DAP session on T45 headless.",
+      "noise": "exact",
+      "gate": null,
+      "levels": [
+        "none",
+        "basic: breakpoint, step, inspect locals via source maps",
+        "full: + conditional breakpoints, watch, all three skins"
+      ]
+    },
+    {
+      "id": "D7.editor_support",
+      "dimension": "D7",
+      "name": "Editor grammars and RTL rendering",
+      "direction": "ladder",
+      "unit": "level",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 1,
+        "beta": 2,
+        "1.0": 2
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S7",
+      "compute": "kalam-eval editor: tree-sitter parse of every corpus file; Playwright screenshot test of an ar file in VS Code web against the logical-order oracle (spec section 6.1).",
+      "noise": "exact",
+      "gate": null,
+      "levels": [
+        "none",
+        "EN tree-sitter grammar + VS Code extension",
+        "all three skins, with the RTL rendering screenshot test passing"
+      ]
+    },
+    {
+      "id": "D8.stdlib_checklist",
+      "dimension": "D8",
+      "name": "Stdlib checklist coverage",
+      "direction": "higher",
+      "unit": "%",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 40,
+        "beta": 80,
+        "1.0": 100
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S5",
+      "compute": "kalam-eval stdlib: `kalam doc --api-json` vs the 16-item checklist in this metric's `checklist`; an item counts when its spec section 20.1 API exists and has a passing doc example.",
+      "noise": "exact",
+      "gate": null,
+      "checklist": [
+        "http server",
+        "http client",
+        "router",
+        "json",
+        "sql (parameterized only)",
+        "templates (auto-escaped)",
+        "auth/session",
+        "crypto (vetted primitives)",
+        "time/tz (incl. Hijri)",
+        "i18n",
+        "logging",
+        "file I/O",
+        "tasks/concurrency",
+        "testing",
+        "2D game loop + input",
+        "audio"
+      ]
+    },
+    {
+      "id": "D8.docs_completeness",
+      "dimension": "D8",
+      "name": "Docs pages x3 skins with runnable, tested examples",
+      "direction": "higher",
+      "unit": "%",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 50,
+        "beta": 90,
+        "1.0": 100
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S11",
+      "compute": "kalam-eval docs: pages listed in docs/manifest.toml that exist in en, ar and franco and whose examples run under the doctest runner / listed pages.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D8.doc_examples_pass",
+      "dimension": "D8",
+      "name": "Doc example pass rate",
+      "direction": "binary",
+      "unit": "bool",
+      "floor": 0,
+      "thresholds": {
+        "mvp": true,
+        "beta": true,
+        "1.0": true
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S11",
+      "compute": "kalam test --doc over docs/** and stdlib doc comments: all pass (an empty set fails).",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D8.deploy_targets",
+      "dimension": "D8",
+      "name": "Deploy targets",
+      "direction": "higher",
+      "unit": "of 5",
+      "floor": 0,
+      "thresholds": {
+        "mvp": 1,
+        "beta": 4,
+        "1.0": 5
+      },
+      "stretch": null,
+      "job": "milestone",
+      "stage": "S11",
+      "compute": "kalam-eval deploy: compiler binary + T32 run on linux, macos, windows; playground WASM build; Docker image.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D8.reproducible_build",
+      "dimension": "D8",
+      "name": "Reproducible build",
+      "direction": "binary",
+      "unit": "bool",
+      "floor": 0,
+      "thresholds": {
+        "mvp": "n/a",
+        "beta": true,
+        "1.0": true
+      },
+      "stretch": null,
+      "job": "milestone",
+      "stage": "S11",
+      "compute": "Two clean builds of the compiler and of T32 on different machines produce identical hashes.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
+      "id": "D8.stability_policy",
+      "dimension": "D8",
+      "name": "Stability policy",
+      "direction": "ladder",
+      "unit": "level",
+      "floor": 0,
+      "thresholds": {
+        "mvp": "n/a",
+        "beta": 1,
+        "1.0": 2
+      },
+      "stretch": null,
+      "job": "milestone",
+      "stage": "S11",
+      "compute": "Checks docs/STABILITY.md exists and that `kalam pkg diff` runs in CI on the stdlib API.",
+      "noise": "exact",
+      "gate": null,
+      "levels": [
+        "none",
+        "policy published (editions, semver, suspension-bit rule)",
+        "breaking-change detector enforced in CI"
+      ]
+    },
+    {
+      "id": "D8.reference_apps_soaked",
+      "dimension": "D8",
+      "name": "Reference apps (T41-T47) deployed and soaked 72 h",
+      "direction": "higher",
+      "unit": "apps of 7",
+      "floor": 0,
+      "thresholds": {
+        "mvp": "n/a",
+        "beta": 2,
+        "1.0": 5
+      },
+      "stretch": null,
+      "job": "milestone",
+      "stage": "S11",
+      "compute": "kalam-eval soak: app deployed, synthetic traffic 72 h, no crash, RSS growth < 10%.",
+      "noise": "exact",
+      "gate": null
+    }
+  ],
+  "history_record": {
+    "per_metric": [
+      "dimension",
+      "metric",
+      "value",
+      "ci95",
+      "threshold_mvp",
+      "threshold_beta",
+      "threshold_1_0",
+      "normalized",
+      "gate",
+      "eval_version",
+      "commit",
+      "status"
+    ],
+    "status_values": [
+      "measured",
+      "unavailable",
+      "n/a",
+      "report_only"
+    ]
+  }
+}

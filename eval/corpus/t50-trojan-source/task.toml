@@ -1,0 +1,28 @@
+# Task manifest (schema: eval/corpus/INDEX.md section 4)
+id = "T50"
+title = "Trojan Source file and homoglyph identifiers"
+tier = "mvp"
+split = "dev"
+kind = "neg"
+section = "G"
+features = ["sourcetext.bidi", "identifiers.skeleton", "strings.unicode_escape", "strings.arabic"]
+spec = ["§5.1", "§5.3", "§6.1"]
+assumptions = ["G14", "G15"]   # INDEX.md section 6
+files = { en = "en.kalam", ar = "ar.kalam", franco = "franco.kalam" }
+reference = "ref.py"   # Python baseline (D4 ratios); its stdout generated expected.txt
+provenance = "EN written by hand from the spec; ar/franco produced by the bootstrap converter (converter mode: keywords, core names and ar punctuation only; identifiers, strings and comments unchanged). Re-verify with `kalam convert` at stage S2; native-speaker review pending."
+
+[[case]]
+name = "main"
+path = "."
+expect = "compile-error"
+
+[[case]]
+name = "homoglyph"
+path = "homoglyph"
+expect = "compile-error"
+
+[[case]]
+name = "good"
+path = "good"
+expect = "run"

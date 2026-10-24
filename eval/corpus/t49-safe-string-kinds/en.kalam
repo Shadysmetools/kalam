@@ -1,0 +1,26 @@
+# Task 49 (positive twin): safe string kinds. Hostile input reaches each sink only as data.
+fn main():
+    let payload = "<script>alert(1)</script>"
+    let names = ["Tom & Jerry", "<b>bold</b>", "سارة"]
+    let items = names.map(fn(name) => html"<li>{name}</li>")
+    let page = html"<p>{payload}</p><ul>{items}</ul>"
+    print(page.render())
+
+    let term = "tea&cakes=1#top"
+    let link = url"https://example.com/search?q={term}"
+    let anchor = html"""<a href="{link}">search</a>"""
+    print(anchor.render())
+
+    for candidate in ["report.pdf", "../etc/passwd", "a/b", ""]:
+        let verdict = match PathSegment.parse(candidate):
+            case Ok(_): "accepted"
+            case Err(_): "rejected"
+        print("segment \"{candidate}\": {verdict}")
+
+    let username = regex"^[a-z0-9_]\{3,20\}$"
+    for candidate in ["sara_99", "x", "robert'); DROP TABLE students;--"]:
+        let verdict = if username.matches(candidate): "valid" else: "invalid"
+        print("username \"{candidate}\": {verdict}")
+
+    let password = Secret.new("hunter2")
+    print("password: {password}")

@@ -1,0 +1,14 @@
+[package]
+name = "kalam-parser"
+description = "LL(1) recursive-descent parser producing the lossless CST"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+kalam-base.workspace = true
+kalam-lexer.workspace = true
+kalam-syntax.workspace = true
+kalam-diagnostics.workspace = true

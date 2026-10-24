@@ -1,0 +1,10 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T50
+case: main
+kind: compile-error
+command: kalam check --json
+exit: nonzero
+diagnostic: code=SEC0110 line=5 codepoints=U+202E,U+2066,U+2069
+diagnostic: code=SEC0110 line=7 codepoints=U+202E,U+2066,U+2069
+fix: required for line=5 (escape as \u{...}); none required for line=7 (comment)
+others: none

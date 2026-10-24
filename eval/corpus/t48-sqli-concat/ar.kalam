@@ -1,0 +1,18 @@
+# Task 48 (must fail): a query built by string concatenation never reaches the database.
+# Expected: K1601 on the db.all(query) line, with a fix that rewrites the query as sql"...".
+استخدم std/sql.{ذات، Db، DbError}
+
+@derive(Row)
+هيكل Customer:
+    id: عدد
+    name: نص
+
+دالة find_by_city(db: Db، city: نص) -> نتيجة[قائمة[Customer]، DbError]:
+    ليكن query = "SELECT id, name FROM customers WHERE city = '" + city + "'"
+    أرجع db.all(query)
+
+دالة رئيسي(world: عالم) -> نتيجة[()، AnyError]:
+    ليكن db = sql.sqlite(world.fs، "shop.db")؟
+    لكل customer في find_by_city(db، "Cairo' OR '1'='1")؟:
+        اطبع("{customer.name}")
+    أرجع نجاح(())

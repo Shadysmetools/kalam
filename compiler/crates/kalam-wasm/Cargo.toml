@@ -1,0 +1,16 @@
+[package]
+name = "kalam-wasm"
+description = "Playground build of the Kalam frontend (wasm32)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+kalam-base.workspace = true
+kalam-driver.workspace = true
+kalam-fmt.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]

@@ -1,0 +1,13 @@
+[package]
+name = "kalam-lexer"
+description = "Skin-aware lexer with Trojan Source checks and layout"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+kalam-base.workspace = true
+kalam-skins.workspace = true
+kalam-diagnostics.workspace = true

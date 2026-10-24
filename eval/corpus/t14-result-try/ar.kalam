@@ -1,0 +1,38 @@
+# Task 14: expected errors are values. Parse, validate and propagate with ?.
+تعداد AgeError:
+    Empty
+    NotANumber(text: نص)
+    OutOfRange(value: عدد)
+
+دالة parse_age(text: نص) -> نتيجة[عدد، AgeError]:
+    إذا text.is_empty():
+        أرجع فشل(.Empty)
+    ليكن value = text.to_int().map_err(دالة(_) => AgeError.NotANumber(text: text))؟
+    إذا value < 0 أو value > 150:
+        أرجع فشل(.OutOfRange(value: value))
+    أرجع نجاح(value)
+
+دالة total_age(texts: قائمة[نص]) -> نتيجة[عدد، AgeError]:
+    متغير total = 0
+    لكل text في texts:
+        total += parse_age(text)؟
+    أرجع نجاح(total)
+
+دالة explain(error: AgeError) -> نص:
+    أرجع حسب error:
+        عندما .Empty: "empty input"
+        عندما .NotANumber(text): "not a number: {text}"
+        عندما .OutOfRange(value): "out of range: {value}"
+
+دالة report(texts: قائمة[نص]):
+    حسب total_age(texts):
+        عندما نجاح(total): اطبع("total = {total}")
+        عندما فشل(error): اطبع("stopped: {explain(error)}")
+
+دالة رئيسي():
+    لكل text في ["42"، "٤٢"، "-7"، "abc"، ""، "9007199254740992"، "200"]:
+        حسب parse_age(text):
+            عندما نجاح(age): اطبع("\"{text}\" -> ok {age}")
+            عندما فشل(error): اطبع("\"{text}\" -> {explain(error)}")
+    report(["30"، "12"، "٧"])
+    report(["30"، "x1"، "12"])

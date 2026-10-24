@@ -1,0 +1,51 @@
+# Task 15: JSON text -> typed record -> JSON text, plus schema-first rejection.
+# The printed lines never show json.encode output, because its byte format is not specified.
+استخدم std/json.{DecodeError}
+
+@derive(Encode، Decode)
+هيكل Address:
+    city: نص
+    zip: نص
+
+@derive(Encode، Decode)
+هيكل User:
+    id: عدد
+    name: نص
+    tags: قائمة[نص]
+    active: منطقي
+    address: Address
+
+@derive(Decode)
+هيكل Point:
+    x: عدد
+    y: عدد
+
+دالة check(label: نص، text: نص):
+    ليكن result: نتيجة[Point، DecodeError] = json.decode(text)
+    ليكن verdict = حسب result:
+        عندما نجاح(_): "accepted"
+        عندما فشل(_): "rejected"
+    اطبع("{label}: {verdict}")
+
+دالة رئيسي() -> نتيجة[()، AnyError]:
+    ليكن text = """
+        \{"id": 7, "name": "Sara", "tags": ["admin", "ops"], "active": true,
+          "address": \{"city": "Cairo", "zip": "11511"\}\}
+    """
+    ليكن user: User = json.decode(text)؟
+    اطبع("{user.name} (#{user.id}) lives in {user.address.city}")
+    اطبع("{user.tags.len()} tags, first tag {user.tags[0]}")
+    ليكن back: User = json.decode(json.encode(user))؟
+    اطبع(إذا back == user: "round-trip: equal" وإلا: "round-trip: different")
+    ليكن moved = user.with(address: user.address.with(city: "Alexandria"))
+    ليكن reread: User = json.decode(json.encode(moved))؟
+    اطبع("moved to {reread.address.city}, zip still {reread.address.zip}")
+    check("valid"، """\{"x": 1, "y": 2\}""")
+    check("unknown field"، """\{"x": 1, "y": 2, "z": 3\}""")
+    check("duplicate key"، """\{"x": 1, "x": 5, "y": 2\}""")
+    check("missing field"، """\{"x": 1\}""")
+    check("string for Int"، """\{"x": "1", "y": 2\}""")
+    check("fraction for Int"، """\{"x": 1.5, "y": 2\}""")
+    check("Int out of range"، """\{"x": 9007199254740992, "y": 0\}""")
+    check("truncated"، """\{"x": 1,""")
+    أرجع نجاح(())

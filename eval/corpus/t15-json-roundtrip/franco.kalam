@@ -1,0 +1,51 @@
+# Task 15: JSON text -> typed record -> JSON text, plus schema-first rejection.
+# The printed lines never show json.encode output, because its byte format is not specified.
+hat std/json.{DecodeError}
+
+@derive(Encode, Decode)
+haykal Address:
+    city: nass
+    zip: nass
+
+@derive(Encode, Decode)
+haykal User:
+    id: adad
+    name: nass
+    tags: qayma[nass]
+    active: mante2i
+    address: Address
+
+@derive(Decode)
+haykal Point:
+    x: adad
+    y: adad
+
+dala check(label: nass, text: nass):
+    khali result: natiga[Point, DecodeError] = json.decode(text)
+    khali verdict = hasab result:
+        lama naga7(_): "accepted"
+        lama fashal(_): "rejected"
+    ektb("{label}: {verdict}")
+
+dala ra2isi() -> natiga[(), AnyError]:
+    khali text = """
+        \{"id": 7, "name": "Sara", "tags": ["admin", "ops"], "active": true,
+          "address": \{"city": "Cairo", "zip": "11511"\}\}
+    """
+    khali user: User = json.decode(text)?
+    ektb("{user.name} (#{user.id}) lives in {user.address.city}")
+    ektb("{user.tags.len()} tags, first tag {user.tags[0]}")
+    khali back: User = json.decode(json.encode(user))?
+    ektb(law back == user: "round-trip: equal" walla: "round-trip: different")
+    khali moved = user.with(address: user.address.with(city: "Alexandria"))
+    khali reread: User = json.decode(json.encode(moved))?
+    ektb("moved to {reread.address.city}, zip still {reread.address.zip}")
+    check("valid", """\{"x": 1, "y": 2\}""")
+    check("unknown field", """\{"x": 1, "y": 2, "z": 3\}""")
+    check("duplicate key", """\{"x": 1, "x": 5, "y": 2\}""")
+    check("missing field", """\{"x": 1\}""")
+    check("string for Int", """\{"x": "1", "y": 2\}""")
+    check("fraction for Int", """\{"x": 1.5, "y": 2\}""")
+    check("Int out of range", """\{"x": 9007199254740992, "y": 0\}""")
+    check("truncated", """\{"x": 1,""")
+    rag3 naga7(())

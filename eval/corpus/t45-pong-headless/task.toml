@@ -1,0 +1,19 @@
+# Task manifest (schema: eval/corpus/INDEX.md section 4)
+id = "T45"
+title = "Pong game: 2-player, 60 fps, input, collision, score"
+tier = "beta"
+split = "dev"
+kind = "pos"
+section = "F"
+features = ["record.nested_update", "var.rebind", "while", "module_const", "if.inline", "int.floordiv"]
+spec = ["§10.4", "§13.4", "§28.8"]
+assumptions = []   # INDEX.md section 6
+files = { en = "en.kalam", ar = "ar.kalam", franco = "franco.kalam" }
+reference = "ref.py"   # Python baseline (D4 ratios); its stdout generated expected.txt
+provenance = "EN written by hand from the spec; ar/franco produced by the bootstrap converter (converter mode: keywords, core names and ar punctuation only; identifiers, strings and comments unchanged). Re-verify with `kalam convert` at stage S2; native-speaker review pending."
+note = "Case `headless` is the deterministic game core. A `browser` case (std/game, Screen, input, 60 fps, Playwright frame capture) is added before the beta freeze."
+
+[[case]]
+name = "headless"
+path = "."
+expect = "run"

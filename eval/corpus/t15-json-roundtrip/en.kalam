@@ -1,0 +1,51 @@
+# Task 15: JSON text -> typed record -> JSON text, plus schema-first rejection.
+# The printed lines never show json.encode output, because its byte format is not specified.
+use std/json.{DecodeError}
+
+@derive(Encode, Decode)
+type Address:
+    city: String
+    zip: String
+
+@derive(Encode, Decode)
+type User:
+    id: Int
+    name: String
+    tags: List[String]
+    active: Bool
+    address: Address
+
+@derive(Decode)
+type Point:
+    x: Int
+    y: Int
+
+fn check(label: String, text: String):
+    let result: Result[Point, DecodeError] = json.decode(text)
+    let verdict = match result:
+        case Ok(_): "accepted"
+        case Err(_): "rejected"
+    print("{label}: {verdict}")
+
+fn main() -> Result[(), AnyError]:
+    let text = """
+        \{"id": 7, "name": "Sara", "tags": ["admin", "ops"], "active": true,
+          "address": \{"city": "Cairo", "zip": "11511"\}\}
+    """
+    let user: User = json.decode(text)?
+    print("{user.name} (#{user.id}) lives in {user.address.city}")
+    print("{user.tags.len()} tags, first tag {user.tags[0]}")
+    let back: User = json.decode(json.encode(user))?
+    print(if back == user: "round-trip: equal" else: "round-trip: different")
+    let moved = user.with(address: user.address.with(city: "Alexandria"))
+    let reread: User = json.decode(json.encode(moved))?
+    print("moved to {reread.address.city}, zip still {reread.address.zip}")
+    check("valid", """\{"x": 1, "y": 2\}""")
+    check("unknown field", """\{"x": 1, "y": 2, "z": 3\}""")
+    check("duplicate key", """\{"x": 1, "x": 5, "y": 2\}""")
+    check("missing field", """\{"x": 1\}""")
+    check("string for Int", """\{"x": "1", "y": 2\}""")
+    check("fraction for Int", """\{"x": 1.5, "y": 2\}""")
+    check("Int out of range", """\{"x": 9007199254740992, "y": 0\}""")
+    check("truncated", """\{"x": 1,""")
+    return Ok(())

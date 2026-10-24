@@ -1,0 +1,38 @@
+# Task 14: expected errors are values. Parse, validate and propagate with ?.
+ta3dad AgeError:
+    Empty
+    NotANumber(text: nass)
+    OutOfRange(value: adad)
+
+dala parse_age(text: nass) -> natiga[adad, AgeError]:
+    law text.is_empty():
+        rag3 fashal(.Empty)
+    khali value = text.to_int().map_err(dala(_) => AgeError.NotANumber(text: text))?
+    law value < 0 aw value > 150:
+        rag3 fashal(.OutOfRange(value: value))
+    rag3 naga7(value)
+
+dala total_age(texts: qayma[nass]) -> natiga[adad, AgeError]:
+    motghayer total = 0
+    lekol text fi texts:
+        total += parse_age(text)?
+    rag3 naga7(total)
+
+dala explain(error: AgeError) -> nass:
+    rag3 hasab error:
+        lama .Empty: "empty input"
+        lama .NotANumber(text): "not a number: {text}"
+        lama .OutOfRange(value): "out of range: {value}"
+
+dala report(texts: qayma[nass]):
+    hasab total_age(texts):
+        lama naga7(total): ektb("total = {total}")
+        lama fashal(error): ektb("stopped: {explain(error)}")
+
+dala ra2isi():
+    lekol text fi ["42", "٤٢", "-7", "abc", "", "9007199254740992", "200"]:
+        hasab parse_age(text):
+            lama naga7(age): ektb("\"{text}\" -> ok {age}")
+            lama fashal(error): ektb("\"{text}\" -> {explain(error)}")
+    report(["30", "12", "٧"])
+    report(["30", "x1", "12"])

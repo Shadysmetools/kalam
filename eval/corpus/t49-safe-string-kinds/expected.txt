@@ -1,0 +1,20 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T49
+case: good
+kind: run
+command: kalam run
+fixtures: none
+stdin: empty
+exit: 0
+stderr: ignore
+--- stdout
+<p>&lt;script&gt;alert(1)&lt;/script&gt;</p><ul><li>Tom &amp; Jerry</li><li>&lt;b&gt;bold&lt;/b&gt;</li><li>سارة</li></ul>
+<a href="https://example.com/search?q=tea%26cakes%3D1%23top">search</a>
+segment "report.pdf": accepted
+segment "../etc/passwd": rejected
+segment "a/b": rejected
+segment "": rejected
+username "sara_99": valid
+username "x": invalid
+username "robert'); DROP TABLE students;--": invalid
+password: [REDACTED]

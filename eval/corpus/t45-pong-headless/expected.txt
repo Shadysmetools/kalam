@@ -1,0 +1,16 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T45
+case: headless
+kind: run
+command: kalam run
+fixtures: none
+stdin: empty
+exit: 0
+stderr: ignore
+--- stdout
+tick 180: left 1 - right 0
+tick 320: left 1 - right 1
+tick 340: left 1 - right 2
+tick 400: left 2 - right 2
+tick 580: left 3 - right 2
+left wins after 580 ticks and 12 paddle hits

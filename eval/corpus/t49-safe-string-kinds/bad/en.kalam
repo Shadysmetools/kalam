@@ -1,0 +1,18 @@
+# Task 49 (must fail): three sinks receive a plain String. Each line is rejected on its own.
+# Expected: K1601 (HTML), K1641 (path hole), K1601 (command). No other error.
+use std/fs.{FsError}
+use std/http.{HttpError, Request, Response}
+use std/proc.{Output, ProcError}
+
+fn greet(req: Request[()]) -> Result[Response, HttpError]:
+    let name = req.query_param("name").or("guest")
+    return Ok(Response.html("<p>Hello " + name + "</p>"))
+
+fn read_upload(fs: Fs, name: String) -> Result[String, FsError]:
+    return fs.read_text(path"uploads/{name}")
+
+fn show_log(proc: Proc, file: String) -> Result[Output, ProcError]:
+    return proc.run("git log --oneline -- " + file)
+
+fn main():
+    pass

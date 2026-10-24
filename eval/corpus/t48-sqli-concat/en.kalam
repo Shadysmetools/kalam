@@ -1,0 +1,18 @@
+# Task 48 (must fail): a query built by string concatenation never reaches the database.
+# Expected: K1601 on the db.all(query) line, with a fix that rewrites the query as sql"...".
+use std/sql.{self, Db, DbError}
+
+@derive(Row)
+type Customer:
+    id: Int
+    name: String
+
+fn find_by_city(db: Db, city: String) -> Result[List[Customer], DbError]:
+    let query = "SELECT id, name FROM customers WHERE city = '" + city + "'"
+    return db.all(query)
+
+fn main(world: World) -> Result[(), AnyError]:
+    let db = sql.sqlite(world.fs, "shop.db")?
+    for customer in find_by_city(db, "Cairo' OR '1'='1")?:
+        print("{customer.name}")
+    return Ok(())

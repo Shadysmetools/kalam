@@ -1,0 +1,23 @@
+# Task manifest (schema: eval/corpus/INDEX.md section 4)
+id = "T49"
+title = "Raw HTML / shell / path sinks from user input; safe string kinds"
+tier = "mvp"
+split = "dev"
+kind = "neg"
+section = "G"
+features = ["sink.html", "sink.url", "sink.path", "sink.regex", "secret", "html.render", "lambda", "list.map"]
+spec = ["§17.1", "§17.4", "§17.5", "§17.6", "§18.1"]
+assumptions = ["G2", "G6", "G7", "G13", "G16", "G19", "G20"]   # INDEX.md section 6
+files = { en = "en.kalam", ar = "ar.kalam", franco = "franco.kalam" }
+reference = "ref.py"   # Python baseline (D4 ratios); its stdout generated expected.txt
+provenance = "EN written by hand from the spec; ar/franco produced by the bootstrap converter (converter mode: keywords, core names and ar punctuation only; identifiers, strings and comments unchanged). Re-verify with `kalam convert` at stage S2; native-speaker review pending."
+
+[[case]]
+name = "good"
+path = "."
+expect = "run"
+
+[[case]]
+name = "bad"
+path = "bad"
+expect = "compile-error"

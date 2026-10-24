@@ -1,0 +1,12 @@
+[package]
+name = "kalam-sinks"
+description = "Compile-time parsers for sql/html/cmd/url/path/regex tagged literals"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+kalam-base.workspace = true
+kalam-diagnostics.workspace = true

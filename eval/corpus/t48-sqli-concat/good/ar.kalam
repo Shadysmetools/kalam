@@ -1,0 +1,22 @@
+# Task 48 (good twin): the same lookup with sql"..." holes. Each payload stays data.
+استخدم std/sql.{ذات، Db، DbError}
+
+@derive(Row)
+هيكل Customer:
+    id: عدد
+    name: نص
+
+دالة find_by_city(db: Db، city: نص) -> نتيجة[قائمة[Customer]، DbError]:
+    أرجع db.all(sql"SELECT id, name FROM customers WHERE city = {city} ORDER BY id")
+
+دالة رئيسي(world: عالم) -> نتيجة[()، AnyError]:
+    ليكن db = sql.sqlite(world.fs، "shop.db")؟
+    ليكن _ = db.exec(sql"CREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT, city TEXT)")؟
+    لكل (name، city) في [("Amal"، "Cairo")، ("Badr"، "Giza")، ("Camelia"، "Cairo")]:
+        ليكن _ = db.exec(sql"INSERT INTO customers (name, city) VALUES ({name}, {city})")؟
+    لكل city في ["Cairo"، "Cairo' OR '1'='1"، "Giza'; DROP TABLE customers; --"]:
+        ليكن found = find_by_city(db، city)؟
+        اطبع("{city}: {found.len()} customer(s)")
+    لكل customer في find_by_city(db، "Cairo")؟:
+        اطبع("- {customer.name}")
+    أرجع نجاح(())

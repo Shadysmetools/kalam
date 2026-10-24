@@ -1,0 +1,7 @@
+# Task 50 (good twin): the same check with visible escapes compiles, and so does plain Arabic text.
+دالة رئيسي():
+    ليكن access_level = "user"
+    إذا access_level != "user\u{202E} \u{2066}# Check if admin\u{2069} \u{2066}":
+        اطبع("You are an admin.")
+    # تعليق عربي عادي لا يحتاج إلى أي محرف تحكم
+    اطبع("مرحبا، " + "done")

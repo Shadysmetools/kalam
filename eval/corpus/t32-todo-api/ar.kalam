@@ -1,0 +1,75 @@
+# Task 32: REST API, CRUD on /todos, in memory, JSON. Every route states its access rule.
+# Route patterns escape their braces: an unescaped {id} in a string is interpolation (spec 5.7).
+استخدم std/http.{ذات، HttpError، Request، Response، Router}
+
+@derive(Encode)
+هيكل Todo:
+    id: عدد
+    title: نص
+    done: منطقي
+
+@derive(Decode)
+هيكل NewTodo:
+    title: نص
+
+@derive(Decode)
+هيكل TodoUpdate:
+    title: نص
+    done: منطقي
+
+هيكل Store:
+    next_id: عدد
+    todos: قائمة[Todo]
+
+هيكل App:
+    store: Cell[Store]
+
+دالة list_todos(req: Request[App]) -> نتيجة[Response، HttpError]:
+    أرجع نجاح(Response.json(req.app.store.get().todos))
+
+دالة show_todo(req: Request[App]) -> نتيجة[Response، HttpError]:
+    ليكن id = req.path_int("id")؟
+    أرجع حسب req.app.store.get().todos.find(دالة(t) => t.id == id):
+        عندما موجود(todo): نجاح(Response.json(todo))
+        عندما لا_شيء: فشل(.NotFound)
+
+دالة create_todo(req: Request[App]) -> نتيجة[Response، HttpError]:
+    ليكن input: NewTodo = req.json()؟
+    إذا input.title.is_empty():
+        أرجع فشل(.BadRequest(message: "title is required"))
+    ليكن store = req.app.store.get()
+    ليكن todo = Todo(id: store.next_id، title: input.title، done: خطأ)
+    req.app.store.set(store.with(next_id: store.next_id + 1، todos: store.todos.append(todo)))
+    أرجع نجاح(Response.json(todo).status(201))
+
+دالة update_todo(req: Request[App]) -> نتيجة[Response، HttpError]:
+    ليكن id = req.path_int("id")؟
+    ليكن input: TodoUpdate = req.json()؟
+    ليكن store = req.app.store.get()
+    إذا ليس store.todos.any(دالة(t) => t.id == id):
+        أرجع فشل(.NotFound)
+    ليكن todo = Todo(id: id، title: input.title، done: input.done)
+    req.app.store.set(store.with(todos: store.todos.map(دالة(t) => إذا t.id == id: todo وإلا: t)))
+    أرجع نجاح(Response.json(todo))
+
+دالة delete_todo(req: Request[App]) -> نتيجة[Response، HttpError]:
+    ليكن id = req.path_int("id")؟
+    ليكن store = req.app.store.get()
+    ليكن kept = store.todos.filter(دالة(t) => t.id != id)
+    إذا kept.len() == store.todos.len():
+        أرجع فشل(.NotFound)
+    req.app.store.set(store.with(todos: kept))
+    أرجع نجاح(Response.text("").status(204))
+
+دالة routes() -> Router[App]:
+    أرجع http.router()
+        .get("/todos"، list_todos، access: .Public)
+        .post("/todos"، create_todo، access: .Public)
+        .get("/todos/\{id\}"، show_todo، access: .Public)
+        .put("/todos/\{id\}"، update_todo، access: .Public)
+        .delete("/todos/\{id\}"، delete_todo، access: .Public)
+
+دالة رئيسي(world: عالم) -> نتيجة[()، AnyError]:
+    ليكن app = App(store: Cell.new(Store(next_id: 1، todos: [])))
+    http.serve(world.net، port: 8080، router: routes()، app: app)؟
+    أرجع نجاح(())

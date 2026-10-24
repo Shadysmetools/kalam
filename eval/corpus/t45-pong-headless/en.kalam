@@ -1,0 +1,110 @@
+# Task 45 (headless core): Pong with two computer players, integer physics, fixed ticks.
+# The left player rests every fifth tick, so rallies end. Output is deterministic.
+# The browser case of this task (std/game, Screen, 60 fps) is added at beta.
+let WIDTH: Int = 80
+let HEIGHT: Int = 24
+let PADDLE: Int = 5
+let WIN_SCORE: Int = 3
+let MAX_TICKS: Int = 5000
+
+type Ball:
+    x: Int
+    y: Int
+    dx: Int
+    dy: Int
+
+type Game:
+    ball: Ball
+    left: Int
+    right: Int
+    left_score: Int
+    right_score: Int
+    hits: Int
+    tick: Int
+
+fn clamp_paddle(top: Int) -> Int:
+    if top < 0:
+        return 0
+    if top > HEIGHT - PADDLE:
+        return HEIGHT - PADDLE
+    return top
+
+fn follow(top: Int, target: Int) -> Int:
+    let center = top + PADDLE // 2
+    if target < center:
+        return clamp_paddle(top - 1)
+    if target > center:
+        return clamp_paddle(top + 1)
+    return top
+
+fn serve(points: Int, toward_right: Bool) -> Ball:
+    let dx = if toward_right: 2 else: -2
+    let dy = if points % 2 == 0: 1 else: -1
+    return Ball(x: WIDTH // 2, y: HEIGHT // 2, dx: dx, dy: dy)
+
+fn covers(top: Int, y: Int) -> Bool => y >= top and y < top + PADDLE
+
+fn spin(top: Int, y: Int, dy: Int) -> Int:
+    let offset = y - (top + PADDLE // 2)
+    return if offset == 0: -dy else: offset
+
+fn step(game: Game) -> Game:
+    var g = game
+    g.tick += 1
+    if g.ball.dx < 0 and g.tick % 5 != 0:
+        g.left = follow(g.left, g.ball.y)
+    if g.ball.dx > 0:
+        g.right = follow(g.right, g.ball.y)
+    g.ball.x += g.ball.dx
+    g.ball.y += g.ball.dy
+    if g.ball.y < 0:
+        g.ball.y = -g.ball.y
+        g.ball.dy = -g.ball.dy
+    if g.ball.y > HEIGHT - 1:
+        g.ball.y = 2 * (HEIGHT - 1) - g.ball.y
+        g.ball.dy = -g.ball.dy
+    if g.ball.x <= 0:
+        if covers(g.left, g.ball.y):
+            g.ball.x = -g.ball.x
+            g.ball.dx = -g.ball.dx
+            g.ball.dy = spin(g.left, g.ball.y, g.ball.dy)
+            g.hits += 1
+        else:
+            g.right_score += 1
+            g.ball = serve(g.left_score + g.right_score, false)
+    else if g.ball.x >= WIDTH:
+        if covers(g.right, g.ball.y):
+            g.ball.x = 2 * WIDTH - g.ball.x
+            g.ball.dx = -g.ball.dx
+            g.ball.dy = spin(g.right, g.ball.y, g.ball.dy)
+            g.hits += 1
+        else:
+            g.left_score += 1
+            g.ball = serve(g.left_score + g.right_score, true)
+    return g
+
+fn new_game() -> Game:
+    let start = HEIGHT // 2 - PADDLE // 2
+    return Game(
+        ball: serve(0, true),
+        left: start,
+        right: start,
+        left_score: 0,
+        right_score: 0,
+        hits: 0,
+        tick: 0,
+    )
+
+fn running(game: Game) -> Bool:
+    let no_winner = game.left_score < WIN_SCORE and game.right_score < WIN_SCORE
+    return no_winner and game.tick < MAX_TICKS
+
+fn main():
+    var game = new_game()
+    while running(game):
+        let before = game.left_score + game.right_score
+        game = step(game)
+        if game.left_score + game.right_score > before:
+            print("tick {game.tick}: left {game.left_score} - right {game.right_score}")
+    let winner = if game.left_score > game.right_score: "left" else: "right"
+    print("{winner} wins after {game.tick} ticks and {game.hits} paddle hits")

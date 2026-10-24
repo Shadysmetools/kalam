@@ -1,0 +1,12 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T50
+case: good
+kind: run
+command: kalam run
+fixtures: none
+stdin: empty
+exit: 0
+stderr: ignore
+--- stdout
+You are an admin.
+مرحبا، done

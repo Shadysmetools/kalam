@@ -1,0 +1,9 @@
+# Task 50 (must fail): homoglyph identifiers. Each pair has one confusable skeleton.
+# Line 5 vs 6: Latin "pay" vs Cyrillic. Line 7 vs 8: Arabic alef maqsura vs yeh.
+# Expected: SEC0104 for each pair. No other error.
+دالة رئيسي():
+    ليكن pay = 100
+    ليكن рау = 0
+    ليكن على = 1
+    ليكن علي = 2
+    اطبع("{pay} {рау} {على} {علي}")

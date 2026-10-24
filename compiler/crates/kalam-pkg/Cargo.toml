@@ -1,0 +1,12 @@
+[package]
+name = "kalam-pkg"
+description = "Package manager: manifest, lockfile, resolver, registry, capability diff"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+kalam-base.workspace = true
+kalam-diagnostics.workspace = true

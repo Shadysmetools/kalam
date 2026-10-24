@@ -1,0 +1,23 @@
+[package]
+name = "kalam-cli"
+description = "The kalam command-line tool"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+kalam-base.workspace = true
+kalam-skins.workspace = true
+kalam-diagnostics.workspace = true
+kalam-driver.workspace = true
+kalam-fmt.workspace = true
+kalam-pkg.workspace = true
+kalam-test-runner.workspace = true
+kalam-lsp.workspace = true
+kalam-mcp.workspace = true
+
+[[bin]]
+name = "kalam"
+path = "src/main.rs"
