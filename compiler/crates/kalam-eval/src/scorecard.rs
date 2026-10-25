@@ -25,7 +25,7 @@ impl Milestone {
         Milestone::ALL.into_iter().find(|m| m.key() == s)
     }
 
-    fn index(self) -> usize {
+    pub fn index(self) -> usize {
         match self {
             Milestone::Mvp => 0,
             Milestone::Beta => 1,
@@ -53,7 +53,7 @@ impl Threshold {
         }
     }
 
-    fn num(&self) -> Option<f64> {
+    pub fn num(&self) -> Option<f64> {
         match self {
             Threshold::Num(n) => Some(*n),
             _ => None,
@@ -108,6 +108,12 @@ pub struct Scorecard {
     pub metrics: Vec<MetricDef>,
     /// `(stage id, stage name)`
     pub stages: Vec<(String, String)>,
+    /// `milestone_tiers` (SCORECARD.md §10).
+    pub tiers: crate::tiers::Tiers,
+    /// `milestone_rule` (SCORECARD.md §6), per `[mvp, beta, 1.0]`.
+    pub dimension_min: [Option<f64>; 3],
+    pub composite_min: [Option<f64>; 3],
+    pub human_gates: [Vec<String>; 3],
 }
 
 impl Scorecard {
@@ -168,11 +174,42 @@ impl Scorecard {
             .map(|st| (s(st, "id"), s(st, "name")))
             .collect();
 
+        let rule = root.get("milestone_rule");
+        let per = |k: &str, m: Milestone| {
+            rule.and_then(|r| r.get(k))
+                .and_then(|v| v.get(m.key()))
+                .and_then(Value::as_f64)
+        };
+        let humans = |m: Milestone| -> Vec<String> {
+            rule.and_then(|r| r.get("human_gates"))
+                .and_then(|v| v.get(m.key()))
+                .and_then(Value::as_array)
+                .map(|a| {
+                    a.iter()
+                        .filter_map(Value::as_str)
+                        .map(str::to_string)
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        let [mvp, beta, one] = Milestone::ALL;
         Ok(Scorecard {
             eval_version: s(&root, "eval_version"),
             dimensions,
             metrics,
             stages,
+            tiers: crate::tiers::Tiers::parse(root.get("milestone_tiers"))?,
+            dimension_min: [
+                per("dimension_min", mvp),
+                per("dimension_min", beta),
+                per("dimension_min", one),
+            ],
+            composite_min: [
+                per("composite_min", mvp),
+                per("composite_min", beta),
+                per("composite_min", one),
+            ],
+            human_gates: [humans(mvp), humans(beta), humans(one)],
         })
     }
 
@@ -487,6 +524,13 @@ mod tests {
         let kw = sc.metric("D4.keywords_per_skin").expect("metric exists");
         assert_eq!(kw.direction, Direction::Lower);
         assert_eq!(kw.thresholds[0], Num(40.0));
+        assert_eq!(sc.dimension_min, [Some(55.0), Some(70.0), Some(85.0)]);
+        assert_eq!(sc.composite_min[0], Some(60.0));
+        assert_eq!(
+            sc.human_gates[1],
+            vec!["H-RCT".to_string(), "H-CD".to_string()]
+        );
+        assert!(sc.tiers.get("M1").is_some());
         let tp = sc.metric("D4.tokens_vs_python").unwrap();
         approx(normalize(tp, &MetricValue::Num(1.22)), 68.0);
     }

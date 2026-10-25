@@ -1,0 +1,29 @@
+# Task manifest (schema: eval/corpus/INDEX.md section 4)
+id = "T31"
+title = "Static website: 3 pages, layout template, auto-escaped variables"
+tier = "mvp"
+split = "dev"
+kind = "pos"
+section = "E"
+features = ["sink.html", "html.render", "html.list_hole", "html.compose", "sink.url", "record", "lambda", "list.map", "fn.value"]
+spec = ["§17.1", "§17.2", "§17.4", "§17.6", "§6.5", "§20.1"]
+assumptions = ["G6", "G7", "G16", "G20"]   # INDEX.md section 6
+# Design note (for the reviewer / founder): std/web layouts (spec 20.1) have no specified API,
+# and the http expectation grammar (INDEX.md section 3) cannot compare an HTML body, so the
+# escaping would go untested over HTTP. This task is therefore a run-kind static-site build that
+# prints each rendered page; the layout is a plain function returning Html.
+# Proposed new gaps (reviewer to number them):
+# - Html.render() of nested Html holes is assumed to concatenate exactly (no whitespace added).
+# - A url"..." literal with no scheme or host (a site-relative path) is assumed legal, and a hole
+#   value of unreserved characters is assumed to render unchanged (G7 covers reserved ones).
+# - Whole-document tags (<html>, <head>, <body>, <title>) are assumed legal inside an html"..."
+#   fragment and checked only for balance (spec 17.4 says "HTML5 fragment"; no K1610 expected).
+# - Holes inside <title> (RCDATA) are assumed to get the same & < > escaping as text content.
+files = { en = "en.kalam", ar = "ar.kalam", franco = "franco.kalam" }
+reference = "ref.py"   # Python baseline (D4 ratios); its stdout generated expected.txt
+provenance = "EN written by hand from the spec; ar/franco produced by `kalam convert` (S2 scaffold build, keywords, core names and ar punctuation only; identifiers, strings and comments unchanged), round-trip verified. Native-speaker review pending."
+
+[[case]]
+name = "main"
+path = "."
+expect = "run"

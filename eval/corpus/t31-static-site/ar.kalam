@@ -1,0 +1,36 @@
+# Task 31: a static website of three pages that share one layout. Page structure is literal
+# source text; every variable goes through an html"..." hole and is escaped for its context.
+# The site is printed (one page after another) so the escaping can be compared byte for byte.
+هيكل Page:
+    file: نص
+    title: نص
+    body: Html
+
+دالة nav_link(page: Page) -> Html:
+    ليكن link = url"/{page.file}"
+    أرجع html"""<a href="{link}">{page.title}</a>"""
+
+دالة layout(page: Page، nav: قائمة[Html]) -> Html:
+    ليكن head = html"<head><title>{page.title} | Kalam Cafe</title></head>"
+    ليكن header = html"<header><nav>{nav}</nav></header>"
+    ليكن main_part = html"<main><h1>{page.title}</h1>{page.body}</main>"
+    ليكن footer = html"<footer>Built with Kalam</footer>"
+    أرجع html"<html>{head}<body>{header}{main_part}{footer}</body></html>"
+
+دالة contact_body(emails: قائمة[نص]) -> Html:
+    ليكن items = emails.map(دالة(e) => html"<li>{e}</li>")
+    أرجع html"<p>Write to us:</p><ul>{items}</ul>"
+
+دالة رئيسي():
+    ليكن visitor = "<script>alert(1)</script>"
+    ليكن motto = "كلام بسيط & آمن"
+    ليكن contact = contact_body(["sara@example.com"، "a<b>@x.io"])
+    ليكن pages = [
+        Page(file: "index.html"، title: "Home"، body: html"<p>Welcome, {visitor}!</p>")،
+        Page(file: "about.html"، title: "About Tom & Jerry"، body: html"<p>{motto}</p>")،
+        Page(file: "contact.html"، title: "Contact"، body: contact)،
+    ]
+    ليكن nav = pages.map(nav_link)
+    لكل page في pages:
+        اطبع("== {page.file} ==")
+        اطبع(layout(page، nav).render())

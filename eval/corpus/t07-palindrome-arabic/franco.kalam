@@ -1,0 +1,52 @@
+# Task 7: palindromes, ignoring case, spaces, punctuation and Arabic diacritics (harakat).
+# arabic_fold (spec 5.3) unifies letter forms (أ إ آ ٱ -> ا, ى -> ي, ة -> ه, ...) but does not
+# remove harakat, so the marks are stripped explicitly. They are written as escapes.
+khali HARAKAT = [
+    "\u{064B}",
+    "\u{064C}",
+    "\u{064D}",
+    "\u{064E}",
+    "\u{064F}",
+    "\u{0650}",
+    "\u{0651}",
+    "\u{0652}",
+    "\u{0670}",
+]
+
+khali SEPARATORS = [" ", ",", ".", "!", "?", "،", "؟"]
+
+dala clean(text: nass) -> nass:
+    motghayer out = text.to_lower().arabic_fold()
+    lekol mark fi HARAKAT:
+        out = out.replace(mark, "")
+    lekol sep fi SEPARATORS:
+        out = out.replace(sep, "")
+    rag3 out
+
+dala reverse(text: nass) -> nass:
+    motghayer out = ""
+    lekol ch fi text.chars():
+        out = "{ch}{out}"
+    rag3 out
+
+dala is_palindrome(text: nass) -> mante2i:
+    khali letters = clean(text)
+    rag3 letters == reverse(letters)
+
+dala ra2isi():
+    khali samples = [
+        "Racecar",
+        "Never odd or even",
+        "hello",
+        "سُورُ حَمَاهُ بِرَبِّهَا مَحْرُوسُ",
+        "كَمَالُكَ تَحْتَ كَلامِك",
+        "أبا",
+        "مدرسة",
+    ]
+    motghayer found = 0
+    lekol sample fi samples:
+        khali verdict = law is_palindrome(sample): "palindrome" walla: "not a palindrome"
+        law is_palindrome(sample):
+            found += 1
+        ektb("\"{sample}\" -> {verdict} ({clean(sample).len_chars()} letters)")
+    ektb("{found} of {samples.len()} are palindromes")

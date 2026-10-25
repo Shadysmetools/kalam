@@ -1,0 +1,24 @@
+# Task manifest (schema: eval/corpus/INDEX.md section 4)
+id = "T33"
+title = "Same API on SQLite with parameterized queries"
+tier = "mvp"
+split = "dev"
+kind = "pos"
+section = "E"
+features = ["http.router", "http.access_required", "http.json", "http.path_int", "sql.sqlite", "sink.sql", "sql.returning", "derive.row", "derive.encode_decode", "capability.fs", "capability.net", "result.from_conversion"]
+spec = ["§17.1", "§17.3", "§20.2", "§14.3", "§16.3", "§18.3"]
+assumptions = ["G1", "G10", "G11", "G12"]   # INDEX.md section 6
+# Notes:
+# - Bool is stored as INTEGER 0/1 and converted by hand (to_todo, flag): how a Bool hole binds and
+#   how a Row decodes Bool from SQLite are unspecified, so the task avoids both.
+# - The request input types (NewTodo, TodoUpdate) are separate from the Row type (W0710).
+# - DbError reaches HttpError through the stdlib From conversion (spec 14.3), so `?` works directly.
+# - `db.one` with INSERT ... RETURNING is assumed to return the inserted row (SQLite >= 3.35).
+files = { en = "en.kalam", ar = "ar.kalam", franco = "franco.kalam" }
+reference = "ref.py"   # Python baseline (D4 ratios); the transcript in expected.txt was recorded from it
+provenance = "EN written by hand from the spec; ar/franco produced by `kalam convert` (S2 scaffold build, keywords, core names and ar punctuation only; identifiers, strings and comments unchanged), round-trip verified. Native-speaker review pending."
+
+[[case]]
+name = "main"
+path = "."
+expect = "http"

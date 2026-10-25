@@ -114,16 +114,16 @@ expect = "run" | "compile-error" | "http"
 | **A** | **Fundamentals** | | | | | |
 | 1 | Hello world | MVP | dev | pos | I/O, skin keywords, Arabic text in strings | written (`t01-hello`) |
 | 2 | FizzBuzz 1..100 | MVP | dev | pos | loops, conditionals, modulo | written (`t02-fizzbuzz`) |
-| 3 | Read name, greet (Arabic and Latin input) | MVP | dev | pos | `Stdin`, Unicode strings, RTL output | to write |
-| 4 | Sum / average / min / max of a number list (incl. Arabic-Indic digit input) | MVP | dev | pos | lists, numeric parsing, §6.2 runtime digits | to write |
+| 3 | Read name, greet (Arabic and Latin input) | MVP | dev | pos | `Stdin`, Unicode strings, RTL output | written (`t03-greet-stdin`) |
+| 4 | Sum / average / min / max of a number list (incl. Arabic-Indic digit input) | MVP | dev | pos | lists, numeric parsing, §6.2 runtime digits | written (`t04-number-stats`) |
 | 5 | Fibonacci, iterative and recursive | MVP | **[H]** | pos | — | sealed |
-| 6 | Word frequency count from text | MVP | dev | pos | maps, sorting, string split | to write |
-| 7 | Palindrome check (Arabic with diacritics stripped) | MVP | dev | pos | Unicode normalization, `arabic_fold` | to write |
-| 8 | Temperature conversion table | MVP | dev | pos | formatting, floats (blocked on spec gap G3) | to write |
-| 9 | Guess-the-number (seeded RNG) | MVP | dev | pos | input loop, `Rand.seeded` determinism | to write |
+| 6 | Word frequency count from text | MVP | dev | pos | maps, sorting, string split | written (`t06-word-frequency`) |
+| 7 | Palindrome check (Arabic with diacritics stripped) | MVP | dev | pos | Unicode normalization, `arabic_fold` | written (`t07-palindrome-arabic`) |
+| 8 | Temperature conversion table | MVP | dev | pos | formatting, floats (blocked on spec gap G3) | written (`t08-temperature-table`) |
+| 9 | Guess-the-number (seeded RNG) | MVP | dev | pos | input loop, `Rand.seeded` determinism | written (`t09-guess-seeded`) |
 | 10 | Prime sieve to 1e6 | MVP | **[H]** | pos | — | sealed |
 | **B** | **Data and types** | | | | | |
-| 11 | Define record `User`, validate fields, print | MVP | dev | pos | records, validation, opaque types | to write |
+| 11 | Define record `User`, validate fields, print | MVP | dev | pos | records, validation, opaque types | written (`t11-user-record`) |
 | 12 | Sum types / enum + exhaustive match (shape area) | MVP | dev | pos | ADTs, guards, or-patterns, `.with`, record equality | written (`t12-shapes-match`) |
 | 13 | Optional/null handling: safe lookup chain | MVP | **[H]** | pos | — | sealed |
 | 14 | Error handling: parse int, propagate errors | MVP | dev | pos | `Result`, `?`, `map_err`, Arabic-Indic runtime parse | written (`t14-result-try`) |
@@ -146,9 +146,9 @@ expect = "run" | "compile-error" | "http"
 | 29 | File watcher → rebuild log | β | dev | pos | fs events | to write |
 | 30 | CLI tool with args, flags, help in 3 languages | β | dev | pos | CLI, `std/i18n` | to write |
 | **E** | **Web and SaaS** | | | | | |
-| 31 | Static website: 3 pages, layout template, auto-escaped variables | MVP | dev | pos | `html"…"`, `std/web` layouts | to write |
+| 31 | Static website: 3 pages, layout template, auto-escaped variables | MVP | dev | pos | `html"…"`, `std/web` layouts | written (`t31-static-site`) |
 | 32 | REST API: CRUD `/todos` in memory, JSON | MVP | dev | pos | router, required `access:`, JSON, `Cell` | written (`t32-todo-api`) |
-| 33 | Same API on SQLite with parameterized queries | MVP | dev | pos | `std/sql`, `sql"…"` | to write |
+| 33 | Same API on SQLite with parameterized queries | MVP | dev | pos | `std/sql`, `sql"…"` | written (`t33-todo-sqlite`) |
 | 34 | Auth: signup/login, hashed passwords (argon2), session cookie (HttpOnly, Secure, SameSite) | β | dev | pos | `std/auth`, `Secret` | to write |
 | 35 | Form with CSRF token + server validation, RTL form in Arabic | β | **[H]** | pos | — | sealed |
 | 36 | File upload with size/type limits, safe path storage | β | **[H]** | pos | — | sealed |

@@ -1,6 +1,6 @@
 [package]
 name = "kalam-parser"
-description = "LL(1) recursive-descent parser producing the lossless CST"
+description = "LL(1) recursive-descent parser producing the skin-free AST and the lossless CST"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,6 +9,9 @@ publish = false
 
 [dependencies]
 kalam-base.workspace = true
+kalam-skins.workspace = true
 kalam-lexer.workspace = true
 kalam-syntax.workspace = true
 kalam-diagnostics.workspace = true
+# Path dependency so the shared root Cargo.toml needs no edit (see kalam-ast/Cargo.toml).
+kalam-ast = { path = "../kalam-ast" }

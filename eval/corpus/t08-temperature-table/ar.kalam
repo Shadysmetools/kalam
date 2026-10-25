@@ -1,0 +1,33 @@
+# Task 8: temperature conversion table. Float values are never printed directly (INDEX.md G3):
+# the exact table uses Int arithmetic, the Float table is shown through rounded Int tenths,
+# and IEEE comparisons choose the labels.
+استخدم std/math
+
+دالة to_fahrenheit(celsius: كسري) -> كسري => celsius * 1.8 + 32.0
+
+دالة tenths(value: كسري) -> عدد => math.round(value * 10.0).to_int().expect("finite temperature")
+
+دالة show_tenths(t: عدد) -> نص:
+    ليكن sign = إذا t < 0: "-" وإلا: ""
+    ليكن magnitude = إذا t < 0: -t وإلا: t
+    أرجع "{sign}{magnitude // 10}.{magnitude % 10}"
+
+دالة label(fahrenheit: كسري) -> نص:
+    إذا fahrenheit <= 32.0:
+        أرجع "freezing"
+    إذا fahrenheit < 68.0:
+        أرجع "cool"
+    إذا fahrenheit < 86.0:
+        أرجع "warm"
+    أرجع "hot"
+
+دالة رئيسي():
+    اطبع("Celsius to Fahrenheit, exact (Int)")
+    لكل step في 0..8:
+        ليكن celsius = -40 + step * 20
+        اطبع("{celsius} C = {celsius * 9 // 5 + 32} F")
+    اطبع("Celsius to Fahrenheit, one decimal (Float)")
+    لكل c_tenths في [-400، -175، -33، 0، 150، 217، 366، 375، 1000]:
+        ليكن fahrenheit = to_fahrenheit(c_tenths.to_float() / 10.0)
+        ليكن shown = show_tenths(tenths(fahrenheit))
+        اطبع("{show_tenths(c_tenths)} C = {shown} F ({label(fahrenheit)})")

@@ -1,0 +1,94 @@
+# Task 33: the T32 todo API, stored in SQLite. Every query is a sql"..." literal, so request
+# values reach the database only as bound parameters (a title that looks like SQL stays a title).
+# Route patterns escape their braces: an unescaped {id} in a string is interpolation (spec 5.7).
+استخدم std/http.{ذات، HttpError، Request، Response، Router}
+استخدم std/sql.{ذات، Db}
+
+@derive(Encode)
+هيكل Todo:
+    id: عدد
+    title: نص
+    done: منطقي
+
+@derive(Row)
+هيكل TodoRow:
+    id: عدد
+    title: نص
+    done: عدد
+
+@derive(Decode)
+هيكل NewTodo:
+    title: نص
+
+@derive(Decode)
+هيكل TodoUpdate:
+    title: نص
+    done: منطقي
+
+هيكل App:
+    db: Db
+
+دالة to_todo(row: TodoRow) -> Todo => Todo(id: row.id، title: row.title، done: row.done == 1)
+
+دالة flag(done: منطقي) -> عدد => إذا done: 1 وإلا: 0
+
+دالة list_todos(req: Request[App]) -> نتيجة[Response، HttpError]:
+    ليكن rows: قائمة[TodoRow] = req.app.db.all(sql"SELECT id, title, done FROM todos ORDER BY id")؟
+    أرجع نجاح(Response.json(rows.map(to_todo)))
+
+دالة show_todo(req: Request[App]) -> نتيجة[Response، HttpError]:
+    ليكن id = req.path_int("id")؟
+    ليكن query = sql"SELECT id, title, done FROM todos WHERE id = {id}"
+    ليكن row: اختياري[TodoRow] = req.app.db.one(query)؟
+    أرجع حسب row:
+        عندما موجود(found): نجاح(Response.json(to_todo(found)))
+        عندما لا_شيء: فشل(.NotFound)
+
+دالة create_todo(req: Request[App]) -> نتيجة[Response، HttpError]:
+    ليكن input: NewTodo = req.json()؟
+    إذا input.title.is_empty():
+        أرجع فشل(.BadRequest(message: "title is required"))
+    ليكن row: اختياري[TodoRow] = req.app.db.one(sql"""
+        INSERT INTO todos (title, done) VALUES ({input.title}, 0)
+        RETURNING id, title, done
+    """)؟
+    أرجع حسب row:
+        عندما موجود(created): نجاح(Response.json(to_todo(created)).status(201))
+        عندما لا_شيء: فشل(.Internal)
+
+دالة update_todo(req: Request[App]) -> نتيجة[Response، HttpError]:
+    ليكن id = req.path_int("id")؟
+    ليكن input: TodoUpdate = req.json()؟
+    ليكن changed = req.app.db.exec(sql"""
+        UPDATE todos SET title = {input.title}, done = {flag(input.done)} WHERE id = {id}
+    """)؟
+    إذا changed == 0:
+        أرجع فشل(.NotFound)
+    أرجع نجاح(Response.json(Todo(id: id، title: input.title، done: input.done)))
+
+دالة delete_todo(req: Request[App]) -> نتيجة[Response، HttpError]:
+    ليكن id = req.path_int("id")؟
+    ليكن removed = req.app.db.exec(sql"DELETE FROM todos WHERE id = {id}")؟
+    إذا removed == 0:
+        أرجع فشل(.NotFound)
+    أرجع نجاح(Response.text("").status(204))
+
+دالة routes() -> Router[App]:
+    أرجع http.router()
+        .get("/todos"، list_todos، access: .Public)
+        .post("/todos"، create_todo، access: .Public)
+        .get("/todos/\{id\}"، show_todo، access: .Public)
+        .put("/todos/\{id\}"، update_todo، access: .Public)
+        .delete("/todos/\{id\}"، delete_todo، access: .Public)
+
+دالة رئيسي(world: عالم) -> نتيجة[()، AnyError]:
+    ليكن db = sql.sqlite(world.fs، "todos.db")؟
+    ليكن _ = db.exec(sql"""
+        CREATE TABLE todos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            done INTEGER NOT NULL
+        )
+    """)؟
+    http.serve(world.net، port: 8080، router: routes()، app: App(db: db))؟
+    أرجع نجاح(())

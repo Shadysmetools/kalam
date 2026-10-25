@@ -1,0 +1,22 @@
+# Task manifest (schema: eval/corpus/INDEX.md section 4)
+id = "T06"
+title = "Word frequency count from text"
+tier = "mvp"
+split = "dev"
+kind = "pos"
+section = "A"
+features = ["map", "map.get", "map.index_assign", "map.iterate", "string.split", "string.to_lower", "string.replace", "match.value_form", "continue"]
+spec = ["§9.3", "§10.3", "§10.4", "§10.5", "§20.1"]
+assumptions = []   # INDEX.md section 6
+# Deliberately avoided (spec silent): sort_by comparator signature and stability, String ordering
+# (Ord), and String.split on runs of separators. The report uses Map insertion order instead
+# of sorting ("sorting" from the research/05 tag is left to a later eval version).
+# Proposed new gap: String.to_lower is assumed to be Unicode simple lowercase (ASCII only here).
+files = { en = "en.kalam", ar = "ar.kalam", franco = "franco.kalam" }
+reference = "ref.py"   # Python baseline (D4 ratios); its stdout generated expected.txt
+provenance = "EN written by hand from the spec; ar/franco produced by `kalam convert` (S2 scaffold build, keywords, core names and ar punctuation only; identifiers, strings and comments unchanged), round-trip verified. Native-speaker review pending."
+
+[[case]]
+name = "main"
+path = "."
+expect = "run"

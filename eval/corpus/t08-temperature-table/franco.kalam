@@ -1,0 +1,33 @@
+# Task 8: temperature conversion table. Float values are never printed directly (INDEX.md G3):
+# the exact table uses Int arithmetic, the Float table is shown through rounded Int tenths,
+# and IEEE comparisons choose the labels.
+hat std/math
+
+dala to_fahrenheit(celsius: kasri) -> kasri => celsius * 1.8 + 32.0
+
+dala tenths(value: kasri) -> adad => math.round(value * 10.0).to_int().expect("finite temperature")
+
+dala show_tenths(t: adad) -> nass:
+    khali sign = law t < 0: "-" walla: ""
+    khali magnitude = law t < 0: -t walla: t
+    rag3 "{sign}{magnitude // 10}.{magnitude % 10}"
+
+dala label(fahrenheit: kasri) -> nass:
+    law fahrenheit <= 32.0:
+        rag3 "freezing"
+    law fahrenheit < 68.0:
+        rag3 "cool"
+    law fahrenheit < 86.0:
+        rag3 "warm"
+    rag3 "hot"
+
+dala ra2isi():
+    ektb("Celsius to Fahrenheit, exact (Int)")
+    lekol step fi 0..8:
+        khali celsius = -40 + step * 20
+        ektb("{celsius} C = {celsius * 9 // 5 + 32} F")
+    ektb("Celsius to Fahrenheit, one decimal (Float)")
+    lekol c_tenths fi [-400, -175, -33, 0, 150, 217, 366, 375, 1000]:
+        khali fahrenheit = to_fahrenheit(c_tenths.to_float() / 10.0)
+        khali shown = show_tenths(tenths(fahrenheit))
+        ektb("{show_tenths(c_tenths)} C = {shown} F ({label(fahrenheit)})")

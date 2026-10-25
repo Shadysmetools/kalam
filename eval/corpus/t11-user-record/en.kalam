@@ -1,0 +1,72 @@
+# Task 11: a validated record. Email is opaque: Email.parse is the only way to build one,
+# so every User holds a checked address. Fields are printed one by one (record Show is unspecified).
+enum UserError:
+    EmptyName
+    BadEmail(text: String)
+    BadAge(value: Int)
+
+export opaque type Email:
+    address: String
+
+impl Email:
+    fn parse(text: String) -> Result[Email, UserError]:
+        let parts = text.split("@")
+        if parts.len() != 2 or parts[0].is_empty() or not parts[1].contains("."):
+            return Err(.BadEmail(text: text))
+        return Ok(Email(address: text.to_lower()))
+
+impl Email as Show:
+    fn show(self) -> String => self.address
+
+enum Role:
+    Member
+    Admin
+
+type User:
+    name: String
+    email: Email
+    age: Int
+    role: Role = .Member
+
+fn make_user(name: String, email: String, age: Int) -> Result[User, UserError]:
+    let trimmed = name.trim()
+    if trimmed.is_empty():
+        return Err(.EmptyName)
+    if age < 13 or age > 120:
+        return Err(.BadAge(value: age))
+    let checked = Email.parse(email)?
+    return Ok(User(name: trimmed, email: checked, age: age))
+
+fn role_name(role: Role) -> String:
+    return match role:
+        case .Member: "member"
+        case .Admin: "admin"
+
+fn explain(error: UserError) -> String:
+    return match error:
+        case .EmptyName: "name is empty"
+        case .BadEmail(text): "bad email: {text}"
+        case .BadAge(value): "age {value} is outside 13..=120"
+
+fn main():
+    let inputs = [
+        ("  Sara  ", "Sara@Example.com", 30),
+        ("", "x@y.io", 20),
+        ("Omar", "omar.example.com", 25),
+        ("Laila", "laila@site", 40),
+        ("Huda", "huda@mail@eg", 22),
+        ("Karim", "karim@mail.eg", 9),
+        ("نور", "noor@mail.eg", 22),
+    ]
+    for (name, email, age) in inputs:
+        match make_user(name, email, age):
+            case Ok(user):
+                print("ok: {user.name} <{user.email}>, age {user.age}, {role_name(user.role)}")
+            case Err(error):
+                print("rejected: {explain(error)}")
+    match make_user("Amal", "AMAL@corp.eg", 41):
+        case Ok(user):
+            let admin = user.with(role: .Admin)
+            print("{admin.name} is {role_name(admin.role)}; the original is {role_name(user.role)}")
+        case Err(error):
+            print("rejected: {explain(error)}")

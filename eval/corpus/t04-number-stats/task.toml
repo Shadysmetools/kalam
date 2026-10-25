@@ -1,0 +1,20 @@
+# Task manifest (schema: eval/corpus/INDEX.md section 4)
+id = "T04"
+title = "Sum / average / min / max of a number list (incl. Arabic-Indic digit input)"
+tier = "mvp"
+split = "dev"
+kind = "pos"
+section = "A"
+features = ["list", "list.append", "string.split", "string.to_int", "digits.arabic_indic_runtime", "int.floor_div", "match"]
+spec = ["§6.2", "§9.2", "§10.4", "§10.5", "§20.1"]
+assumptions = ["G3", "G9"]   # INDEX.md section 6
+# Proposed new gap: String.split(sep) is listed (spec 20.1) without semantics; assumed to split on
+# every occurrence and return List[String] (Python str.split(sep)). The input has single spaces only.
+files = { en = "en.kalam", ar = "ar.kalam", franco = "franco.kalam" }
+reference = "ref.py"   # Python baseline (D4 ratios); its stdout generated expected.txt
+provenance = "EN written by hand from the spec; ar/franco produced by `kalam convert` (S2 scaffold build, keywords, core names and ar punctuation only; identifiers, strings and comments unchanged), round-trip verified. Native-speaker review pending."
+
+[[case]]
+name = "main"
+path = "."
+expect = "run"

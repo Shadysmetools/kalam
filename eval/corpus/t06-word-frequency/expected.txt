@@ -1,0 +1,21 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T06
+case: main
+kind: run
+command: kalam run
+fixtures: none
+stdin: empty
+exit: 0
+stderr: ignore
+--- stdout
+the: 3
+cat: 2
+saw: 1
+dog: 3
+ran: 1
+كتاب: 2
+جديد: 1
+قديم: 1
+a: 2
+distinct words: 9
+most frequent: the (3)

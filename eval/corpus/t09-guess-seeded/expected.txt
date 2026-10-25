@@ -1,0 +1,17 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T09
+case: main
+kind: run
+command: kalam run
+fixtures: none
+stdin: file stdin.txt
+exit: 0
+stderr: ignore
+--- stdout
+attempt 1: "forty-two" is not a number
+attempt 2: the seed must be positive
+attempt 3: seed accepted
+same seed, same secret
+secret is in 1..=100
+found within 7 guesses
+worst case over 1..=100: 7 guesses

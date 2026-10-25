@@ -1,0 +1,16 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T31
+case: main
+kind: run
+command: kalam run
+fixtures: none
+stdin: empty
+exit: 0
+stderr: ignore
+--- stdout
+== index.html ==
+<html><head><title>Home | Kalam Cafe</title></head><body><header><nav><a href="/index.html">Home</a><a href="/about.html">About Tom &amp; Jerry</a><a href="/contact.html">Contact</a></nav></header><main><h1>Home</h1><p>Welcome, &lt;script&gt;alert(1)&lt;/script&gt;!</p></main><footer>Built with Kalam</footer></body></html>
+== about.html ==
+<html><head><title>About Tom &amp; Jerry | Kalam Cafe</title></head><body><header><nav><a href="/index.html">Home</a><a href="/about.html">About Tom &amp; Jerry</a><a href="/contact.html">Contact</a></nav></header><main><h1>About Tom &amp; Jerry</h1><p>كلام بسيط &amp; آمن</p></main><footer>Built with Kalam</footer></body></html>
+== contact.html ==
+<html><head><title>Contact | Kalam Cafe</title></head><body><header><nav><a href="/index.html">Home</a><a href="/about.html">About Tom &amp; Jerry</a><a href="/contact.html">Contact</a></nav></header><main><h1>Contact</h1><p>Write to us:</p><ul><li>sara@example.com</li><li>a&lt;b&gt;@x.io</li></ul></main><footer>Built with Kalam</footer></body></html>

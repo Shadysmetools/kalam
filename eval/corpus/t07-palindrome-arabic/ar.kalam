@@ -1,0 +1,52 @@
+# Task 7: palindromes, ignoring case, spaces, punctuation and Arabic diacritics (harakat).
+# arabic_fold (spec 5.3) unifies letter forms (أ إ آ ٱ -> ا, ى -> ي, ة -> ه, ...) but does not
+# remove harakat, so the marks are stripped explicitly. They are written as escapes.
+ليكن HARAKAT = [
+    "\u{064B}"،
+    "\u{064C}"،
+    "\u{064D}"،
+    "\u{064E}"،
+    "\u{064F}"،
+    "\u{0650}"،
+    "\u{0651}"،
+    "\u{0652}"،
+    "\u{0670}"،
+]
+
+ليكن SEPARATORS = [" "، ","، "."، "!"، "?"، "،"، "؟"]
+
+دالة clean(text: نص) -> نص:
+    متغير out = text.to_lower().arabic_fold()
+    لكل mark في HARAKAT:
+        out = out.replace(mark، "")
+    لكل sep في SEPARATORS:
+        out = out.replace(sep، "")
+    أرجع out
+
+دالة reverse(text: نص) -> نص:
+    متغير out = ""
+    لكل ch في text.chars():
+        out = "{ch}{out}"
+    أرجع out
+
+دالة is_palindrome(text: نص) -> منطقي:
+    ليكن letters = clean(text)
+    أرجع letters == reverse(letters)
+
+دالة رئيسي():
+    ليكن samples = [
+        "Racecar"،
+        "Never odd or even"،
+        "hello"،
+        "سُورُ حَمَاهُ بِرَبِّهَا مَحْرُوسُ"،
+        "كَمَالُكَ تَحْتَ كَلامِك"،
+        "أبا"،
+        "مدرسة"،
+    ]
+    متغير found = 0
+    لكل sample في samples:
+        ليكن verdict = إذا is_palindrome(sample): "palindrome" وإلا: "not a palindrome"
+        إذا is_palindrome(sample):
+            found += 1
+        اطبع("\"{sample}\" -> {verdict} ({clean(sample).len_chars()} letters)")
+    اطبع("{found} of {samples.len()} are palindromes")

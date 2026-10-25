@@ -1,0 +1,19 @@
+# Task 3: read names from standard input and greet each one. Arabic and Latin names are data.
+# Assumed API (spec gap, see task.toml): Stdin.read_line() -> Option[String], None at end of input,
+# the line terminator removed.
+fn main(world: World):
+    var greeted = 0
+    var skipped = 0
+    var done = false
+    while not done:
+        match world.stdin.read_line():
+            case Some(line):
+                let name = line.trim()
+                if name.is_empty():
+                    skipped += 1
+                else:
+                    print("Hello, {name}! مرحبا يا {name} ({name.len_chars()} characters)")
+                    greeted += 1
+            case None:
+                done = true
+    print("greeted {greeted}, skipped {skipped}")

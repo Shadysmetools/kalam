@@ -60,6 +60,17 @@ pub fn record(run: &Value, iteration: u64, args: &AppendArgs<'_>) -> Value {
         })
         .unwrap_or_default();
     let c = &run["checks"];
+    let tier_checks: Vec<Value> = run["tier_checks"]
+        .as_array()
+        .map(|cs| {
+            cs.iter()
+                .map(|t| {
+                    json!({"id": t["id"], "tier": t["tier"], "status": t["status"], "score": t["score"],
+                           "evidence": t["evidence"]})
+                })
+                .collect()
+        })
+        .unwrap_or_default();
     json!({
         "schema": "kalam-history/1",
         "iteration": iteration,
@@ -69,6 +80,11 @@ pub fn record(run: &Value, iteration: u64, args: &AppendArgs<'_>) -> Value {
         "git_dirty": run.get("git_dirty").cloned().unwrap_or(Value::Null),
         "eval_version": eval_version,
         "target_milestone": run["target_milestone"],
+        "normalized_against": run["normalized_against"],
+        "tier_mode": run["tier_mode"],
+        "tier_score": run["tier_score"],
+        "tier_checks": tier_checks,
+        "milestone_met": run["milestone_met"],
         "outcome": args.outcome,
         "dimensions": run["dimensions"],
         "composite": run["composite"],
@@ -129,6 +145,9 @@ mod tests {
                        "lex_roundtrip": {"failed": 0, "checks": 3}, "keyword_table_load": {"pass": true},
                        "cargo_test": {"status": "skipped"}},
             "summary": {"measured": 1},
+            "normalized_against": "mvp", "tier_mode": "checklist", "tier_score": 12.5, "milestone_met": false,
+            "tier_checks": [{"id": "G-INT", "tier": "M1", "kind": "check", "op": "pass", "threshold": null, "unit": "",
+                             "scope": "", "status": "not_measurable", "score": 0.0, "evidence": "pending"}],
         })
     }
 
@@ -184,6 +203,14 @@ mod tests {
         assert_eq!(r1["gates"]["G-SEC"]["state"], "pending");
         assert_eq!(r1["metrics"][0]["status"], "measured");
         assert_eq!(r1["dimensions"]["D4"], 50.0);
+        assert_eq!(r1["tier_mode"], "checklist");
+        assert_eq!(r1["tier_score"], 12.5);
+        assert_eq!(r1["milestone_met"], false);
+        assert_eq!(r1["normalized_against"], "mvp");
+        assert_eq!(
+            r1["tier_checks"][0],
+            json!({"id": "G-INT", "tier": "M1", "status": "not_measurable", "score": 0.0, "evidence": "pending"})
+        );
         let parsed: Value = serde_json::from_str(after_second.lines().nth(1).unwrap()).unwrap();
         assert_eq!(parsed["schema"], "kalam-history/1");
     }

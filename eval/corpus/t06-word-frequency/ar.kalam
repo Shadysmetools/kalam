@@ -1,0 +1,32 @@
+# Task 6: word frequency. A Map keeps insertion order, so the report order is defined;
+# ties for "most frequent" go to the word seen first.
+دالة normalize(word: نص) -> نص:
+    متغير cleaned = word.to_lower()
+    لكل mark في [","، "."، "!"، "?"، "،"، "؟"]:
+        cleaned = cleaned.replace(mark، "")
+    أرجع cleaned
+
+دالة count_words(text: نص) -> قاموس[نص، عدد]:
+    متغير counts: قاموس[نص، عدد] = {}
+    لكل raw في text.split(" "):
+        ليكن word = normalize(raw)
+        إذا word.is_empty():
+            استمر
+        ليكن seen = حسب counts.get(word):
+            عندما موجود(n): n
+            عندما لا_شيء: 0
+        counts[word] = seen + 1
+    أرجع counts
+
+دالة رئيسي():
+    ليكن text = "The cat saw the dog. The dog ran! كتاب جديد، كتاب قديم؟ A cat, a dog. !"
+    ليكن counts = count_words(text)
+    متغير best = ""
+    متغير best_count = 0
+    لكل (word، n) في counts:
+        اطبع("{word}: {n}")
+        إذا n > best_count:
+            best = word
+            best_count = n
+    اطبع("distinct words: {counts.len()}")
+    اطبع("most frequent: {best} ({best_count})")

@@ -1,0 +1,19 @@
+# Task 3: read names from standard input and greet each one. Arabic and Latin names are data.
+# Assumed API (spec gap, see task.toml): Stdin.read_line() -> Option[String], None at end of input,
+# the line terminator removed.
+dala ra2isi(world: donya):
+    motghayer greeted = 0
+    motghayer skipped = 0
+    motghayer done = ghalat
+    tool_ma mesh done:
+        hasab world.stdin.read_line():
+            lama mawgood(line):
+                khali name = line.trim()
+                law name.is_empty():
+                    skipped += 1
+                walla:
+                    ektb("Hello, {name}! مرحبا يا {name} ({name.len_chars()} characters)")
+                    greeted += 1
+            lama mafeesh:
+                done = sa7
+    ektb("greeted {greeted}, skipped {skipped}")

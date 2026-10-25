@@ -1,18 +1,23 @@
-//! `kalam-eval [--root DIR] [--target mvp|beta|1.0] [--cargo-test] [--out FILE]
+//! `kalam-eval [--root DIR] [--target M1..M10|beta|1.0|mvp] [--cargo-test] [--out FILE]
 //!             [--append --timestamp TS [--history FILE] [--git-sha SHA] [--outcome O] [--notes TEXT]]`
 //!
 //! Prints the JSON scorecard on stdout. With `--append`, also appends one line to
 //! `eval/history.jsonl` (or `--history FILE`). The timestamp is always passed in, never read
 //! from the clock, so a run is reproducible.
+//!
+//! `--target` is a milestone tier from `scorecard.json` -> `milestone_tiers.order` (`mvp` is
+//! an alias of the M5 scorecard tier). Without it, the target is `eval/FREEZE.json`
+//! `target_milestone`, or `M1` before the freeze.
 
 use kalam_eval::history::{self, AppendArgs};
+use kalam_eval::parity;
 use kalam_eval::report::{self, Options};
-use kalam_eval::scorecard::{Milestone, Scorecard};
+use kalam_eval::scorecard::Scorecard;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
 const USAGE: &str =
-    "usage: kalam-eval [--root DIR] [--target mvp|beta|1.0] [--cargo-test] [--out FILE] \
+    "usage: kalam-eval [--root DIR] [--target M1..M10|beta|1.0|mvp] [--cargo-test] [--out FILE] \
 [--append --timestamp TS [--history FILE] [--git-sha SHA] [--outcome OUTCOME] [--notes TEXT]]";
 
 #[derive(Default)]
@@ -67,6 +72,15 @@ fn find_root(start: &Path) -> Option<PathBuf> {
         .map(Path::to_path_buf)
 }
 
+/// `eval/FREEZE.json` `target_milestone`, or `M1` (the first tier, LOOP.md) before the freeze.
+fn default_target(root: &Path) -> String {
+    std::fs::read_to_string(root.join("eval/FREEZE.json"))
+        .ok()
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
+        .and_then(|v| v["target_milestone"].as_str().map(str::to_string))
+        .unwrap_or_else(|| "M1".to_string())
+}
+
 /// `git rev-parse HEAD` in `root`, or `None` (never invented).
 fn git_head(root: &Path) -> Option<String> {
     let out = Command::new("git")
@@ -116,14 +130,7 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    let target = match args.target.as_deref().map(Milestone::parse) {
-        None => Milestone::Mvp,
-        Some(Some(m)) => m,
-        Some(None) => {
-            eprintln!("--target must be mvp, beta or 1.0");
-            return ExitCode::from(2);
-        }
-    };
+    let target = args.target.clone().unwrap_or_else(|| default_target(&root));
     let sc = match std::fs::read_to_string(root.join("eval/scorecard.json"))
         .map_err(|e| e.to_string())
         .and_then(|t| Scorecard::parse(&t))
@@ -134,12 +141,20 @@ fn main() -> ExitCode {
             return ExitCode::from(1);
         }
     };
+    if sc.tiers.resolve(&target).is_none() {
+        eprintln!(
+            "--target must be one of {} (or mvp)",
+            sc.tiers.order.join(", ")
+        );
+        return ExitCode::from(2);
+    }
     let mut run = match report::run(
         &sc,
         &Options {
             root: root.clone(),
-            target,
+            tier: target,
             run_cargo_test: args.cargo_test,
+            hook: parity::default_hook(),
         },
     ) {
         Ok(r) => r,
@@ -210,6 +225,22 @@ mod tests {
         assert_eq!(a.notes.as_deref(), Some("n"));
         assert!(parse_args(&argv(&["--bogus"])).is_err());
         assert!(parse_args(&argv(&["--root"])).is_err());
+    }
+
+    #[test]
+    fn default_target_is_the_frozen_tier_or_m1() {
+        let dir = std::env::temp_dir().join(format!("kalam-eval-freeze-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("eval")).unwrap();
+        assert_eq!(default_target(&dir), "M1");
+        std::fs::write(
+            dir.join("eval/FREEZE.json"),
+            r#"{"target_milestone": "M3"}"#,
+        )
+        .unwrap();
+        let t = default_target(&dir);
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(t, "M3");
     }
 
     #[test]

@@ -1,0 +1,36 @@
+# Task 31: a static website of three pages that share one layout. Page structure is literal
+# source text; every variable goes through an html"..." hole and is escaped for its context.
+# The site is printed (one page after another) so the escaping can be compared byte for byte.
+type Page:
+    file: String
+    title: String
+    body: Html
+
+fn nav_link(page: Page) -> Html:
+    let link = url"/{page.file}"
+    return html"""<a href="{link}">{page.title}</a>"""
+
+fn layout(page: Page, nav: List[Html]) -> Html:
+    let head = html"<head><title>{page.title} | Kalam Cafe</title></head>"
+    let header = html"<header><nav>{nav}</nav></header>"
+    let main_part = html"<main><h1>{page.title}</h1>{page.body}</main>"
+    let footer = html"<footer>Built with Kalam</footer>"
+    return html"<html>{head}<body>{header}{main_part}{footer}</body></html>"
+
+fn contact_body(emails: List[String]) -> Html:
+    let items = emails.map(fn(e) => html"<li>{e}</li>")
+    return html"<p>Write to us:</p><ul>{items}</ul>"
+
+fn main():
+    let visitor = "<script>alert(1)</script>"
+    let motto = "كلام بسيط & آمن"
+    let contact = contact_body(["sara@example.com", "a<b>@x.io"])
+    let pages = [
+        Page(file: "index.html", title: "Home", body: html"<p>Welcome, {visitor}!</p>"),
+        Page(file: "about.html", title: "About Tom & Jerry", body: html"<p>{motto}</p>"),
+        Page(file: "contact.html", title: "Contact", body: contact),
+    ]
+    let nav = pages.map(nav_link)
+    for page in pages:
+        print("== {page.file} ==")
+        print(layout(page, nav).render())

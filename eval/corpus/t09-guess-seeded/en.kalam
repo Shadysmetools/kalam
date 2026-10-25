@@ -1,0 +1,52 @@
+# Task 9: guess-the-number with a seeded RNG. The seed comes from standard input: bad lines are
+# rejected and the loop reads again. A binary-search player then guesses the secret.
+# Rand.seeded's algorithm is not specified, so nothing printed depends on the drawn number:
+# the output shows determinism (same seed, same secret) and that 7 guesses always suffice.
+# Assumed API (spec gap, see task.toml): Stdin.read_line() -> Option[String];
+# Rand.seeded(n).int(range) -> Int.
+fn read_seed(stdin: Stdin) -> Option[Int]:
+    for attempt in 1..=5:
+        let text = stdin.read_line()?
+        match text.trim().to_int():
+            case Ok(seed) if seed > 0:
+                print("attempt {attempt}: seed accepted")
+                return Some(seed)
+            case Ok(_):
+                print("attempt {attempt}: the seed must be positive")
+            case Err(_):
+                print("attempt {attempt}: \"{text}\" is not a number")
+    return None
+
+fn guesses_needed(secret: Int) -> Int:
+    var lowest = 1
+    var highest = 100
+    var tries = 0
+    var found = false
+    while not found:
+        let guess = (lowest + highest) // 2
+        tries += 1
+        if guess < secret:
+            lowest = guess + 1
+        else if guess > secret:
+            highest = guess - 1
+        else:
+            found = true
+    return tries
+
+fn main(world: World):
+    match read_seed(world.stdin):
+        case None:
+            print("no seed given")
+        case Some(seed):
+            let secret = Rand.seeded(seed).int(1..=100)
+            let replay = Rand.seeded(seed).int(1..=100)
+            print(if secret == replay: "same seed, same secret" else: "not deterministic")
+            print(if secret >= 1 and secret <= 100: "secret is in 1..=100" else: "out of range")
+            let tries = guesses_needed(secret)
+            print(if tries <= 7: "found within 7 guesses" else: "needed more than 7 guesses")
+    var worst = 0
+    for candidate in 1..=100:
+        let needed = guesses_needed(candidate)
+        if needed > worst:
+            worst = needed
+    print("worst case over 1..=100: {worst} guesses")

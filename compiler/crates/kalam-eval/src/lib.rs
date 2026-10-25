@@ -7,5 +7,7 @@
 pub mod checks;
 pub mod corpus;
 pub mod history;
+pub mod parity;
 pub mod report;
 pub mod scorecard;
+pub mod tiers;

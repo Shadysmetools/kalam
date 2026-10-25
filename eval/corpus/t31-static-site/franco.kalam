@@ -1,0 +1,36 @@
+# Task 31: a static website of three pages that share one layout. Page structure is literal
+# source text; every variable goes through an html"..." hole and is escaped for its context.
+# The site is printed (one page after another) so the escaping can be compared byte for byte.
+haykal Page:
+    file: nass
+    title: nass
+    body: Html
+
+dala nav_link(page: Page) -> Html:
+    khali link = url"/{page.file}"
+    rag3 html"""<a href="{link}">{page.title}</a>"""
+
+dala layout(page: Page, nav: qayma[Html]) -> Html:
+    khali head = html"<head><title>{page.title} | Kalam Cafe</title></head>"
+    khali header = html"<header><nav>{nav}</nav></header>"
+    khali main_part = html"<main><h1>{page.title}</h1>{page.body}</main>"
+    khali footer = html"<footer>Built with Kalam</footer>"
+    rag3 html"<html>{head}<body>{header}{main_part}{footer}</body></html>"
+
+dala contact_body(emails: qayma[nass]) -> Html:
+    khali items = emails.map(dala(e) => html"<li>{e}</li>")
+    rag3 html"<p>Write to us:</p><ul>{items}</ul>"
+
+dala ra2isi():
+    khali visitor = "<script>alert(1)</script>"
+    khali motto = "كلام بسيط & آمن"
+    khali contact = contact_body(["sara@example.com", "a<b>@x.io"])
+    khali pages = [
+        Page(file: "index.html", title: "Home", body: html"<p>Welcome, {visitor}!</p>"),
+        Page(file: "about.html", title: "About Tom & Jerry", body: html"<p>{motto}</p>"),
+        Page(file: "contact.html", title: "Contact", body: contact),
+    ]
+    khali nav = pages.map(nav_link)
+    lekol page fi pages:
+        ektb("== {page.file} ==")
+        ektb(layout(page, nav).render())

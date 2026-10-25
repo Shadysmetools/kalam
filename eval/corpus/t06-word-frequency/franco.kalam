@@ -1,0 +1,32 @@
+# Task 6: word frequency. A Map keeps insertion order, so the report order is defined;
+# ties for "most frequent" go to the word seen first.
+dala normalize(word: nass) -> nass:
+    motghayer cleaned = word.to_lower()
+    lekol mark fi [",", ".", "!", "?", "،", "؟"]:
+        cleaned = cleaned.replace(mark, "")
+    rag3 cleaned
+
+dala count_words(text: nass) -> qamoos[nass, adad]:
+    motghayer counts: qamoos[nass, adad] = {}
+    lekol raw fi text.split(" "):
+        khali word = normalize(raw)
+        law word.is_empty():
+            kammel
+        khali seen = hasab counts.get(word):
+            lama mawgood(n): n
+            lama mafeesh: 0
+        counts[word] = seen + 1
+    rag3 counts
+
+dala ra2isi():
+    khali text = "The cat saw the dog. The dog ran! كتاب جديد، كتاب قديم؟ A cat, a dog. !"
+    khali counts = count_words(text)
+    motghayer best = ""
+    motghayer best_count = 0
+    lekol (word, n) fi counts:
+        ektb("{word}: {n}")
+        law n > best_count:
+            best = word
+            best_count = n
+    ektb("distinct words: {counts.len()}")
+    ektb("most frequent: {best} ({best_count})")

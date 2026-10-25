@@ -1,0 +1,72 @@
+# Task 11: a validated record. Email is opaque: Email.parse is the only way to build one,
+# so every User holds a checked address. Fields are printed one by one (record Show is unspecified).
+ta3dad UserError:
+    EmptyName
+    BadEmail(text: nass)
+    BadAge(value: adad)
+
+talla3 ma2fool haykal Email:
+    address: nass
+
+naffez Email:
+    dala parse(text: nass) -> natiga[Email, UserError]:
+        khali parts = text.split("@")
+        law parts.len() != 2 aw parts[0].is_empty() aw mesh parts[1].contains("."):
+            rag3 fashal(.BadEmail(text: text))
+        rag3 naga7(Email(address: text.to_lower()))
+
+naffez Email ka Show:
+    dala show(nafso) -> nass => nafso.address
+
+ta3dad Role:
+    Member
+    Admin
+
+haykal User:
+    name: nass
+    email: Email
+    age: adad
+    role: Role = .Member
+
+dala make_user(name: nass, email: nass, age: adad) -> natiga[User, UserError]:
+    khali trimmed = name.trim()
+    law trimmed.is_empty():
+        rag3 fashal(.EmptyName)
+    law age < 13 aw age > 120:
+        rag3 fashal(.BadAge(value: age))
+    khali checked = Email.parse(email)?
+    rag3 naga7(User(name: trimmed, email: checked, age: age))
+
+dala role_name(role: Role) -> nass:
+    rag3 hasab role:
+        lama .Member: "member"
+        lama .Admin: "admin"
+
+dala explain(error: UserError) -> nass:
+    rag3 hasab error:
+        lama .EmptyName: "name is empty"
+        lama .BadEmail(text): "bad email: {text}"
+        lama .BadAge(value): "age {value} is outside 13..=120"
+
+dala ra2isi():
+    khali inputs = [
+        ("  Sara  ", "Sara@Example.com", 30),
+        ("", "x@y.io", 20),
+        ("Omar", "omar.example.com", 25),
+        ("Laila", "laila@site", 40),
+        ("Huda", "huda@mail@eg", 22),
+        ("Karim", "karim@mail.eg", 9),
+        ("نور", "noor@mail.eg", 22),
+    ]
+    lekol (name, email, age) fi inputs:
+        hasab make_user(name, email, age):
+            lama naga7(user):
+                ektb("ok: {user.name} <{user.email}>, age {user.age}, {role_name(user.role)}")
+            lama fashal(error):
+                ektb("rejected: {explain(error)}")
+    hasab make_user("Amal", "AMAL@corp.eg", 41):
+        lama naga7(user):
+            khali admin = user.with(role: .Admin)
+            ektb("{admin.name} is {role_name(admin.role)}; the original is {role_name(user.role)}")
+        lama fashal(error):
+            ektb("rejected: {explain(error)}")

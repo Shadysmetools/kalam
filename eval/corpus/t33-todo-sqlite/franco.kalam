@@ -1,0 +1,94 @@
+# Task 33: the T32 todo API, stored in SQLite. Every query is a sql"..." literal, so request
+# values reach the database only as bound parameters (a title that looks like SQL stays a title).
+# Route patterns escape their braces: an unescaped {id} in a string is interpolation (spec 5.7).
+hat std/http.{nafso, HttpError, Request, Response, Router}
+hat std/sql.{nafso, Db}
+
+@derive(Encode)
+haykal Todo:
+    id: adad
+    title: nass
+    done: mante2i
+
+@derive(Row)
+haykal TodoRow:
+    id: adad
+    title: nass
+    done: adad
+
+@derive(Decode)
+haykal NewTodo:
+    title: nass
+
+@derive(Decode)
+haykal TodoUpdate:
+    title: nass
+    done: mante2i
+
+haykal App:
+    db: Db
+
+dala to_todo(row: TodoRow) -> Todo => Todo(id: row.id, title: row.title, done: row.done == 1)
+
+dala flag(done: mante2i) -> adad => law done: 1 walla: 0
+
+dala list_todos(req: Request[App]) -> natiga[Response, HttpError]:
+    khali rows: qayma[TodoRow] = req.app.db.all(sql"SELECT id, title, done FROM todos ORDER BY id")?
+    rag3 naga7(Response.json(rows.map(to_todo)))
+
+dala show_todo(req: Request[App]) -> natiga[Response, HttpError]:
+    khali id = req.path_int("id")?
+    khali query = sql"SELECT id, title, done FROM todos WHERE id = {id}"
+    khali row: ekhtiyari[TodoRow] = req.app.db.one(query)?
+    rag3 hasab row:
+        lama mawgood(found): naga7(Response.json(to_todo(found)))
+        lama mafeesh: fashal(.NotFound)
+
+dala create_todo(req: Request[App]) -> natiga[Response, HttpError]:
+    khali input: NewTodo = req.json()?
+    law input.title.is_empty():
+        rag3 fashal(.BadRequest(message: "title is required"))
+    khali row: ekhtiyari[TodoRow] = req.app.db.one(sql"""
+        INSERT INTO todos (title, done) VALUES ({input.title}, 0)
+        RETURNING id, title, done
+    """)?
+    rag3 hasab row:
+        lama mawgood(created): naga7(Response.json(to_todo(created)).status(201))
+        lama mafeesh: fashal(.Internal)
+
+dala update_todo(req: Request[App]) -> natiga[Response, HttpError]:
+    khali id = req.path_int("id")?
+    khali input: TodoUpdate = req.json()?
+    khali changed = req.app.db.exec(sql"""
+        UPDATE todos SET title = {input.title}, done = {flag(input.done)} WHERE id = {id}
+    """)?
+    law changed == 0:
+        rag3 fashal(.NotFound)
+    rag3 naga7(Response.json(Todo(id: id, title: input.title, done: input.done)))
+
+dala delete_todo(req: Request[App]) -> natiga[Response, HttpError]:
+    khali id = req.path_int("id")?
+    khali removed = req.app.db.exec(sql"DELETE FROM todos WHERE id = {id}")?
+    law removed == 0:
+        rag3 fashal(.NotFound)
+    rag3 naga7(Response.text("").status(204))
+
+dala routes() -> Router[App]:
+    rag3 http.router()
+        .get("/todos", list_todos, access: .Public)
+        .post("/todos", create_todo, access: .Public)
+        .get("/todos/\{id\}", show_todo, access: .Public)
+        .put("/todos/\{id\}", update_todo, access: .Public)
+        .delete("/todos/\{id\}", delete_todo, access: .Public)
+
+dala ra2isi(world: donya) -> natiga[(), AnyError]:
+    khali db = sql.sqlite(world.fs, "todos.db")?
+    khali _ = db.exec(sql"""
+        CREATE TABLE todos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            done INTEGER NOT NULL
+        )
+    """)?
+    http.serve(world.net, port: 8080, router: routes(), app: App(db: db))?
+    rag3 naga7(())

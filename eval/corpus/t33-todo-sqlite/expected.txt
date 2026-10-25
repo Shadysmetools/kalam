@@ -1,0 +1,85 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T33
+case: main
+kind: http
+command: kalam run
+fixtures: empty-cwd (fresh temp dir; Fs rooted there)
+ready: tcp 127.0.0.1:8080 within 10s
+stderr: ignore
+--- http
+> GET /todos
+< 200
+< header content-type ~ application/json
+< header x-content-type-options = nosniff
+< json []
+
+> POST /todos
+> header content-type: application/json
+> body {"title": "buy milk"}
+< 201
+< json {"id": 1, "title": "buy milk", "done": false}
+
+> POST /todos
+> header content-type: application/json
+> body {"title": "x'); DROP TABLE todos; --"}
+< 201
+< json {"id": 2, "title": "x'); DROP TABLE todos; --", "done": false}
+
+> POST /todos
+> header content-type: application/json
+> body {"title": "Robert' OR '1'='1"}
+< 201
+< json {"id": 3, "title": "Robert' OR '1'='1", "done": false}
+
+> POST /todos
+> header content-type: application/json
+> body {"title": ""}
+< 400
+
+> POST /todos
+> header content-type: application/json
+> body {"title": "sneaky", "done": true}
+< 400
+
+> POST /todos
+> header content-type: application/json
+> body {"title":
+< 400
+
+> GET /todos/1
+< 200
+< json {"id": 1, "title": "buy milk", "done": false}
+
+> GET /todos/2
+< 200
+< json {"id": 2, "title": "x'); DROP TABLE todos; --", "done": false}
+
+> GET /todos/99
+< 404
+
+> GET /todos/abc
+< 400
+
+> GET /todos/1%20OR%201=1
+< 400
+
+> PUT /todos/1
+> header content-type: application/json
+> body {"title": "buy milk", "done": true}
+< 200
+< json {"id": 1, "title": "buy milk", "done": true}
+
+> PUT /todos/99
+> header content-type: application/json
+> body {"title": "ghost", "done": true}
+< 404
+
+> DELETE /todos/3
+< 204
+
+> DELETE /todos/3
+< 404
+
+> GET /todos
+< 200
+< json [{"id": 1, "title": "buy milk", "done": true}, {"id": 2, "title": "x'); DROP TABLE todos; --", "done": false}]

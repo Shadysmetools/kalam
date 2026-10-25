@@ -1,0 +1,17 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T04
+case: main
+kind: run
+command: kalam run
+fixtures: none
+stdin: empty
+exit: 0
+stderr: ignore
+--- stdout
+skipped "x7"
+skipped "3.5"
+count = 7
+sum = 194
+average = 27.7 (truncated to one decimal)
+min = -5
+max = 100

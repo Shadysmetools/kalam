@@ -319,7 +319,7 @@ The eval itself changes only through this process.
 
 ## 8. `eval/history.jsonl` schema (`kalam-history/1`)
 
-Each line is one JSON object for one iteration. Lines are never edited. Every value comes from a `kalam-eval` run (A12); nothing in it is estimated.
+Each line is one JSON object for one iteration. Lines are never edited. Every value comes from a `kalam-eval` run (A12); nothing in it is estimated. A metric or tier check that cannot be measured yet has status `not_measurable` (SCORECARD.md §1 calls this `unavailable`; it scores 0 and is never a pass).
 
 ```text
 {
@@ -330,7 +330,10 @@ Each line is one JSON object for one iteration. Lines are never edited. Every va
   "target_milestone": "M1" | "M2" | ... | "M10" | "beta" | "1.0",   # milestone tier (SCORECARD.md §10)
   "tier_mode": "checklist" | "scorecard",
   "tier_score": <0..100|null>,              # checklist tiers only
-  "tier_checks": {"<check id>": "pass" | "fail" | "unavailable", ...},   # every check of the target tier and its ratchets
+  "tier_checks": [{"id": "<check id>", "tier": "<tier that lists it>", "status": "pass" | "fail" | "not_measurable",
+                   "score": <0..100>, "evidence": "<what was measured, or why it could not be>"}, ...],
+                                            # every check of the target tier and its ratchets (ids can repeat across tiers)
+  "milestone_met": true | false,            # true only when every tier check is "pass"
   "commit": "<sha of the evaluated tree>", "base_commit": "<sha of loop/<m> before the iteration>",
   "outcome": "baseline" | "accepted" | "rejected" | "integrity_fail" | "stopped" | "waiting",
              # "stopped": design fork or milestone reached; "waiting": no slice, only time-accumulated checks remain
@@ -343,7 +346,7 @@ Each line is one JSON object for one iteration. Lines are never edited. Every va
   "metrics": [ {"dimension": "D1", "metric": "D1.corpus_tier_pass", "value": <number|bool|null>,
                 "ci95": [<lo>, <hi>] | null, "threshold_mvp": ..., "threshold_beta": ..., "threshold_1_0": ...,
                 "normalized": <0..100|null>, "gate": "<gate id>|null", "eval_version": "...", "commit": "...",
-                "status": "measured|unavailable|n/a|report_only"} , ... one per scorecard metric ... ],
+                "status": "measured|not_measurable|n/a|report_only"} , ... one per scorecard metric ... ],
   "dimensions": {"D1": <0..100>, ..., "D8": <0..100>},
   "composite": <0..100>,
   "weakest": {"dimension": "D?", "weighted_gap": <float>},

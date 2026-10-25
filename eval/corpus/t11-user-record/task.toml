@@ -1,0 +1,21 @@
+# Task manifest (schema: eval/corpus/INDEX.md section 4)
+id = "T11"
+title = "Define record User, validate fields, print"
+tier = "mvp"
+split = "dev"
+kind = "pos"
+section = "B"
+features = ["record", "record.default_field", "record.with", "opaque_type", "impl.assoc_fn", "impl.trait_show", "enum", "result", "try_operator", "tuple.destructure", "string.split", "string.contains", "string.to_lower", "string.trim"]
+spec = ["§9.4", "§9.5", "§9.7", "§13.2", "§14.3", "§11", "§20.1"]
+assumptions = ["G4"]   # INDEX.md section 6
+# Notes: opacity (spec 9.4, 13.2) is only observable from another module; this single-module
+# task shows the intended shape (parse as the only constructor), not the K-error for misuse.
+# String.trim and String.split assumed as in T03/T04 (ASCII spaces, split on every occurrence).
+files = { en = "en.kalam", ar = "ar.kalam", franco = "franco.kalam" }
+reference = "ref.py"   # Python baseline (D4 ratios); its stdout generated expected.txt
+provenance = "EN written by hand from the spec; ar/franco produced by `kalam convert` (S2 scaffold build, keywords, core names and ar punctuation only; identifiers, strings and comments unchanged), round-trip verified. Native-speaker review pending."
+
+[[case]]
+name = "main"
+path = "."
+expect = "run"

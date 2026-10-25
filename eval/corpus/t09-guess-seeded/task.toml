@@ -1,0 +1,27 @@
+# Task manifest (schema: eval/corpus/INDEX.md section 4)
+id = "T09"
+title = "Guess-the-number (seeded RNG)"
+tier = "mvp"
+split = "dev"
+kind = "pos"
+section = "A"
+features = ["rand.seeded", "capability.stdin", "stdin.read_line", "option.try", "match.guard", "while", "range", "if_inline", "digits.arabic_indic_runtime"]
+spec = ["§14.3", "§16.1", "§18.2", "§10.5", "§11", "§6.2"]
+assumptions = ["G4", "G9"]   # INDEX.md section 6
+# Proposed new gaps (reviewer to number them):
+# - Stdin API (as T03): read_line() -> Option[String], None at end of input, terminator removed.
+# - stdin fixture (as T03): proposed header form `stdin: file stdin.txt`.
+# - Rand.seeded: the PRNG algorithm, and whether a seeded generator is a stateful handle or an
+#   immutable value, are unspecified. Assumed: Rand.seeded(n).int(a..=b) -> Int in [a, b], equal
+#   draws for equal seeds. Output never depends on the drawn value, so ref.py (random.Random)
+#   matches any conforming algorithm.
+# - String.trim (as T03): the fixture pads with ASCII spaces only.
+files = { en = "en.kalam", ar = "ar.kalam", franco = "franco.kalam" }
+reference = "ref.py"   # Python baseline (D4 ratios); its stdout generated expected.txt
+fixture_stdin = "stdin.txt"
+provenance = "EN written by hand from the spec; ar/franco produced by `kalam convert` (S2 scaffold build, keywords, core names and ar punctuation only; identifiers, strings and comments unchanged), round-trip verified. Native-speaker review pending."
+
+[[case]]
+name = "main"
+path = "."
+expect = "run"

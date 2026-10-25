@@ -1,0 +1,32 @@
+# Task 6: word frequency. A Map keeps insertion order, so the report order is defined;
+# ties for "most frequent" go to the word seen first.
+fn normalize(word: String) -> String:
+    var cleaned = word.to_lower()
+    for mark in [",", ".", "!", "?", "،", "؟"]:
+        cleaned = cleaned.replace(mark, "")
+    return cleaned
+
+fn count_words(text: String) -> Map[String, Int]:
+    var counts: Map[String, Int] = {}
+    for raw in text.split(" "):
+        let word = normalize(raw)
+        if word.is_empty():
+            continue
+        let seen = match counts.get(word):
+            case Some(n): n
+            case None: 0
+        counts[word] = seen + 1
+    return counts
+
+fn main():
+    let text = "The cat saw the dog. The dog ran! كتاب جديد، كتاب قديم؟ A cat, a dog. !"
+    let counts = count_words(text)
+    var best = ""
+    var best_count = 0
+    for (word, n) in counts:
+        print("{word}: {n}")
+        if n > best_count:
+            best = word
+            best_count = n
+    print("distinct words: {counts.len()}")
+    print("most frequent: {best} ({best_count})")

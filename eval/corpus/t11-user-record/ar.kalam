@@ -1,0 +1,72 @@
+# Task 11: a validated record. Email is opaque: Email.parse is the only way to build one,
+# so every User holds a checked address. Fields are printed one by one (record Show is unspecified).
+تعداد UserError:
+    EmptyName
+    BadEmail(text: نص)
+    BadAge(value: عدد)
+
+علني مغلق هيكل Email:
+    address: نص
+
+نفذ Email:
+    دالة parse(text: نص) -> نتيجة[Email، UserError]:
+        ليكن parts = text.split("@")
+        إذا parts.len() != 2 أو parts[0].is_empty() أو ليس parts[1].contains("."):
+            أرجع فشل(.BadEmail(text: text))
+        أرجع نجاح(Email(address: text.to_lower()))
+
+نفذ Email بصفة Show:
+    دالة show(ذات) -> نص => ذات.address
+
+تعداد Role:
+    Member
+    Admin
+
+هيكل User:
+    name: نص
+    email: Email
+    age: عدد
+    role: Role = .Member
+
+دالة make_user(name: نص، email: نص، age: عدد) -> نتيجة[User، UserError]:
+    ليكن trimmed = name.trim()
+    إذا trimmed.is_empty():
+        أرجع فشل(.EmptyName)
+    إذا age < 13 أو age > 120:
+        أرجع فشل(.BadAge(value: age))
+    ليكن checked = Email.parse(email)؟
+    أرجع نجاح(User(name: trimmed، email: checked، age: age))
+
+دالة role_name(role: Role) -> نص:
+    أرجع حسب role:
+        عندما .Member: "member"
+        عندما .Admin: "admin"
+
+دالة explain(error: UserError) -> نص:
+    أرجع حسب error:
+        عندما .EmptyName: "name is empty"
+        عندما .BadEmail(text): "bad email: {text}"
+        عندما .BadAge(value): "age {value} is outside 13..=120"
+
+دالة رئيسي():
+    ليكن inputs = [
+        ("  Sara  "، "Sara@Example.com"، 30)،
+        (""، "x@y.io"، 20)،
+        ("Omar"، "omar.example.com"، 25)،
+        ("Laila"، "laila@site"، 40)،
+        ("Huda"، "huda@mail@eg"، 22)،
+        ("Karim"، "karim@mail.eg"، 9)،
+        ("نور"، "noor@mail.eg"، 22)،
+    ]
+    لكل (name، email، age) في inputs:
+        حسب make_user(name، email، age):
+            عندما نجاح(user):
+                اطبع("ok: {user.name} <{user.email}>, age {user.age}, {role_name(user.role)}")
+            عندما فشل(error):
+                اطبع("rejected: {explain(error)}")
+    حسب make_user("Amal"، "AMAL@corp.eg"، 41):
+        عندما نجاح(user):
+            ليكن admin = user.with(role: .Admin)
+            اطبع("{admin.name} is {role_name(admin.role)}; the original is {role_name(user.role)}")
+        عندما فشل(error):
+            اطبع("rejected: {explain(error)}")

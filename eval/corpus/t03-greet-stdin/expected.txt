@@ -1,0 +1,16 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T03
+case: main
+kind: run
+command: kalam run
+fixtures: none
+stdin: file stdin.txt
+exit: 0
+stderr: ignore
+--- stdout
+Hello, Sara! مرحبا يا Sara (4 characters)
+Hello, سارة! مرحبا يا سارة (4 characters)
+Hello, Omar! مرحبا يا Omar (4 characters)
+Hello, محمد علي! مرحبا يا محمد علي (8 characters)
+Hello, Zoë! مرحبا يا Zoë (3 characters)
+greeted 5, skipped 1

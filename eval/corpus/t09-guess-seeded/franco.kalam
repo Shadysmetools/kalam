@@ -1,0 +1,52 @@
+# Task 9: guess-the-number with a seeded RNG. The seed comes from standard input: bad lines are
+# rejected and the loop reads again. A binary-search player then guesses the secret.
+# Rand.seeded's algorithm is not specified, so nothing printed depends on the drawn number:
+# the output shows determinism (same seed, same secret) and that 7 guesses always suffice.
+# Assumed API (spec gap, see task.toml): Stdin.read_line() -> Option[String];
+# Rand.seeded(n).int(range) -> Int.
+dala read_seed(stdin: Stdin) -> ekhtiyari[adad]:
+    lekol attempt fi 1..=5:
+        khali text = stdin.read_line()?
+        hasab text.trim().to_int():
+            lama naga7(seed) law seed > 0:
+                ektb("attempt {attempt}: seed accepted")
+                rag3 mawgood(seed)
+            lama naga7(_):
+                ektb("attempt {attempt}: the seed must be positive")
+            lama fashal(_):
+                ektb("attempt {attempt}: \"{text}\" is not a number")
+    rag3 mafeesh
+
+dala guesses_needed(secret: adad) -> adad:
+    motghayer lowest = 1
+    motghayer highest = 100
+    motghayer tries = 0
+    motghayer found = ghalat
+    tool_ma mesh found:
+        khali guess = (lowest + highest) // 2
+        tries += 1
+        law guess < secret:
+            lowest = guess + 1
+        walla law guess > secret:
+            highest = guess - 1
+        walla:
+            found = sa7
+    rag3 tries
+
+dala ra2isi(world: donya):
+    hasab read_seed(world.stdin):
+        lama mafeesh:
+            ektb("no seed given")
+        lama mawgood(seed):
+            khali secret = Rand.seeded(seed).int(1..=100)
+            khali replay = Rand.seeded(seed).int(1..=100)
+            ektb(law secret == replay: "same seed, same secret" walla: "not deterministic")
+            ektb(law secret >= 1 we secret <= 100: "secret is in 1..=100" walla: "out of range")
+            khali tries = guesses_needed(secret)
+            ektb(law tries <= 7: "found within 7 guesses" walla: "needed more than 7 guesses")
+    motghayer worst = 0
+    lekol candidate fi 1..=100:
+        khali needed = guesses_needed(candidate)
+        law needed > worst:
+            worst = needed
+    ektb("worst case over 1..=100: {worst} guesses")

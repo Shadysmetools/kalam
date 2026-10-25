@@ -1,0 +1,52 @@
+# Task 7: palindromes, ignoring case, spaces, punctuation and Arabic diacritics (harakat).
+# arabic_fold (spec 5.3) unifies letter forms (أ إ آ ٱ -> ا, ى -> ي, ة -> ه, ...) but does not
+# remove harakat, so the marks are stripped explicitly. They are written as escapes.
+let HARAKAT = [
+    "\u{064B}",
+    "\u{064C}",
+    "\u{064D}",
+    "\u{064E}",
+    "\u{064F}",
+    "\u{0650}",
+    "\u{0651}",
+    "\u{0652}",
+    "\u{0670}",
+]
+
+let SEPARATORS = [" ", ",", ".", "!", "?", "،", "؟"]
+
+fn clean(text: String) -> String:
+    var out = text.to_lower().arabic_fold()
+    for mark in HARAKAT:
+        out = out.replace(mark, "")
+    for sep in SEPARATORS:
+        out = out.replace(sep, "")
+    return out
+
+fn reverse(text: String) -> String:
+    var out = ""
+    for ch in text.chars():
+        out = "{ch}{out}"
+    return out
+
+fn is_palindrome(text: String) -> Bool:
+    let letters = clean(text)
+    return letters == reverse(letters)
+
+fn main():
+    let samples = [
+        "Racecar",
+        "Never odd or even",
+        "hello",
+        "سُورُ حَمَاهُ بِرَبِّهَا مَحْرُوسُ",
+        "كَمَالُكَ تَحْتَ كَلامِك",
+        "أبا",
+        "مدرسة",
+    ]
+    var found = 0
+    for sample in samples:
+        let verdict = if is_palindrome(sample): "palindrome" else: "not a palindrome"
+        if is_palindrome(sample):
+            found += 1
+        print("\"{sample}\" -> {verdict} ({clean(sample).len_chars()} letters)")
+    print("{found} of {samples.len()} are palindromes")

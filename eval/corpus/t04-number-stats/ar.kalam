@@ -1,0 +1,34 @@
+# Task 4: count, sum, average, minimum and maximum of numbers given as text.
+# Runtime parsing accepts ASCII and Arabic-Indic digits (spec 6.2). The average is printed
+# from Int tenths, so no Float is ever shown.
+دالة parse_all(text: نص) -> قائمة[عدد]:
+    متغير numbers: قائمة[عدد] = []
+    لكل word في text.split(" "):
+        حسب word.to_int():
+            عندما نجاح(n):
+                numbers = numbers.append(n)
+            عندما فشل(_):
+                اطبع("skipped \"{word}\"")
+    أرجع numbers
+
+دالة رئيسي():
+    ليكن numbers = parse_all("12 ٧ 30 ١٠٠ -5 x7 8 ٤٢ 3.5")
+    إذا numbers.is_empty():
+        اطبع("no numbers")
+        أرجع
+    متغير total = 0
+    متغير smallest = numbers[0]
+    متغير largest = numbers[0]
+    لكل n في numbers:
+        total += n
+        إذا n < smallest:
+            smallest = n
+        إذا n > largest:
+            largest = n
+    ليكن count = numbers.len()
+    ليكن tenths = total * 10 // count
+    اطبع("count = {count}")
+    اطبع("sum = {total}")
+    اطبع("average = {tenths // 10}.{tenths % 10} (truncated to one decimal)")
+    اطبع("min = {smallest}")
+    اطبع("max = {largest}")

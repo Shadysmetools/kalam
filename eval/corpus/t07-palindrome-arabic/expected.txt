@@ -1,0 +1,18 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T07
+case: main
+kind: run
+command: kalam run
+fixtures: none
+stdin: empty
+exit: 0
+stderr: ignore
+--- stdout
+"Racecar" -> palindrome (7 letters)
+"Never odd or even" -> palindrome (14 letters)
+"hello" -> not a palindrome (5 letters)
+"سُورُ حَمَاهُ بِرَبِّهَا مَحْرُوسُ" -> palindrome (17 letters)
+"كَمَالُكَ تَحْتَ كَلامِك" -> palindrome (13 letters)
+"أبا" -> palindrome (3 letters)
+"مدرسة" -> not a palindrome (5 letters)
+5 of 7 are palindromes

@@ -1,0 +1,34 @@
+# Task 4: count, sum, average, minimum and maximum of numbers given as text.
+# Runtime parsing accepts ASCII and Arabic-Indic digits (spec 6.2). The average is printed
+# from Int tenths, so no Float is ever shown.
+dala parse_all(text: nass) -> qayma[adad]:
+    motghayer numbers: qayma[adad] = []
+    lekol word fi text.split(" "):
+        hasab word.to_int():
+            lama naga7(n):
+                numbers = numbers.append(n)
+            lama fashal(_):
+                ektb("skipped \"{word}\"")
+    rag3 numbers
+
+dala ra2isi():
+    khali numbers = parse_all("12 ٧ 30 ١٠٠ -5 x7 8 ٤٢ 3.5")
+    law numbers.is_empty():
+        ektb("no numbers")
+        rag3
+    motghayer total = 0
+    motghayer smallest = numbers[0]
+    motghayer largest = numbers[0]
+    lekol n fi numbers:
+        total += n
+        law n < smallest:
+            smallest = n
+        law n > largest:
+            largest = n
+    khali count = numbers.len()
+    khali tenths = total * 10 // count
+    ektb("count = {count}")
+    ektb("sum = {total}")
+    ektb("average = {tenths // 10}.{tenths % 10} (truncated to one decimal)")
+    ektb("min = {smallest}")
+    ektb("max = {largest}")

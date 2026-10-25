@@ -1,0 +1,33 @@
+# Task 8: temperature conversion table. Float values are never printed directly (INDEX.md G3):
+# the exact table uses Int arithmetic, the Float table is shown through rounded Int tenths,
+# and IEEE comparisons choose the labels.
+use std/math
+
+fn to_fahrenheit(celsius: Float) -> Float => celsius * 1.8 + 32.0
+
+fn tenths(value: Float) -> Int => math.round(value * 10.0).to_int().expect("finite temperature")
+
+fn show_tenths(t: Int) -> String:
+    let sign = if t < 0: "-" else: ""
+    let magnitude = if t < 0: -t else: t
+    return "{sign}{magnitude // 10}.{magnitude % 10}"
+
+fn label(fahrenheit: Float) -> String:
+    if fahrenheit <= 32.0:
+        return "freezing"
+    if fahrenheit < 68.0:
+        return "cool"
+    if fahrenheit < 86.0:
+        return "warm"
+    return "hot"
+
+fn main():
+    print("Celsius to Fahrenheit, exact (Int)")
+    for step in 0..8:
+        let celsius = -40 + step * 20
+        print("{celsius} C = {celsius * 9 // 5 + 32} F")
+    print("Celsius to Fahrenheit, one decimal (Float)")
+    for c_tenths in [-400, -175, -33, 0, 150, 217, 366, 375, 1000]:
+        let fahrenheit = to_fahrenheit(c_tenths.to_float() / 10.0)
+        let shown = show_tenths(tenths(fahrenheit))
+        print("{show_tenths(c_tenths)} C = {shown} F ({label(fahrenheit)})")

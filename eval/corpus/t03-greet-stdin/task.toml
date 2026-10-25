@@ -1,0 +1,25 @@
+# Task manifest (schema: eval/corpus/INDEX.md section 4)
+id = "T03"
+title = "Read name, greet (Arabic and Latin input)"
+tier = "mvp"
+split = "dev"
+kind = "pos"
+section = "A"
+features = ["capability.stdin", "stdin.read_line", "string.trim", "string.len_chars", "strings.unicode", "while"]
+spec = ["§16.1", "§6.5", "§9.2", "§20.1"]
+assumptions = ["G4"]   # INDEX.md section 6
+# Proposed new gaps (not yet in INDEX.md section 6; reviewer to number them):
+# - Stdin API: spec 16.1 names the capability (world.stdin) but no method. Assumed:
+#   read_line() -> Option[String], None at end of input, line terminator removed.
+# - stdin fixture: INDEX.md section 3 only allows `stdin: empty`. This task needs stdin bytes;
+#   proposed header form `stdin: file stdin.txt` (bytes of stdin.txt piped, then stdin closed).
+# - String.trim: which whitespace it strips is unspecified; the fixture uses only ASCII spaces.
+files = { en = "en.kalam", ar = "ar.kalam", franco = "franco.kalam" }
+reference = "ref.py"   # Python baseline (D4 ratios); its stdout generated expected.txt
+fixture_stdin = "stdin.txt"
+provenance = "EN written by hand from the spec; ar/franco produced by `kalam convert` (S2 scaffold build, keywords, core names and ar punctuation only; identifiers, strings and comments unchanged), round-trip verified. Native-speaker review pending."
+
+[[case]]
+name = "main"
+path = "."
+expect = "run"

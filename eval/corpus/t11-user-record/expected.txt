@@ -1,0 +1,18 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T11
+case: main
+kind: run
+command: kalam run
+fixtures: none
+stdin: empty
+exit: 0
+stderr: ignore
+--- stdout
+ok: Sara <sara@example.com>, age 30, member
+rejected: name is empty
+rejected: bad email: omar.example.com
+rejected: bad email: laila@site
+rejected: bad email: huda@mail@eg
+rejected: age 9 is outside 13..=120
+ok: نور <noor@mail.eg>, age 22, member
+Amal is admin; the original is member

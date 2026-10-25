@@ -1,0 +1,29 @@
+# kalam-expect/1  (grammar: eval/corpus/INDEX.md section 3)
+task: T08
+case: main
+kind: run
+command: kalam run
+fixtures: none
+stdin: empty
+exit: 0
+stderr: ignore
+--- stdout
+Celsius to Fahrenheit, exact (Int)
+-40 C = -40 F
+-20 C = -4 F
+0 C = 32 F
+20 C = 68 F
+40 C = 104 F
+60 C = 140 F
+80 C = 176 F
+100 C = 212 F
+Celsius to Fahrenheit, one decimal (Float)
+-40.0 C = -40.0 F (freezing)
+-17.5 C = 0.5 F (freezing)
+-3.3 C = 26.1 F (freezing)
+0.0 C = 32.0 F (freezing)
+15.0 C = 59.0 F (cool)
+21.7 C = 71.1 F (warm)
+36.6 C = 97.9 F (hot)
+37.5 C = 99.5 F (hot)
+100.0 C = 212.0 F (hot)

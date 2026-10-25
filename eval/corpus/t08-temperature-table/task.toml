@@ -1,0 +1,24 @@
+# Task manifest (schema: eval/corpus/INDEX.md section 4)
+id = "T08"
+title = "Temperature conversion table"
+tier = "mvp"
+split = "dev"
+kind = "pos"
+section = "A"
+features = ["float.arith", "float.compare", "math.round", "float.to_int", "int.to_float", "int.floor_div", "range", "fn.expr_body", "if_inline"]
+spec = ["§5.6", "§9.2", "§10.5", "§12.1", "§20.1"]
+assumptions = ["G3"]   # INDEX.md section 6: no Float is printed; the task works around G3
+# Proposed new gaps (reviewer to number them):
+# - math.round(Float) -> Float and its tie rule are unspecified; no input here is a tie.
+# - Int.to_float() is named only as a K0601 fix (spec 10.6); assumed to exist and be exact here.
+# Design note: INDEX.md said T08 waits for a G3 decision. This version prints Float results only
+# through Int tenths, so it does not depend on Show for Float. If the founder later fixes Float
+# formatting, a new eval version can add a case that prints Floats directly.
+files = { en = "en.kalam", ar = "ar.kalam", franco = "franco.kalam" }
+reference = "ref.py"   # Python baseline (D4 ratios); its stdout generated expected.txt
+provenance = "EN written by hand from the spec; ar/franco produced by `kalam convert` (S2 scaffold build, keywords, core names and ar punctuation only; identifiers, strings and comments unchanged), round-trip verified. Native-speaker review pending."
+
+[[case]]
+name = "main"
+path = "."
+expect = "run"

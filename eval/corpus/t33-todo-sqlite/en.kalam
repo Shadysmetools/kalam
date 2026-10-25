@@ -1,0 +1,94 @@
+# Task 33: the T32 todo API, stored in SQLite. Every query is a sql"..." literal, so request
+# values reach the database only as bound parameters (a title that looks like SQL stays a title).
+# Route patterns escape their braces: an unescaped {id} in a string is interpolation (spec 5.7).
+use std/http.{self, HttpError, Request, Response, Router}
+use std/sql.{self, Db}
+
+@derive(Encode)
+type Todo:
+    id: Int
+    title: String
+    done: Bool
+
+@derive(Row)
+type TodoRow:
+    id: Int
+    title: String
+    done: Int
+
+@derive(Decode)
+type NewTodo:
+    title: String
+
+@derive(Decode)
+type TodoUpdate:
+    title: String
+    done: Bool
+
+type App:
+    db: Db
+
+fn to_todo(row: TodoRow) -> Todo => Todo(id: row.id, title: row.title, done: row.done == 1)
+
+fn flag(done: Bool) -> Int => if done: 1 else: 0
+
+fn list_todos(req: Request[App]) -> Result[Response, HttpError]:
+    let rows: List[TodoRow] = req.app.db.all(sql"SELECT id, title, done FROM todos ORDER BY id")?
+    return Ok(Response.json(rows.map(to_todo)))
+
+fn show_todo(req: Request[App]) -> Result[Response, HttpError]:
+    let id = req.path_int("id")?
+    let query = sql"SELECT id, title, done FROM todos WHERE id = {id}"
+    let row: Option[TodoRow] = req.app.db.one(query)?
+    return match row:
+        case Some(found): Ok(Response.json(to_todo(found)))
+        case None: Err(.NotFound)
+
+fn create_todo(req: Request[App]) -> Result[Response, HttpError]:
+    let input: NewTodo = req.json()?
+    if input.title.is_empty():
+        return Err(.BadRequest(message: "title is required"))
+    let row: Option[TodoRow] = req.app.db.one(sql"""
+        INSERT INTO todos (title, done) VALUES ({input.title}, 0)
+        RETURNING id, title, done
+    """)?
+    return match row:
+        case Some(created): Ok(Response.json(to_todo(created)).status(201))
+        case None: Err(.Internal)
+
+fn update_todo(req: Request[App]) -> Result[Response, HttpError]:
+    let id = req.path_int("id")?
+    let input: TodoUpdate = req.json()?
+    let changed = req.app.db.exec(sql"""
+        UPDATE todos SET title = {input.title}, done = {flag(input.done)} WHERE id = {id}
+    """)?
+    if changed == 0:
+        return Err(.NotFound)
+    return Ok(Response.json(Todo(id: id, title: input.title, done: input.done)))
+
+fn delete_todo(req: Request[App]) -> Result[Response, HttpError]:
+    let id = req.path_int("id")?
+    let removed = req.app.db.exec(sql"DELETE FROM todos WHERE id = {id}")?
+    if removed == 0:
+        return Err(.NotFound)
+    return Ok(Response.text("").status(204))
+
+fn routes() -> Router[App]:
+    return http.router()
+        .get("/todos", list_todos, access: .Public)
+        .post("/todos", create_todo, access: .Public)
+        .get("/todos/\{id\}", show_todo, access: .Public)
+        .put("/todos/\{id\}", update_todo, access: .Public)
+        .delete("/todos/\{id\}", delete_todo, access: .Public)
+
+fn main(world: World) -> Result[(), AnyError]:
+    let db = sql.sqlite(world.fs, "todos.db")?
+    let _ = db.exec(sql"""
+        CREATE TABLE todos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL,
+            done INTEGER NOT NULL
+        )
+    """)?
+    http.serve(world.net, port: 8080, router: routes(), app: App(db: db))?
+    return Ok(())

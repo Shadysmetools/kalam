@@ -1,0 +1,24 @@
+# Task manifest (schema: eval/corpus/INDEX.md section 4)
+id = "T07"
+title = "Palindrome check (Arabic with diacritics stripped)"
+tier = "mvp"
+split = "dev"
+kind = "pos"
+section = "A"
+features = ["string.arabic_fold", "string.replace", "string.chars", "string.to_lower", "string.len_chars", "module_const", "if_inline"]
+spec = ["§5.3", "§5.7", "§9.2", "§13.4", "§20.1"]
+assumptions = ["G4"]   # INDEX.md section 6
+# Proposed new gaps (reviewer to number them):
+# - String.arabic_fold() as a runtime method (spec 20.1 lists it) is assumed to apply exactly the
+#   spec 5.3 fold table and nothing else (no harakat stripping, no NFKC).
+# - The element type of String.chars() is unspecified; the program only interpolates each element
+#   ("{ch}{out}"), so it works for a Char type or a one-scalar String.
+# - Module-level `let` of a List[String] literal is assumed to be a constant expression (spec 13.4).
+files = { en = "en.kalam", ar = "ar.kalam", franco = "franco.kalam" }
+reference = "ref.py"   # Python baseline (D4 ratios); its stdout generated expected.txt
+provenance = "EN written by hand from the spec; ar/franco produced by `kalam convert` (S2 scaffold build, keywords, core names and ar punctuation only; identifiers, strings and comments unchanged), round-trip verified. Native-speaker review pending."
+
+[[case]]
+name = "main"
+path = "."
+expect = "run"

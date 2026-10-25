@@ -1,0 +1,14 @@
+[package]
+name = "kalam-ast"
+description = "Skin-free abstract syntax tree (spec §8.2) with spans and trivia"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+# Path dependencies (not `workspace = true`) so this crate does not require an edit to the
+# shared root Cargo.toml; switch to workspace deps when the root lists kalam-ast.
+kalam-base = { path = "../kalam-base" }
+kalam-skins = { path = "../kalam-skins" }
