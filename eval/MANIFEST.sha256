@@ -1,25 +1,26 @@
 # kalam-manifest/1 eval-v0.1-draft
 # SHA-256 of every frozen file (eval/FREEZE.json frozen_roots). Written by `kalam-eval freeze`; never edit by hand.
-# append-only eval/history.jsonl bytes=84158 sha256=e1af576cae49192feb69da144d0b50ea0a1c4236f31d0f019e48887026968d40
+# append-only eval/history.jsonl bytes=109894 sha256=83cd665f2506d44ee8d9bcc7e12833750c771b5aab8ec908857b4cc891ac06cc
 8f919f23780dcf480c60f5302650a1178f2750aea009275b707fefd62200ae0c  compiler/crates/kalam-eval/Cargo.toml
+8d6d5047fa187c5be43d139bc2818a001ae21d5fe8ed4a9b39424f1c31dc2f89  compiler/crates/kalam-eval/build.rs
 c865772d17f29ea8cc0f94a3a342aae5c29b5c2fb894a197f057e9ab9d14ed40  compiler/crates/kalam-eval/src/checks.rs
 cffe70ca40fef9d4c50d222762be8131de84b1c9e53ddf1f8c3532d578ea10db  compiler/crates/kalam-eval/src/corpus.rs
 703c85d9df9db31e7c6a415c5986048ab3d74ab724876851380677438a33ff75  compiler/crates/kalam-eval/src/corpus_run.rs
 3ad4820b009973cec555807d54f84d7c2df00330dbdd154e92eebf521283172f  compiler/crates/kalam-eval/src/diagcat.rs
 c3ab9eebf3f88a9a95a97bb4890a5d77beedb3f6e6a8f3dc7868ef3a1eff1edb  compiler/crates/kalam-eval/src/external.rs
 84fcb2986b1e165454f9eb27a90c9e92de2fc6f2c55a9515e772908d5befedbe  compiler/crates/kalam-eval/src/history.rs
-3e2479aaa54b222616f0e019c77b87d1499104ea2c3760ccf94ac2cf12b65617  compiler/crates/kalam-eval/src/holdout.rs
-8c45166b4db91da0c32424e012a0878b20e39a1c2b91baa715f453d2ef1ab1ce  compiler/crates/kalam-eval/src/integrity.rs
+004dd09d8c4d2935205ef270d7ca251b5ffc6d3ef6e5d835772bbd80041b54ce  compiler/crates/kalam-eval/src/holdout.rs
+b1d7de45bb558a32be11120741cef408f3dff22f315250eb15e7ad3cffc48488  compiler/crates/kalam-eval/src/integrity.rs
 37459d453afc97272759372ab6e5f9d1015082d7b7b489a178ce3e5c87ef80de  compiler/crates/kalam-eval/src/lib.rs
 bc3a99578131eb8572a969d5afd8ead0bd2b4eab0bf63e16b08f0f858f69780a  compiler/crates/kalam-eval/src/main.rs
-9ed28a6221f83f750e1f7e7ca2275330bbdeb624920f69cd259b09c6aeb03b3a  compiler/crates/kalam-eval/src/parity.rs
+8969e6bb38ae8b67d5a6271b3b81fcf1d8268f96fc09812f2c3f5c67cd5ab64f  compiler/crates/kalam-eval/src/parity.rs
 6c36b95f585e939b901ef88acdaa00947307301e1d42047c0149e457b144eed6  compiler/crates/kalam-eval/src/ratchet.rs
-bb503c76821d84295c2ff7c5768ac5de18d3a125765b58a7adfd4afbdb3652a8  compiler/crates/kalam-eval/src/report.rs
+1ae316ea810b5943464abb86dc9da51a1d0e6425b60d1cf21f2bf3a84a15a985  compiler/crates/kalam-eval/src/report.rs
 5ce719482fb12d85902600fcc71f079d60f2a8774b46fffa858bb1f83a84f456  compiler/crates/kalam-eval/src/scorecard.rs
-d547244eedb3e1c7c3d4dbdf64d066a061488144db39c7930881c9761cabf437  compiler/crates/kalam-eval/src/suites.rs
+ff5dc84b8c9b6a655ef96abb1d83149ae324cde5b51cc913cd38c75b32bef2f5  compiler/crates/kalam-eval/src/suites.rs
 4ec820323ea14d89a1c5eea36c5ba0fbc96993a7a8c43503627d7faec498e003  compiler/crates/kalam-eval/src/tiers.rs
 46c224d4594dfa5b7f48966893b185a2e79b86ed9f5de534831eb0f304793219  compiler/crates/kalam-eval/tests/holdout.rs
-7ba31ee8686f5c248df580d2627f17d93f3873688e76b09fe6c0c8455d32ffa2  eval/FREEZE.json
+dc99cc0eb06514b2dc93c1b985bdc83907a9c0686e1c05f0fbb651d7ea9f7bc2  eval/FREEZE.json
 3485da3185de9f06c15ee2332555ca6b213ae336c95b9197107a83dce50e73c1  eval/HISTORY-SCHEMA.md
 189095e25056ab4cf20a7c5b58c9ba8b352a6495fdf0ba02add68ca906df2722  eval/LOOP.md
 584f388f59d35ecd955867eedf7c4ba8e239379f8e416131f67a8a3483ece3b2  eval/SCORECARD.md

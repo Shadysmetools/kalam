@@ -317,6 +317,27 @@ impl KeywordTable {
         self.row(concept).spelling(skin)
     }
 
+    /// `word` is a keyword or core name of a skin other than `skin` (with that skin's own
+    /// lookup: Franco variants, Arabic fold). This is the lexer's K0201 test (spec §5.4):
+    /// such a word, used as a plain name, must be declared in the file or written in
+    /// backticks (FOUNDER-QUEUE Q9, Q16). Fixed-ASCII keywords are the same in every skin, so
+    /// they are never cross-skin words.
+    pub fn cross_skin_word(&self, word: &str, skin: Skin) -> Option<WordMatch> {
+        Skin::ALL
+            .into_iter()
+            .filter(|&s| s != skin)
+            .filter_map(|s| self.skin(s).lookup_word(word))
+            .find(|m| matches!(m.kind, Kind::Keyword | Kind::CoreName))
+    }
+
+    /// `word` is reserved in at least one skin (keyword, fixed-ASCII keyword or core name,
+    /// with every skin's own lookup).
+    pub fn reserved_in_some_skin(&self, word: &str) -> bool {
+        Skin::ALL
+            .into_iter()
+            .any(|s| self.skin(s).is_reserved(word))
+    }
+
     /// If `word` is a known never-accepted spelling (for example the digit-leading Franco
     /// `5ali`), the concept it was meant to be.
     pub fn did_you_mean(&self, word: &str) -> Option<Concept> {
@@ -433,6 +454,30 @@ pub fn is_tatweel_or_haraka(c: char) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cross_skin_words_match_the_lexer_rule() {
+        let t = KeywordTable::builtin();
+        // Another skin's keyword or core name, canonical or variant (Franco aliases, Arabic
+        // fold), is a cross-skin word; the file's own words and fixed-ASCII ones are not.
+        let cross = |w: &str, s: Skin| t.cross_skin_word(w, s).map(|m| m.concept);
+        assert_eq!(cross("law", Skin::En), Some(Concept::KwIf));
+        assert_eq!(cross("lw", Skin::Ar), Some(Concept::KwIf));
+        assert_eq!(cross("Some", Skin::Franco), Some(Concept::CoreSome));
+        assert_eq!(
+            cross("\u{0627}\u{0630}\u{0627}", Skin::En),
+            Some(Concept::KwIf)
+        );
+        assert_eq!(cross("if", Skin::En), None);
+        assert_eq!(cross("law", Skin::Franco), None);
+        assert_eq!(cross("unsafe", Skin::Ar), None);
+        assert_eq!(cross("x", Skin::Ar), None);
+        // Reserved in some skin: any skin's own words (all kinds, variants included).
+        assert!(t.reserved_in_some_skin("law"));
+        assert!(t.reserved_in_some_skin("unsafe"));
+        assert!(t.reserved_in_some_skin("None"));
+        assert!(!t.reserved_in_some_skin("total"));
+    }
 
     #[test]
     fn embedded_table_loads_with_expected_shape() {

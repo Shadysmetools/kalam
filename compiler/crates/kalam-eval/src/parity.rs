@@ -80,6 +80,40 @@ pub trait ParseHook {
     fn convert(&self, text: &str, from: Skin, to: Skin) -> Result<String, String>;
     /// `kalam fmt`.
     fn format(&self, text: &str, skin: Skin) -> Result<FmtOut, String>;
+    /// The error diagnostics `kalam check` reports for one file's raw bytes. The default
+    /// checks UTF-8 text through [`ParseHook::parse`]; bytes that are not UTF-8 are
+    /// [`DiagError::NotMeasurable`] (no byte entry point).
+    fn diagnose(&self, bytes: &[u8], skin: Skin) -> Result<Vec<Reported>, DiagError> {
+        let text = std::str::from_utf8(bytes)
+            .map_err(|_| DiagError::NotMeasurable(no_bytes_api(&self.name())))?;
+        self.parse(text, skin)
+            .map(|p| p.errors)
+            .map_err(DiagError::Crash)
+    }
+    /// The entry points [`ParseHook::diagnose`] uses, for evidence strings.
+    fn diag_route(&self) -> String {
+        format!("ParseHook::parse ({})", self.name())
+    }
+}
+
+/// Why [`ParseHook::diagnose`] has no diagnostics for a file.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DiagError {
+    /// The compiler crashed: the file counts as a failure.
+    Crash(String),
+    /// No entry point can check this input (raw non-UTF-8 bytes without a byte API): the
+    /// file is neither passed nor failed, and its suite cannot pass.
+    NotMeasurable(String),
+}
+
+/// The not-measurable reason for a non-UTF-8 file when no byte entry point is linked.
+pub fn no_bytes_api(via: &str) -> String {
+    format!(
+        "not valid UTF-8, and no byte entry point is linked (kalam_driver::check_bytes or \
+         kalam_lexer::lex_bytes; build probe: {}), so nothing can report SEC0100 for it \
+         through {via}",
+        option_env!("KALAM_EVAL_BYTES_API").unwrap_or("not run")
+    )
 }
 
 /// One corpus case as the parity runner sees it.
@@ -471,6 +505,82 @@ pub fn locate(text: &str, start: u32, end: u32) -> (usize, String) {
 pub struct KalamParserHook {
     /// `kalam_parser::parse_source` and KCF on an empty file (probed once at construction).
     probe: Result<(), String>,
+    /// `Ok`: diagnostics go through `kalam_driver::check_source` (`kalam check`,
+    /// FOUNDER-QUEUE Q17). `Err(why)`: the driver does not report parser diagnostics, so the
+    /// parse hook is the fallback.
+    driver: Result<(), String>,
+}
+
+/// A file with a parse error and no lexer error: `kalam check` must report it.
+#[cfg(feature = "parser-hook")]
+const PARSE_ERROR_PROBE: &str = "fn main(:\n";
+
+/// `Ok` when `kalam_driver::check_source` reports every error code the parser reports for
+/// [`PARSE_ERROR_PROBE`].
+#[cfg(feature = "parser-hook")]
+fn driver_runs_the_parser() -> Result<(), String> {
+    let errors = |d: &[kalam_diagnostics::Diagnostic]| -> Vec<String> {
+        d.iter()
+            .filter(|d| d.is_error())
+            .map(|d| d.code.to_string())
+            .collect()
+    };
+    let parser = catch(|| {
+        kalam_parser::parse_source(PARSE_ERROR_PROBE, Skin::En, kalam_base::FileId(0)).diagnostics
+    })
+    .map(|d| errors(&d))?;
+    if parser.is_empty() {
+        return Err("the parser reports no error for the parse-error probe".into());
+    }
+    let driver = catch(|| kalam_driver::check_source("main.kl", PARSE_ERROR_PROBE))?
+        .map(|c| errors(&c.diagnostics))
+        .map_err(|e| format!("not a Kalam path: {}", e.0))?;
+    if parser.iter().all(|c| driver.contains(c)) {
+        Ok(())
+    } else {
+        Err(format!(
+            "kalam_driver::check_source reports {driver:?} where kalam_parser::parse_source \
+             reports {parser:?}: `kalam check` does not run the parser (FOUNDER-QUEUE Q17)"
+        ))
+    }
+}
+
+/// Error diagnostics as [`Reported`], located in `text`.
+#[cfg(feature = "parser-hook")]
+fn reported(text: &str, diagnostics: &[kalam_diagnostics::Diagnostic]) -> Vec<Reported> {
+    diagnostics
+        .iter()
+        .filter(|d| d.is_error())
+        .map(|d| {
+            let (line, context) = locate(text, d.span.start, d.span.end);
+            Reported {
+                code: d.code.to_string(),
+                line,
+                message_en: d.message(Skin::En),
+                context,
+            }
+        })
+        .collect()
+}
+
+/// `kalam_driver::check_bytes` returns a `CheckedFile`, or a `Result` of one.
+#[cfg(all(feature = "parser-hook", kalam_check_bytes))]
+trait IntoChecked {
+    fn into_checked(self) -> Result<kalam_driver::CheckedFile, String>;
+}
+
+#[cfg(all(feature = "parser-hook", kalam_check_bytes))]
+impl IntoChecked for kalam_driver::CheckedFile {
+    fn into_checked(self) -> Result<kalam_driver::CheckedFile, String> {
+        Ok(self)
+    }
+}
+
+#[cfg(all(feature = "parser-hook", kalam_check_bytes))]
+impl IntoChecked for Result<kalam_driver::CheckedFile, kalam_driver::NotKalamFile> {
+    fn into_checked(self) -> Result<kalam_driver::CheckedFile, String> {
+        self.map_err(|e| format!("not a Kalam path: {}", e.0))
+    }
 }
 
 #[cfg(feature = "parser-hook")]
@@ -482,7 +592,46 @@ impl KalamParserHook {
         })
         .map(|_| ())
         .map_err(|e| format!("parse + KCF panicked on an empty file ({e})"));
-        KalamParserHook { probe }
+        KalamParserHook {
+            probe,
+            driver: driver_runs_the_parser(),
+        }
+    }
+
+    /// The entry point for bytes that are not UTF-8: `kalam_driver::check_bytes`, else
+    /// `kalam_lexer::lex_bytes`, else none (detected at build time, see `build.rs`).
+    pub fn bytes_route() -> Option<&'static str> {
+        if cfg!(kalam_check_bytes) {
+            Some("kalam_driver::check_bytes")
+        } else if cfg!(kalam_lex_bytes) {
+            Some("kalam_lexer::lex_bytes (lexer diagnostics only)")
+        } else {
+            None
+        }
+    }
+
+    #[allow(unused_variables)]
+    fn diagnose_bytes(bytes: &[u8], skin: Skin) -> Result<Vec<Reported>, DiagError> {
+        #[cfg(kalam_check_bytes)]
+        {
+            let checked =
+                catch(|| kalam_driver::check_bytes(&Self::path(skin), bytes).into_checked())
+                    .map_err(DiagError::Crash)?
+                    .map_err(DiagError::Crash)?;
+            Ok(reported(&checked.text, &checked.diagnostics))
+        }
+        #[cfg(all(not(kalam_check_bytes), kalam_lex_bytes))]
+        {
+            // spans index the lossy text (each invalid sequence becomes U+FFFD)
+            let out = catch(|| kalam_lexer::lex_bytes(bytes, skin)).map_err(DiagError::Crash)?;
+            Ok(reported(&out.text, &out.lexed.diagnostics))
+        }
+        #[cfg(not(any(kalam_check_bytes, kalam_lex_bytes)))]
+        {
+            Err(DiagError::NotMeasurable(no_bytes_api(
+                "kalam_driver::check_source",
+            )))
+        }
     }
 
     fn path(skin: Skin) -> String {
@@ -537,25 +686,40 @@ impl ParseHook for KalamParserHook {
         catch(|| {
             // `parse_source` returns lexer and parser diagnostics together.
             let out = kalam_parser::parse_source(text, skin, kalam_base::FileId(0));
-            let errors = out
-                .diagnostics
-                .iter()
-                .filter(|d| d.is_error())
-                .map(|d| {
-                    let (line, context) = locate(text, d.span.start, d.span.end);
-                    Reported {
-                        code: d.code.to_string(),
-                        line,
-                        message_en: d.message(Skin::En),
-                        context,
-                    }
-                })
-                .collect();
             Parsed {
-                errors,
+                errors: reported(text, &out.diagnostics),
                 kcf: kalam_syntax::kcf::serialize_in(&out.cst, skin),
             }
         })
+    }
+
+    fn diagnose(&self, bytes: &[u8], skin: Skin) -> Result<Vec<Reported>, DiagError> {
+        let Ok(text) = std::str::from_utf8(bytes) else {
+            return Self::diagnose_bytes(bytes, skin);
+        };
+        if self.driver.is_err() {
+            return self
+                .parse(text, skin)
+                .map(|p| p.errors)
+                .map_err(DiagError::Crash);
+        }
+        catch(|| kalam_driver::check_source(&Self::path(skin), text))
+            .map_err(DiagError::Crash)?
+            .map(|c| reported(text, &c.diagnostics))
+            .map_err(|e| DiagError::Crash(format!("not a Kalam path: {}", e.0)))
+    }
+
+    fn diag_route(&self) -> String {
+        let text = match &self.driver {
+            Ok(()) => "kalam check (kalam_driver::check_source, FOUNDER-QUEUE Q17)".to_string(),
+            Err(why) => format!(
+                "FALLBACK to the harness parse hook (kalam_parser::parse_source), because {why}"
+            ),
+        };
+        let bytes = Self::bytes_route()
+            .map(str::to_string)
+            .unwrap_or_else(|| "no byte entry point linked, so they are not measurable".into());
+        format!("{text}; non-UTF-8 files: {bytes}")
     }
 
     fn convert(&self, text: &str, from: Skin, to: Skin) -> Result<String, String> {
@@ -579,6 +743,108 @@ impl ParseHook for KalamParserHook {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The build script's signature detection (`build.rs`), compiled into the tests.
+    #[allow(dead_code)]
+    #[path = "../../../build.rs"]
+    mod build_script;
+
+    #[test]
+    fn build_probe_accepts_only_the_called_signatures() {
+        use build_script::{detect, signature};
+        let checked = &["Result<CheckedFile,NotKalamFile>", "CheckedFile"][..];
+        let src = "/// doc\npub fn check_bytes(\n    path: &str,\n    bytes: &[u8],\n) -> Result<CheckedFile, NotKalamFile> {\n";
+        assert_eq!(
+            signature(src, "check_bytes"),
+            Some((
+                vec!["&str".to_string(), "&[u8]".to_string()],
+                "Result<CheckedFile,NotKalamFile>".to_string()
+            ))
+        );
+        assert_eq!(
+            detect(src, "check_bytes", &["&str", "&[u8]"], checked),
+            Ok(true)
+        );
+        assert_eq!(
+            detect(
+                "pub fn check_source(p: &str) {}",
+                "check_bytes",
+                &["&str", "&[u8]"],
+                checked
+            ),
+            Ok(false)
+        );
+        let other = "pub fn check_bytes(bytes: Vec<u8>) -> CheckedFile {";
+        let why = detect(other, "check_bytes", &["&str", "&[u8]"], checked).unwrap_err();
+        assert!(why.contains("Vec<u8>"), "{why}");
+        let lex = "pub fn lex_bytes(bytes: &[u8], skin: Skin) -> BytesLexOutput {";
+        let lex_sig = (&["&[u8]", "Skin"][..], &["BytesLexOutput"][..]);
+        assert_eq!(detect(lex, "lex_bytes", lex_sig.0, lex_sig.1), Ok(true));
+        let old = "pub fn lex_bytes(bytes: &[u8], skin: Skin, file: FileId) -> LexOutput {";
+        assert!(detect(old, "lex_bytes", lex_sig.0, lex_sig.1).is_err());
+        // the cfg this build was compiled with agrees with the lexer source it was built from
+        let lexer_src = include_str!("../../kalam-lexer/src/lib.rs");
+        assert_eq!(
+            detect(lexer_src, "lex_bytes", lex_sig.0, lex_sig.1) == Ok(true),
+            cfg!(kalam_lex_bytes)
+        );
+    }
+
+    #[test]
+    fn default_diagnose_parses_text_and_never_guesses_about_bytes() {
+        let hook = NoParserHook;
+        assert!(matches!(
+            hook.diagnose(b"fn main():\n", Skin::En),
+            Err(DiagError::Crash(_))
+        ));
+        match hook.diagnose(b"\xff", Skin::En) {
+            Err(DiagError::NotMeasurable(why)) => {
+                assert!(
+                    why.contains("not valid UTF-8") && why.contains("check_bytes"),
+                    "{why}"
+                )
+            }
+            other => panic!("{other:?}"),
+        }
+        assert!(hook.diag_route().starts_with("ParseHook::parse"));
+    }
+
+    /// FOUNDER-QUEUE Q17: diagnostics come from `kalam check` (`kalam_driver::check_source`)
+    /// whenever it runs the parser; the parse hook is used only as a named fallback.
+    #[cfg(feature = "parser-hook")]
+    #[test]
+    fn diagnostics_go_through_kalam_check_when_it_parses() {
+        let hook = KalamParserHook::new();
+        let route = hook.diag_route();
+        let codes = |r: Vec<Reported>| -> Vec<(String, usize)> {
+            r.into_iter().map(|r| (r.code, r.line)).collect()
+        };
+        // a lexer error (leading-zero literal) and a parse error in one file
+        let src = "fn main():\n    let x = 007\n    print((\n";
+        let got = codes(hook.diagnose(src.as_bytes(), Skin::En).unwrap());
+        let check = kalam_driver::check_source("main.kl", src).unwrap();
+        let via_check: Vec<(String, usize)> = codes(reported(src, &check.diagnostics));
+        let via_parse = codes(hook.parse(src, Skin::En).unwrap().errors);
+        match driver_runs_the_parser() {
+            Ok(()) => {
+                assert!(
+                    route.starts_with("kalam check (kalam_driver::check_source"),
+                    "{route}"
+                );
+                assert_eq!(got, via_check);
+            }
+            Err(why) => {
+                assert!(route.starts_with("FALLBACK"), "{route}");
+                assert!(route.contains(&why), "{route}");
+                assert_eq!(got, via_parse);
+            }
+        }
+        assert!(!got.is_empty());
+        // the probe itself: the parser reports the probe's error
+        let p = kalam_parser::parse_source(PARSE_ERROR_PROBE, Skin::En, kalam_base::FileId(0));
+        assert!(p.diagnostics.iter().any(|d| d.is_error()));
+        assert!(route.contains("non-UTF-8 files:"), "{route}");
+    }
 
     #[test]
     fn real_hook_never_reports_a_stub_as_measured() {

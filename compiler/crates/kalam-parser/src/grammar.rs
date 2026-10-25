@@ -170,12 +170,15 @@ impl<'t> Parser<'t> {
             TokenKind::Keyword(Concept::KwLet) => self.const_decl(),
             TokenKind::Keyword(Concept::KwExtern) => self.extern_decl(),
             TokenKind::Keyword(Concept::KwTest) => self.test_decl(),
-            _ => {
-                let span = self.cur_span();
-                self.error_at(codes::EXPECTED_ITEM, span);
-                self.skip_line();
-                ItemKind::Error
-            }
+            _ => match self.item_mistake() {
+                Some(kind) => kind,
+                None => {
+                    let span = self.cur_span();
+                    self.error_at(codes::EXPECTED_ITEM, span);
+                    self.skip_line();
+                    ItemKind::Error
+                }
+            },
         };
         let span = self.span_from(start);
         self.finish_node(m);
@@ -226,8 +229,19 @@ impl<'t> Parser<'t> {
     pub(crate) fn fn_decl(&mut self, trait_member: bool) -> FnDecl {
         let start = self.start();
         let sig = self.fn_sig();
-        let body = if self.at_op(Op::Colon) {
-            FnBody::Block(self.block())
+        let body = self.fn_body(trait_member, None);
+        FnDecl {
+            sig,
+            body,
+            span: self.span_from(start),
+        }
+    }
+
+    /// The body after a signature. `owner`: a mistake already reported for this function
+    /// (K0902), which a `{ … }` body adds its edits to instead of a second report.
+    pub(crate) fn fn_body(&mut self, trait_member: bool, owner: Option<usize>) -> FnBody {
+        if self.at_op(Op::Colon) || self.at_op(Op::LBrace) {
+            FnBody::Block(self.block_owned(owner).0)
         } else if self.eat_op(Op::FatArrow) {
             let e = self.expr();
             self.end_line(None);
@@ -243,11 +257,6 @@ impl<'t> Parser<'t> {
                 inline: false,
                 span: self.cur_span(),
             })
-        };
-        FnDecl {
-            sig,
-            body,
-            span: self.span_from(start),
         }
     }
 
@@ -290,9 +299,18 @@ impl<'t> Parser<'t> {
         }
         let t = self.bump();
         let name = self.word_ident(t);
-        let ty = if self.expect_op(Op::Colon, "`:` and a type") {
+        let ty = if self.at_op(Op::Colon) {
+            self.bump();
             self.ty()
+        } else if let Some(untyped) = self.untyped.as_mut() {
+            // After `def` (K0902): the fix gives this parameter a `_` type hole.
+            untyped.push(name.span.end);
+            Type {
+                kind: TypeKind::Error,
+                span: name.span,
+            }
         } else {
+            self.expected("`:` and a type");
             Type {
                 kind: TypeKind::Error,
                 span: self.cur_span(),
@@ -312,7 +330,7 @@ impl<'t> Parser<'t> {
     }
 
     /// An item name: an identifier, or a core name (`main`); K0413 is name resolution's job.
-    fn decl_name(&mut self, what: &str) -> Name {
+    pub(crate) fn decl_name(&mut self, what: &str) -> Name {
         match self.peek() {
             TokenKind::Ident | TokenKind::Core(_) => {
                 let t = self.bump();
@@ -329,6 +347,9 @@ impl<'t> Parser<'t> {
     }
 
     pub(crate) fn generics(&mut self) -> Vec<GenericParam> {
+        if self.at_op(Op::Lt) && self.nth(1) == TokenKind::Ident {
+            return self.angle_generics();
+        }
         if !self.at_op(Op::LBracket) {
             return Vec::new();
         }
@@ -358,7 +379,7 @@ impl<'t> Parser<'t> {
 
     /// `: NEWLINE INDENT` opening an indented member list. Returns false (after reporting)
     /// if there is no indented block.
-    fn open_body(&mut self) -> bool {
+    pub(crate) fn open_body(&mut self) -> bool {
         if !self.at_op(Op::Colon) {
             self.expected("`:`");
             self.skip_line();
@@ -385,7 +406,10 @@ impl<'t> Parser<'t> {
     }
 
     /// Parses members until the closing DEDENT, recovering line by line.
-    fn body_members<T>(&mut self, mut member: impl FnMut(&mut Self) -> Option<T>) -> Vec<T> {
+    pub(crate) fn body_members<T>(
+        &mut self,
+        mut member: impl FnMut(&mut Self) -> Option<T>,
+    ) -> Vec<T> {
         let mut out = Vec::new();
         loop {
             let before = self.pos;
@@ -427,6 +451,9 @@ impl<'t> Parser<'t> {
             let t = self.ty();
             self.end_line(None);
             TypeBody::Alias(t)
+        } else if self.at_op(Op::LBrace) {
+            self.brace_record(None, false);
+            TypeBody::Record(Vec::new())
         } else if self.open_body() {
             TypeBody::Record(self.body_members(|p| p.field_decl()))
         } else {
@@ -439,7 +466,7 @@ impl<'t> Parser<'t> {
         })
     }
 
-    fn field_decl(&mut self) -> Option<FieldDecl> {
+    pub(crate) fn field_decl(&mut self) -> Option<FieldDecl> {
         let start = self.start();
         let attrs = self.attributes();
         if !self.at_word() {
@@ -477,7 +504,10 @@ impl<'t> Parser<'t> {
         self.bump(); // enum
         let name = self.decl_name("an enum name");
         let generics = self.generics();
-        let variants = if self.open_body() {
+        let variants = if self.at_op(Op::LBrace) {
+            self.brace_record(None, true);
+            Vec::new()
+        } else if self.open_body() {
             self.body_members(|p| p.variant())
         } else {
             Vec::new()
@@ -534,7 +564,10 @@ impl<'t> Parser<'t> {
         self.bump(); // trait
         let name = self.decl_name("a trait name");
         let generics = self.generics();
-        let members = if self.open_body() {
+        let members = if self.at_op(Op::LBrace) {
+            self.brace_members();
+            Vec::new()
+        } else if self.open_body() {
             self.body_members(|p| {
                 if p.at_kw(Concept::KwFn) {
                     Some(p.fn_decl(true))
@@ -555,15 +588,22 @@ impl<'t> Parser<'t> {
     }
 
     fn impl_decl(&mut self) -> ItemKind {
+        let impl_start = self.start();
         self.bump(); // impl
         let generics = self.generics();
         let ty = self.ty();
-        let as_trait = if self.eat_kw(Concept::KwAs) {
-            Some(self.ty())
+        let (ty, as_trait) = if self.eat_kw(Concept::KwAs) {
+            (ty, Some(self.ty()))
+        } else if self.at_kw(Concept::KwFor) {
+            let (target, tr) = self.impl_for(impl_start, ty);
+            (target, Some(tr))
         } else {
-            None
+            (ty, None)
         };
-        let members = if self.open_body() {
+        let members = if self.at_op(Op::LBrace) {
+            self.brace_members();
+            Vec::new()
+        } else if self.open_body() {
             self.body_members(|p| {
                 let start = p.start();
                 let attrs = p.attributes();
@@ -593,8 +633,11 @@ impl<'t> Parser<'t> {
         })
     }
 
-    fn const_decl(&mut self) -> ItemKind {
-        self.bump(); // let
+    pub(crate) fn const_decl(&mut self) -> ItemKind {
+        let let_tok = self.bump(); // `let`, or a `const` already reported (K0912)
+        if self.at_let_mut() {
+            self.module_let_mut(let_tok);
+        }
         let name = self.decl_name("a name");
         let ty = if self.eat_op(Op::Colon) {
             Some(self.ty())
@@ -648,6 +691,16 @@ impl<'t> Parser<'t> {
 
     /// `block = ":" ( NEWLINE INDENT stmt { stmt } DEDENT | simple_line NEWLINE )`
     pub(crate) fn block(&mut self) -> Block {
+        self.block_owned(None).0
+    }
+
+    /// [`Self::block`], also accepting `{ … }` (K0905). `owner`: a diagnostic already
+    /// reported for this construct, which takes the brace edits instead of a new K0905.
+    /// Returns the block and the diagnostic that owns its braces, if any.
+    pub(crate) fn block_owned(&mut self, owner: Option<usize>) -> (Block, Option<usize>) {
+        if self.at_op(Op::LBrace) {
+            return self.brace_block(owner);
+        }
         let m = self.start_node(SyntaxKind::Block);
         let start = self.start();
         let b = if !self.at_op(Op::Colon) {
@@ -708,7 +761,7 @@ impl<'t> Parser<'t> {
             }
         };
         self.finish_node(m);
-        b
+        (b, None)
     }
 
     /// Statements up to and including the block's DEDENT.
@@ -750,6 +803,18 @@ impl<'t> Parser<'t> {
     pub(crate) fn stmt(&mut self) -> Stmt {
         let start = self.start();
         let mark = self.diags.len();
+        self.line_done = false;
+        if self.peek() == TokenKind::Ident {
+            let m = self.start_node(SyntaxKind::Stmt);
+            let found = self.stmt_mistake();
+            self.finish_node(m);
+            if let Some(kind) = found {
+                return Stmt {
+                    kind,
+                    span: self.span_from(start),
+                };
+            }
+        }
         let kind = match self.peek() {
             TokenKind::Keyword(Concept::KwIf) => {
                 let m = self.start_node(SyntaxKind::IfForm);
@@ -763,13 +828,19 @@ impl<'t> Parser<'t> {
             TokenKind::Keyword(Concept::KwMatch) => StmtKind::Expr(self.match_form()),
             TokenKind::Keyword(Concept::KwFor) => {
                 let m = self.start_node(SyntaxKind::ForStmt);
-                self.bump();
-                let pat = self.pattern();
-                self.expect_kw(Concept::KwIn, "`in`");
-                let iter = self.expr();
-                let body = self.block();
+                let for_tok = self.bump();
+                let kind = if self.at_c_for() {
+                    self.c_for(for_tok)
+                } else {
+                    let pat = self.pattern();
+                    self.expect_kw(Concept::KwIn, "`in`");
+                    let iter = self.expr();
+                    self.check_range_call(&iter);
+                    let body = self.block();
+                    StmtKind::For { pat, iter, body }
+                };
                 self.finish_node(m);
-                StmtKind::For { pat, iter, body }
+                kind
             }
             TokenKind::Keyword(Concept::KwWhile) => {
                 let m = self.start_node(SyntaxKind::WhileStmt);
@@ -839,37 +910,32 @@ impl<'t> Parser<'t> {
                 }
             }
             TokenKind::Keyword(Concept::KwLet) => {
-                self.bump();
-                let pat = self.pattern();
-                let ty = if self.eat_op(Op::Colon) {
-                    Some(self.ty())
+                let let_tok = self.bump();
+                if self.at_let_mut() {
+                    // `let mut x` (K0912): parsed as `var x`.
+                    self.let_mut(let_tok);
+                    self.var_rest(forms, let_tok.span.start)
                 } else {
-                    None
-                };
-                let (value, nl) = if self.expect_op(Op::Eq, "`=`") {
-                    self.rhs(forms)
-                } else {
-                    (self.error_expr(), true)
-                };
-                (StmtKind::Let { pat, ty, value }, nl)
+                    self.let_rest(forms, let_tok.span.start)
+                }
             }
             TokenKind::Keyword(Concept::KwVar) => {
-                self.bump();
-                let name = self.ident("a variable name");
-                let ty = if self.eat_op(Op::Colon) {
-                    Some(self.ty())
-                } else {
-                    None
-                };
-                let (value, nl) = if self.expect_op(Op::Eq, "`=`") {
-                    self.rhs(forms)
-                } else {
-                    (self.error_expr(), true)
-                };
-                (StmtKind::Var { name, ty, value }, nl)
+                let var_tok = self.bump();
+                self.var_rest(forms, var_tok.span.start)
             }
+            TokenKind::Ident if self.at_const_stmt() => {
+                // `const x = …` (K0912): parsed as `let x = …`.
+                let t = self.cur();
+                self.const_word();
+                self.bump();
+                self.let_rest(forms, t.span.start)
+            }
+            TokenKind::Ident if self.at_throw() => self.throw_stmt(),
+            TokenKind::Op(Op::Plus | Op::Minus) if self.at_prefix_incr() => self.prefix_incr(),
             _ => {
+                self.pending_incr = None;
                 let e = self.expr();
+                self.finish_postfix_incr(&e);
                 let op = match self.peek() {
                     TokenKind::Op(Op::Eq) => Some(AssignOp::Assign),
                     TokenKind::Op(Op::PlusEq) => Some(AssignOp::Add),
@@ -904,6 +970,47 @@ impl<'t> Parser<'t> {
         }
     }
 
+    /// `pattern [":" type] "=" rhs` after `let`; `binding_start` is the `let` (or the
+    /// reported `const`).
+    fn let_rest(&mut self, forms: bool, binding_start: u32) -> (StmtKind, bool) {
+        self.block_lambda = None;
+        let pat = self.pattern();
+        let ty = if self.eat_op(Op::Colon) {
+            Some(self.ty())
+        } else {
+            None
+        };
+        let (value, nl) = if self.expect_op(Op::Eq, "`=`") {
+            self.rhs(forms)
+        } else {
+            (self.error_expr(), true)
+        };
+        self.hoist_block_lambda(binding_start, &pat, ty.is_some());
+        (StmtKind::Let { pat, ty, value }, nl)
+    }
+
+    /// `NAME [":" type] "=" rhs` after `var` (or a reported `let mut`).
+    fn var_rest(&mut self, forms: bool, binding_start: u32) -> (StmtKind, bool) {
+        self.block_lambda = None;
+        let name = self.ident("a variable name");
+        let ty = if self.eat_op(Op::Colon) {
+            Some(self.ty())
+        } else {
+            None
+        };
+        let (value, nl) = if self.expect_op(Op::Eq, "`=`") {
+            self.rhs(forms)
+        } else {
+            (self.error_expr(), true)
+        };
+        let pat = Pat {
+            kind: PatKind::Bind(name.clone()),
+            span: name.span,
+        };
+        self.hoist_block_lambda(binding_start, &pat, ty.is_some());
+        (StmtKind::Var { name, ty, value }, nl)
+    }
+
     /// The right-hand side after a binding head: an expression, or (statement position
     /// only) a multi-line `if`/`match` value form (§8.3 rule 1, §10.3).
     fn rhs(&mut self, forms: bool) -> (Expr, bool) {
@@ -924,7 +1031,7 @@ impl<'t> Parser<'t> {
         let if_span = self.cur_span();
         self.bump(); // if
         let cond = self.or_expr();
-        if !self.at_op(Op::Colon) {
+        if !self.at_op(Op::Colon) && !self.at_op(Op::LBrace) {
             self.expected("`:`");
             self.skip_line();
             return (
@@ -937,8 +1044,12 @@ impl<'t> Parser<'t> {
         }
         let mut branches = Vec::new();
         let mut else_body = None;
-        if self.nth(1) == TokenKind::Newline {
-            let body = self.block();
+        // The diagnostic owning this chain's `{ … }` bodies (K0905), so one chain written
+        // with braces is one finding.
+        let mut owner = None;
+        if self.at_op(Op::LBrace) || self.nth(1) == TokenKind::Newline {
+            let (body, o) = self.block_owned(None);
+            owner = o;
             branches.push(IfBranch { cond, body });
         } else {
             // One token decides (§8.4 point 1): read a simple_line, then `else` or not.
@@ -980,15 +1091,41 @@ impl<'t> Parser<'t> {
             };
             branches.push(IfBranch { cond, body });
         }
-        // Block-form `else if` / `else` clauses on the following lines.
-        while self.at_kw(Concept::KwElse) {
-            self.bump();
+        // Block-form `else if` / `else` clauses on the following lines (and `elif`, K0903).
+        loop {
+            if owner.is_some()
+                && self.peek() == TokenKind::Newline
+                && (self.nth(1) == TokenKind::Keyword(Concept::KwElse)
+                    || self.nth_plain(1) == Some("elif"))
+            {
+                // `}` then `else` on the next line.
+                self.bump();
+            }
+            if self.at_elif() {
+                self.elif_word();
+                let cond = self.or_expr();
+                let (body, o) = self.block_owned(owner);
+                owner = owner.or(o);
+                branches.push(IfBranch { cond, body });
+                continue;
+            }
+            if !self.at_kw(Concept::KwElse) {
+                break;
+            }
+            let else_span = self.bump().span;
             if self.eat_kw(Concept::KwIf) {
                 let cond = self.or_expr();
-                let body = self.block();
+                let chain = if self.at_op(Op::LBrace) && owner.is_none() {
+                    // `else if (c) {` (K0903).
+                    Some(self.else_if_braces(else_span, &cond))
+                } else {
+                    owner
+                };
+                let (body, o) = self.block_owned(chain);
+                owner = owner.or(o);
                 branches.push(IfBranch { cond, body });
             } else {
-                else_body = Some(self.block());
+                else_body = Some(self.block_owned(owner).0);
                 break;
             }
         }
@@ -1018,10 +1155,17 @@ impl<'t> Parser<'t> {
         let start = self.start();
         self.bump(); // match
         let scrutinee = Box::new(self.expr());
-        let arms = if self.open_body() {
+        let arms = if self.at_op(Op::LBrace) {
+            self.brace_match(&scrutinee, start);
+            Vec::new()
+        } else if self.open_body() {
+            // One K0925 for every arm of this `match` written with `=>`/`->`.
+            let mut owner = None;
             self.body_members(|p| {
                 if p.at_kw(Concept::KwCase) {
-                    Some(p.case_arm())
+                    Some(p.case_arm(true, &mut owner))
+                } else if p.at_bare_arm() {
+                    Some(p.case_arm(false, &mut owner))
                 } else {
                     p.expected("`case`");
                     p.skip_line();
@@ -1038,16 +1182,23 @@ impl<'t> Parser<'t> {
         }
     }
 
-    fn case_arm(&mut self) -> CaseArm {
+    /// `case pattern [if guard] block`; `has_case == false` for an arm written without
+    /// `case` (`P => e`, K0925), which is reported here.
+    pub(crate) fn case_arm(&mut self, has_case: bool, owner: &mut Option<usize>) -> CaseArm {
         let m = self.start_node(SyntaxKind::CaseArm);
         let start = self.start();
-        self.bump(); // case
+        if has_case {
+            self.bump(); // case
+        } else {
+            self.bare_arm(owner);
+        }
         let pat = self.pattern();
         let guard = if self.eat_kw(Concept::KwIf) {
             Some(self.or_expr())
         } else {
             None
         };
+        self.arm_arrow(owner);
         let body = self.block();
         self.finish_node(m);
         CaseArm {
@@ -1061,6 +1212,9 @@ impl<'t> Parser<'t> {
     /// Ends a logical line. If something else is there, reports it (unless an error was
     /// already reported since `mark`) and skips the rest of the line.
     pub(crate) fn end_line(&mut self, mark: Option<usize>) {
+        if std::mem::take(&mut self.line_done) || self.brace_depth > 0 {
+            return;
+        }
         match self.peek() {
             TokenKind::Newline => {
                 self.bump();
@@ -1194,7 +1348,7 @@ impl<'t> Parser<'t> {
 
 /// `place = IDENT { "." member | "[" expr "]" }` (spec §8.2; the root must be a `var`,
 /// which name resolution checks).
-fn is_place(e: &Expr) -> bool {
+pub(crate) fn is_place(e: &Expr) -> bool {
     match &e.kind {
         ExprKind::Name(NameKind::Ident(_)) => true,
         ExprKind::Member { base, .. } | ExprKind::Index { base, .. } => is_place(base),

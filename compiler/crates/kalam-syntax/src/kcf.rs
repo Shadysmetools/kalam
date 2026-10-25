@@ -713,14 +713,16 @@ impl Ser {
         self.rec("/S");
     }
 
-    /// Hole code is code (§4.4): it is re-lexed in the file's skin, exactly as the parser
-    /// does, and serialized like the rest of the file.
+    /// Hole code is code (§4.4): it is re-lexed in the file's skin as a fragment, exactly as
+    /// the parser does (`lex_fragment`: a hole cannot see the file's declarations, so the
+    /// undefined-name half of K0201 must not turn a name into a keyword here, even in a hole
+    /// that spans lines), and serialized like the rest of the file.
     fn hole(&mut self, code: &str, depth: u32) {
         if depth > MAX_HOLE_DEPTH {
             self.text("R", code);
             return;
         }
-        let lexed = kalam_lexer::lex(code, self.skin, FileId(0));
+        let lexed = kalam_lexer::lex_fragment(code, self.skin, FileId(0));
         let slice = |start: u32, end: u32| -> &str {
             let (a, b) = (start.min(end) as usize, start.max(end) as usize);
             code.get(a..b).unwrap_or("")

@@ -2,11 +2,23 @@
 //! strings, comments and layout (INDENT / DEDENT / NEWLINE).
 //!
 //! Spec references: §5 (lexical structure), §6 (D7: RTL, digits, punctuation), §7 (keywords).
-//! ARCHITECTURE.md §5 describes the design and §5.4 lists what this scaffold still defers:
-//! NFC verification (SEC0101), unassigned code points (SEC0112 needs the Unicode 16.0
-//! tables), exact XID and Script data (the single-script check SEC0105 uses a block table
-//! for the spoofing-relevant scripts), interpolation sub-lexing, and K0201 for an undeclared
-//! word of another skin inside an interpolation hole ([`lex_fragment`], Q9).
+//! ARCHITECTURE.md §5 describes the design.
+//!
+//! **Unicode data** (FOUNDER-QUEUE Q18). `unicode_tables.rs` is generated from Python's
+//! `unicodedata` at Unicode 16.0, the version spec §5.1 pins, by
+//! `compiler/tools/gen_unicode_tables.py`. It gives NFC verification (SEC0101), unassigned
+//! code points (General_Category Cn, SEC0112) and `Extended_Pictographic`. Rust's own
+//! `char` properties follow a newer Unicode, so a character unassigned in 16.0 is never
+//! taken as a letter or digit. `unicodedata` has no Script property, so the single-script
+//! check (SEC0105) still uses a hand-written block table for the spoofing-relevant scripts
+//! ([`script_of`]); identifiers use `char::is_alphabetic` as a stand-in for `XID_Start`.
+//!
+//! **Bytes.** [`lex_bytes`] is the entry point for a file read from disk: invalid UTF-8 is
+//! SEC0100 (with its byte offset), and the rest of the file is lexed with U+FFFD in place
+//! of each invalid sequence.
+//!
+//! Still deferred: interpolation sub-lexing, and K0201 for an undeclared word of another
+//! skin inside an interpolation hole ([`lex_fragment`], Q9).
 //!
 //! K0201 (spec §5.4): another skin's keyword, core name or Franco variant is reported where
 //! reading it as a name is a syntax error (`word()`: it is followed by another word) or an
@@ -16,10 +28,19 @@
 //! string inside a multi-byte Arabic character.
 
 use std::collections::HashSet;
+use std::ops::Deref;
 
 use kalam_base::{FileId, Skin, Span};
 use kalam_diagnostics::{Diagnostic, Fix};
 use kalam_skins::{is_tatweel_or_haraka, Concept, KeywordTable, Kind, SkinTable, Spelling};
+
+use unicode::{is_extended_pictographic, is_unassigned};
+/// The Unicode version of the lexer's character data (spec §5.1 pins 16.0 for v0.1).
+pub use unicode_tables::UNICODE_VERSION;
+
+mod unicode;
+#[rustfmt::skip]
+mod unicode_tables;
 
 /// ASCII operators and punctuation (spec §5.9). `،` and `؟` in `ar` files lex as
 /// [`Op::Comma`] and [`Op::Question`] with [`TokenFlags::arabic_glyph`] set.
@@ -148,6 +169,97 @@ pub fn lex_fragment(code: &str, skin: Skin, file: FileId) -> LexOutput {
     run_lexer(code, skin, file, KeywordTable::builtin(), true)
 }
 
+/// What [`lex_bytes`] produced: the decoded `text` and the lexer output for it. Every span
+/// indexes `text`, not the input bytes. Line numbers are the same in both, because an invalid
+/// sequence never includes a LF byte. Derefs to [`LexOutput`].
+#[derive(Clone, Debug, Default)]
+pub struct BytesLexOutput {
+    /// The input with each invalid UTF-8 sequence (a maximal subpart, as in
+    /// `String::from_utf8_lossy`) replaced by U+FFFD. Equal to the input when it is valid.
+    pub text: String,
+    pub lexed: LexOutput,
+}
+
+impl Deref for BytesLexOutput {
+    type Target = LexOutput;
+
+    fn deref(&self) -> &LexOutput {
+        &self.lexed
+    }
+}
+
+/// Lexes one file as read from disk (spec §4.1, §5.1): the entry point for callers that
+/// hold bytes (the driver, the eval harness). Each run of invalid UTF-8 (an invalid byte, an
+/// overlong form, an encoded surrogate, a value above U+10FFFF, a sequence cut short) is one
+/// SEC0100 diagnostic. Its span covers the U+FFFD characters that replace it in
+/// [`BytesLexOutput::text`], and its args give the original byte `offset` and the `bytes` in
+/// hex. The rest of the file is then lexed like [`lex`], and nothing else is reported for
+/// the replacement characters. Diagnostics use `FileId(0)`, as single-file callers do.
+pub fn lex_bytes(bytes: &[u8], skin: Skin) -> BytesLexOutput {
+    let file = FileId(0);
+    let mut text = String::with_capacity(bytes.len());
+    // (offset in `text`, offset in `bytes`, the invalid bytes): one per maximal subpart.
+    let mut invalid: Vec<(usize, usize, &[u8])> = Vec::new();
+    let mut rest = bytes;
+    while !rest.is_empty() {
+        match std::str::from_utf8(rest) {
+            Ok(valid) => {
+                text.push_str(valid);
+                break;
+            }
+            Err(e) => {
+                let (valid, after) = rest.split_at(e.valid_up_to());
+                text.push_str(std::str::from_utf8(valid).unwrap_or_default());
+                let len = e.error_len().unwrap_or(after.len());
+                let at = bytes.len() - after.len();
+                invalid.push((text.len(), at, &after[..len]));
+                text.push(char::REPLACEMENT_CHARACTER);
+                rest = &after[len..];
+            }
+        }
+    }
+    let mut lexed = lex(&text, skin, file);
+    // Adjacent replacements are one run, and one diagnostic.
+    let width = char::REPLACEMENT_CHARACTER.len_utf8();
+    let mut runs: Vec<(Span, usize, Vec<u8>)> = Vec::new();
+    for (at, offset, seq) in invalid {
+        match runs.last_mut() {
+            Some((span, _, run)) if span.end as usize == at => {
+                span.end += width as u32;
+                run.extend_from_slice(seq);
+            }
+            _ => runs.push((
+                Span::new(at as u32, (at + width) as u32),
+                offset,
+                seq.to_vec(),
+            )),
+        }
+    }
+    // `runs` are sorted and disjoint: the candidate is the last run starting at or before `s`.
+    let inside = |s: Span| {
+        let k = runs.partition_point(|(r, _, _)| r.start <= s.start);
+        s.start < s.end && k > 0 && s.end <= runs[k - 1].0.end
+    };
+    lexed.diagnostics.retain(|d| !inside(d.span));
+    let mut new = Vec::new();
+    for (span, offset, seq) in &runs {
+        let hex: Vec<String> = seq.iter().map(|b| format!("{b:02X}")).collect();
+        let hex = hex.join(" ");
+        new.push(
+            Diagnostic::new("SEC0100", file, *span)
+                .arg("cp", code_point(char::REPLACEMENT_CHARACTER))
+                .arg(
+                    "name",
+                    format!("(bytes {hex} at byte offset {offset}: not UTF-8)"),
+                )
+                .arg("offset", offset.to_string())
+                .arg("bytes", hex),
+        );
+    }
+    merge_by_position(&mut lexed.diagnostics, new);
+    BytesLexOutput { text, lexed }
+}
+
 fn run_lexer(
     text: &str,
     skin: Skin,
@@ -232,6 +344,8 @@ fn classify(c: char) -> Class {
         | '\u{000C}'
         | '\u{000E}'..='\u{001F}'
         | '\u{007F}'..='\u{009F}' => Class::Control,
+        // General_Category Cn in the pinned Unicode version (§5.1).
+        _ if is_unassigned(c) => Class::TagOrPrivate,
         _ => Class::Ok,
     }
 }
@@ -247,100 +361,15 @@ fn is_presentation_form(c: char) -> bool {
     matches!(c, '\u{FB50}'..='\u{FDFF}' | '\u{FE70}'..='\u{FEFF}')
 }
 
-/// `Extended_Pictographic` (Unicode emoji-data, 16.0), for the §5.1 emoji exceptions: a raw
-/// ZWJ between two of these in a string, a variation selector directly after one.
-fn is_extended_pictographic(c: char) -> bool {
-    matches!(
-        c,
-        '\u{00A9}'
-            | '\u{00AE}'
-            | '\u{203C}'
-            | '\u{2049}'
-            | '\u{2122}'
-            | '\u{2139}'
-            | '\u{2194}'..='\u{2199}'
-            | '\u{21A9}'..='\u{21AA}'
-            | '\u{231A}'..='\u{231B}'
-            | '\u{2328}'
-            | '\u{2388}'
-            | '\u{23CF}'
-            | '\u{23E9}'..='\u{23F3}'
-            | '\u{23F8}'..='\u{23FA}'
-            | '\u{24C2}'
-            | '\u{25AA}'..='\u{25AB}'
-            | '\u{25B6}'
-            | '\u{25C0}'
-            | '\u{25FB}'..='\u{25FE}'
-            | '\u{2600}'..='\u{2605}'
-            | '\u{2607}'..='\u{2612}'
-            | '\u{2614}'..='\u{2685}'
-            | '\u{2690}'..='\u{2705}'
-            | '\u{2708}'..='\u{2712}'
-            | '\u{2714}'
-            | '\u{2716}'
-            | '\u{271D}'
-            | '\u{2721}'
-            | '\u{2728}'
-            | '\u{2733}'..='\u{2734}'
-            | '\u{2744}'
-            | '\u{2747}'
-            | '\u{274C}'
-            | '\u{274E}'
-            | '\u{2753}'..='\u{2755}'
-            | '\u{2757}'
-            | '\u{2763}'..='\u{2767}'
-            | '\u{2795}'..='\u{2797}'
-            | '\u{27A1}'
-            | '\u{27B0}'
-            | '\u{27BF}'
-            | '\u{2934}'..='\u{2935}'
-            | '\u{2B05}'..='\u{2B07}'
-            | '\u{2B1B}'..='\u{2B1C}'
-            | '\u{2B50}'
-            | '\u{2B55}'
-            | '\u{3030}'
-            | '\u{303D}'
-            | '\u{3297}'
-            | '\u{3299}'
-            | '\u{1F000}'..='\u{1F0FF}'
-            | '\u{1F10D}'..='\u{1F10F}'
-            | '\u{1F12F}'
-            | '\u{1F16C}'..='\u{1F171}'
-            | '\u{1F17E}'..='\u{1F17F}'
-            | '\u{1F18E}'
-            | '\u{1F191}'..='\u{1F19A}'
-            | '\u{1F1AD}'..='\u{1F1E5}'
-            | '\u{1F201}'..='\u{1F20F}'
-            | '\u{1F21A}'
-            | '\u{1F22F}'
-            | '\u{1F232}'..='\u{1F23A}'
-            | '\u{1F23C}'..='\u{1F23F}'
-            | '\u{1F249}'..='\u{1F3FA}'
-            | '\u{1F400}'..='\u{1F53D}'
-            | '\u{1F546}'..='\u{1F64F}'
-            | '\u{1F680}'..='\u{1F6FF}'
-            | '\u{1F774}'..='\u{1F77F}'
-            | '\u{1F7D5}'..='\u{1F7FF}'
-            | '\u{1F80C}'..='\u{1F80F}'
-            | '\u{1F848}'..='\u{1F84F}'
-            | '\u{1F85A}'..='\u{1F85F}'
-            | '\u{1F888}'..='\u{1F88F}'
-            | '\u{1F8AE}'..='\u{1F8FF}'
-            | '\u{1F90C}'..='\u{1F93A}'
-            | '\u{1F93C}'..='\u{1F945}'
-            | '\u{1F947}'..='\u{1FAFF}'
-            | '\u{1FC00}'..='\u{1FFFD}'
-    )
-}
-
 fn is_variation_selector(c: char) -> bool {
     matches!(c, '\u{FE00}'..='\u{FE0F}' | '\u{E0100}'..='\u{E01EF}')
 }
 
 /// The scripts that matter for spoofing (spec §5.3 rule 3, UTS #39 "Single Script"), by
 /// block. `None` for Common/Inherited characters (`_`, digits, marks) and for scripts this
-/// table does not list yet, which never count as a second script. Stand-in until the
-/// Unicode Script property data is added (ARCHITECTURE.md §5.4).
+/// table does not list yet, which never count as a second script. Hand-written because the
+/// vendored tables come from Python's `unicodedata`, which has no Script property
+/// (FOUNDER-QUEUE Q18); it stays until a Script data source is chosen.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Script {
     Latin,
@@ -405,6 +434,11 @@ fn char_name(c: char) -> &'static str {
         '\u{2028}' => "LINE SEPARATOR",
         '\u{2029}' => "PARAGRAPH SEPARATOR",
         '\u{0640}' => "ARABIC TATWEEL",
+        '\u{0301}' => "COMBINING ACUTE ACCENT",
+        '\u{0653}' => "ARABIC MADDAH ABOVE",
+        '\u{0654}' => "ARABIC HAMZA ABOVE",
+        '\u{0655}' => "ARABIC HAMZA BELOW",
+        '\u{FFFD}' => "REPLACEMENT CHARACTER",
         '\t' => "CHARACTER TABULATION",
         _ => "",
     }
@@ -433,16 +467,22 @@ fn is_any_digit(c: char) -> bool {
     c.is_ascii_digit() || is_arabic_indic_digit(c) || is_persian_digit(c)
 }
 
+/// A letter or digit by Rust's `char` properties that is also assigned in the pinned
+/// Unicode 16.0 (Rust's tables are newer; a newer letter is SEC0112, not part of a word).
+fn is_assigned_alphanumeric(c: char, alphanumeric: fn(char) -> bool) -> bool {
+    alphanumeric(c) && !is_unassigned(c)
+}
+
 /// Stand-in for `XID_Start` until `unicode-ident` is added (ARCHITECTURE.md §5.4).
 fn is_ident_start(c: char) -> bool {
-    c == '_' || (c.is_alphabetic() && !is_tatweel_or_haraka(c))
+    c == '_' || (is_assigned_alphanumeric(c, char::is_alphabetic) && !is_tatweel_or_haraka(c))
 }
 
 /// Characters consumed as part of a word run. Tatweel, harakat and non-ASCII digits are
 /// consumed so they can be reported (SEC0106, SEC0124) instead of splitting the word.
 fn is_ident_continue(c: char) -> bool {
     c == '_'
-        || c.is_alphabetic()
+        || is_assigned_alphanumeric(c, char::is_alphabetic)
         || c.is_ascii_digit()
         || is_arabic_indic_digit(c)
         || is_persian_digit(c)
@@ -622,15 +662,24 @@ fn declared_names(tokens: &[Token], word: &dyn Fn(&Token) -> String) -> HashSet<
 }
 
 /// Inserts `new` (in source order) among `existing` (in report order) by span start,
-/// keeping the existing relative order.
-fn merge_by_position(existing: &mut Vec<Diagnostic>, new: Vec<Diagnostic>) {
-    for d in new {
-        let at = existing
-            .iter()
-            .position(|e| e.span.start > d.span.start)
-            .unwrap_or(existing.len());
-        existing.insert(at, d);
+/// keeping the existing relative order: each new diagnostic goes before the first existing
+/// one that starts after it. One linear pass, because that position never moves backwards
+/// for a later new diagnostic (a file can produce hundreds of thousands of reports).
+fn merge_by_position(existing: &mut Vec<Diagnostic>, mut new: Vec<Diagnostic>) {
+    if new.is_empty() {
+        return;
     }
+    new.sort_by_key(|d| d.span.start); // stable: already in source order at every call site
+    let old = std::mem::take(existing);
+    existing.reserve(old.len() + new.len());
+    let mut old = old.into_iter().peekable();
+    for d in new {
+        while let Some(e) = old.next_if(|e| e.span.start <= d.span.start) {
+            existing.push(e);
+        }
+        existing.push(d);
+    }
+    existing.extend(old);
 }
 
 fn is_dec(c: char) -> bool {
@@ -948,7 +997,26 @@ impl<'a> Lexer<'a> {
         if !self.fragment {
             self.cross_skin_names();
         }
+        self.not_nfc();
         self.out
+    }
+
+    /// SEC0101 (spec §4.1, §5.1): every run of text that is not in NFC, in code, comments
+    /// and strings alike, with a machine fix to its NFC form. This runs on every lexed text
+    /// (a file is often one line with no LF, which `lex_with` takes for a fragment); the
+    /// parser drops SEC codes from re-lexed interpolation holes, which were reported here.
+    fn not_nfc(&mut self) {
+        let mut new = Vec::new();
+        for run in unicode::not_nfc(&self.chars) {
+            let span = Span::new(self.offset(run.start), self.offset(run.end));
+            new.push(
+                self.diag("SEC0101", span)
+                    .arg("cp", code_point(run.cp))
+                    .arg("name", display_name(run.cp))
+                    .fix(Fix::machine("write it in NFC", span, run.nfc)),
+            );
+        }
+        merge_by_position(&mut self.out.diagnostics, new);
     }
 
     /// The undefined-name half of K0201 (spec §5.4 bullet 3, §21.4 rule 6; eval P8).
@@ -1449,10 +1517,24 @@ impl<'a> Lexer<'a> {
         let backtick = self.i;
         self.i += 1;
         if matches!(self.peek(), Some(c) if is_ident_start(c)) {
-            while matches!(self.peek(), Some(c) if is_ident_continue(c)) {
-                self.i += 1;
+            loop {
+                match self.peek() {
+                    Some(c) if is_ident_continue(c) => self.i += 1,
+                    Some(c)
+                        if is_joiner(c)
+                            && matches!(self.peek_at(1), Some(n) if is_ident_continue(n)) =>
+                    {
+                        self.i += 1
+                    }
+                    _ => break,
+                }
             }
             if self.peek() == Some('`') {
+                // §5.3: the raw form is built from the same characters, so rules 3-5 hold
+                // inside backticks too (rule 7 only lifts the reserved-word restriction).
+                let src = self.text;
+                let name = &src[self.offset(backtick + 1) as usize..self.pos() as usize];
+                self.name_checks(backtick + 1, self.i, name);
                 self.i += 1;
                 let flags = TokenFlags {
                     raw_ident: true,
@@ -1472,32 +1554,11 @@ impl<'a> Lexer<'a> {
         self.i = backtick + 1;
     }
 
-    /// A word run: keyword, core name, identifier or the tag of a tagged literal.
-    fn word(&mut self) {
-        let src = self.text;
-        let start_i = self.i;
-        let start = self.pos();
-        loop {
-            match self.peek() {
-                Some(c) if is_ident_continue(c) => self.i += 1,
-                Some(c)
-                    if is_joiner(c)
-                        && matches!(self.peek_at(1), Some(n) if is_ident_continue(n)) =>
-                {
-                    self.i += 1
-                }
-                _ => break,
-            }
-        }
-        let text = &src[start as usize..self.pos() as usize];
-
-        // `sql"…"`: tags are lowercase ASCII and recognized only directly before a quote.
-        if self.peek() == Some('"') && text.bytes().all(|b| b.is_ascii_lowercase() || b == b'_') {
-            self.string(Some(start));
-            return;
-        }
-
-        for k in start_i..self.i {
+    /// §5.3 rules 3-5 on the name characters `chars[from..to]` (`text` is the name): marks,
+    /// non-ASCII digits, invisible characters and presentation forms (SEC0106, SEC0124,
+    /// SEC0111), then one script per name (SEC0105). Bare and backticked names alike.
+    fn name_checks(&mut self, from: usize, to: usize, text: &str) {
+        for k in from..to {
             let (off, c) = self.chars[k];
             let span = Span::new(off as u32, self.offset(k + 1));
             if is_tatweel_or_haraka(c) {
@@ -1534,7 +1595,7 @@ impl<'a> Lexer<'a> {
         }
         // §5.3 rule 3: one script per identifier (plus Common: `_`, digits).
         let mut first_script = None;
-        for k in start_i..self.i {
+        for k in from..to {
             let (off, c) = self.chars[k];
             let Some(s) = script_of(c) else {
                 continue;
@@ -1554,6 +1615,34 @@ impl<'a> Lexer<'a> {
                 Some(_) => {}
             }
         }
+    }
+
+    /// A word run: keyword, core name, identifier or the tag of a tagged literal.
+    fn word(&mut self) {
+        let src = self.text;
+        let start_i = self.i;
+        let start = self.pos();
+        loop {
+            match self.peek() {
+                Some(c) if is_ident_continue(c) => self.i += 1,
+                Some(c)
+                    if is_joiner(c)
+                        && matches!(self.peek_at(1), Some(n) if is_ident_continue(n)) =>
+                {
+                    self.i += 1
+                }
+                _ => break,
+            }
+        }
+        let text = &src[start as usize..self.pos() as usize];
+
+        // `sql"…"`: tags are lowercase ASCII and recognized only directly before a quote.
+        if self.peek() == Some('"') && text.bytes().all(|b| b.is_ascii_lowercase() || b == b'_') {
+            self.string(Some(start));
+            return;
+        }
+
+        self.name_checks(start_i, self.i, text);
 
         // Contextual freedom (§5.3 rule 8): a word right after `.` is always a member name.
         if !self.last_is_dot() {
@@ -1648,7 +1737,7 @@ impl<'a> Lexer<'a> {
         let prefixed = first == '0' && matches!(self.peek_at(1), Some('x' | 'b' | 'o'));
         let mut plain_int = true;
         while let Some(c) = self.peek() {
-            if c.is_alphanumeric() || c == '_' {
+            if is_assigned_alphanumeric(c, char::is_alphanumeric) || c == '_' {
                 if !(is_any_digit(c) || c == '_') {
                     plain_int = false;
                 }
@@ -1900,6 +1989,12 @@ impl<'a> Lexer<'a> {
         self.push(TokenKind::Op(op), start, TokenFlags::default());
     }
 }
+
+// Python-computed NFC vectors (generated); declared here, after the live code, because
+// kalam-diagnostics' completeness scan stops at a file's first test item.
+#[cfg(test)]
+#[rustfmt::skip]
+mod nfc_vectors;
 
 #[cfg(test)]
 mod tests {
@@ -2677,6 +2772,37 @@ mod tests {
     }
 
     #[test]
+    fn backticked_names_get_every_identifier_check() {
+        // §5.3: the raw form is "`" ID_START { ID_CONTINUE } "`", so rules 3-5 hold inside
+        // backticks too. Rule 7 only lifts the reserved-word restriction.
+        for (src, code, cp) in [
+            ("print(`p\u{0430}ypal`)\n", "SEC0105", "U+0430"),
+            ("let `p\u{0430}ypal` = 1\n", "SEC0105", "U+0430"),
+            ("print(`a\u{064E}b`)\n", "SEC0106", "U+064E"),
+            ("print(`\u{0628}\u{FB50}`)\n", "SEC0106", "U+FB50"),
+            ("print(`x\u{0661}`)\n", "SEC0124", "U+0661"),
+            ("print(`x\u{06F1}`)\n", "SEC0124", "U+06F1"),
+            ("print(`a\u{200D}b`)\n", "SEC0111", "U+200D"),
+        ] {
+            let out = lex(src, Skin::En, FileId(0));
+            let c: Vec<_> = out.diagnostics.iter().map(|d| d.code).collect();
+            assert_eq!(c, vec![code], "{src:?}");
+            assert_eq!(arg(&out.diagnostics[0], "cp"), cp, "{src:?}");
+            // Still one raw identifier token: the rest of the line lexes normally.
+            assert!(
+                out.tokens
+                    .iter()
+                    .any(|t| t.kind == TokenKind::Ident && t.flags.raw_ident),
+                "{src:?}"
+            );
+        }
+        // A one-script raw name, or a reserved word in backticks, is fine.
+        for src in ["print(`law`)\n", "let `اسم_2` = 1\n", "let `if` = 1\n"] {
+            assert!(codes(src, Skin::En).is_empty(), "{src:?}");
+        }
+    }
+
+    #[test]
     fn mixed_script_identifiers_are_sec0105() {
         for (src, skin, cp) in [
             ("let p\u{0430}ypal = 1\n", Skin::En, "U+0430"),
@@ -2709,6 +2835,195 @@ mod tests {
             let d = out.diagnostics.iter().find(|d| d.code == code).expect(code);
             assert_eq!(arg(d, "cp"), cp, "{src:?}");
         }
+    }
+
+    // ---- Unicode 16.0 data (FOUNDER-QUEUE Q18) -----------------------------------------
+
+    #[test]
+    fn text_that_is_not_nfc_is_sec0101_everywhere() {
+        // Spec §4.1, §5.1: the whole file is NFC, in code, comments and strings.
+        for (src, skin, cp, line_text) in [
+            ("x = \"cafe\u{0301}\"\n", Skin::En, "U+0301", "e\u{0301}"),
+            (
+                "# \u{0627}\u{0654}\u{062D}\u{0645}\u{062F}\n",
+                Skin::Ar,
+                "U+0654",
+                "\u{0627}\u{0654}",
+            ),
+            // A non-NFC keyword and identifier (decomposed hamza; also SEC0106 for the mark).
+            (
+                "\u{0627}\u{0654}x = 1\n",
+                Skin::Ar,
+                "U+0654",
+                "\u{0627}\u{0654}",
+            ),
+            // Singleton (ANGSTROM SIGN) and composition exclusion (DEVANAGARI QA).
+            ("x = \"\u{212B}\"\n", Skin::En, "U+212B", "\u{212B}"),
+            ("x = \"\u{0958}\"\n", Skin::En, "U+0958", "\u{0958}"),
+            // Marks out of canonical order: fatha U+064E (ccc 30) sorts before shadda
+            // U+0651 (ccc 33). The span leaves out the unchanged base letter.
+            (
+                "x = \"\u{0628}\u{0651}\u{064E}\"\n",
+                Skin::Ar,
+                "U+0651",
+                "\u{0651}\u{064E}",
+            ),
+            // Hangul jamo that compose into a syllable.
+            (
+                "x = \"\u{1100}\u{1161}\"\n",
+                Skin::En,
+                "U+1161",
+                "\u{1100}\u{1161}",
+            ),
+        ] {
+            let out = lex(src, skin, FileId(0));
+            let d = out
+                .diagnostics
+                .iter()
+                .find(|d| d.code == "SEC0101")
+                .unwrap_or_else(|| panic!("no SEC0101 for {src:?}: {:?}", out.diagnostics));
+            assert_eq!(arg(d, "cp"), cp, "{src:?}");
+            assert_eq!(&src[d.span.range()], line_text, "{src:?}");
+            // The machine fix writes the segment in NFC.
+            let fix = &d.fixes[0].edits[0];
+            assert_eq!(fix.span, d.span);
+            assert_eq!(fix.insert, crate::unicode::nfc(line_text), "{src:?}");
+        }
+        // One report per non-NFC segment, at its line.
+        let out = lex(
+            "x = 1\n# e\u{0301}\ny = \"o\u{0308}\"\n",
+            Skin::En,
+            FileId(0),
+        );
+        let lines: Vec<_> = out
+            .diagnostics
+            .iter()
+            .filter(|d| d.code == "SEC0101")
+            .map(|d| out_line("x = 1\n# e\u{0301}\ny = \"o\u{0308}\"\n", d.span.start))
+            .collect();
+        assert_eq!(lines, vec![2, 3]);
+        // NFC text with marks in canonical order is fine (fatha U+064E then shadda U+0651).
+        for src in [
+            "x = \"caf\u{00E9} \u{0623}\u{062D}\u{0645}\u{062F} \u{0628}\u{064E}\u{0651}\"\n",
+            "x = \"\u{AC00} \u{0915}\u{093C} \u{00E1}\u{0316}\"\n",
+        ] {
+            assert!(codes(src, Skin::En).is_empty(), "{src:?}");
+        }
+        // A one-line file without a trailing newline is checked too.
+        assert_eq!(codes("x = \"e\u{0301}\"", Skin::En), vec!["SEC0101"]);
+    }
+
+    fn out_line(text: &str, offset: u32) -> usize {
+        text[..offset as usize].matches('\n').count() + 1
+    }
+
+    #[test]
+    fn unassigned_code_points_are_sec0112() {
+        // U+0378 is unassigned in Unicode 16.0, in strings, comments and code.
+        assert_eq!(codes("x = \"a\u{0378}\"\n", Skin::En), vec!["SEC0112"]);
+        assert_eq!(codes("# a\u{0378}\n", Skin::En), vec!["SEC0112"]);
+        assert_eq!(codes("x = \u{0378}\n", Skin::En), vec!["SEC0112"]);
+        let out = lex("x = \"a\u{0378}\"\n", Skin::En, FileId(0));
+        assert_eq!(arg(&out.diagnostics[0], "cp"), "U+0378");
+        // Letters assigned after 16.0 (U+A7CE Latin, U+088F Arabic: Unicode 17.0) are
+        // unassigned in the pinned version even where Rust's std calls them alphabetic:
+        // at the start of a name, inside one, after a digit and inside backticks.
+        for c in ['\u{A7CE}', '\u{088F}'] {
+            assert!(c.is_alphabetic(), "the test needs a letter newer than 16.0");
+            for src in [
+                format!("let {c}x = 1\n"),
+                format!("let x{c} = 1\n"),
+                format!("let x = 1{c}\n"),
+                format!("let `x{c}` = 1\n"),
+            ] {
+                let c = codes(&src, Skin::En);
+                assert!(c.contains(&"SEC0112"), "{src:?}: {c:?}");
+            }
+        }
+        // Assigned characters of every kind are fine.
+        assert!(codes("x = \"\u{0377}\u{037A}\u{1F600}\"\n", Skin::En).is_empty());
+    }
+
+    #[test]
+    fn extended_pictographic_comes_from_the_generated_table() {
+        for c in [
+            '\u{00A9}',
+            '\u{2764}',
+            '\u{1F600}',
+            '\u{1FAE8}',
+            '\u{1F9D1}',
+        ] {
+            assert!(crate::unicode::is_extended_pictographic(c), "{c:?}");
+        }
+        for c in ['a', '#', '1', '\u{0627}', '\u{FE0F}', '\u{200D}'] {
+            assert!(!crate::unicode::is_extended_pictographic(c), "{c:?}");
+        }
+    }
+
+    // ---- Bytes (SEC0100) ---------------------------------------------------------------
+
+    #[test]
+    fn invalid_utf8_is_sec0100_at_its_byte_offset() {
+        for (bytes, offset, hex) in [
+            (&b"# caf\xFF\nx = 1\n"[..], 5, "FF"),
+            (b"# x\xC0\xAF\nx = 1\n", 3, "C0 AF"),
+            (b"# x\xE0\x80\xAF\nx = 1\n", 3, "E0 80 AF"),
+            (b"# x\xED\xA0\x80\nx = 1\n", 3, "ED A0 80"),
+            (b"# x\xF4\x90\x80\x80\nx = 1\n", 3, "F4 90 80 80"),
+            (b"# x\x80\nx = 1\n", 3, "80"),
+            (b"x = 1\n# x\xE2\x82", 9, "E2 82"),
+        ] {
+            let out = lex_bytes(bytes, Skin::En);
+            let sec: Vec<_> = out
+                .diagnostics
+                .iter()
+                .filter(|d| d.code == "SEC0100")
+                .collect();
+            assert_eq!(sec.len(), 1, "{bytes:?}: {:?}", out.diagnostics);
+            let d = sec[0];
+            assert_eq!(arg(d, "offset"), offset.to_string(), "{bytes:?}");
+            assert_eq!(arg(d, "bytes"), hex, "{bytes:?}");
+            assert_eq!(arg(d, "cp"), "U+FFFD", "{bytes:?}");
+            // The span covers the replacement characters in the decoded text, on the line
+            // the bytes are on.
+            let under = &out.text[d.span.range()];
+            assert!(!under.is_empty() && under.chars().all(|c| c == '\u{FFFD}'));
+            let line = bytes[..offset].iter().filter(|&&b| b == b'\n').count() + 1;
+            assert_eq!(out_line(&out.text, d.span.start), line, "{bytes:?}");
+            // Nothing else is reported for the replacement characters.
+            assert_eq!(out.diagnostics.len(), 1, "{bytes:?}: {:?}", out.diagnostics);
+        }
+    }
+
+    #[test]
+    fn invalid_utf8_in_code_and_strings_then_lexes_the_rest() {
+        let out = lex_bytes(b"x = \"a\xFFb\"\ny = 2\xFF\nz = 3\n", Skin::En);
+        let sec: Vec<_> = out
+            .diagnostics
+            .iter()
+            .map(|d| (d.code, out_line(&out.text, d.span.start)))
+            .collect();
+        assert_eq!(sec, vec![("SEC0100", 1), ("SEC0100", 2)]);
+        // The rest of the file is lexed normally: three statements.
+        let newlines = out
+            .tokens
+            .iter()
+            .filter(|t| t.kind == TokenKind::Newline)
+            .count();
+        assert_eq!(newlines, 3);
+        // Valid UTF-8 lexes exactly like `lex`, BOM included.
+        let text = "\u{FEFF}x = 1\n";
+        let a = lex_bytes(text.as_bytes(), Skin::En);
+        assert_eq!(a.text, text);
+        assert_eq!(a.kinds(), lex(text, Skin::En, FileId(0)).kinds());
+        assert_eq!(
+            a.diagnostics.iter().map(|d| d.code).collect::<Vec<_>>(),
+            vec!["SEC0100"]
+        );
+        // A U+FFFD that is really in the file is an ordinary character.
+        assert!(lex_bytes("# \u{FFFD}\n".as_bytes(), Skin::En)
+            .diagnostics
+            .is_empty());
     }
 
     #[test]

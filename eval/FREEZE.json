@@ -9,6 +9,7 @@
   "frozen_at": null,
   "frozen_files": [
     "compiler/crates/kalam-eval/Cargo.toml",
+    "compiler/crates/kalam-eval/build.rs",
     "compiler/crates/kalam-eval/src/checks.rs",
     "compiler/crates/kalam-eval/src/corpus.rs",
     "compiler/crates/kalam-eval/src/corpus_run.rs",

@@ -326,10 +326,10 @@ fn brackets_nested_two_hundred_deep_and_a_token_wider_than_the_limit() {
 fn a_long_call_in_a_franco_file_breaks_the_same_way_as_in_english() {
     let long = "argument_number".to_string();
     let en = format!(
-        "fn main():\n    print({long}1, {long}2, {long}3, {long}4, {long}5, {long}6, {long}7)\n"
+        "fn main():\n    assert({long}1, {long}2, {long}3, {long}4, {long}5, {long}6, {long}7)\n"
     );
     let f = battery(&en, Skin::En, false);
-    assert!(f.contains("print(\n"), "{f}");
+    assert!(f.contains("assert(\n"), "{f}");
     let fr = conv(&f, Skin::En, Skin::Franco);
     assert_eq!(fmt(&fr, Skin::Franco), fr);
 }
@@ -412,7 +412,7 @@ fn odd_layouts_settle_into_a_stable_canonical_form() {
         ("long use line", format!("use std/{z}.{{{z}, {z}, {z}, {z}}}\n\nfn f():\n    pass\n"), Skin::En),
         ("long unbreakable binary expression", format!("fn f():\n    let x = {z} + {z} + {z} + {z}\n"), Skin::En),
         ("long call in a block header", format!("fn f():\n    if g({z}, {z}, {z}, {z}):\n        pass\n"), Skin::En),
-        ("long ar call with Arabic digits", format!("دالة f():\n    اطبع({z}، {z}، {z}، {z}، ١٢)\n"), Skin::Ar),
+        ("long ar call with Arabic digits", format!("دالة f():\n    g({z}، {z}، {z}، {z}، ١٢)\n"), Skin::Ar),
         ("attributes", "@route(\"/x\")\nexport fn f():\n    pass\n\n@a\n@b(1, 2)\nfn g():\n    pass\n".into(), Skin::En),
         ("expression-bodied fn with a comment", "fn f(x: Int) -> Int => x + 1  # c\n".into(), Skin::En),
         ("ar hole with ، and ؟", "دالة f():\n    اطبع(\"{g(a، b)؟}\")\n".into(), Skin::Ar),

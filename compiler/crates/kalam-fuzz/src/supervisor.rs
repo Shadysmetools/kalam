@@ -44,6 +44,8 @@ pub struct Options {
     pub quiet: bool,
     /// Mutate (false: run the seeds once and stop; used by the self-tests).
     pub mutate: bool,
+    /// How many inputs to save per oracle under `OUT/oracle/` (all are counted).
+    pub oracle_examples: usize,
 }
 
 impl Options {
@@ -64,6 +66,7 @@ impl Options {
             generated: 150,
             quiet: false,
             mutate: true,
+            oracle_examples: 3,
         }
     }
 }
@@ -409,7 +412,6 @@ pub fn reproduces(exe: &Path, file: &Path, skin: Skin, timeout: Duration) -> boo
 // ----- the run ---------------------------------------------------------------------------
 
 const CORPUS_CAP: usize = 4000;
-const ORACLE_EXAMPLES: usize = 3;
 
 struct Shared {
     exe: PathBuf,
@@ -458,7 +460,7 @@ impl Shared {
                 ..OracleRecord::default()
             });
         rec.count += 1;
-        if rec.examples.len() < ORACLE_EXAMPLES {
+        if rec.examples.len() < self.opts.oracle_examples {
             let rel = format!(
                 "oracle/{name}-{}{}",
                 rec.examples.len() + 1,

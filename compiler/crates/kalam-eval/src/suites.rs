@@ -11,12 +11,15 @@
 //! error with `codes[i]` must point. Every source file of a case is judged on its own
 //! against the same expectation (skins keep layout, so lines agree).
 //!
-//! Every runner checks what the compiler reported through [`ParseHook::parse`] (lexer and
-//! parser diagnostics, `kalam_parser::parse_source`): it never synthesizes a diagnostic.
+//! The rejection and recovery runners check what `kalam check` reports through
+//! [`ParseHook::diagnose`] (FOUNDER-QUEUE Q17: `kalam_driver::check_source`, with the parse
+//! hook `kalam_parser::parse_source` only as a fallback while the driver does not run the
+//! parser; [`ParseHook::diag_route`] says which ran): they never synthesize a diagnostic.
 //! A missing suite, an empty suite or a malformed case makes the result unmeasurable, never
-//! a pass.
+//! a pass. A file no entry point can check (raw non-UTF-8 bytes without a byte API) is
+//! neither passed nor failed: it is listed as not measurable, and its suite cannot pass.
 
-use crate::parity::{fmt_check, ParseHook, Reported};
+use crate::parity::{fmt_check, DiagError, ParseHook, Reported};
 use kalam_base::Skin;
 use serde_json::Value;
 use std::fs;
@@ -193,15 +196,11 @@ fn collect(base: &Path, dir: &Path, out: &mut Vec<SuiteCase>) -> std::io::Result
 }
 
 /// What the compiler reported for one file: `Err` when it could not be checked at all.
-pub fn diagnose(hook: &dyn ParseHook, file: &SuiteFile) -> Result<Vec<Reported>, String> {
-    let text = std::str::from_utf8(&file.bytes).map_err(|_| {
-        "not valid UTF-8; no compiler entry point accepts raw bytes (kalam check reads text), \
-         so nothing reports SEC0100 for it"
-            .to_string()
-    })?;
-    hook.parse(text, file.skin)
-        .map(|p| p.errors)
-        .map_err(|e| format!("crash: {e}"))
+pub fn diagnose(hook: &dyn ParseHook, file: &SuiteFile) -> Result<Vec<Reported>, DiagError> {
+    hook.diagnose(&file.bytes, file.skin).map_err(|e| match e {
+        DiagError::Crash(c) => DiagError::Crash(format!("crash: {c}")),
+        n => n,
+    })
 }
 
 /// `U+XXXX` code points named in a message.
@@ -318,6 +317,11 @@ pub struct RejectResult {
     pub reject_skins: Vec<Skin>,
     /// Failing cases that expect a code no M1 stage can emit ([`needs_later_stage`]).
     pub later_stage: Vec<String>,
+    /// `case/file: reason` for cases with a file no entry point could check and no failing
+    /// file: neither passed nor failed, and the suite cannot pass while any exist.
+    pub not_measurable: Vec<String>,
+    /// [`ParseHook::diag_route`]: the entry points that produced the diagnostics.
+    pub route: String,
 }
 
 impl RejectResult {
@@ -331,7 +335,10 @@ impl RejectResult {
 }
 
 pub fn run_reject(hook: &dyn ParseHook, cases: &[SuiteCase], rules: &RejectRules) -> RejectResult {
-    let mut r = RejectResult::default();
+    let mut r = RejectResult {
+        route: hook.diag_route(),
+        ..RejectResult::default()
+    };
     for case in cases {
         let expect = match &case.expect {
             Err(e) => {
@@ -368,8 +375,16 @@ pub fn run_reject(hook: &dyn ParseHook, cases: &[SuiteCase], rules: &RejectRules
             continue;
         }
         let mut ok = true;
+        let mut unmeasured = Vec::new();
         for f in &case.files {
-            let verdict = diagnose(hook, f).and_then(|rep| judge_file(expect, &rep, rules));
+            let verdict = match diagnose(hook, f) {
+                Ok(rep) => judge_file(expect, &rep, rules),
+                Err(DiagError::Crash(c)) => Err(c),
+                Err(DiagError::NotMeasurable(why)) => {
+                    unmeasured.push(format!("{}/{}: {why}", case.id, f.name));
+                    continue;
+                }
+            };
             if let Err(why) = verdict {
                 ok = false;
                 r.failures.push(format!("{}/{}: {why}", case.id, f.name));
@@ -377,6 +392,10 @@ pub fn run_reject(hook: &dyn ParseHook, cases: &[SuiteCase], rules: &RejectRules
             if expect.must_reject && !r.reject_skins.contains(&f.skin) {
                 r.reject_skins.push(f.skin);
             }
+        }
+        if ok && !unmeasured.is_empty() {
+            r.not_measurable.extend(unmeasured);
+            continue;
         }
         if !ok {
             let later: Vec<&String> = expect
@@ -418,6 +437,10 @@ pub struct Recovery {
     /// Cases marked `[M2]`, left out of the M1 value.
     pub deferred_m2: usize,
     pub defects: Vec<String>,
+    /// Files that scored 0 because the compiler crashed or no entry point could check them.
+    pub unchecked: usize,
+    /// [`ParseHook::diag_route`]: the entry points that produced the diagnostics.
+    pub route: String,
 }
 
 impl Recovery {
@@ -443,7 +466,10 @@ pub fn recovery_score(expect: &SuiteExpect, reported: &[Reported]) -> f64 {
 }
 
 pub fn run_recovery(hook: &dyn ParseHook, cases: &[SuiteCase]) -> Recovery {
-    let mut r = Recovery::default();
+    let mut r = Recovery {
+        route: hook.diag_route(),
+        ..Recovery::default()
+    };
     for case in cases {
         let expect = match &case.expect {
             Err(e) => {
@@ -478,6 +504,7 @@ pub fn run_recovery(hook: &dyn ParseHook, cases: &[SuiteCase]) -> Recovery {
         for f in &case.files {
             r.files += 1;
             let Ok(reported) = diagnose(hook, f) else {
+                r.unchecked += 1;
                 continue; // unreadable or crashed: scores 0
             };
             r.score_sum += recovery_score(expect, &reported);
@@ -830,8 +857,49 @@ pub(crate) mod tests {
         let cases = load(&d).unwrap().unwrap();
         let _ = fs::remove_dir_all(&d);
         let r = run_reject(default_hook().as_ref(), &cases, &RejectRules::default());
-        assert_eq!((r.bad_passed, r.bad_total), (0, 1));
-        assert!(r.failures[0].contains("UTF-8"), "{r:?}");
+        let byte_api = cfg!(all(
+            feature = "parser-hook",
+            any(kalam_check_bytes, kalam_lex_bytes)
+        ));
+        if byte_api {
+            // judged through the byte entry point: it may pass or fail, never be skipped
+            assert_eq!(r.bad_total, 1, "{r:?}");
+            assert!(r.not_measurable.is_empty(), "{r:?}");
+            assert!(r.route.contains("_bytes"), "{}", r.route);
+        } else {
+            // no byte entry point: not measurable with a clear reason, never a pass or a count
+            assert_eq!((r.bad_passed, r.bad_total), (0, 0), "{r:?}");
+            assert_eq!(r.not_measurable.len(), 1, "{r:?}");
+            assert!(r.not_measurable[0].contains("bad-bytes/main.kl"), "{r:?}");
+            assert!(r.not_measurable[0].contains("not valid UTF-8"), "{r:?}");
+            assert!(r.not_measurable[0].contains("check_bytes"), "{r:?}");
+            assert!(!r.all_pass() || r.total() == 0);
+        }
+    }
+
+    #[test]
+    fn a_failing_file_beats_an_unmeasurable_one() {
+        // one case, two files: the readable one fails, so the case fails (it is not
+        // hidden in the not-measurable bucket)
+        let d = temp_dir("suite-utf8-mixed");
+        let dir = d.join("both");
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(
+            dir.join("expect.json"),
+            r#"{"must_reject": true, "codes": ["SEC0100"], "lines": [1]}"#,
+        )
+        .unwrap();
+        fs::write(dir.join("main.kl"), b"fn main():\n    print(\"\xff\")\n").unwrap();
+        fs::write(dir.join("main.ar.kl"), HELLO_AR).unwrap();
+        let cases = load(&d).unwrap().unwrap();
+        let _ = fs::remove_dir_all(&d);
+        let r = run_reject(default_hook().as_ref(), &cases, &RejectRules::default());
+        assert_eq!((r.bad_passed, r.bad_total), (0, 1), "{r:?}");
+        assert!(r.not_measurable.is_empty(), "{r:?}");
+        assert!(
+            r.failures.iter().any(|f| f.contains("both/main.ar.kl")),
+            "{r:?}"
+        );
     }
 
     #[test]

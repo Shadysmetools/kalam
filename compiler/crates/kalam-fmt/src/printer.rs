@@ -28,11 +28,11 @@ use kalam_ast::*;
 use kalam_base::Skin;
 use kalam_skins::{Concept, KeywordTable};
 
-use crate::convert::{escape, Rewriter};
+use crate::convert::Rewriter;
 use crate::doc::{self, concat, flat_text, flat_width, text, Doc, INDENT, WIDTH};
 use crate::roles::{Role, Roles};
 use crate::source::Source;
-use crate::{convert_digits, FmtConfig};
+use crate::{convert_digits, is_number, FmtConfig};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Sep {
@@ -243,8 +243,12 @@ impl<'s, 'a> Printer<'s, 'a> {
     }
 
     fn id(&self, name: &str, role: Role) -> Doc {
-        let w = escape(name, role, Skin::En, self.table).chars().count();
-        Doc::Text(escape(name, role, self.skin, self.table), w)
+        let w = self
+            .roles
+            .spell(name, role, Skin::En, self.table)
+            .chars()
+            .count();
+        Doc::Text(self.roles.spell(name, role, self.skin, self.table), w)
     }
 
     fn name_kind(&self, n: &NameKind, role: Role) -> Doc {
@@ -266,6 +270,17 @@ impl<'s, 'a> Printer<'s, 'a> {
     fn digits(&self, ascii: &str) -> Doc {
         let w = ascii.chars().count();
         Doc::Text(convert_digits(ascii, self.skin, self.config), w)
+    }
+
+    /// A numeric literal expression. A run that is not a valid number is copied from the
+    /// source as written (a guard: the lexer reports such runs, in interpolation holes too,
+    /// so an accepted file should not contain one; see [`convert_digits`]).
+    fn number(&self, ascii: &str, span: kalam_base::Span) -> Doc {
+        if is_number(ascii) {
+            return self.digits(ascii);
+        }
+        let raw = &self.src.text[span.range()];
+        Doc::Text(raw.to_string(), raw.chars().count())
     }
 
     /// `open item, item close`, breaking one item per line with a trailing comma.
@@ -932,8 +947,8 @@ impl<'s, 'a> Printer<'s, 'a> {
             | ExprKind::Index { .. }
             | ExprKind::Member { .. }
             | ExprKind::Try(_) => self.postfix(e, ctx),
-            ExprKind::Int(i) => self.digits(&i.text),
-            ExprKind::Float(f) => self.digits(&f.text),
+            ExprKind::Int(i) => self.number(&i.text, e.span),
+            ExprKind::Float(f) => self.number(&f.text, e.span),
             ExprKind::Str(s) => self.str_lit(s, None),
             ExprKind::Tagged { tag, lit } => self.str_lit(lit, Some(tag)),
             ExprKind::Bool(b) => self.kw(if *b {

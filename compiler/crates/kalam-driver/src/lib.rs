@@ -8,8 +8,8 @@
 //! Incrementality: Phase 0 caches per file by content hash; Phase 1 moves to `salsa`
 //! queries. Dependency packages are never re-type-checked: their `.kli` interfaces are used.
 //!
-//! Status: [`check_source`] runs the lexer (the only finished stage). Each later stage is
-//! added to [`check_source`] as it lands, in the order of spec §4.2.
+//! Status: [`check_source`] runs the lexer and the parser. Each later stage is added to
+//! [`check_source`] as it lands, in the order of spec §4.2.
 
 use std::collections::BTreeMap;
 
@@ -96,14 +96,36 @@ pub struct NotKalamFile(pub String);
 /// Checks one file's text. The skin comes from the file name (DR-18).
 pub fn check_source(path: &str, text: &str) -> Result<CheckedFile, NotKalamFile> {
     let skin = Skin::from_path(path).ok_or_else(|| NotKalamFile(path.to_string()))?;
-    let lexed = kalam_lexer::lex(text, skin, FileId(0));
-    // Next stages, in spec §4.2 order: parse → resolve → typeck → effects → sinks/caps.
+    // Lexer and parser (FOUNDER-QUEUE Q17): every K01xx, K02xx, K07xx, K09xx and SEC
+    // finding they make, in source order. Next stages, in spec §4.2 order: resolve →
+    // typeck → effects → sinks/caps.
+    let parsed = kalam_parser::parse_source(text, skin, FileId(0));
     Ok(CheckedFile {
         path: path.to_string(),
         skin,
         text: text.to_string(),
         lines: LineIndex::new(text),
-        diagnostics: lexed.diagnostics,
+        diagnostics: parsed.diagnostics,
+    })
+}
+
+/// Checks one file as read from disk (`kalam check`): like [`check_source`], but invalid
+/// UTF-8 is reported (SEC0100, one per invalid run, spec §5.1) instead of making the file
+/// unreadable. The checked text has U+FFFD in place of each invalid run, so every span and
+/// line points into it.
+pub fn check_bytes(path: &str, bytes: &[u8]) -> Result<CheckedFile, NotKalamFile> {
+    let skin = Skin::from_path(path).ok_or_else(|| NotKalamFile(path.to_string()))?;
+    let lexed = kalam_lexer::lex_bytes(bytes, skin);
+    let text = lexed.text.as_str();
+    let parsed = kalam_parser::parse(text, &lexed.lexed, skin, FileId(0));
+    let diagnostics =
+        kalam_parser::merge_diagnostics(text, lexed.lexed.diagnostics.clone(), parsed.diagnostics);
+    Ok(CheckedFile {
+        path: path.to_string(),
+        skin,
+        text: text.to_string(),
+        lines: LineIndex::new(text),
+        diagnostics,
     })
 }
 
@@ -299,6 +321,59 @@ mod tests {
         assert!(explain_catalog(Skin::En).contains("K0201"));
         let json = explain_catalog_json();
         assert!(json.contains("\"K0201\"") && json.contains("\"franco\""));
+    }
+
+    #[test]
+    fn check_runs_the_parser_too() {
+        // FOUNDER-QUEUE Q17: `kalam check` reports lexer and parser diagnostics together.
+        let codes = |path: &str, src: &str| -> Vec<&'static str> {
+            check_source(path, src)
+                .unwrap()
+                .diagnostics
+                .iter()
+                .map(|d| d.code)
+                .collect()
+        };
+        assert_eq!(codes("a.kl", "fn main():\n    let = 5\n"), vec!["K0250"]);
+        assert_eq!(
+            codes("a.kl", "print(\"x\")\nfn main():\n    pass\n"),
+            vec!["K0255"]
+        );
+        // Known LLM mistakes (K09xx) come from the parser too.
+        assert_eq!(codes("a.kl", "def main():\n    pass\n"), vec!["K0902"]);
+        // Lexer and parser findings together, in source order.
+        assert_eq!(
+            codes("a.kl", "fn main():\n    f() = 1\n    let x = 007\n"),
+            vec!["K0710", "K0125"]
+        );
+        // A clean file stays clean in every skin.
+        assert!(codes("a.franco.kl", "dala ra2isi():\n    ektb(\"x\")\n").is_empty());
+    }
+
+    #[test]
+    fn check_bytes_reports_invalid_utf8_and_parses_the_rest() {
+        let codes = |path: &str, src: &[u8]| -> Vec<&'static str> {
+            check_bytes(path, src)
+                .unwrap()
+                .diagnostics
+                .iter()
+                .map(|d| d.code)
+                .collect()
+        };
+        assert_eq!(
+            codes("a.kl", b"fn main():\n    print(\"a\xFFb\")\n"),
+            vec!["SEC0100"]
+        );
+        assert_eq!(
+            codes("a.kl", b"fn main():\n    print(\"a\xFFb\")\n    x === 1\n"),
+            vec!["SEC0100", "K0901"]
+        );
+        // Valid UTF-8 gives exactly what `check_source` gives.
+        let src = "def main():\n    let x = 007\n";
+        let a = check_bytes("a.kl", src.as_bytes()).unwrap();
+        let b = check_source("a.kl", src).unwrap();
+        assert_eq!(a.diagnostics, b.diagnostics);
+        assert!(check_bytes("a.txt", b"").is_err());
     }
 
     #[test]

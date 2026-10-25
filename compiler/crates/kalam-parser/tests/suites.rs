@@ -7,36 +7,22 @@
 //!   of a character under its span or on its line);
 //! - `must_reject: false`: no error-severity diagnostic at all.
 //!
-//! Cases whose notes start with `[M2]` need name resolution and are skipped. The cases in
-//! [`KNOWN_GAPS`] need machinery the M1 lexer does not have yet (NFC data, Unicode 16.0
-//! assigned-code-point and script tables, a byte-level entry point for invalid UTF-8); the
-//! test fails if one of them starts passing, so the list only shrinks.
+//! Files are read as bytes (spec §4.1, §5.1: encoding is judged on the file's bytes). Valid
+//! UTF-8 goes through `parse_source`; anything else goes through `kalam_lexer::lex_bytes`
+//! plus the parser, exactly as `kalam_driver::check_bytes` (`kalam check`) does, and is
+//! judged against the decoded text.
+//!
+//! Cases whose notes start with `[M2]` need name resolution and are skipped. A case listed in
+//! [`KNOWN_GAPS`] is expected to fail for a documented reason; the test fails if one of them
+//! starts passing, so the list only shrinks. It is empty now.
 
 use std::path::{Path, PathBuf};
 
 use kalam_base::{FileId, Skin};
+use kalam_diagnostics::Diagnostic;
 
 /// `suite/case`: failing today for a documented reason (see the module doc).
-const KNOWN_GAPS: &[&str] = &[
-    // The lexer reports the code with a `cp` arg, but the kalam-diagnostics catalog template
-    // for SEC0120/0121/0122 has no `{cp}`, so the rendered message does not name the code
-    // point.
-    "trojan-source/digits-arabic-indic-en",
-    "trojan-source/digits-arabic-indic-franco",
-    "trojan-source/digits-mixed-arabic-ascii-ar",
-    "trojan-source/digits-mixed-ascii-arabic-ar",
-    "trojan-source/digits-persian-digits-ar",
-    "trojan-source/digits-persian-digits-en",
-    "trojan-source/digits-persian-mixed-arabic-indic",
-    // Invalid UTF-8 (SEC0100): the lexer takes `&str`; the byte-level entry point belongs to
-    // the driver.
-    "trojan-source/sec0100-invalid-byte",
-    "trojan-source/sec0100-overlong",
-    // NFC (SEC0101) and unassigned code points (SEC0112) need Unicode 16.0 data tables.
-    "trojan-source/sec0101-decomposed-hamza-ar",
-    "trojan-source/sec0101-decomposed-string",
-    "trojan-source/sec0112-unassigned-string",
-];
+const KNOWN_GAPS: &[&str] = &[];
 
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -112,10 +98,31 @@ fn expect_of(dir: &Path) -> Expect {
     }
 }
 
+/// The text the diagnostics' spans index, and lexer + parser diagnostics, for a file's bytes.
+fn check(bytes: &[u8], skin: Skin) -> (String, Vec<Diagnostic>) {
+    match std::str::from_utf8(bytes) {
+        Ok(text) => {
+            let out = kalam_parser::parse_source(text, skin, FileId(0));
+            (text.to_string(), out.diagnostics)
+        }
+        Err(_) => {
+            let lexed = kalam_lexer::lex_bytes(bytes, skin);
+            let parsed = kalam_parser::parse(&lexed.text, &lexed.lexed, skin, FileId(0));
+            let diagnostics = kalam_parser::merge_diagnostics(
+                &lexed.text,
+                lexed.lexed.diagnostics.clone(),
+                parsed.diagnostics,
+            );
+            (lexed.text, diagnostics)
+        }
+    }
+}
+
 /// `Err(reason)` if the file does not pass its case.
-fn judge(expect: &Expect, text: &str, skin: Skin) -> Result<(), String> {
-    let out = kalam_parser::parse_source(text, skin, FileId(0));
-    let errors: Vec<_> = out.diagnostics.iter().filter(|d| d.is_error()).collect();
+fn judge(expect: &Expect, bytes: &[u8], skin: Skin) -> Result<(), String> {
+    let (text, diagnostics) = check(bytes, skin);
+    let text = text.as_str();
+    let errors: Vec<_> = diagnostics.iter().filter(|d| d.is_error()).collect();
     let got = || -> Vec<String> {
         errors
             .iter()
@@ -186,11 +193,7 @@ fn run(suite: &str) -> (Vec<(String, String)>, usize) {
                 continue;
             };
             let bytes = std::fs::read(f.path()).unwrap();
-            let verdict = match std::str::from_utf8(&bytes) {
-                Ok(text) => judge(&expect, text, skin),
-                Err(_) => Err("not valid UTF-8 (no text entry point)".into()),
-            };
-            if let Err(why) = verdict {
+            if let Err(why) = judge(&expect, &bytes, skin) {
                 failures.push((id.clone(), format!("{name}: {why}")));
             }
         }
@@ -198,7 +201,7 @@ fn run(suite: &str) -> (Vec<(String, String)>, usize) {
     (failures, judged)
 }
 
-fn check(suite: &str, min_cases: usize) {
+fn check_suite(suite: &str, min_cases: usize) {
     let (failures, judged) = run(suite);
     if judged == 0 {
         return; // the suites are not checked out
@@ -223,10 +226,10 @@ fn check(suite: &str, min_cases: usize) {
 
 #[test]
 fn trojan_source_suite() {
-    check("trojan-source", 100);
+    check_suite("trojan-source", 100);
 }
 
 #[test]
 fn lexing_hazard_suite() {
-    check("lexing-hazards", 40);
+    check_suite("lexing-hazards", 40);
 }

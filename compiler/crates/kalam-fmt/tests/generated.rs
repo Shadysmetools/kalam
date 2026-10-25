@@ -11,6 +11,11 @@
 //! method chains, one-line and indented blocks, blank lines, own-line, trailing and in-bracket
 //! comments, and long lines.
 //!
+//! Half of the programs declare every reserved-in-some-skin word they use as a plain name in
+//! one `use` line; the other half declare none of them and write each one in backticks, which
+//! is how a file must spell another skin's undeclared word (FOUNDER-QUEUE Q9). `fmt` and
+//! `convert` must keep those backticks in every skin (Q16), or their output is K0201.
+//!
 //! For every program `src` in skin X, with `f = fmt(src)`:
 //! - `src` parses cleanly (otherwise the generator is wrong);
 //! - `fmt` succeeds without its fallback, `fmt(f) == f`, and `f` has `src`'s AST and comments;
@@ -95,7 +100,9 @@ const CROSSY: &[&str] = &[
 const TYPES: &[&str] = &[
     "Shape", "User", "Point", "Box", "Item", "Int", "adad", "نوع",
 ];
-const VARIANTS: &[&str] = &["Circle", "Empty", "Rect", "law", "Some", "حالة"];
+/// Variant names. A reserved word is among them, but none is in [`CROSSY`]: an undeclared
+/// plain name that is also a variant of the file is K0917 (spec §21.3), whatever its backticks.
+const VARIANTS: &[&str] = &["Circle", "Empty", "Rect", "return", "Some", "حالة"];
 const TEXT: &[&str] = &[
     "hello",
     " ",
@@ -123,6 +130,8 @@ struct Gen<'t> {
     /// Words reserved in some skin that the program uses as plain names. `program` declares
     /// them all in one `use` line: an undeclared one is K0201 (FOUNDER-QUEUE Q9).
     declare: Vec<&'static str>,
+    /// Declare none of them: every reserved-in-some-skin plain name is written in backticks.
+    undeclared: bool,
 }
 
 impl Gen<'_> {
@@ -252,7 +261,11 @@ impl Gen<'_> {
 
     /// An identifier where a reserved word must be escaped.
     fn bound(&mut self, name: &str) -> String {
-        if self.table.skin(self.skin).is_reserved(name) || (self.rng.chance(8) && name != "_") {
+        let undeclared = self.undeclared && self.table.reserved_in_some_skin(name);
+        if undeclared
+            || self.table.skin(self.skin).is_reserved(name)
+            || (self.rng.chance(8) && name != "_")
+        {
             format!("`{name}`")
         } else {
             name.to_string()
@@ -392,8 +405,13 @@ impl Gen<'_> {
     }
 
     fn args(&mut self, depth: u32, ind: usize, hole: bool) -> String {
+        self.args_max(depth, ind, hole, usize::MAX)
+    }
+
+    /// Arguments with at most `positional` unlabeled ones (`print(a, b)` is K0916).
+    fn args_max(&mut self, depth: u32, ind: usize, hole: bool, positional: usize) -> String {
         let n = self.rng.below(4);
-        let named_from = self.rng.below(n + 1);
+        let named_from = self.rng.below(n + 1).min(positional);
         let mut items = Vec::new();
         for i in 0..n {
             let v = self.expr(depth - 1, if hole { Ctx::Hole } else { Ctx::Top }, ind + 4);
@@ -820,7 +838,7 @@ impl Gen<'_> {
             }
             _ => {
                 let p = self.kw(Concept::CorePrint);
-                let a = self.args(depth.max(1), ind, false);
+                let a = self.args_max(depth.max(1), ind, false, 1);
                 format!("{p}{a}")
             }
         }
@@ -1137,7 +1155,7 @@ impl Gen<'_> {
         }
         // Declare every reserved-in-some-skin word used as a plain name (Q9), before the
         // other `use` lines and after a leading comment.
-        if !self.declare.is_empty() {
+        if !self.declare.is_empty() && !self.undeclared {
             let u = self.kw(Concept::KwUse);
             let names: Vec<String> = std::mem::take(&mut self.declare)
                 .into_iter()
@@ -1235,6 +1253,28 @@ fn check(seed: u64, skin: Skin, src: &str) -> Result<(), String> {
             }
         }
     }
+    // Q16: every conversion of the unformatted source, to every skin (its own included),
+    // passes its target's lexer and parser (no K0201, no K0250).
+    for to in Skin::ALL {
+        let out = kalam_fmt::convert(src, skin, to, &cfg()).map_err(|d| {
+            format!(
+                "convert {skin}->{to}: {:?}",
+                d.iter().map(|d| d.code).collect::<Vec<_>>()
+            )
+        })?;
+        if parse_clean(&out, to).is_none() {
+            let errs = kalam_parser::parse_source(&out, to, kalam_base::FileId(0));
+            let codes: Vec<&str> = errs
+                .diagnostics
+                .iter()
+                .filter(|d| d.is_error())
+                .map(|d| d.code)
+                .collect();
+            return Err(format!(
+                "convert {skin}->{to} of src has errors {codes:?}\n{out}"
+            ));
+        }
+    }
     // From the unformatted source (one path per program, rotating): the AST survives, and
     // the result formats to `fmt(src)`.
     let paths = round_trip_paths(skin);
@@ -1280,6 +1320,7 @@ fn random_programs_format_idempotently_and_round_trip_through_every_skin() {
             comments: 0,
             quiet: 0,
             declare: Vec::new(),
+            undeclared: (seed / 3) % 2 == 1,
         };
         let src = g.program();
         lines += src.lines().count();

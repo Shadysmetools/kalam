@@ -310,7 +310,10 @@ fn every_p6_code_has_title_message_help_and_explain_in_three_languages() {
 /// in the file's skin.
 const EMITTER_ARGS: &[(&str, &[&str])] = &[
     // kalam-lexer: `check_text_char` (cp, name) and the identifier/code-character paths.
+    // SEC0100 also comes from `lex_bytes` (invalid UTF-8), with the same args.
     ("SEC0100", &["cp", "name"]),
+    // kalam-lexer `not_nfc`: one per run of text that is not NFC.
+    ("SEC0101", &["cp", "name"]),
     ("SEC0102", &["cp", "name"]),
     ("SEC0103", &["cp", "name"]),
     ("SEC0105", &["cp", "name", "word"]),
@@ -320,9 +323,9 @@ const EMITTER_ARGS: &[(&str, &[&str])] = &[
     ("SEC0112", &["cp", "name"]),
     ("SEC0113", &["cp", "name"]),
     // kalam-lexer `number`: validators return the code, the `Err(code)` arm adds args.
-    ("SEC0120", &["literal"]),
-    ("SEC0121", &["literal"]),
-    ("SEC0122", &["literal", "fixed"]),
+    ("SEC0120", &["cp", "literal"]),
+    ("SEC0121", &["cp", "literal"]),
+    ("SEC0122", &["cp", "literal", "fixed"]),
     ("SEC0123", &[]),
     ("SEC0124", &["cp"]),
     ("K0103", &[]),
@@ -353,7 +356,29 @@ const EMITTER_ARGS: &[(&str, &[&str])] = &[
     ("K0710", &[]),
     ("K0720", &[]),
     ("K0731", &[]),
+    // kalam-parser `mistakes.rs`: the K09xx "common mistake" rules (spec §27) carry no args;
+    // their templates use keyword placeholders only.
+    ("K0901", &[]),
+    ("K0902", &[]),
+    ("K0903", &[]),
+    ("K0905", &[]),
+    ("K0906", &[]),
+    ("K0907", &[]),
+    ("K0908", &[]),
+    ("K0909", &[]),
+    ("K0910", &[]),
+    ("K0912", &[]),
+    ("K0913", &[]),
+    ("K0914", &[]),
+    ("K0915", &[]),
+    ("K0917", &[]),
+    ("K0918", &[]),
+    ("K0919", &[]),
+    ("K0920", &[]),
     ("K0921", &[]),
+    ("K0923", &[]),
+    ("K0925", &[]),
+    ("K0926", &[]),
 ];
 
 /// Codes nobody emits yet: the args their future emitter must supply. Every other code with

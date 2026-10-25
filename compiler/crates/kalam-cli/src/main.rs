@@ -37,7 +37,7 @@ fn usage() -> &'static str {
     "kalam: the Kalam toolchain\n\
      \n\
      usage:\n\
-     \x20 kalam check [--json] FILE           check a file (scaffold: source text and lexing)\n\
+     \x20 kalam check [--json] FILE           check a file (source text, lexing, parsing)\n\
      \x20 kalam fmt [--check|--stdout] FILE...  format files in canonical layout (in place)\n\
      \x20 kalam convert --to en|ar|franco [--write] FILE\n\
      \x20                                    print FILE in another skin (--write: rename it)\n\
@@ -130,11 +130,15 @@ fn check(args: &[String]) -> ExitCode {
         eprintln!("usage: kalam check [--json] FILE");
         return ExitCode::from(2);
     };
-    let text = match read_file(path) {
-        Ok(text) => text,
-        Err(code) => return code,
+    // Bytes, not text: invalid UTF-8 is a finding (SEC0100), not an unreadable file.
+    let bytes = match std::fs::read(path) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            eprintln!("cannot read `{path}`: {e}");
+            return ExitCode::from(1);
+        }
     };
-    let checked = match kalam_driver::check_source(path, &text) {
+    let checked = match kalam_driver::check_bytes(path, &bytes) {
         Ok(checked) => checked,
         Err(_) => {
             eprintln!("`{path}` is not a Kalam file (expected .kl, .ar.kl or .franco.kl)");

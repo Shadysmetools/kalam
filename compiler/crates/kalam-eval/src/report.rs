@@ -239,8 +239,10 @@ fn whole(ok: bool, evidence: String) -> Observation {
 
 fn reject_summary(r: &RejectResult) -> String {
     format!(
-        "bad rejected {}/{}, good accepted {}/{}; deferred to M2 (`[M2]` cases, FOUNDER-QUEUE Q10) {}; out of scope {}; \
-         defects {}; failing cases that expect a code no M1 stage emits (name resolution or later): {} {:?}{}",
+        "diagnostics via {}; bad rejected {}/{}, good accepted {}/{}; deferred to M2 (`[M2]` cases, FOUNDER-QUEUE Q10) {}; \
+         out of scope {}; defects {}; not measurable {}; failing cases that expect a code no M1 stage emits \
+         (name resolution or later): {} {:?}{}",
+        r.route,
         r.bad_passed,
         r.bad_total,
         r.good_passed,
@@ -248,6 +250,7 @@ fn reject_summary(r: &RejectResult) -> String {
         r.deferred_m2,
         r.out_of_scope.len(),
         r.defects.len(),
+        r.not_measurable.len(),
         r.later_stage.len(),
         r.later_stage.iter().take(5).collect::<Vec<_>>(),
         r.failures
@@ -256,6 +259,60 @@ fn reject_summary(r: &RejectResult) -> String {
             .map(|f| format!("; first problem: {f}"))
             .unwrap_or_default()
     )
+}
+
+/// A rejection-suite observation when some files could not be checked at all (`partial`):
+/// a failure stands, anything else is not measurable. A partial suite never passes.
+fn unless_partial(obs: Observation, partial: &[String]) -> Observation {
+    if partial.is_empty() {
+        return obs;
+    }
+    let note =
+        format!(
+        "{} case(s) could not be checked by any compiler entry point, so the suite cannot pass: {}",
+        partial.len(),
+        partial.iter().take(3).cloned().collect::<Vec<_>>().join(" | ")
+    );
+    match obs {
+        Observation::Measured {
+            value,
+            evidence,
+            dev_only,
+            definitive_fail: true,
+        } => Observation::Measured {
+            value,
+            evidence: format!("{evidence}; {note}"),
+            dev_only,
+            definitive_fail: true,
+        },
+        Observation::Measured { evidence, .. } => {
+            Observation::NotMeasurable(format!("{evidence}; {note}"))
+        }
+        Observation::NotMeasurable(e) | Observation::Passed(e) => {
+            Observation::NotMeasurable(format!("{e}; {note}"))
+        }
+        failed @ Observation::Failed(_) => failed,
+    }
+}
+
+/// The not-measurable cases of a rejection suite.
+fn partial_of(r: &Option<RejectResult>) -> Vec<String> {
+    r.as_ref()
+        .map(|r| r.not_measurable.clone())
+        .unwrap_or_default()
+}
+
+/// The Trojan Source cases no entry point could check, dev and held-out (the held-out
+/// runner reports a count only).
+fn trojan_partial(dev: &Option<RejectResult>, held: &Held) -> Vec<String> {
+    let mut partial = partial_of(dev);
+    let n = held
+        .aggregate()
+        .map_or(0, |a| a["trojan"]["not_measurable"].as_u64().unwrap_or(0));
+    if n > 0 {
+        partial.push(format!("held-out: {n} case(s)"));
+    }
+    partial
 }
 
 /// A rejection suite judged as a whole: present, non-empty, no defects.
@@ -328,7 +385,7 @@ fn observe_m1(id: &str, i: &Inputs, c: &TierCheck) -> Observation {
             if r.reject_skins.len() < Skin::ALL.len() && r.all_pass() {
                 return Observation::NotMeasurable(format!("{ev}; \"in every skin\" needs a K0201 case hosted in each of en, ar, franco"));
             }
-            whole(r.all_pass(), ev)
+            unless_partial(whole(r.all_pass(), ev), &r.not_measurable)
         }
         "D2.trojan_source_suite" => {
             let dev = reject_dev(suites::TROJAN, &i.trojan, true).map(|(ok, ev)| {
@@ -353,11 +410,14 @@ fn observe_m1(id: &str, i: &Inputs, c: &TierCheck) -> Observation {
                     format!("bad rejected {bp}/{bt}, good accepted {gp}/{gt}, deferred to M2 {deferred}"),
                 ))
             });
-            combine_bool(dev, held)
+            unless_partial(combine_bool(dev, held), &trojan_partial(&i.trojan, &i.held))
         }
         "D2.lexing_hazard_suite" => match reject_dev(suites::LEXHAZ, &i.lexhaz, false) {
             Err(why) => Observation::NotMeasurable(why),
-            Ok((ok, ev)) => whole(ok, format!("{ev} (SEC0104 post-fold collision and K0401 cases are marked `[M2]` and count from M2)")),
+            Ok((ok, ev)) => unless_partial(
+                whole(ok, format!("{ev} (SEC0104 post-fold collision and K0401 cases are marked `[M2]` and count from M2)")),
+                &partial_of(&i.lexhaz),
+            ),
         },
         "D5.error_recovery_precision" => recovery_obs(i, c),
         "D7.formatter_idempotence" => {
@@ -425,15 +485,18 @@ fn recovery_obs(i: &Inputs, c: &TierCheck) -> Observation {
         Some(r) => r,
     };
     let ev = format!(
-        "{} (canonical seeded-error suite, FOUNDER-QUEUE Q14): per file genuine/reported, 0 unless the seeded \
-         (code, line) is reported; dev files {} ({} cases in all 3 skins), score sum {:.3}; secondary: first reported error \
-         is seeded in {} files, no cascade in {}; skipped clean cases {}; deferred to M2 (`[M2]` cases) {}; defects {}",
+        "{} (canonical seeded-error suite, FOUNDER-QUEUE Q14), diagnostics via {}: per file genuine/reported, 0 unless \
+         the seeded (code, line) is reported; dev files {} ({} cases in all 3 skins), score sum {:.3}; secondary: first \
+         reported error is seeded in {} files, no cascade in {}; files scored 0 because they crashed or could not be \
+         checked {}; skipped clean cases {}; deferred to M2 (`[M2]` cases) {}; defects {}",
         suite_note(suites::SEEDED),
+        r.route,
         r.files,
         r.full_skin_cases,
         r.score_sum,
         r.first_match,
         r.cascade_free,
+        r.unchecked,
         r.skipped_clean,
         r.deferred_m2,
         r.defects.len()
@@ -892,6 +955,7 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
         "cargo_test": cargo,
         "parity": {
             "hook": hook.name(),
+            "diagnostics": hook.diag_route(),
             "p1": outcome_json(&c.parity.p1),
             "p2": outcome_json(&c.parity.p2),
             "p3": outcome_json(&c.parity.p3),
@@ -1144,17 +1208,38 @@ fn default_reason(sc: &Scorecard, def: &MetricDef) -> String {
     }
 }
 
+/// The props report path and the harness's cargo `--target-dir`, both absolute. Child
+/// processes run in other directories (the props test runs in `crates/kalam-props`), so a
+/// relative `--root` such as `..` must not leak into a path they read. A relative path is
+/// joined to the harness's working directory (not `canonicalize`, which gives verbatim
+/// `\\?\` paths on Windows; `std::path::absolute` is above the crate's MSRV 1.75).
+fn harness_paths(compiler_dir: &Path) -> (PathBuf, PathBuf) {
+    let dir = if compiler_dir.is_absolute() {
+        compiler_dir.to_path_buf()
+    } else {
+        std::env::current_dir()
+            .map(|cwd| cwd.join(compiler_dir))
+            .unwrap_or_else(|_| compiler_dir.to_path_buf())
+    };
+    (
+        dir.join("target")
+            .join("kalam-eval-props")
+            .join("report.json"),
+        dir.join("target").join("kalam-eval-cargo-test"),
+    )
+}
+
 /// Runs the property suite on this tree and reads the report it writes. The report path
 /// is the harness's own (under `target/`), so an old report can never be read as fresh.
 fn run_props(compiler_dir: &Path) -> Result<external::PropsReport, String> {
-    let report = compiler_dir.join("target/kalam-eval-props/report.json");
+    let (report, target_dir) = harness_paths(compiler_dir);
     let _ = fs::remove_file(&report);
     if let Some(dir) = report.parent() {
         fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     }
     Command::new("cargo")
         .args(["test", "-p", "kalam-props", "--release", "--target-dir"])
-        .arg(compiler_dir.join("target").join("kalam-eval-cargo-test"))
+        .arg(&target_dir)
         .env("KALAM_PROPS_REPORT", &report)
         .current_dir(compiler_dir)
         .output()
@@ -1164,7 +1249,7 @@ fn run_props(compiler_dir: &Path) -> Result<external::PropsReport, String> {
 }
 
 fn run_cargo_test(compiler_dir: &Path) -> Value {
-    let target_dir = compiler_dir.join("target").join("kalam-eval-cargo-test");
+    let (_, target_dir) = harness_paths(compiler_dir);
     let out = Command::new("cargo")
         .args(["test", "--workspace", "--no-fail-fast", "--target-dir"])
         .arg(&target_dir)
@@ -1536,6 +1621,72 @@ mod tests {
             syntax_obs(&o, &c, &unjudged),
             Observation::Measured { dev_only: true, .. }
         ));
+    }
+
+    #[test]
+    fn harness_child_paths_are_absolute_for_a_relative_root() {
+        // `kalam-eval --root ..`: the props test process runs in crates/kalam-props, so a
+        // relative KALAM_PROPS_REPORT or --target-dir would point somewhere else.
+        let (report, target) = harness_paths(&Path::new("..").join("compiler"));
+        assert!(report.is_absolute(), "{}", report.display());
+        assert!(target.is_absolute(), "{}", target.display());
+        assert!(report.ends_with("target/kalam-eval-props/report.json"));
+        assert!(target.ends_with("target/kalam-eval-cargo-test"));
+        assert!(!report.to_string_lossy().starts_with(r"\\?\"));
+    }
+
+    #[test]
+    fn a_suite_with_unmeasurable_cases_never_passes() {
+        let pass = || whole(true, "ev".into());
+        let partial = vec!["sec0100-x/case.kl: not valid UTF-8".to_string()];
+        assert_eq!(unless_partial(pass(), &[]), pass());
+        match unless_partial(pass(), &partial) {
+            Observation::NotMeasurable(e) => {
+                assert!(e.contains("cannot pass") && e.contains("sec0100-x"), "{e}")
+            }
+            o => panic!("{o:?}"),
+        }
+        assert!(matches!(
+            unless_partial(Observation::Passed("p".into()), &partial),
+            Observation::NotMeasurable(_)
+        ));
+        // a definitive failure stands
+        match unless_partial(whole(false, "ev".into()), &partial) {
+            Observation::Measured {
+                value: MetricValue::Bool(false),
+                definitive_fail: true,
+                ..
+            } => {}
+            o => panic!("{o:?}"),
+        }
+        // a dev-only pass (held-out missing) is also not a pass
+        let dev_only = Observation::Measured {
+            value: MetricValue::Bool(true),
+            evidence: "ev".into(),
+            dev_only: true,
+            definitive_fail: false,
+        };
+        assert!(matches!(
+            unless_partial(dev_only, &partial),
+            Observation::NotMeasurable(_)
+        ));
+    }
+
+    #[test]
+    fn trojan_partial_counts_dev_and_held_out_unmeasurable_cases() {
+        let dev = Some(RejectResult {
+            not_measurable: vec!["a/case.kl: not valid UTF-8".into()],
+            ..RejectResult::default()
+        });
+        let held = ran(json!({"trojan": {"bad_rejected": 1, "bad_total": 1, "not_measurable": 2}}));
+        let p = trojan_partial(&dev, &held);
+        assert_eq!(p.len(), 2, "{p:?}");
+        assert!(p[1].contains("held-out: 2"), "{p:?}");
+        // held-out alone is enough to block a pass
+        let p = trojan_partial(&Some(RejectResult::default()), &held);
+        assert_eq!(p.len(), 1);
+        assert!(trojan_partial(&None, &ran(json!({"trojan": {"not_measurable": 0}}))).is_empty());
+        assert!(trojan_partial(&None, &Held::Missing("no store".into())).is_empty());
     }
 
     #[test]

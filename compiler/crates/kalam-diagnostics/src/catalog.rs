@@ -151,9 +151,9 @@ pub static CATALOG: &[Entry] = &[
         code: "SEC0100",
         title: ["FILE ENCODING", "ترميز الملف", "ENCODING EL FILE"],
         message: [
-            "This file has a byte order mark (U+FEFF), or bytes that are not UTF-8. Kalam reads source files only as plain UTF-8, so every editor, reviewer and compiler sees exactly the same characters.",
-            "يحتوي هذا الملف على علامة ترتيب البايتات (U+FEFF) أو على بايتات ليست بترميز UTF-8. يقرأ كلام ملفات الكود بترميز UTF-8 العادي فقط، حتى يرى كل محرر ومراجع ومترجم الحروف نفسها تمامًا.",
-            "El file da feeh byte order mark (U+FEFF), aw bytes mesh UTF-8. Kalam beye2ra malafat el code UTF-8 3adi bas, 3ashan kol editor w reviewer w compiler yshoofo nafs el 7oroof bel zabt.",
+            "I found {cp} {name} here: a byte order mark (U+FEFF), or bytes that are not UTF-8. Kalam reads source files only as plain UTF-8, so every editor, reviewer and compiler sees exactly the same characters.",
+            "وجدت {cp} {name} هنا: علامة ترتيب البايتات (U+FEFF) أو بايتات ليست بترميز UTF-8. يقرأ كلام ملفات الكود بترميز UTF-8 العادي فقط، حتى يرى كل محرر ومراجع ومترجم الحروف نفسها تمامًا.",
+            "La2eit {cp} {name} hena: byte order mark (U+FEFF), aw bytes mesh UTF-8. Kalam beye2ra malafat el code UTF-8 3adi bas, 3ashan kol editor w reviewer w compiler yshoofo nafs el 7oroof bel zabt.",
         ],
         help: [
             "Run `kalam fmt` to remove a byte order mark. For other bytes, save the file again from your editor as \"UTF-8\" (not \"UTF-8 with BOM\").",
@@ -171,14 +171,14 @@ pub static CATALOG: &[Entry] = &[
         code: "SEC0101",
         title: ["TEXT NOT IN NFC", "نص بغير صيغة NFC", "EL NASS MESH NFC"],
         message: [
-            "This file is not in Unicode normalization form NFC. The same letter can be stored as one code point or as a base letter plus combining marks; the two look identical but compare as different text.",
-            "هذا الملف ليس بصيغة التطبيع NFC في يونيكود. يمكن تخزين الحرف نفسه كنقطة ترميز واحدة، أو كحرف أساسي تتبعه علامات مركّبة، فيبدوان متطابقين لكنهما نصان مختلفان عند المقارنة.",
-            "El file da mesh b sheklo el NFC f Unicode. Nafs el 7arf momken yetkhezen code point wa7ed, aw 7arf asasi w ba3do 3alamat murakkaba; el etnein shabah ba3d bel zabt, bas lamma tqarenhom yetle3o mokhtalfeen.",
+            "I found {cp} {name} in text that is not in Unicode normalization form NFC. The same letter can be stored as one code point or as a base letter plus combining marks; the two look identical but compare as different text.",
+            "وجدت {cp} {name} في نص ليس بصيغة التطبيع NFC في يونيكود. يمكن تخزين الحرف نفسه كنقطة ترميز واحدة، أو كحرف أساسي تتبعه علامات مركّبة، فيبدوان متطابقين لكنهما نصان مختلفان عند المقارنة.",
+            "La2eit {cp} {name} f kalam mesh b sheklo el NFC f Unicode. Nafs el 7arf momken yetkhezen code point wa7ed, aw 7arf asasi w ba3do 3alamat murakkaba; el etnein shabah ba3d bel zabt, bas lamma tqarenhom yetle3o mokhtalfeen.",
         ],
         help: [
-            "Run `kalam fmt`, which rewrites the file in NFC and changes nothing else.",
-            "شغّل `kalam fmt`، فهو يعيد كتابة الملف بصيغة NFC ولا يغيّر شيئًا آخر.",
-            "Shaghal `kalam fmt`, hayekteb el file b NFC w mesh hayghayar ay 7aga tanya.",
+            "Run `kalam fmt` or `kalam fix`, which rewrite the text in NFC and change nothing else.",
+            "شغّل `kalam fmt` أو `kalam fix`، فكلاهما يعيد كتابة النص بصيغة NFC ولا يغيّر شيئًا آخر.",
+            "Shaghal `kalam fmt` aw `kalam fix`, hayekteb el kalam b NFC w mesh hayghayar ay 7aga tanya.",
         ],
         explain: [
             "Why: `é` can be stored as U+00E9, or as `e` followed by U+0301. Arabic has the same problem: `أ` can be one code point, or `ا` followed by a combining hamza (U+0654). If both forms were accepted, two names that look the same could be two different names. Kalam requires NFC, so each visible text has exactly one spelling.\n\nFix: `kalam fmt` normalizes the file. Many editors can also be set to save in NFC.",
@@ -391,9 +391,9 @@ pub static CATALOG: &[Entry] = &[
         code: "SEC0120",
         title: ["MIXED DIGITS", "أرقام مختلطة", "ARQAM MAKHLOUTA"],
         message: [
-            "The number `{literal}` mixes two digit systems, or uses the other system's decimal separator. A reader could misread its value.",
-            "الرقم `{literal}` يخلط بين نظامين للأرقام، أو يستخدم الفاصلة العشرية الخاصة بالنظام الآخر، فقد يُخطئ القارئ في قيمته.",
-            "El rakam `{literal}` khalat ben nezameen arqam, aw esta5dem el fasla el 3ashreya bta3et el nezam el tany, fa momken elly beye2ra yefham qeemto ghalat.",
+            "The number `{literal}` mixes two digit systems, or uses the other system's decimal separator (it contains {cp}). A reader could misread its value.",
+            "الرقم `{literal}` يخلط بين نظامين للأرقام، أو يستخدم الفاصلة العشرية الخاصة بالنظام الآخر (فيه {cp})، فقد يُخطئ القارئ في قيمته.",
+            "El rakam `{literal}` khalat ben nezameen arqam, aw esta5dem el fasla el 3ashreya bta3et el nezam el tany (feeh {cp}), fa momken elly beye2ra yefham qeemto ghalat.",
         ],
         help: [
             "Write each number in one system: ASCII digits with `.`, or Arabic-Indic digits with `٫`.",
@@ -411,9 +411,9 @@ pub static CATALOG: &[Entry] = &[
         code: "SEC0121",
         title: ["PERSIAN DIGITS", "أرقام فارسية", "ARQAM FARSY"],
         message: [
-            "`{literal}` uses Persian digits (۰–۹), which look almost the same as the Arabic-Indic digits ٠–٩ but are different characters: ۴ and ٤, ۶ and ٦ are easy to confuse.",
-            "`{literal}` يستخدم الأرقام الفارسية (۰–۹)، وهي تشبه الأرقام العربية الهندية ٠–٩ جدًا لكنها حروف مختلفة، فمن السهل الخلط بين ۴ و٤، وبين ۶ و٦.",
-            "`{literal}` feeh arqam farsy (۰–۹), w di shabah el arqam el 3arabeya ٠–٩ awy bas 7oroof tanya, w sahl telkhbat ben ۴ w ٤, w ben ۶ w ٦.",
+            "`{literal}` uses Persian digits such as {cp} (۰–۹), which look almost the same as the Arabic-Indic digits ٠–٩ but are different characters: ۴ and ٤, ۶ and ٦ are easy to confuse.",
+            "`{literal}` يستخدم الأرقام الفارسية مثل {cp} (۰–۹)، وهي تشبه الأرقام العربية الهندية ٠–٩ جدًا لكنها حروف مختلفة، فمن السهل الخلط بين ۴ و٤، وبين ۶ و٦.",
+            "`{literal}` feeh arqam farsy zay {cp} (۰–۹), w di shabah el arqam el 3arabeya ٠–٩ awy bas 7oroof tanya, w sahl telkhbat ben ۴ w ٤, w ben ۶ w ٦.",
         ],
         help: [
             "Use ASCII digits, or the Arabic-Indic digits ٠–٩ in an Arabic-skin file.",
@@ -431,9 +431,9 @@ pub static CATALOG: &[Entry] = &[
         code: "SEC0122",
         title: ["ARABIC-INDIC DIGITS", "أرقام عربية هندية", "ARQAM 3ARABEYA"],
         message: [
-            "`{literal}` uses Arabic-Indic digits, which only Arabic-skin files (`.ar.kl`) accept. In this file, numbers use ASCII digits.",
-            "`{literal}` مكتوب بأرقام عربية هندية، ولا تقبلها إلا ملفات الواجهة العربية (`.ar.kl`). أما في هذا الملف فالأرقام تُكتب بأرقام ASCII.",
-            "`{literal}` maktoob b arqam 3arabeya, w di bas f malafat el 3arabi (`.ar.kl`). F el file da el arqam btetketeb ASCII.",
+            "`{literal}` uses Arabic-Indic digits such as {cp}, which only Arabic-skin files (`.ar.kl`) accept. In this file, numbers use ASCII digits.",
+            "`{literal}` مكتوب بأرقام عربية هندية مثل {cp}، ولا تقبلها إلا ملفات الواجهة العربية (`.ar.kl`). أما في هذا الملف فالأرقام تُكتب بأرقام ASCII.",
+            "`{literal}` maktoob b arqam 3arabeya zay {cp}, w di bas f malafat el 3arabi (`.ar.kl`). F el file da el arqam btetketeb ASCII.",
         ],
         help: [
             "Write it as `{fixed}`. `kalam fix` does this for you.",

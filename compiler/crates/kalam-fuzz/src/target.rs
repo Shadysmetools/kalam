@@ -5,9 +5,11 @@
 //! **oracles** are checked; a violation is reported, not panicked, because it is a wrong
 //! answer rather than a crash and does not reset the crash-free clock:
 //! - `cst_lossless`: the CST reproduces the input byte for byte;
+//! - `fmt_output_rejected`: `fmt` output does not lex and parse cleanly in its own skin
+//!   (FOUNDER-QUEUE Q16: backticks around another skin's undeclared reserved word are kept);
 //! - `fmt_idempotence`: `fmt(fmt(x)) == fmt(x)` when `fmt` normalized the layout;
-//! - `convert_output_rejected`: converting a clean file gives a file that does not lex and
-//!   parse cleanly in the target skin (spec §4.3 G1);
+//! - `convert_output_rejected`: converting a clean file (to any skin, its own included) gives
+//!   a file that does not lex and parse cleanly in the target skin (spec §4.3 G1, Q16);
 //! - `convert_roundtrip`: `convert(convert(x, X→Y), Y→X) == convert(x, X→X)` (spec §4.3 G2).
 
 use kalam_base::{FileId, Skin};
@@ -109,6 +111,14 @@ pub fn exercise(text: &str, skin: Skin) -> Observed {
                 skin_id,
                 &[u8::from(f.layout_kept.is_some())],
             ]));
+            if obs.oracle.is_none() {
+                if let Some(codes) = errors_in(&f.text, skin) {
+                    obs.oracle = Some((
+                        "fmt_output_rejected",
+                        format!("fmt output of a {skin} file has errors {codes:?}"),
+                    ));
+                }
+            }
             if f.layout_kept.is_none() && obs.oracle.is_none() {
                 if let Ok(f2) = kalam_driver::format_source(&path, &f.text, &cfg) {
                     if f2.text != f.text {
@@ -123,6 +133,14 @@ pub fn exercise(text: &str, skin: Skin) -> Observed {
     // `kalam convert` to every other skin, and back.
     if clean {
         let canon = kalam_fmt::convert(text, skin, skin, &cfg).ok();
+        if let (Some(c), None) = (&canon, &obs.oracle) {
+            if let Some(codes) = errors_in(c, skin) {
+                obs.oracle = Some((
+                    "convert_output_rejected",
+                    format!("the {skin} conversion of a clean {skin} file has errors {codes:?}"),
+                ));
+            }
+        }
         for to in Skin::ALL {
             if to == skin {
                 continue;
@@ -135,6 +153,13 @@ pub fn exercise(text: &str, skin: Skin) -> Observed {
             obs.features
                 .push(fnv(&[b"convert", skin_id, to.id().as_bytes()]));
             if obs.oracle.is_some() || canon.is_none() {
+                continue;
+            }
+            if let Some(codes) = errors_in(&c.text, to) {
+                obs.oracle = Some((
+                    "convert_output_rejected",
+                    format!("the {to} conversion of a clean {skin} file has errors {codes:?}"),
+                ));
                 continue;
             }
             match kalam_fmt::convert(&c.text, to, skin, &cfg) {
@@ -158,6 +183,21 @@ pub fn exercise(text: &str, skin: Skin) -> Observed {
     obs
 }
 
+/// The error codes the lexer and parser report on `text` in `skin`, if any.
+fn errors_in(text: &str, skin: Skin) -> Option<Vec<&'static str>> {
+    let file = FileId(0);
+    let lexed = kalam_lexer::lex(text, skin, file);
+    let parsed = kalam_parser::parse(text, &lexed, skin, file);
+    let codes: Vec<&'static str> = lexed
+        .diagnostics
+        .iter()
+        .chain(parsed.diagnostics.iter())
+        .filter(|d| d.is_error())
+        .map(|d| d.code)
+        .collect();
+    (!codes.is_empty()).then_some(codes)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -168,6 +208,56 @@ mod tests {
         assert!(o.oracle.is_none(), "{:?}", o.oracle);
         assert!(o.features.contains(&fnv(&[b"fmt", b"en", &[0]])));
         assert!(o.features.contains(&fnv(&[b"convert", b"en", b"ar"])));
+    }
+
+    /// One minimized input per root cause of the iteration-5 oracle violations (49 in
+    /// `status.json`; 3 saved): each now runs through every oracle cleanly.
+    #[test]
+    fn oracle_violations_of_iteration_5_stay_fixed() {
+        let cases: &[(Skin, &str)] = &[
+            // Q16: another skin's undeclared reserved word lost its backticks in `convert`
+            // (`Some`, `None` → K0201 in ar/franco) and in `fmt` (`اطبع` → K0201 in en).
+            (
+                Skin::En,
+                "fn main(x: Set[`Some`]):\n    return if x: 1 else: `None`\n",
+            ),
+            (
+                Skin::En,
+                "fn main():\n    f(`\u{627}\u{637}\u{628}\u{639}`..x)\n",
+            ),
+            (Skin::Franco, "dala ra2isi():\n    f(`if`, `Some`)\n"),
+            (Skin::Ar, "دالة رئيسي():\n    f(`law`، `print`)\n"),
+        ];
+        for (skin, text) in cases {
+            let o = exercise(text, *skin);
+            assert!(o.oracle.is_none(), "{skin}: {:?}\n{text}", o.oracle);
+            assert!(
+                o.features
+                    .contains(&fnv(&[b"fmt", skin.id().as_bytes(), &[0]])),
+                "{skin}: fmt must format it without the layout fallback\n{text}"
+            );
+        }
+        // The other two causes were accepted inputs that should have been rejected. A raw name
+        // that does not lex bare (mixed scripts, a haraka, an Extended Arabic-Indic digit) lost
+        // its backticks (SEC0105, SEC0106 + K0250, SEC0124), and a bad number run in a hole
+        // (`۹age`) was re-spelled `9age` (K0127). §5.3 rules 3-5 now hold inside backticks and
+        // holes are checked as code, so both are rejected up front and no oracle runs on them.
+        let rejected: &[(Skin, &str)] = &[
+            (
+                Skin::Franco,
+                "dala ra2isi(`wal\u{6BE}a`: adad):\n    f(`w\u{651}alla`: `els\u{6F0}e`)\n",
+            ),
+            (Skin::En, "fn main():\n    print(\"{\u{6F9}age}\")\n"),
+        ];
+        for (skin, text) in rejected {
+            let o = exercise(text, *skin);
+            assert!(o.oracle.is_none(), "{skin}: {:?}\n{text}", o.oracle);
+            assert!(
+                !o.features
+                    .contains(&fnv(&[b"fmt", skin.id().as_bytes(), &[0]])),
+                "{skin}: the source must be rejected before fmt\n{text}"
+            );
+        }
     }
 
     #[test]

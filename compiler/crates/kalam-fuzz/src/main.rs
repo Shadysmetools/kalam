@@ -26,6 +26,7 @@ OPTIONS:
     --timeout-ms N     a hang after N ms without a result (default 10000)
     --max-execs N      stop after N executions
     --generated N      generated seed programs (default 150)
+    --oracle-examples N  inputs saved per oracle under OUT/oracle (default 3; all are counted)
     --no-replay        do not re-run saved crash inputs first
     --no-mutate        run the seeds once and stop
     --quiet            no progress output
@@ -58,6 +59,7 @@ fn parse_args(args: &[String]) -> Result<Options, String> {
             "--timeout-ms" => o.timeout = Duration::from_millis(num(v, a)?),
             "--max-execs" => o.max_execs = Some(num(v, a)?),
             "--generated" => o.generated = num(v, a)?,
+            "--oracle-examples" => o.oracle_examples = num(v, a)?,
             "--no-replay" => {
                 o.replay = false;
                 takes = false;

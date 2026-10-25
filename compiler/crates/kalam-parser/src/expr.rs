@@ -69,7 +69,13 @@ impl<'t> Parser<'t> {
         } else if self.at_kw(Concept::KwIf) {
             self.if_inline()
         } else {
-            self.binary(OR)
+            let e = self.binary(OR);
+            if self.ternary_ahead() {
+                // `c ? a : b` (K0910).
+                self.ternary(e)
+            } else {
+                e
+            }
         };
         self.leave();
         self.finish_node(m);
@@ -132,7 +138,10 @@ impl<'t> Parser<'t> {
                 self.too_deep();
                 break;
             }
-            self.bump();
+            let op_tok = self.bump();
+            if matches!(op, Infix::Bin(BinOp::Eq | BinOp::NotEq)) {
+                self.triple_equals(op_tok);
+            }
             let rhs = if self.enter() {
                 self.binary(level + 1)
             } else {
@@ -161,7 +170,7 @@ impl<'t> Parser<'t> {
     }
 
     /// `unary = "-" unary | postfix` (iterative, so long `- - -` chains cannot overflow).
-    fn unary(&mut self) -> Expr {
+    pub(crate) fn unary(&mut self) -> Expr {
         let mut minus = Vec::new();
         while self.at_op(Op::Minus) {
             minus.push(self.start());
@@ -192,10 +201,17 @@ impl<'t> Parser<'t> {
             let kind = match self.peek() {
                 TokenKind::Op(Op::LParen) => {
                     let args = self.call_args();
+                    self.check_call(&e, &args, self.last_end);
                     ExprKind::Call {
                         callee: boxed(e),
                         args,
                     }
+                }
+                TokenKind::Op(Op::Star) if self.at_glued_pair(Op::Star) => self.power(e),
+                TokenKind::Op(Op::Plus | Op::Minus) if self.at_postfix_incr() => {
+                    self.postfix_incr(&e);
+                    e.span = self.span_from(start);
+                    continue;
                 }
                 TokenKind::Op(Op::LBracket) => {
                     let open = self.bump().span;
@@ -240,7 +256,7 @@ impl<'t> Parser<'t> {
                         member,
                     }
                 }
-                TokenKind::Op(Op::Question) => {
+                TokenKind::Op(Op::Question) if !self.ternary_ahead() => {
                     self.bump();
                     ExprKind::Try(boxed(e))
                 }
@@ -261,8 +277,13 @@ impl<'t> Parser<'t> {
         e
     }
 
-    fn primary(&mut self) -> Expr {
+    pub(crate) fn primary(&mut self) -> Expr {
         let start = self.start();
+        if self.peek() == TokenKind::Ident {
+            if let Some(e) = self.primary_mistake() {
+                return e;
+            }
+        }
         let kind = match self.peek() {
             TokenKind::Int => {
                 let t = self.bump();
@@ -283,6 +304,7 @@ impl<'t> Parser<'t> {
                 let text = self.tok_text(t);
                 let tag_len = text.find('"').unwrap_or(text.len());
                 let tag = text[..tag_len].to_string();
+                self.f_string(t, &tag);
                 ExprKind::Tagged {
                     tag,
                     lit: self.str_lit(t, tag_len),
@@ -437,7 +459,7 @@ impl<'t> Parser<'t> {
     /// `lambda = "fn" "(" [ lparam { "," lparam } [ "," ] ] ")" [ "->" type ] "=>" expr`
     fn lambda(&mut self) -> Expr {
         let start = self.start();
-        self.bump(); // fn
+        let fn_span = self.bump().span; // fn
         let open = self.bump().span; // (
         let params = self.delimited(Op::RParen, open, "`)`", |p| {
             if p.peek() != TokenKind::Ident {
@@ -458,15 +480,13 @@ impl<'t> Parser<'t> {
         } else {
             None
         };
-        if self.at_op(Op::Colon) {
-            // `fn(x): …` is a multi-line lambda (K0921, DR-15). Recover as if `=>`.
-            let span = self.cur_span();
-            self.error_at(codes::MULTI_LINE_LAMBDA, span);
-            self.bump();
+        let body = if self.at_op(Op::Colon) {
+            // `fn(x): …` is a multi-line lambda (K0921, DR-15).
+            self.lambda_colon(fn_span, &params)
         } else {
             self.expect_op(Op::FatArrow, "`=>`");
-        }
-        let body = self.expr();
+            self.expr()
+        };
         Expr {
             kind: ExprKind::Lambda(Lambda {
                 params,
@@ -824,6 +844,7 @@ impl<'t> Parser<'t> {
             }
             TokenKind::Ident | TokenKind::Core(_) => {
                 let t = self.bump();
+                let type_start = t.span.start.min(t.span.end);
                 let mut path = vec![self.name_of(t)];
                 while self.at_op(Op::Dot) && self.nth_is_word(1) {
                     self.bump();
@@ -833,12 +854,19 @@ impl<'t> Parser<'t> {
                         span: mk_span(t.span.start, t.span.end),
                     });
                 }
-                let args = if self.at_op(Op::LBracket) {
+                let args = if self.at_op(Op::Lt) {
+                    // `List<T>` (K0914).
+                    self.angle_args(&path, type_start)
+                } else if self.at_op(Op::LBracket) && self.nth(1) != TokenKind::Op(Op::RBracket) {
                     let open = self.bump().span;
                     self.delimited(Op::RBracket, open, "`]`", |p| Some(p.ty()))
                 } else {
                     Vec::new()
                 };
+                // `T[]` (K0914), possibly repeated.
+                while self.at_op(Op::LBracket) && self.nth(1) == TokenKind::Op(Op::RBracket) {
+                    self.array_suffix(type_start);
+                }
                 TypeKind::Named { path, args }
             }
             _ => {
@@ -1000,9 +1028,16 @@ impl<'t> Parser<'t> {
             })
             .collect();
         for mut d in lexed.diagnostics {
-            // Source-text (SEC) problems were already reported on the whole string, and
-            // layout codes do not apply inside a hole.
-            if d.code.starts_with("SEC") || matches!(d.code, "K0103" | "K0120" | "K0122") {
+            // Source-text (§5.1) problems were already reported on the whole string, and
+            // layout codes do not apply inside a hole. The name and number checks (§5.3
+            // rules 3-5, §5.6) are code-only, so the string pass never made them: keep them.
+            let code_only = matches!(
+                d.code,
+                "SEC0105" | "SEC0106" | "SEC0120" | "SEC0121" | "SEC0122" | "SEC0123" | "SEC0124"
+            );
+            if (d.code.starts_with("SEC") && !code_only)
+                || matches!(d.code, "K0103" | "K0120" | "K0122")
+            {
                 continue;
             }
             d.span = shift(d.span);

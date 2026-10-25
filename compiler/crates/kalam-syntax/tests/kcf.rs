@@ -231,6 +231,21 @@ fn keywords_inside_interpolation_holes_are_concepts() {
 }
 
 #[test]
+fn a_multi_line_hole_is_lexed_as_a_fragment() {
+    // Hole code is re-lexed with `lex_fragment` (FOUNDER-QUEUE Q9: a hole cannot see the
+    // file's declarations). With `lex`, a hole spanning lines of a `"""` string ran the
+    // undefined-name half of K0201, which turns an undeclared `law` at the start of a line
+    // into the keyword `if`: the English and Franco files then had different KCFs.
+    let k = same_kcf(
+        "fn main():\n    let a = true\n    print(\"\"\"{a and\nlaw}\"\"\")\n",
+        "دالة رئيسي():\n    ليكن a = صح\n    اطبع(\"\"\"{a و\nlaw}\"\"\")\n",
+        "dala ra2isi():\n    khali a = sa7\n    ektb(\"\"\"{a we\n`law`}\"\"\")\n",
+    );
+    let text = show(&k);
+    assert!(!text.contains("KW_IF"), "{text}");
+}
+
+#[test]
 fn raw_identifiers_lose_their_backticks() {
     // `law` is an English identifier; in Franco it is the keyword `if`, so the converter
     // writes it in backticks (§4.3).

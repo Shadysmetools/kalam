@@ -22,6 +22,9 @@
 //!   line opens) or to the closing DEDENT, wrapping the skipped tokens in an `Error` node.
 //!   The parser never panics: nesting is capped ([`codes::TOO_DEEP`]), every loop makes
 //!   progress, and spans from the token stream are clamped before any slicing.
+//! - **Known LLM mistakes** (spec §21.3, K0901–K0926, `mistakes.rs`) are reported instead
+//!   of a generic K0250/K0255 at their site, each with the spec's fix spelled in the file's
+//!   skin, and parsed as the canonical construct so nothing cascades from them.
 //! - The CST is coarse in this version: nodes for items, blocks, statements, `if`/`match`
 //!   forms, case arms, loops, expressions, patterns and types; precedence structure lives in
 //!   the AST.
@@ -29,6 +32,9 @@
 pub mod codes;
 mod expr;
 mod grammar;
+mod mistakes;
+
+use std::collections::HashSet;
 
 use kalam_ast::{Ast, Ident, Name, NameKind, Trivia as AstTrivia, TriviaKind as AstTriviaKind};
 use kalam_base::{FileId, LineIndex, Skin, Span};
@@ -50,6 +56,8 @@ pub fn parse(text: &str, tokens: &LexOutput, skin: Skin, file: FileId) -> ParseO
     let mut p = Parser::new(text, skin, file, tokens.tokens.clone(), &tokens.trivia);
     let root = p.start_node(SyntaxKind::File);
     let file_ast = p.file();
+    p.bare_variants(&file_ast);
+    p.sort_fix_edits();
     let (cst, diagnostics) = p.finish(root);
     let trivia = collect_trivia(text, tokens);
     ParseOutput {
@@ -62,14 +70,27 @@ pub fn parse(text: &str, tokens: &LexOutput, skin: Skin, file: FileId) -> ParseO
     }
 }
 
-/// Lexes and parses; the diagnostics are the lexer's followed by the parser's.
+/// Lexes and parses. The diagnostics are the lexer's and the parser's together, in source
+/// order (see [`merge_diagnostics`]).
 pub fn parse_source(text: &str, skin: Skin, file: FileId) -> ParseOutput {
     let lexed = kalam_lexer::lex(text, skin, file);
     let mut out = parse(text, &lexed, skin, file);
-    let mut all = lexed.diagnostics;
-    all.append(&mut out.diagnostics);
-    out.diagnostics = all;
+    let parser = std::mem::take(&mut out.diagnostics);
+    out.diagnostics = merge_diagnostics(text, lexed.diagnostics, parser);
     out
+}
+
+/// Lexer and parser diagnostics as one list, sorted by start offset (stable, so a lexer
+/// finding comes before a parser finding at the same offset). Findings that only restate
+/// another one are dropped (see `mistakes::drop_cascades`): one mistake, one report.
+pub fn merge_diagnostics(
+    text: &str,
+    lexer: Vec<Diagnostic>,
+    parser: Vec<Diagnostic>,
+) -> Vec<Diagnostic> {
+    let mut all = mistakes::drop_cascades(text, lexer, parser);
+    all.sort_by_key(|d| d.span.start.min(d.span.end));
+    all
 }
 
 /// Recursion depth limit (expressions, patterns, types, blocks). Deep enough for any real
@@ -103,6 +124,26 @@ pub(crate) struct Parser<'t> {
     too_deep_reported: bool,
     /// Token index of the last reported error, so one bad token yields one diagnostic.
     pub(crate) last_error_pos: Option<usize>,
+    /// Names the file declares anywhere (FOUNDER-QUEUE Q9 style, scope-insensitive): a
+    /// known-mistake word (`null`, `len`, `range`, `await`, …) that the file declares is
+    /// an ordinary name, never a §21.3 mistake.
+    pub(crate) declared: HashSet<String>,
+    /// Set when a construct already consumed its line's NEWLINE and indented block (a
+    /// multi-line lambda, K0921), so the statement's `end_line` has nothing left to end.
+    pub(crate) line_done: bool,
+    /// Inside a `{ … }` body used as a block (K0905): the lexer joined its lines, so
+    /// `end_line` ends nothing and `skip_line` stops before the closing `}`.
+    pub(crate) brace_depth: u32,
+    /// While parsing the signature after `def`/`function`/`func` (K0902): the end offsets
+    /// of parameter names written without a type, which the fix gives a `: _` hole.
+    pub(crate) untyped: Option<Vec<u32>>,
+    /// The K0914 diagnostic of the outermost `<…>` type being parsed (nested ones add
+    /// their edits to it).
+    pub(crate) angle_owner: Option<usize>,
+    /// The last multi-line lambda (K0921) and what its hoisting fix needs.
+    pub(crate) block_lambda: Option<mistakes::BlockLambda>,
+    /// The last postfix `x++` (K0909): its diagnostic and whether `x` is a place.
+    pub(crate) pending_incr: Option<(usize, bool)>,
 }
 
 pub(crate) fn is_layout(k: TokenKind) -> bool {
@@ -136,6 +177,7 @@ impl<'t> Parser<'t> {
         toks: Vec<Token>,
         trivia: &'t [Trivia],
     ) -> Self {
+        let declared = mistakes::declared_names(text, &toks);
         Parser {
             text,
             skin,
@@ -154,6 +196,13 @@ impl<'t> Parser<'t> {
             height: 0,
             too_deep_reported: false,
             last_error_pos: None,
+            declared,
+            line_done: false,
+            brace_depth: 0,
+            untyped: None,
+            angle_owner: None,
+            block_lambda: None,
+            pending_incr: None,
         }
     }
 
@@ -378,7 +427,20 @@ impl<'t> Parser<'t> {
     pub(crate) fn skip_line(&mut self) {
         let m = self.start_node(SyntaxKind::Error);
         let mut depth = 0usize;
+        // Inside a `{ … }` block body: stop before the `}` that closes it.
+        let mut brackets = 0usize;
         loop {
+            if self.brace_depth > 0 {
+                match self.peek() {
+                    TokenKind::Op(Op::LParen | Op::LBracket | Op::LBrace) => brackets += 1,
+                    TokenKind::Op(Op::RParen | Op::RBracket) => {
+                        brackets = brackets.saturating_sub(1)
+                    }
+                    TokenKind::Op(Op::RBrace) if brackets == 0 => break,
+                    TokenKind::Op(Op::RBrace) => brackets -= 1,
+                    _ => {}
+                }
+            }
             match self.peek() {
                 TokenKind::Eof => break,
                 TokenKind::Newline if depth == 0 => {

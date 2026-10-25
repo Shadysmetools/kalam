@@ -30,7 +30,7 @@ use std::fmt;
 
 use kalam_base::Skin;
 use kalam_diagnostics::Diagnostic;
-use kalam_lexer::to_ascii_digits;
+use kalam_lexer::{to_ascii_digits, TokenKind};
 use kalam_skins::KeywordTable;
 
 pub use verify::{comment_texts, normalized_shape};
@@ -70,7 +70,7 @@ pub fn convert_with(
     table: &KeywordTable,
 ) -> Result<String, Vec<Diagnostic>> {
     let src = source::Source::parse(text, from)?;
-    let roles = roles::Roles::of(&src.ast);
+    let roles = roles::Roles::of(&src.ast, text, &src.tokens);
     let rw = convert::Rewriter {
         from,
         to,
@@ -87,6 +87,12 @@ pub fn convert_with(
 /// never changes a program's identity.
 pub(crate) fn convert_digits(literal: &str, to: Skin, config: &FmtConfig) -> String {
     let ascii = to_ascii_digits(literal);
+    if ascii != literal && !is_number(&ascii) {
+        // Not a numeric literal (a bad run such as `۹age`, which the lexer reports as SEC0121,
+        // in interpolation holes too): re-spelling it would only change which error it is
+        // (`9age` is K0127), so it is copied. A guard: an accepted file has no such run.
+        return literal.to_string();
+    }
     let want_arabic = to == Skin::Ar && config.ar_digits == ArDigits::ArabicIndic;
     let plain_decimal = ascii
         .chars()
@@ -105,6 +111,26 @@ pub(crate) fn convert_digits(literal: &str, to: Skin, config: &FmtConfig) -> Str
             other => other,
         })
         .collect()
+}
+
+/// `text` (ASCII digits) lexes as exactly one clean numeric literal.
+pub(crate) fn is_number(text: &str) -> bool {
+    if !text.is_empty() && text.bytes().all(|b| b.is_ascii_digit()) {
+        return true;
+    }
+    let lexed = kalam_lexer::lex_fragment(text, Skin::En, kalam_base::FileId(0));
+    let mut toks = lexed.tokens.iter().filter(|t| {
+        !matches!(
+            t.kind,
+            TokenKind::Newline | TokenKind::Indent | TokenKind::Dedent | TokenKind::Eof
+        )
+    });
+    let one = matches!(
+        (toks.next(), toks.next()),
+        (Some(t), None) if matches!(t.kind, TokenKind::Int | TokenKind::Float)
+            && t.span.end as usize == text.len()
+    );
+    one && !lexed.diagnostics.iter().any(|d| d.is_error())
 }
 
 /// Why [`format_strict`] produced no output.
@@ -146,7 +172,7 @@ pub fn format(text: &str, skin: Skin, config: &FmtConfig) -> Result<String, Vec<
 /// parses cleanly to the same AST ([`normalized_shape`]) with the same comments.
 pub fn format_strict(text: &str, skin: Skin, config: &FmtConfig) -> Result<String, FmtError> {
     let src = source::Source::parse(text, skin).map_err(FmtError::Source)?;
-    let roles = roles::Roles::of(&src.ast);
+    let roles = roles::Roles::of(&src.ast, text, &src.tokens);
     let mut p = printer::Printer::new(&src, &roles, config);
     p.file();
     if let Some(why) = p.failed.take() {
@@ -242,6 +268,146 @@ mod tests {
         assert_eq!(conv(&ar, Skin::Ar, Skin::En), en);
     }
 
+    /// `text` lexes and parses cleanly in `skin` (no K0201, no K0250, no error at all).
+    fn assert_clean(text: &str, skin: Skin) {
+        if let Err(d) = source::Source::parse(text, skin) {
+            let codes: Vec<&str> = d.iter().map(|d| d.code).collect();
+            panic!("{skin} output has errors {codes:?}:\n{text}");
+        }
+    }
+
+    /// Every conversion of `src` (and `fmt` of it) passes its own lexer and parser, and every
+    /// round trip comes back to the canonical own-skin conversion byte for byte (G2).
+    fn assert_q16(src: &str, from: Skin) {
+        let canon = conv(src, from, from);
+        assert_clean(&canon, from);
+        assert_clean(&fmt(src, from), from);
+        for to in Skin::ALL {
+            let there = conv(src, from, to);
+            assert_clean(&there, to);
+            assert_eq!(conv(&there, to, from), canon, "{from} -> {to} -> {from}");
+            assert_eq!(conv(&there, to, to), there, "{from} -> {to} is canonical");
+            assert_clean(&fmt(&there, to), to);
+        }
+    }
+
+    #[test]
+    fn undeclared_cross_skin_words_keep_their_backticks_in_every_skin() {
+        // FOUNDER-QUEUE Q16 (fuzz oracle convert_roundtrip-1/2): `Some` is an English core
+        // name used as an undeclared type name, `None` an undeclared value. Read bare in an
+        // `ar` or `franco` file they are K0201, so the backticks stay in every skin.
+        let en = "fn main(x: Set[`Some`]):\n    return if x: 1 else: `None`\n";
+        assert_eq!(
+            conv(en, Skin::En, Skin::Ar),
+            "دالة رئيسي(x: مجموعة[`Some`]):\n    أرجع إذا x: 1 وإلا: `None`\n"
+        );
+        assert_eq!(
+            conv(en, Skin::En, Skin::Franco),
+            "dala ra2isi(x: magmoo3a[`Some`]):\n    rag3 law x: 1 walla: `None`\n"
+        );
+        assert_q16(en, Skin::En);
+        // Fuzz oracle convert_roundtrip-3: `fmt` of an English file kept `اطبع` (an Arabic
+        // core name) without its backticks, which is K0201 in English.
+        let en = "fn main():\n    f(`اطبع`..x)\n";
+        assert_eq!(fmt(en, Skin::En), en);
+        assert_q16(en, Skin::En);
+        // A Franco variant and an Arabic fold variant are reserved words too.
+        let ar = "دالة رئيسي():\n    f(`lw`، `wala`، `اذا`)\n";
+        assert_eq!(
+            fmt(ar, Skin::Ar),
+            "دالة رئيسي():\n    f(`lw`، `wala`، `اذا`)\n"
+        );
+        assert_q16(ar, Skin::Ar);
+    }
+
+    #[test]
+    fn declared_cross_skin_words_need_no_backticks() {
+        // Declared by `let`, a parameter, `for`, `case`, `use` items and aliases, `as`,
+        // generics and `fn`/`type` names: legal bare in every skin where they are not reserved.
+        let en = "use std.{law, wala as lw}\n\nfn ektb[adad](walla: adad):\n    for fi in walla:\n        let khali = law(fi, lw)\n        match khali:\n            case mafeesh: f(mafeesh)\n";
+        let ar = conv(en, Skin::En, Skin::Ar);
+        assert!(!ar.contains('`'), "{ar}");
+        assert_q16(en, Skin::En);
+        // In the skin that reserves them they are escaped, and unescaped again on the way back.
+        let franco = conv(en, Skin::En, Skin::Franco);
+        assert!(franco.contains("`law`(`fi`, `lw`)"), "{franco}");
+    }
+
+    #[test]
+    fn interpolation_hole_names_follow_the_same_rule() {
+        // An undeclared reserved word in a hole is escaped in every skin (Q16 applies to every
+        // word; holes are not K0201-checked yet, Q9, but will be).
+        let en = "fn main():\n    print(\"{`law`} {`if`}\")\n";
+        assert_eq!(fmt(en, Skin::En), en);
+        assert_q16(en, Skin::En);
+        // A name declared in the file is bare in a hole too.
+        let en = "fn run(law: Int):\n    print(\"{law}\")\n";
+        assert_eq!(
+            conv(en, Skin::En, Skin::Ar),
+            "دالة run(law: عدد):\n    اطبع(\"{law}\")\n"
+        );
+        assert_q16(en, Skin::En);
+    }
+
+    #[test]
+    fn a_reserved_word_taken_as_a_name_is_declared_with_or_without_backticks() {
+        // Fuzz (fmt_idempotence, iteration 6 smoke run): `tala3` (a Franco spelling of
+        // `export`) in a `use` list is a keyword token, so it did not count as declared, and
+        // its English layout width included the backticks; once `fmt` had escaped it, it was
+        // an identifier, it counted, and the width dropped by 2. A line at the 100-column
+        // limit then broke in one pass and joined in the next.
+        let long = "a".repeat(82);
+        let franco = format!("hat std.{{tala3, {long}}}\n");
+        let once = fmt(&franco, Skin::Franco);
+        assert_eq!(fmt(&once, Skin::Franco), once);
+        assert_eq!(once, format!("hat std.{{`tala3`, {long}}}\n"));
+    }
+
+    #[test]
+    fn a_raw_name_that_would_not_lex_bare_is_rejected_not_formatted() {
+        // Fuzz (fmt_output_rejected, SEC0105/SEC0106/SEC0124/K0250): `` `walھa` `` (mixed
+        // scripts), `` `wّalla` `` (a haraka), `` `els۰e` `` (an Extended Arabic-Indic digit)
+        // and the rest were once accepted inside backticks. §5.3 rules 3-5 hold inside
+        // backticks too, so the lexer rejects them and `fmt` never formats such a name.
+        for name in [
+            "walھa",
+            "w\u{651}alla",
+            "els\u{6F0}e",
+            "e\u{6D6}ktb",
+            "x\u{661}",
+        ] {
+            let franco =
+                format!("dala ra2isi(`{name}`: adad):\n    f(`{name}`: `{name}`.`{name}`)\n");
+            let out = format_strict(&franco, Skin::Franco, &FmtConfig::default());
+            assert!(out.is_err(), "{name}");
+        }
+        // A plain name loses its unneeded backticks as before.
+        let en = "fn main(`x`: Int):\n    f(`x`: `x`.`x`)\n";
+        assert_eq!(fmt(en, Skin::En), "fn main(x: Int):\n    f(x: x.x)\n");
+    }
+
+    #[test]
+    fn a_bad_number_run_in_a_hole_is_rejected_not_formatted() {
+        // Fuzz (fmt_output_rejected, K0127): in a hole, `۹age` (Extended Arabic-Indic digit)
+        // lexes as one bad number run. A hole is code, so its SEC0121 is reported and the
+        // file is rejected; rewriting the glyph to ASCII (`9age`, K0127) cannot happen.
+        let en = "fn main():\n    print(\"{\u{6F9}age} {\u{6F9}}\")\n";
+        assert!(format_strict(en, Skin::En, &FmtConfig::default()).is_err());
+        let ar = "دالة رئيسي():\n    اطبع(\"{\u{6F9}کرسی}\")\n";
+        assert!(format_strict(ar, Skin::Ar, &FmtConfig::default()).is_err());
+    }
+
+    #[test]
+    fn a_name_declared_only_through_a_label_position_is_escaped_the_same_way_in_every_skin() {
+        // In `ar`, `match` is not reserved, so the lexer counts the pattern label `match` as a
+        // declaration; in `en` it is a keyword token there. The escape decision must not
+        // depend on that, or a round trip would add or drop backticks (G2).
+        let ar = "دالة رئيسي(p: Point):\n    ليكن Point(match: m) = p\n    f(`match`، m)\n";
+        assert_q16(ar, Skin::Ar);
+        let en = conv(ar, Skin::Ar, Skin::En);
+        assert_q16(&en, Skin::En);
+    }
+
     #[test]
     fn reserved_words_after_dot_and_as_labels_need_no_escape_and_are_never_translated() {
         let en = "fn main():\n    contract.law(match: 1, law: 2)\n";
@@ -319,14 +485,19 @@ mod tests {
             "دالة رئيسي():\n    اطبع(\"{a و ليس b}, {f(x\u{060C} y)\u{061F}} {اطبع}\")\n"
         );
         assert_eq!(conv(&ar, Skin::Ar, Skin::En), en);
-        // Identifiers in holes are escaped like any other identifier; escapes are text.
-        let en = "fn main():\n    print(\"\\{law\\} {law} \\u{41}\")\n";
+        // Identifiers in holes are escaped like any other identifier; escapes are text. `law`
+        // is not declared in this file, so it keeps its backticks in English too (Q16).
+        let en = "fn main():\n    print(\"\\{law\\} {`law`} \\u{41}\")\n";
         let franco = conv(en, Skin::En, Skin::Franco);
         assert_eq!(
             franco,
             "dala ra2isi():\n    ektb(\"\\{law\\} {`law`} \\u{41}\")\n"
         );
         assert_eq!(conv(&franco, Skin::Franco, Skin::En), en);
+        assert_eq!(
+            conv("fn main():\n    print(\"{law}\")\n", Skin::En, Skin::En),
+            "fn main():\n    print(\"{`law`}\")\n"
+        );
         // fmt normalizes the spacing of hole code.
         assert_eq!(
             fmt("fn main():\n    print(\"{ a+b }\")\n", Skin::En),

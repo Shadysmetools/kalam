@@ -4,8 +4,9 @@
 //! so conversion keeps line numbers. Tokens are re-spelled for the target skin:
 //! - keywords and core names → the target's canonical spelling (variants are canonicalized);
 //! - identifiers keep their exact text, with backticks added when the name would lex as a
-//!   reserved word of the target skin and the position is not a §5.3 rule 8 position, and
-//!   removed otherwise ([`crate::roles`]);
+//!   reserved word of the target skin, or is reserved in some skin and not declared in the
+//!   file (Q16), and the position is not a §5.3 rule 8 position; removed otherwise
+//!   ([`crate::roles`]);
 //! - `,`/`?` ↔ `،`/`؟` (always `،`/`؟` in `ar`);
 //! - number digit glyphs (`ar` target only, per `[skin.ar] digits`);
 //! - string and tagged-literal text is copied, but each interpolation hole is code and is
@@ -81,7 +82,8 @@ impl Rewriter<'_> {
             }
             (role, _) => {
                 let name = strip_backticks(original);
-                escape(name, role.unwrap_or(Role::Bound), self.to, self.table)
+                self.roles
+                    .spell(name, role.unwrap_or(Role::Bound), self.to, self.table)
             }
         }
     }
@@ -175,13 +177,4 @@ pub(crate) fn strip_backticks(word: &str) -> &str {
     word.strip_prefix('`')
         .and_then(|s| s.strip_suffix('`'))
         .unwrap_or(word)
-}
-
-/// The identifier `name` as written in skin `to` at a position with `role`.
-pub(crate) fn escape(name: &str, role: Role, to: Skin, table: &KeywordTable) -> String {
-    if role == Role::Bound && table.skin(to).is_reserved(name) {
-        format!("`{name}`")
-    } else {
-        name.to_string()
-    }
 }

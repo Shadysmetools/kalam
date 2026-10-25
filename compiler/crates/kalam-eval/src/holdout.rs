@@ -22,9 +22,10 @@
 //!  "m1_syntax": {"status", "tasks_passed", "tasks_total"},
 //!  "parity": {"P1"|"P2"|"P3": {"pass": bool|null, "passed", "total"}},
 //!  "fmt": {"passed", "total", "layout_kept", "excluded"},
-//!  "trojan": {"bad_rejected", "bad_total", "good_accepted", "good_total", "deferred_m2", "defects"} | null,
+//!  "trojan": {"bad_rejected", "bad_total", "good_accepted", "good_total", "deferred_m2", "defects",
+//!             "not_measurable"} | null,
 //!  "diag_recovery": {"value", "files", "score_sum", "full_skin_cases", "first_match", "cascade_free",
-//!                    "deferred_m2", "defects"} | null,
+//!                    "deferred_m2", "defects", "unchecked"} | null,
 //!  "leak": {"hits"}}
 //! ```
 
@@ -123,6 +124,7 @@ pub fn aggregate(store: &Path, root: &Path, hook: &dyn ParseHook, m1_scope: &[u3
             "bad_rejected": r.bad_passed, "bad_total": r.bad_total,
             "good_accepted": r.good_passed, "good_total": r.good_total,
             "deferred_m2": r.deferred_m2, "defects": r.defects.len(),
+            "not_measurable": r.not_measurable.len(),
         })
     });
     let recovery = load(suites::SEEDED).map(|cases| {
@@ -131,7 +133,7 @@ pub fn aggregate(store: &Path, root: &Path, hook: &dyn ParseHook, m1_scope: &[u3
             "value": r.value(), "files": r.files, "score_sum": r.score_sum,
             "full_skin_cases": r.full_skin_cases, "first_match": r.first_match,
             "cascade_free": r.cascade_free, "deferred_m2": r.deferred_m2,
-            "defects": r.defects.len(),
+            "defects": r.defects.len(), "unchecked": r.unchecked,
         })
     });
 

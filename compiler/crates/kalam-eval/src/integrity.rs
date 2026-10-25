@@ -63,16 +63,20 @@ pub fn sha_hex(bytes: &[u8]) -> String {
 
 /// Every file under `roots` (files or directories, relative to `root`), as sorted
 /// `/`-separated relative paths. `target` directories are skipped; missing roots are
-/// skipped.
+/// skipped. Python bytecode caches (`__pycache__` directories and `*.pyc` files, written
+/// when a corpus `ref.py` runs) are skipped too, so running a reference program never
+/// changes the frozen file set or the held-out tree hash.
 pub fn walk(root: &Path, roots: &[&str]) -> Vec<String> {
     fn rec(base: &Path, dir: &Path, out: &mut Vec<String>) {
         let Ok(rd) = fs::read_dir(dir) else { return };
         for e in rd.flatten() {
             let p = e.path();
             if p.is_dir() {
-                if e.file_name() != "target" {
+                if e.file_name() != "target" && e.file_name() != "__pycache__" {
                     rec(base, &p, out);
                 }
+            } else if p.extension().is_some_and(|x| x == "pyc") {
+                continue;
             } else if let Ok(rel) = p.strip_prefix(base) {
                 out.push(rel.to_string_lossy().replace('\\', "/"));
             }
@@ -879,6 +883,43 @@ mod tests {
             "{hits:?}"
         );
         let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn python_bytecode_caches_are_never_frozen_or_hashed() {
+        // Running a corpus ref.py (fuzz, differential checks) writes __pycache__/*.pyc next
+        // to it; that must not look like an added frozen file or move the held-out pin.
+        let d = tiny_repo();
+        let store = d.join("store");
+        write(&store, "t01-x/ref.py", "print(1)");
+        let frozen_before = walk(&d, FROZEN_ROOTS);
+        let hash_before = tree_hash(&store);
+        write(
+            &d,
+            "eval/corpus/t07-demo/__pycache__/ref.cpython-312.pyc",
+            "bytecode",
+        );
+        write(&d, "eval/corpus/t07-demo/stray.pyc", "bytecode");
+        write(&store, "t01-x/__pycache__/ref.cpython-312.pyc", "bytecode");
+        write(&store, "t01-x/ref.pyc", "bytecode");
+        let frozen_after = walk(&d, FROZEN_ROOTS);
+        let hash_after = tree_hash(&store);
+        // near misses are still ordinary files
+        write(&d, "eval/corpus/t07-demo/pycache/a.txt", "x");
+        write(&d, "eval/corpus/t07-demo/x.pyc.txt", "x");
+        let near = walk(&d, FROZEN_ROOTS);
+        let _ = fs::remove_dir_all(&d);
+        assert_eq!(frozen_before, frozen_after);
+        assert_eq!(hash_before, hash_after);
+        assert!(hash_before.is_some());
+        assert!(
+            near.contains(&"eval/corpus/t07-demo/pycache/a.txt".to_string()),
+            "{near:?}"
+        );
+        assert!(
+            near.contains(&"eval/corpus/t07-demo/x.pyc.txt".to_string()),
+            "{near:?}"
+        );
     }
 
     #[test]
