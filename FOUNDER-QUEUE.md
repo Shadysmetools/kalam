@@ -19,3 +19,6 @@ Minor design forks the loop decided provisionally. Each one is reversible. Confi
 | Q13 | Where the sealed held-out store lives | Locally under eval/holdout, gitignored except MANIFEST.json and README.md, so contents never enter git history. Moving to the age-encrypted store outside the repo (LOOP §6.2.2) is deferred until Beta | iter 4 |
 | Q14 | Path of the seeded-errors suite | eval/suites/seeded-errors is canonical; update scorecard.json and LOOP.md to match | iter 4 |
 | Q15 | FREEZE `holdout.split_seed` (pending_founder) | Provisionally set to the M0 sign-off commit `d3abd2d`, a value no agent picked. **Founder: override if you want your own seed** | iter 4 |
+| Q16 | Backticks around another skin's reserved word that the file does not declare | `fmt` and `convert` keep them, and add them where needed, so their output always passes their own lexer | iter 5 verifier (fuzz found convert producing K0201) |
+| Q17 | Measure diagnostics through the user-facing `kalam check` or through the harness parse hook | Through `kalam check`, which must now run the parser too (it is lex-only today) | iter 5 |
+| Q18 | Unicode data source for the NFC and general-category checks (SEC0101, SEC0112) | Tables generated from Python `unicodedata` (Unicode 15.x on this machine) and vendored with the version noted; upgrade to 16.0 when a source is available | iter 6 |
