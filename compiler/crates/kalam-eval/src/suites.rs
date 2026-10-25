@@ -29,6 +29,9 @@ pub const SEEDED: &str = "seeded-errors";
 pub const MIXED: &str = "mixed-skin";
 pub const CONFORMANCE: &str = "conformance";
 
+/// The `notes` prefix of a case that counts from tier M2 (FOUNDER-QUEUE Q10).
+pub const M2_MARKER: &str = "[M2]";
+
 /// Codes that spec §27 retired: a case expecting one is a suite defect.
 pub const RETIRED: &[&str] = &["SEC0107"];
 
@@ -93,6 +96,13 @@ impl SuiteExpect {
                 .unwrap_or("")
                 .to_string(),
         })
+    }
+
+    /// The case needs name resolution: its `notes` open with `[M2]` (eval/suites/README.md,
+    /// FOUNDER-QUEUE Q10). Every runner here is an M1 runner, so such cases are never
+    /// judged; each runner counts them as `deferred_m2` (checked from tier M2 on).
+    pub fn is_m2(&self) -> bool {
+        self.notes.trim_start().starts_with(M2_MARKER)
     }
 
     /// `(code, line)` pairs.
@@ -298,6 +308,8 @@ pub struct RejectResult {
     pub good_total: usize,
     /// Case ids skipped as out of scope at this tier, with the reason.
     pub out_of_scope: Vec<String>,
+    /// Cases marked `[M2]` ([`SuiteExpect::is_m2`]): left out of the M1 pass/fail.
+    pub deferred_m2: usize,
     /// Malformed or invalid cases: the suite cannot be judged while any exist.
     pub defects: Vec<String>,
     /// `case/file: reason`.
@@ -338,6 +350,10 @@ pub fn run_reject(hook: &dyn ParseHook, cases: &[SuiteCase], rules: &RejectRules
                 "{}: expects the retired code {c} (spec §27)",
                 case.id
             ));
+            continue;
+        }
+        if expect.is_m2() {
+            r.deferred_m2 += 1;
             continue;
         }
         if let Some(c) = expect
@@ -399,6 +415,8 @@ pub struct Recovery {
     pub cascade_free: usize,
     /// Cases with `must_reject: false` (nothing is seeded), skipped.
     pub skipped_clean: usize,
+    /// Cases marked `[M2]`, left out of the M1 value.
+    pub deferred_m2: usize,
     pub defects: Vec<String>,
 }
 
@@ -434,6 +452,10 @@ pub fn run_recovery(hook: &dyn ParseHook, cases: &[SuiteCase]) -> Recovery {
             }
             Ok(e) => e,
         };
+        if expect.is_m2() {
+            r.deferred_m2 += 1;
+            continue;
+        }
         if !expect.must_reject {
             r.skipped_clean += 1;
             continue;
@@ -484,6 +506,8 @@ pub struct FmtTally {
     pub layout_kept: usize,
     /// Files out of scope (expected to be rejected before parsing).
     pub excluded: usize,
+    /// Cases marked `[M2]`, left out of the M1 pass/fail.
+    pub deferred_m2: usize,
     pub failures: Vec<String>,
     pub defects: Vec<String>,
 }
@@ -494,6 +518,7 @@ impl FmtTally {
         self.total += other.total;
         self.layout_kept += other.layout_kept;
         self.excluded += other.excluded;
+        self.deferred_m2 += other.deferred_m2;
         self.failures.extend(other.failures.iter().cloned());
         self.defects.extend(other.defects.iter().cloned());
     }
@@ -523,6 +548,7 @@ pub fn run_fmt(hook: &dyn ParseHook, cases: &[SuiteCase]) -> FmtTally {
     for case in cases {
         match &case.expect {
             Err(e) => t.defects.push(format!("{}: expect.json: {e}", case.id)),
+            Ok(e) if e.is_m2() => t.deferred_m2 += 1,
             Ok(e) if e.must_reject => t.excluded += case.files.len(),
             Ok(_) => {
                 for f in &case.files {
@@ -736,6 +762,58 @@ pub(crate) mod tests {
         assert_eq!(r.defects.len(), 3, "{r:?}");
         assert_eq!(r.out_of_scope.len(), 1);
         assert_eq!(r.total(), 0);
+    }
+
+    #[test]
+    fn m2_marked_cases_are_deferred_in_every_runner() {
+        let d = temp_dir("suite-m2");
+        // a case only name resolution can judge (FOUNDER-QUEUE Q10): never judged at M1
+        let m2 = r#"{"must_reject": true, "codes": ["K0401"], "lines": [2], "notes": " [M2] needs names"}"#;
+        write_case(&d, "m2-reject", m2, &[("main.kl", HELLO_EN)]);
+        write_case(
+            &d,
+            "m2-good",
+            r#"{"must_reject": false, "notes": "[M2] later"}"#,
+            &[(
+                "main.kl",
+                "fn main(:
+",
+            )],
+        );
+        // the marker must open the notes: a mention elsewhere does not defer the case
+        write_case(
+            &d,
+            "mention",
+            r#"{"must_reject": false, "notes": "not deferred, unlike [M2] cases"}"#,
+            &[("main.kl", HELLO_EN)],
+        );
+        // a malformed case is still a defect, marker or not
+        write_case(
+            &d,
+            "m2-broken",
+            r#"{"notes": "[M2] x"}"#,
+            &[("main.kl", HELLO_EN)],
+        );
+        let cases = load(&d).unwrap().unwrap();
+        let _ = fs::remove_dir_all(&d);
+        // sorted: m2-broken, m2-good, m2-reject, mention
+        assert!(cases[1].expect.as_ref().unwrap().is_m2());
+        assert!(!cases[3].expect.as_ref().unwrap().is_m2());
+        let hook = default_hook();
+        let r = run_reject(hook.as_ref(), &cases, &RejectRules::default());
+        assert_eq!(r.deferred_m2, 2, "{r:?}");
+        assert_eq!(r.defects.len(), 1, "{r:?}");
+        assert_eq!(
+            (r.good_passed, r.good_total, r.bad_total),
+            (1, 1, 0),
+            "{r:?}"
+        );
+        let rec = run_recovery(hook.as_ref(), &cases);
+        assert_eq!(rec.deferred_m2, 2, "{rec:?}");
+        assert_eq!(rec.files, 0, "{rec:?}");
+        let t = run_fmt(hook.as_ref(), &cases);
+        assert_eq!(t.deferred_m2, 2, "{t:?}");
+        assert_eq!((t.passed, t.total), (1, 1), "{t:?}");
     }
 
     #[test]

@@ -7,8 +7,11 @@
 //! the parent never forwards the child's stderr.
 //!
 //! Store layout: held-out corpus tasks (`tNN-slug/`, the dev corpus format) under
-//! `S/corpus/` or directly under `S/`; held-out suites (the shared suite format) under
-//! `S/suites/<suite>/` or `S/<suite>/`. Files ending in `.age` mean the store is encrypted;
+//! `S/corpus/` or directly under `S/` (only `tNN-*` directories are tasks); held-out suite
+//! splits (the shared suite format, `<case>/` files + `expect.json`) under
+//! `S/suites/<suite>/` or `S/<suite>/`: `trojan-source` feeds `trojan`, `seeded-errors`
+//! feeds `diag_recovery` (`null` when the split does not exist). Cases marked `[M2]` are
+//! counted as `deferred_m2`, never judged (FOUNDER-QUEUE Q10). Files ending in `.age` mean the store is encrypted;
 //! this runner has no decryption, so it reports `encrypted` and measures nothing.
 //!
 //! Aggregate (`kalam-holdout-aggregate/1`): the LOOP.md §6.2.4 keys, with pass counts so dev
@@ -19,8 +22,9 @@
 //!  "m1_syntax": {"status", "tasks_passed", "tasks_total"},
 //!  "parity": {"P1"|"P2"|"P3": {"pass": bool|null, "passed", "total"}},
 //!  "fmt": {"passed", "total", "layout_kept", "excluded"},
-//!  "trojan": {"bad_rejected", "bad_total", "good_accepted", "good_total", "defects"} | null,
-//!  "diag_recovery": {"value", "files", "score_sum", "full_skin_cases", "first_match", "defects"} | null,
+//!  "trojan": {"bad_rejected", "bad_total", "good_accepted", "good_total", "deferred_m2", "defects"} | null,
+//!  "diag_recovery": {"value", "files", "score_sum", "full_skin_cases", "first_match", "cascade_free",
+//!                    "deferred_m2", "defects"} | null,
 //!  "leak": {"hits"}}
 //! ```
 
@@ -118,7 +122,7 @@ pub fn aggregate(store: &Path, root: &Path, hook: &dyn ParseHook, m1_scope: &[u3
         json!({
             "bad_rejected": r.bad_passed, "bad_total": r.bad_total,
             "good_accepted": r.good_passed, "good_total": r.good_total,
-            "defects": r.defects.len(),
+            "deferred_m2": r.deferred_m2, "defects": r.defects.len(),
         })
     });
     let recovery = load(suites::SEEDED).map(|cases| {
@@ -126,7 +130,8 @@ pub fn aggregate(store: &Path, root: &Path, hook: &dyn ParseHook, m1_scope: &[u3
         json!({
             "value": r.value(), "files": r.files, "score_sum": r.score_sum,
             "full_skin_cases": r.full_skin_cases, "first_match": r.first_match,
-            "cascade_free": r.cascade_free, "defects": r.defects.len(),
+            "cascade_free": r.cascade_free, "deferred_m2": r.deferred_m2,
+            "defects": r.defects.len(),
         })
     });
 

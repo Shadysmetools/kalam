@@ -112,3 +112,78 @@ fn missing_and_encrypted_stores_measure_nothing() {
     assert!(held.aggregate().is_none(), "{held:?}");
     assert!(held.why_not().contains("encrypted"), "{held:?}");
 }
+
+/// The held-out author's layout: tasks and suite splits side by side at the store root
+/// (`S/tNN-slug/`, `S/trojan-source/<case>/`, `S/seeded-errors/<case>/`), plus non-task
+/// directories. Suite cases must feed `trojan` and `diag_recovery` only, never the corpus
+/// totals; `[M2]` cases are counted as deferred, never judged.
+#[test]
+fn flat_store_feeds_trojan_and_recovery_not_the_corpus() {
+    let s = temp_dir("flat");
+    let en = format!("fn main():\n    print(\"{SECRET_TEXT}\")\n");
+    write(&s, &format!("{SECRET_TASK}/en.kalam"), &en);
+    write(
+        &s,
+        &format!("{SECRET_TASK}/expected.txt"),
+        &format!("kind: run\n--- stdout\n{SECRET_TEXT}\n"),
+    );
+    write(&s, "tools/zebra.kl", "fn main(:\n");
+    let bad = "fn main():\n    let s = \"a\u{202E}b\"\n    print(s)\n";
+    write(
+        &s,
+        "trojan-source/zebra-bad/expect.json",
+        r#"{"must_reject": true, "codes": ["SEC0110"], "lines": [2]}"#,
+    );
+    write(&s, "trojan-source/zebra-bad/main.kl", bad);
+    write(
+        &s,
+        "trojan-source/zebra-good/expect.json",
+        r#"{"must_reject": false}"#,
+    );
+    write(&s, "trojan-source/zebra-good/main.kl", &en);
+    write(
+        &s,
+        "trojan-source/zebra-m2/expect.json",
+        r#"{"must_reject": true, "codes": ["SEC0104"], "notes": "[M2] zebra"}"#,
+    );
+    write(&s, "trojan-source/zebra-m2/main.kl", &en);
+    let seeded = "fn main():\n    let x = 007\n    print(\"{x}\")\n";
+    write(
+        &s,
+        "seeded-errors/zebra-zero/expect.json",
+        r#"{"must_reject": true, "codes": ["K0125"], "lines": [2]}"#,
+    );
+    write(&s, "seeded-errors/zebra-zero/main.kl", seeded);
+    write(&s, "seeded-errors/zebra-zero/other.kl", seeded);
+    write(
+        &s,
+        "seeded-errors/zebra-m2/expect.json",
+        r#"{"must_reject": true, "codes": ["K0401"], "lines": [2], "notes": "[M2] zebra"}"#,
+    );
+    write(&s, "seeded-errors/zebra-m2/main.kl", seeded);
+    let runner = Runner {
+        exe: PathBuf::from(env!("CARGO_BIN_EXE_kalam-eval")),
+        store: s.clone(),
+    };
+    let held = holdout::run_child(&runner, &repo_root());
+    let text = held.to_json().to_string();
+    let _ = fs::remove_dir_all(&s);
+    let v = match &held {
+        Held::Ran(v) => v.clone(),
+        other => panic!("{other:?}"),
+    };
+    for secret in [SECRET_TASK, SECRET_TEXT, "zebra", "main.kl", "t05", "tools"] {
+        assert!(!text.contains(secret), "leaked {secret}: {text}");
+    }
+    // only the task feeds the corpus side (one en file)
+    assert_eq!(v["m1_syntax"]["tasks_total"], 1, "{text}");
+    assert_eq!(v["parity"]["P1"]["total"], 1, "{text}");
+    assert_eq!(v["fmt"]["total"], 1, "{text}");
+    assert_eq!(v["trojan"]["bad_total"], 1, "{text}");
+    assert_eq!(v["trojan"]["bad_rejected"], 1, "{text}");
+    assert_eq!(v["trojan"]["good_total"], 1, "{text}");
+    assert_eq!(v["trojan"]["deferred_m2"], 1, "{text}");
+    assert_eq!(v["diag_recovery"]["files"], 2, "{text}");
+    assert_eq!(v["diag_recovery"]["deferred_m2"], 1, "{text}");
+    assert_eq!(v["diag_recovery"]["value"], 1.0, "{text}");
+}

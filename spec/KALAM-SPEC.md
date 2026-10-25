@@ -335,7 +335,7 @@ ID_CONTINUE = ID_START | ASCII_DIGIT | XID_Continue marks of the identifier's ow
 1. **UAX #31 base** (`XID_Start`/`XID_Continue`) in the pinned Unicode version.
 2. **Never starts with a digit,** in any digit system and any skin (X5). `3ala` is K0127. Write `ala` or `_3ala`.
 3. **Single script** (UTS #39 "Single Script", 04 U3). Each identifier is one script plus Common (`_`, ASCII digits). `pаypal` with a Cyrillic `а` is SEC0105. `user_اسم` is SEC0105.
-4. **Forbidden inside identifiers** (SEC0106, auto-fix removes or replaces them): tatweel, harakat, Quranic marks, ZWJ/ZWNJ, presentation forms. **Persian/Urdu letters** (ی ک ە ھ ۀ) are allowed (D19). They are never rewritten, but they fold to `ي`, `ك`, `ه` for every comparison (keyword lookup and skeletons, below), so a collision with the Arabic spelling is SEC0104.
+4. **Forbidden inside identifiers** (SEC0106, auto-fix removes or replaces them): tatweel, harakat, Quranic marks, and Arabic presentation forms (U+FB50–FDFF, U+FE70–FEFF; U+FEFF is the BOM, SEC0100, and the noncharacters U+FDD0–FDEF are SEC0112). ZWJ/ZWNJ inside an identifier are invisible format characters and are **SEC0111** (§5.1), not SEC0106. **Persian/Urdu letters** (ی ک ە ھ ۀ) are allowed (D19). They are never rewritten, but they fold to `ي`, `ك`, `ه` for every comparison (keyword lookup and skeletons, below), so a collision with the Arabic spelling is SEC0104.
 5. **ASCII digits only** after the first character. Arabic-Indic digits in identifiers are SEC0124 (fix: ASCII), because `١` is confusable with `ا`, `l` and `1` (DR-30).
 6. **Case-sensitive.** No case or style folding (01 §3.2). Case never carries *meaning* in Kalam (DR-11).
 7. **Raw identifiers:** backticks make any word an identifier (`` `law` ``). The backticks are not part of the name. `fmt` removes unneeded backticks.
@@ -418,7 +418,7 @@ Consequences:
          .map(fn(u) => u.name)
      ```
    - There is no backslash continuation and no trailing-operator continuation. Use parentheses.
-3. **INDENT/DEDENT:** Python's algorithm. An indent may only grow by one level at a time (K0120). A dedent must land on a previous level (K0122). EOF pops all levels.
+3. **INDENT/DEDENT:** Python's algorithm. An indent may only grow by one level at a time (K0120). A dedent must land on a previous level: a dedent to a column that no open block uses is **K0122** (not K0120). EOF pops all levels.
 4. **Block colon:** a `:` at bracket depth 0 followed by NEWLINE is always a block opener. A `:` at bracket depth 0 followed by more tokens on the same line opens a **one-line block** (DR-33). The single statement after it is a `line_stmt` (§8). `fmt` keeps it on one line only if it fits in 100 columns.
 5. **No semicolons.** `;` and `؛` are K0904, with a fix that splits the line.
 6. A file ends with a newline (`fmt` adds it).
@@ -1949,11 +1949,11 @@ That is **10 concepts**, within the MVP limit of 12, with no `async`, no classes
 | SEC0103 | non-ASCII whitespace in code |
 | SEC0104 | two distinct identifiers with the same skeleton in one scope |
 | SEC0105 | mixed-script identifier |
-| SEC0106 | tatweel, harakat, Quranic mark, ZWJ/ZWNJ or presentation form in an identifier or keyword |
+| SEC0106 | tatweel, harakat, Quranic mark or presentation form (U+FB50–FDFF, U+FE70–FEFF) in an identifier or keyword |
 | SEC0107 | *retired* (was: Persian/Urdu letter in an identifier; these letters are folded since D19). The code is never reused |
 | SEC0108 | glossary display name collides by skeleton |
 | SEC0110 | bidi control or mark |
-| SEC0111 | invisible format character or misplaced variation selector |
+| SEC0111 | invisible format character (including ZWJ/ZWNJ inside an identifier) or misplaced variation selector |
 | SEC0112 | tag character, private use, unassigned or noncharacter |
 | SEC0113 | U+2028/U+2029 or lone CR |
 | SEC0120 | mixed digit systems in one literal |
@@ -1964,7 +1964,7 @@ That is **10 concepts**, within the MVP limit of 12, with no `async`, no classes
 | K0103 | tab outside a string |
 | K0105 | unexpected character |
 | K0120 | bad indentation (unit, jump or unexpected indent) |
-| K0122 | dedent to an unknown level |
+| K0122 | dedent to an unknown level (a column no open block uses) |
 | K0126 | literal out of range for its type (`Int`: [−2⁶³, 2⁶³−1], D18; reported by the type checker) |
 | K0125 | leading zero |
 | K0127 | number glued to letters / name starts with a digit |
@@ -2904,3 +2904,4 @@ Spec errata are recorded here with a date, as ROADMAP M0 requires. Each erratum 
 | 2026-10-25 | DR-18, §30 | Franco skin ID `franco` and extension `.franco.kl` are locked | `DECISIONS.md` D24 |
 | 2026-10-25 | header, §30 | §30 "Founder questions" replaced by "Founder decisions (resolved)"; binding inputs are now D1–D25 | `DECISIONS.md` D18–D25 |
 | 2026-10-25 | §4.4 | KCF no longer keeps blank lines "byte for byte" (that contradicted §21.1 rules 1, 2 and 4, so `kcf(fmt(x)) == kcf(x)` could not hold). KCF2 records a blank-line run as one blank line, and only where `fmt` keeps blank lines. It drops trailing commas except in `(x,)`, and serializes a one-line block like its indented form. The header is bumped to `KCF2`. Provisional | `FOUNDER-QUEUE.md` Q8; `eval/suites/conformance` |
+| 2026-10-25 | §5.3 rule 4, §5.8 rule 3, §27 | Security codes made unambiguous: Arabic presentation forms (U+FB50–FDFF, U+FE70–FEFF) inside an identifier or keyword are SEC0106; ZWJ/ZWNJ inside an identifier are SEC0111 (the §5.1 invisible-character row), no longer listed under SEC0106; a dedent to a column that no open block uses is K0122, not K0120. Provisional | `FOUNDER-QUEUE.md` Q12; `eval/suites/trojan-source` (`sec0106-presentation-form-*`, `invisible-zwj-ident-ar`) |

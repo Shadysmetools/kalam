@@ -3,8 +3,8 @@
 //! - An explain page never shows a raw `{name}` placeholder: each one is replaced by a
 //!   description in the reader's message language (`kw_let` by that language's own keyword).
 //! - Every placeholder any catalog template uses has a description in all three languages.
-//! - `kalam explain --catalog --json` lists every catalog code with its title, message
-//!   template, placeholder descriptions and explain page in en, ar and franco.
+//! - `kalam explain --catalog --json` lists every catalog code with its title, message and
+//!   help templates, placeholder descriptions and explain page in en, ar and franco.
 
 use kalam_base::Skin;
 use kalam_diagnostics::catalog::{self, CATALOG};
@@ -73,13 +73,13 @@ fn no_page_has_a_raw_placeholder() {
 #[test]
 fn every_placeholder_has_three_descriptions() {
     for entry in CATALOG {
-        for (i, template) in entry.message.iter().enumerate() {
+        for (i, template) in entry.message.iter().chain(entry.help.iter()).enumerate() {
             for name in placeholders(template) {
                 for lang in Skin::ALL {
                     let d = explain::describe(entry.code, &name, lang);
                     assert!(
                         d.is_some_and(|d| !d.trim().is_empty()),
-                        "{} message[{i}]: no {lang:?} description for {{{name}}}",
+                        "{} message/help[{i}]: no {lang:?} description for {{{name}}}",
                         entry.code
                     );
                 }
@@ -96,6 +96,22 @@ fn kw_let_is_shown_in_the_readers_language() {
     assert!(en.contains("`let`"), "{en}");
     assert!(ar.contains("`ليكن`"), "{ar}");
     assert!(franco.contains("`khali`"), "{franco}");
+}
+
+#[test]
+fn pages_show_message_help_and_explanation() {
+    let en = explain::page("K0902", Skin::En).unwrap();
+    assert!(en.contains("Kalam declares a function with `fn`"), "{en}");
+    assert!(en.contains("\nHelp: Write `fn name(param: Type):`"), "{en}");
+    assert!(en.contains("Why: "), "{en}");
+    assert!(en.contains("    fn greet(name: String):"), "{en}");
+    // Examples and keywords are in the reader's own skin.
+    let ar = explain::page("K0902", Skin::Ar).unwrap();
+    assert!(ar.contains("مساعدة: اكتب `دالة الاسم"), "{ar}");
+    assert!(ar.contains("    دالة رحب(الاسم: نص):"), "{ar}");
+    let franco = explain::page("K0902", Skin::Franco).unwrap();
+    assert!(franco.contains("Mosa3da: Ekteb `dala esm"), "{franco}");
+    assert!(franco.contains("    dala rahhab(esm: nass):"), "{franco}");
 }
 
 #[test]
@@ -132,8 +148,11 @@ fn catalog_json_lists_every_code_in_three_languages() {
                 "{code}.explain.{lang}"
             );
         }
-        // No separate help text exists yet; it is reported as missing, never invented.
-        assert!(c["help"].is_null(), "{code}");
+        // Help text (FOUNDER-QUEUE Q11, strict reading) is a template like the message.
+        for lang in ["en", "ar", "franco"] {
+            let help = c["help"][lang].as_str().unwrap_or("");
+            assert!(!help.trim().is_empty(), "{code}.help.{lang}");
+        }
         for p in c["placeholders"].as_array().unwrap() {
             for lang in ["en", "ar", "franco"] {
                 assert!(p["description"][lang].is_string(), "{code}: {p}");

@@ -24,23 +24,33 @@ pub const DEBUG_CASES: u64 = 300;
 /// Default seed when `KALAM_PROPS_SEED` is unset ("KALAM" in ASCII).
 pub const DEFAULT_SEED: u64 = 0x4B_414C_414D;
 
-/// The properties, in report order: (name, gating, what it checks).
-pub const PROPERTIES: &[(&str, bool, &str)] = &[
+/// The properties, in report order: (name, gating, the G-PAR checks it runs on every
+/// generated program, what it checks).
+///
+/// The parity list is what kalam-eval's `G-PAR.P4` counts (scorecard: ">= 10k generated
+/// programs per run through P1-P3"), so it names only checks the property's code performs:
+/// P1 = equal KCF across the three skin printouts (and the hash of it); P2 = the 6 ordered
+/// pairs and the 3-hop cycles give equal KCF and byte-identical text back; P3 =
+/// `print_Y(parse(print_Y(parse_X(s)))) == print_Y(parse_X(s))` for every ordered pair.
+pub const PROPERTIES: &[(&str, bool, &[&str], &str)] = &[
     (
         "ast_print_parse_roundtrip",
         true,
+        &[],
         "random AST printed in each skin (en, ar, franco) parses cleanly to the same AST \
          (kalam_fmt::normalized_shape)",
     ),
     (
         "fmt_idempotence",
         true,
+        &[],
         "fmt succeeds without its fallback, fmt(fmt(x)) == fmt(x), and fmt keeps the AST and \
          the comments, in every skin",
     ),
     (
         "convert_roundtrip",
         true,
+        &["P2"],
         "all 6 ordered skin pairs (X->Y->X) and all six 3-hop cycles come back byte-identical; \
          every intermediate parses to the same AST and comments; converting fmt output gives \
          formatted output (G2 fixpoint)",
@@ -48,38 +58,66 @@ pub const PROPERTIES: &[(&str, bool, &str)] = &[
     (
         "kcf_cross_skin_equality",
         true,
+        &["P1", "P2"],
         "KCF bytes of the same program are equal across the three skin printouts and across \
-         every conversion step (spec §4.4 G1)",
+         every conversion step (spec §4.4 G1); a program accepted in some skins but not \
+         others fails (G-PAR scope rule), one rejected in all three is unsupported (not run)",
     ),
     (
         "kcf_hash_stability",
         true,
+        &["P1"],
         "KCF hash == SHA-256(KCF bytes), skin inference agrees with the file's skin, re-parsing \
          gives the same hash, hashes are equal across skins and stable under re-formatting",
     ),
     (
+        "source_fixpoint",
+        true,
+        &["P3"],
+        "P3: for every ordered skin pair X->Y, converting the X printout to Y and then Y->Y          again gives byte-identical text (print_Y(parse(print_Y(parse_X(s)))) ==          print_Y(parse_X(s)))",
+    ),
+    (
         "kcf_hash_golden",
         true,
+        &[],
         "pinned KCF hashes of fixed programs (any change to KCF needs a format version bump)",
     ),
     (
         "lexer_parser_never_panic",
         true,
+        &[],
         "lex + parse never panic on hostile text (bidi, ZWJ, tatweel, BOM, NUL, CR, tabs, \
          deep brackets, unfinished strings) in any skin",
     ),
     (
         "cst_lossless",
         true,
+        &[],
         "the CST of any input, valid or not, reproduces the input byte for byte",
     ),
     (
         "kcf_fmt_invariance",
         false,
+        &[],
         "report only: kcf(fmt(x)) == kcf(x) for generated programs (known open: fmt's \
          blank-line, trailing-comma and one-line-block normalization changes KCF)",
     ),
 ];
+
+/// The gating properties judged once per generated program. A run keeps drawing programs
+/// (up to [`MAX_DRAW_FACTOR`] x `cases`) until each has run on at least `cases` of them:
+/// those after the round trip skip programs that do not parse in all three skins.
+pub const PER_PROGRAM: &[&str] = &[
+    "ast_print_parse_roundtrip",
+    "fmt_idempotence",
+    "convert_roundtrip",
+    "kcf_cross_skin_equality",
+    "kcf_hash_stability",
+    "source_fixpoint",
+];
+
+/// At most this many times `cases` programs are drawn to fill [`PER_PROGRAM`].
+pub const MAX_DRAW_FACTOR: u64 = 4;
 
 const MAX_EXAMPLES: usize = 3;
 const MAX_TEXT: usize = 6000;
@@ -141,6 +179,8 @@ pub struct Failure {
 pub struct PropStats {
     pub name: &'static str,
     pub gating: bool,
+    /// The G-PAR checks (`P1`..`P3`) this property runs ([`PROPERTIES`]).
+    pub parity: &'static [&'static str],
     pub description: &'static str,
     pub cases: u64,
     pub failures: u64,
@@ -152,6 +192,14 @@ pub struct PropStats {
 #[derive(Clone, Debug)]
 pub struct Report {
     pub settings: Settings,
+    /// Generated programs drawn (case indices `0..cases_drawn`).
+    pub cases_drawn: u64,
+    /// Drawn programs that no skin accepts: unsupported (G-PAR scope rule), judged only by
+    /// `ast_print_parse_roundtrip`.
+    pub unsupported: u64,
+    /// `git rev-parse HEAD` of the tree the suite ran on (`None` when git is unavailable):
+    /// kalam-eval accepts the report only for the commit it evaluates.
+    pub commit: Option<String>,
     pub properties: Vec<PropStats>,
     pub elapsed_secs: f64,
 }
@@ -184,6 +232,7 @@ impl Report {
                 json!({
                     "name": p.name,
                     "gating": p.gating,
+                    "parity": p.parity,
                     "description": p.description,
                     "cases": p.cases,
                     "failures": p.failures,
@@ -206,9 +255,12 @@ impl Report {
         json!({
             "suite": "kalam-props",
             "metric": "D1.property_tests",
+            "commit": self.commit,
             "version": env!("CARGO_PKG_VERSION"),
             "profile": if cfg!(debug_assertions) { "debug" } else { "release" },
             "cases": self.settings.cases,
+            "cases_drawn": self.cases_drawn,
+            "unsupported": self.unsupported,
             "seed": self.settings.seed,
             "seed_hex": format!("{:#x}", self.settings.seed),
             "only_case": self.settings.only_case,
@@ -363,6 +415,40 @@ fn convert_path(text: &str, path: &[Skin]) -> Result<Vec<String>, String> {
     Ok(out)
 }
 
+/// P3 for one ordered pair: `c = convert(text, from -> to)` must be a fixpoint of
+/// `reprint` (normally `convert(_, to -> to)`).
+fn fixpoint_check(
+    text: &str,
+    from: Skin,
+    to: Skin,
+    reprint: impl Fn(&str) -> Result<String, String>,
+) -> Result<(), String> {
+    let c = kalam_fmt::convert(text, from, to, &cfg())
+        .map_err(|_| format!("convert {from}->{to} refused"))?;
+    let again = reprint(&c)?;
+    if again == c {
+        Ok(())
+    } else {
+        Err(format!(
+            "P3 {from}->{to}: re-printing the converted text in {to} changed it
+{}",
+            diff(&c, &again)
+        ))
+    }
+}
+
+/// The commit the suite runs on, for the report (`None` without git).
+fn head_commit() -> Option<String> {
+    std::process::Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .filter(|c| !c.is_empty())
+}
+
 fn path_name(path: &[Skin]) -> String {
     path.iter().map(|s| s.id()).collect::<Vec<_>>().join("->")
 }
@@ -512,6 +598,50 @@ impl Program {
             }
             if steps.last() != Some(&f) {
                 return Err((s, format!("fmt {name} is not byte-identical")));
+            }
+        }
+        Ok(())
+    }
+
+    /// The G-PAR scope rule on one generated program: `None` when no skin accepts it
+    /// (unsupported, not a parity case), `Some(Err)` when some skins accept it and others
+    /// do not (a parity failure), `Some(Ok)` when every skin accepts it.
+    fn skin_parse_parity(&self) -> Option<Outcome> {
+        let verdicts: Vec<(Skin, Result<Ast, String>)> = self
+            .texts
+            .iter()
+            .map(|(skin, text)| (*skin, parse_clean(text, *skin)))
+            .collect();
+        let accepted: Vec<&str> = verdicts
+            .iter()
+            .filter(|(_, v)| v.is_ok())
+            .map(|(s, _)| s.id())
+            .collect();
+        if accepted.is_empty() {
+            return None;
+        }
+        Some(match verdicts.iter().find(|(_, v)| v.is_err()) {
+            None => Ok(()),
+            Some((skin, Err(e))) => Err((
+                Some(*skin),
+                format!(
+                    "accepted in {} but not in {skin} (a parity failure): {e}",
+                    accepted.join(", ")
+                ),
+            )),
+            Some((_, Ok(_))) => unreachable!("found an Err"),
+        })
+    }
+
+    /// P3 over every ordered skin pair.
+    fn source_fixpoint(&self) -> Outcome {
+        for (skin, text) in &self.texts {
+            for to in Skin::ALL.into_iter().filter(|t| t != skin) {
+                fixpoint_check(text, *skin, to, |c| {
+                    kalam_fmt::convert(c, to, to, &cfg())
+                        .map_err(|_| format!("convert {to}->{to} refused"))
+                })
+                .map_err(|e| (Some(*skin), e))?;
             }
         }
         Ok(())
@@ -704,6 +834,8 @@ fn guarded(f: impl FnOnce() -> Outcome) -> Outcome {
 
 struct Acc {
     stats: Vec<PropStats>,
+    /// Programs no skin accepts.
+    unsupported: u64,
     /// When the check now being recorded started (the previous `record` or `restart`).
     mark: Instant,
 }
@@ -713,9 +845,10 @@ impl Acc {
         Acc {
             stats: PROPERTIES
                 .iter()
-                .map(|(name, gating, description)| PropStats {
+                .map(|(name, gating, parity, description)| PropStats {
                     name,
                     gating: *gating,
+                    parity,
                     description,
                     cases: 0,
                     failures: 0,
@@ -723,6 +856,7 @@ impl Acc {
                     busy_secs: 0.0,
                 })
                 .collect(),
+            unsupported: 0,
             mark: Instant::now(),
         }
     }
@@ -753,6 +887,7 @@ impl Acc {
     }
 
     fn merge(&mut self, other: Acc) {
+        self.unsupported += other.unsupported;
         for (a, b) in self.stats.iter_mut().zip(other.stats) {
             a.cases += b.cases;
             a.failures += b.failures;
@@ -767,7 +902,7 @@ impl Acc {
 fn prop_index(name: &str) -> usize {
     PROPERTIES
         .iter()
-        .position(|(n, _, _)| *n == name)
+        .position(|(n, _, _, _)| *n == name)
         .expect("known property")
 }
 
@@ -802,12 +937,25 @@ fn run_case(acc: &mut Acc, seed: u64, case: u64) {
         acc.record(prop_index("fmt_idempotence"), case, cs, r, &text);
         let r = guarded(|| prog.convert_roundtrip(case));
         acc.record(prop_index("convert_roundtrip"), case, cs, r, &text);
+        let r = guarded(|| prog.source_fixpoint());
+        acc.record(prop_index("source_fixpoint"), case, cs, r, &text);
         let r = guarded(|| prog.kcf_cross_skin());
         acc.record(prop_index("kcf_cross_skin_equality"), case, cs, r, &text);
         let r = guarded(|| prog.hash_stability());
         acc.record(prop_index("kcf_hash_stability"), case, cs, r, &text);
         let r = guarded(|| prog.kcf_fmt_invariance());
         acc.record(prop_index("kcf_fmt_invariance"), case, cs, r, &text);
+    } else {
+        // P1 still judges a program the round trip rejected (G-PAR scope rule).
+        let kcf = prop_index("kcf_cross_skin_equality");
+        match catch_unwind(AssertUnwindSafe(|| prog.skin_parse_parity())).unwrap_or(None) {
+            None => acc.unsupported += 1,
+            Some(Ok(())) => {
+                let r = guarded(|| prog.kcf_cross_skin());
+                acc.record(kcf, case, cs, r, &text);
+            }
+            Some(Err(e)) => acc.record(kcf, case, cs, Err(e), &text),
+        }
     }
     // Hostile text.
     let input = match catch_unwind(|| soup(cs)) {
@@ -859,10 +1007,64 @@ pub fn run(settings: &Settings) -> Report {
         total.record(prop_index("kcf_hash_golden"), 0, 0, r, src);
     }
 
-    let cases: Vec<u64> = match settings.only_case {
-        Some(c) => vec![c],
-        None => (0..settings.cases).collect(),
-    };
+    let mut drawn = 0;
+    match settings.only_case {
+        Some(c) => {
+            total.merge(run_batch(settings, &[c]));
+            drawn = 1;
+        }
+        None => {
+            let limit = settings.cases.saturating_mul(MAX_DRAW_FACTOR);
+            let mut want = settings.cases;
+            while want > 0 {
+                let next = drawn + want.min(limit - drawn);
+                let batch: Vec<u64> = (drawn..next).collect();
+                total.merge(run_batch(settings, &batch));
+                drawn = next;
+                // top up: draw about as many programs again as the thinnest property lacks,
+                // scaled by the share of programs it actually ran on
+                let thinnest = total
+                    .stats
+                    .iter()
+                    .filter(|p| PER_PROGRAM.contains(&p.name))
+                    .map(|p| p.cases)
+                    .min()
+                    .unwrap_or(settings.cases);
+                want = top_up(settings.cases, drawn, thinnest, limit);
+            }
+        }
+    }
+    std::panic::set_hook(previous_hook);
+
+    let mut settings = settings.clone();
+    if let Some(_c) = settings.only_case {
+        settings.cases = 1;
+    }
+    Report {
+        settings,
+        cases_drawn: drawn,
+        unsupported: total.unsupported,
+        commit: head_commit(),
+        properties: total.stats,
+        elapsed_secs: start.elapsed().as_secs_f64(),
+    }
+}
+
+/// How many more programs to draw when `drawn` programs gave the thinnest per-program
+/// property `thinnest` cases and each needs `target`: the deficit scaled by the observed
+/// yield, never past `limit` drawn in all.
+fn top_up(target: u64, drawn: u64, thinnest: u64, limit: u64) -> u64 {
+    let missing = target.saturating_sub(thinnest);
+    if missing == 0 || drawn >= limit {
+        return 0;
+    }
+    (missing.saturating_mul(drawn))
+        .div_ceil(thinnest.max(1))
+        .min(limit - drawn)
+}
+
+/// Runs the generated programs `cases` (and their hostile-text twins) on worker threads.
+fn run_batch(settings: &Settings, cases: &[u64]) -> Acc {
     let threads = settings.threads.max(1).min(cases.len().max(1));
     let merged = Mutex::new(Acc::new());
     std::thread::scope(|scope| {
@@ -883,18 +1085,7 @@ pub fn run(settings: &Settings) -> Report {
                 .expect("spawn a property thread");
         }
     });
-    std::panic::set_hook(previous_hook);
-    total.merge(merged.into_inner().unwrap_or_else(|e| e.into_inner()));
-
-    let mut settings = settings.clone();
-    if let Some(_c) = settings.only_case {
-        settings.cases = 1;
-    }
-    Report {
-        settings,
-        properties: total.stats,
-        elapsed_secs: start.elapsed().as_secs_f64(),
-    }
+    merged.into_inner().unwrap_or_else(|e| e.into_inner())
 }
 
 #[cfg(test)]
@@ -925,6 +1116,114 @@ mod tests {
         assert!(
             matches!(r, Err((None, ref d)) if d.contains("boom")),
             "{r:?}"
+        );
+    }
+
+    #[test]
+    fn the_report_names_its_commit_and_each_property_parity_checks() {
+        let settings = Settings {
+            cases: 2,
+            seed: DEFAULT_SEED,
+            only_case: None,
+            threads: 1,
+        };
+        let v = run(&settings).to_json();
+        // the commit ties the report to a tree (kalam-eval rejects a report without one)
+        let head = std::process::Command::new("git")
+            .args(["rev-parse", "HEAD"])
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string());
+        assert_eq!(
+            v["commit"].as_str().map(str::to_string),
+            head,
+            "{}",
+            v["commit"]
+        );
+        // every property lists the G-PAR checks it runs; P1-P3 each have a gating property
+        let props = v["properties"].as_array().unwrap();
+        for p in props {
+            assert!(p["parity"].is_array(), "{}", p["name"]);
+        }
+        for check in ["P1", "P2", "P3"] {
+            assert!(
+                props.iter().any(|p| p["gating"] == true
+                    && p["parity"].as_array().unwrap().iter().any(|c| c == check)),
+                "no gating property runs {check}"
+            );
+        }
+        // lexer-only properties run no parity check
+        let soup = props.iter().find(|p| p["name"] == "cst_lossless").unwrap();
+        assert!(soup["parity"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn a_program_parsing_in_some_skins_only_is_a_parity_failure() {
+        let p = Program::new(case_seed(DEFAULT_SEED, 3));
+        assert_eq!(p.skin_parse_parity(), Some(Ok(())));
+        // franco broken only: accepted in some skins, not others (G-PAR scope rule)
+        let mut some = Program::new(case_seed(DEFAULT_SEED, 3));
+        some.texts[2].1.push_str("\n)\n");
+        match some.skin_parse_parity() {
+            Some(Err((Some(Skin::Franco), d))) => assert!(d.contains("franco"), "{d}"),
+            o => panic!("{o:?}"),
+        }
+        // rejected in every skin: unsupported, not a parity failure
+        let mut none = Program::new(case_seed(DEFAULT_SEED, 3));
+        for t in &mut none.texts {
+            t.1.push_str("\n)\n");
+        }
+        assert_eq!(none.skin_parse_parity(), None);
+    }
+
+    #[test]
+    fn every_per_program_property_gets_the_configured_case_count() {
+        let settings = Settings {
+            cases: 12,
+            seed: DEFAULT_SEED,
+            only_case: None,
+            threads: 2,
+        };
+        let r = run(&settings);
+        for p in r
+            .properties
+            .iter()
+            .filter(|p| PER_PROGRAM.contains(&p.name))
+        {
+            assert!(p.cases >= 12, "{} ran {} cases", p.name, p.cases);
+        }
+        let v = r.to_json();
+        assert!(v["cases_drawn"].as_u64().unwrap() >= 12, "{v}");
+        assert!(v["unsupported"].is_u64(), "{v}");
+        // a single-case reproduction draws exactly that case
+        let one = run(&Settings {
+            only_case: Some(5),
+            ..settings
+        });
+        assert_eq!(one.to_json()["cases_drawn"], 1);
+    }
+
+    #[test]
+    fn top_up_scales_the_deficit_by_the_yield_and_stops_at_the_cap() {
+        assert_eq!(top_up(10_000, 10_000, 10_000, 40_000), 0);
+        // 6716 of 10000 programs reached the thinnest property: draw ~4890 more
+        assert_eq!(top_up(10_000, 10_000, 6_716, 40_000), 4_890);
+        // nothing ran yet: draw up to the cap
+        assert_eq!(top_up(10, 10, 0, 40), 30);
+        assert_eq!(top_up(10, 40, 3, 40), 0);
+    }
+
+    #[test]
+    fn source_fixpoint_holds_and_detects_a_non_fixpoint() {
+        let p = Program::new(case_seed(DEFAULT_SEED, 3));
+        assert_eq!(p.source_fixpoint(), Ok(()));
+        assert!(
+            fixpoint_check("fn main():\n    print(\"x\")\n", Skin::En, Skin::Ar, |c| {
+                Ok(format!("{c}\n"))
+            })
+            .is_err()
         );
     }
 

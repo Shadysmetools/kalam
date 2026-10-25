@@ -120,6 +120,9 @@ struct Gen<'t> {
     /// Non-zero while generating a block header, signature or field default: the formatter keeps
     /// comments inside brackets only in simple statements and `let` constants.
     quiet: u32,
+    /// Words reserved in some skin that the program uses as plain names. `program` declares
+    /// them all in one `use` line: an undeclared one is K0201 (FOUNDER-QUEUE Q9).
+    declare: Vec<&'static str>,
 }
 
 impl Gen<'_> {
@@ -228,10 +231,22 @@ impl Gen<'_> {
     }
 
     fn raw_name(&mut self) -> &'static str {
-        if self.rng.chance(35) {
+        let name = if self.rng.chance(35) {
             self.rng.pick(CROSSY)
         } else {
             self.rng.pick(PLAIN)
+        };
+        self.note_reserved(name);
+        name
+    }
+
+    /// Records a name that is reserved in some skin, so `program` declares it.
+    fn note_reserved(&mut self, name: &'static str) {
+        let reserved = Skin::ALL
+            .into_iter()
+            .any(|s| self.table.skin(s).is_reserved(name));
+        if reserved && !self.declare.contains(&name) {
+            self.declare.push(name);
         }
     }
 
@@ -265,6 +280,7 @@ impl Gen<'_> {
 
     fn type_name(&mut self) -> String {
         let n = *self.rng.pick(TYPES);
+        self.note_reserved(n);
         self.bound(n)
     }
 
@@ -1119,6 +1135,18 @@ impl Gen<'_> {
         if self.rng.chance(20) {
             self.spacing(&mut out, 0);
         }
+        // Declare every reserved-in-some-skin word used as a plain name (Q9), before the
+        // other `use` lines and after a leading comment.
+        if !self.declare.is_empty() {
+            let u = self.kw(Concept::KwUse);
+            let names: Vec<String> = std::mem::take(&mut self.declare)
+                .into_iter()
+                .map(|n| self.bound(n))
+                .collect();
+            let c = self.sep();
+            let at = usize::from(out.first().is_some_and(|l| l.starts_with('#')));
+            out.insert(at, format!("{u} std/names.{{{}}}", names.join(&c)));
+        }
         let mut s = out.join("\n");
         if self.rng.chance(90) {
             s.push('\n');
@@ -1251,6 +1279,7 @@ fn random_programs_format_idempotently_and_round_trip_through_every_skin() {
             table,
             comments: 0,
             quiet: 0,
+            declare: Vec::new(),
         };
         let src = g.program();
         lines += src.lines().count();

@@ -164,12 +164,32 @@ impl Diagnostic {
         }
     }
 
-    /// The message body in `lang`.
+    /// The message body in `lang`. Keyword placeholders the emitter did not fill are spelled
+    /// in `lang`'s own skin; renderers that know the file use [`Diagnostic::message_in`].
     pub fn message(&self, lang: Lang) -> String {
+        self.message_in(lang, lang)
+    }
+
+    /// The message body in `lang`, with code (keyword placeholders) in `code_skin`, the skin
+    /// of the file the diagnostic points into (spec §21.4 rule 1).
+    pub fn message_in(&self, lang: Lang, code_skin: Skin) -> String {
         match catalog::lookup(self.code) {
-            Some(entry) => catalog::render_template(entry.message[lang.index()], &self.args),
+            Some(entry) => {
+                catalog::render_in_skin(entry.message[lang.index()], &self.args, code_skin)
+            }
             None => format!("{} (no catalog entry yet)", self.code),
         }
+    }
+
+    /// How to fix it, in `lang` (keyword placeholders in `lang`'s own skin).
+    pub fn help(&self, lang: Lang) -> Option<String> {
+        self.help_in(lang, lang)
+    }
+
+    /// How to fix it, in `lang`, with code in `code_skin`. `None` for an unknown code.
+    pub fn help_in(&self, lang: Lang, code_skin: Skin) -> Option<String> {
+        catalog::lookup(self.code)
+            .map(|entry| catalog::render_in_skin(entry.help[lang.index()], &self.args, code_skin))
     }
 }
 
@@ -213,7 +233,7 @@ pub fn render_human(
         src.path,
         diag.code
     ));
-    out.push_str(&diag.message(lang));
+    out.push_str(&diag.message_in(lang, src.skin));
     out.push_str("\n\n");
 
     let start = (diag.span.start as usize).min(src.text.len()) as u32;
@@ -245,6 +265,13 @@ pub fn render_human(
             }
         }
     }
+    if let Some(help) = diag.help_in(lang, src.skin) {
+        out.push_str(&format!(
+            "\n{} {}\n",
+            catalog::ui(lang, catalog::Ui::Help),
+            help
+        ));
+    }
     out.push_str(&format!(
         "\n{} kalam explain {}\n",
         catalog::ui(lang, catalog::Ui::LearnMore),
@@ -254,8 +281,17 @@ pub fn render_human(
 }
 
 /// Renders one diagnostic as the JSON object of spec §21.4. All three message languages
-/// are included, so an agent or LSP client can choose.
+/// are included, so an agent or LSP client can choose. `help` (how to fix it, in all three
+/// languages, `null` for a code with no catalog entry) is an addition to the §21.4 example.
 pub fn render_json(diag: &Diagnostic, src: &SourceView<'_>) -> serde_json::Value {
+    let help = match catalog::lookup(diag.code) {
+        Some(_) => json!({
+            "en": diag.help_in(Skin::En, src.skin),
+            "ar": diag.help_in(Skin::Ar, src.skin),
+            "franco": diag.help_in(Skin::Franco, src.skin),
+        }),
+        None => serde_json::Value::Null,
+    };
     let pos = |offset: u32| {
         let lc = src
             .lines
@@ -284,10 +320,11 @@ pub fn render_json(diag: &Diagnostic, src: &SourceView<'_>) -> serde_json::Value
         "code": diag.code,
         "severity": diag.severity.as_str(),
         "message": {
-            "en": diag.message(Skin::En),
-            "ar": diag.message(Skin::Ar),
-            "franco": diag.message(Skin::Franco),
+            "en": diag.message_in(Skin::En, src.skin),
+            "ar": diag.message_in(Skin::Ar, src.skin),
+            "franco": diag.message_in(Skin::Franco, src.skin),
         },
+        "help": help,
         "file": src.path,
         "skin": src.skin.id(),
         "span": span(diag.span),
@@ -323,6 +360,25 @@ mod tests {
         assert!(out.contains("1\u{2502} let x = 007"));
         assert!(out.contains("^^^"));
         assert!(out.contains("kalam explain K0125"));
+        assert!(out.contains("Help: Write `7`."), "{out}");
+    }
+
+    #[test]
+    fn keywords_in_messages_follow_the_file_skin() {
+        // K0731's message names `if` and `else`: an Arabic reader of a Franco file sees the
+        // Franco keywords (code stays in the file's skin, spec §21.4 rule 1).
+        let text = "x\n";
+        let lines = LineIndex::new(text);
+        let src = SourceView::new("a.franco.kl", text, Skin::Franco, &lines);
+        let d = Diagnostic::new("K0731", FileId(0), Span::new(0, 1));
+        let out = render_human(&d, &src, Skin::Ar, None);
+        assert!(out.contains("`law`") && out.contains("`walla`"), "{out}");
+        assert!(!out.contains("{kw_"), "{out}");
+        let v = render_json(&d, &src);
+        assert!(v["message"]["en"].as_str().unwrap().contains("`walla`"));
+        // Without a file, keywords follow the message language.
+        assert!(d.message(Skin::En).contains("`else`"));
+        assert!(d.help(Skin::Ar).unwrap().contains("`وإلا:`"));
     }
 
     #[test]
@@ -334,7 +390,11 @@ mod tests {
         let v = render_json(&d, &src);
         assert_eq!(v["code"], "K0904");
         assert!(!v["message"]["ar"].as_str().unwrap().is_empty());
+        assert!(v["help"]["ar"].as_str().unwrap().contains("؛"));
+        assert!(v["help"]["en"].as_str().unwrap().contains("kalam fix"));
         assert_eq!(v["span"]["start"]["line"], 1);
+        let unknown = Diagnostic::new("K9999", FileId(0), Span::new(0, 1));
+        assert!(render_json(&unknown, &src)["help"].is_null());
     }
 
     #[test]

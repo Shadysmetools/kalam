@@ -413,7 +413,7 @@ mod tests {
 
     #[test]
     fn a_comment_inside_a_block_header_keeps_the_layout() {
-        let src = "fn main():\n    while f(\n        a,  # why\n      b):\n        lw()\n";
+        let src = "fn main():\n    while f(\n        a,  # why\n      b):\n        go()\n";
         assert!(matches!(
             format_strict(src, Skin::En, &FmtConfig::default()),
             Err(FmtError::Unformattable(_))

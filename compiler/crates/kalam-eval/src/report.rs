@@ -239,12 +239,13 @@ fn whole(ok: bool, evidence: String) -> Observation {
 
 fn reject_summary(r: &RejectResult) -> String {
     format!(
-        "bad rejected {}/{}, good accepted {}/{}; out of scope {}; defects {}; failing cases that expect a code \
-         no M1 stage emits (name resolution or later): {} {:?}{}",
+        "bad rejected {}/{}, good accepted {}/{}; deferred to M2 (`[M2]` cases, FOUNDER-QUEUE Q10) {}; out of scope {}; \
+         defects {}; failing cases that expect a code no M1 stage emits (name resolution or later): {} {:?}{}",
         r.bad_passed,
         r.bad_total,
         r.good_passed,
         r.good_total,
+        r.deferred_m2,
         r.out_of_scope.len(),
         r.defects.len(),
         r.later_stage.len(),
@@ -346,13 +347,17 @@ fn observe_m1(id: &str, i: &Inputs, c: &TierCheck) -> Observation {
                 if defects > 0 {
                     return Err(format!("the held-out Trojan suite has {defects} defect(s)"));
                 }
-                Ok((bp == bt && gp == gt, format!("bad rejected {bp}/{bt}, good accepted {gp}/{gt}")))
+                let deferred = i.held.aggregate().map_or(0, |a| a["trojan"]["deferred_m2"].as_u64().unwrap_or(0));
+                Ok((
+                    bp == bt && gp == gt,
+                    format!("bad rejected {bp}/{bt}, good accepted {gp}/{gt}, deferred to M2 {deferred}"),
+                ))
             });
             combine_bool(dev, held)
         }
         "D2.lexing_hazard_suite" => match reject_dev(suites::LEXHAZ, &i.lexhaz, false) {
             Err(why) => Observation::NotMeasurable(why),
-            Ok((ok, ev)) => whole(ok, format!("{ev} (SEC0104 post-fold collision cases count from M2)")),
+            Ok((ok, ev)) => whole(ok, format!("{ev} (SEC0104 post-fold collision and K0401 cases are marked `[M2]` and count from M2)")),
         },
         "D5.error_recovery_precision" => recovery_obs(i, c),
         "D7.formatter_idempotence" => {
@@ -363,8 +368,10 @@ fn observe_m1(id: &str, i: &Inputs, c: &TierCheck) -> Observation {
                     all.add(conf);
                     let ev = format!(
                         "kalam fmt (kalam_driver::format_source) on corpus {}/{} and conformance {}/{} files (all skins): \
-                         fmt(fmt(x)) == fmt(x) and kcf(fmt(x)) == kcf(x); layout kept (re-spelled only) {}; excluded {}{}",
+                         fmt(fmt(x)) == fmt(x) and kcf(fmt(x)) == kcf(x); layout kept (re-spelled only) {}; excluded {}; \
+                         deferred to M2 (`[M2]` cases) {}{}",
                         i.corpus.fmt.passed, i.corpus.fmt.total, conf.passed, conf.total, all.layout_kept, all.excluded,
+                        conf.deferred_m2,
                         all.failures.first().map(|f| format!("; first failure: {f}")).unwrap_or_default()
                     );
                     if !conf.defects.is_empty() {
@@ -411,16 +418,16 @@ fn recovery_obs(i: &Inputs, c: &TierCheck) -> Observation {
     let r = match &i.recovery {
         None => {
             return Observation::NotMeasurable(format!(
-                "{} does not exist (scorecard.json names eval/diagnostics/broken/; the shared suite lives here)",
+                "{} does not exist (the canonical seeded-error suite, FOUNDER-QUEUE Q14)",
                 suite_note(suites::SEEDED)
             ))
         }
         Some(r) => r,
     };
     let ev = format!(
-        "{} (scorecard.json and LOOP.md name eval/diagnostics/broken/): per file genuine/reported, 0 unless the seeded \
+        "{} (canonical seeded-error suite, FOUNDER-QUEUE Q14): per file genuine/reported, 0 unless the seeded \
          (code, line) is reported; dev files {} ({} cases in all 3 skins), score sum {:.3}; secondary: first reported error \
-         is seeded in {} files, no cascade in {}; skipped clean cases {}; defects {}",
+         is seeded in {} files, no cascade in {}; skipped clean cases {}; deferred to M2 (`[M2]` cases) {}; defects {}",
         suite_note(suites::SEEDED),
         r.files,
         r.full_skin_cases,
@@ -428,6 +435,7 @@ fn recovery_obs(i: &Inputs, c: &TierCheck) -> Observation {
         r.first_match,
         r.cascade_free,
         r.skipped_clean,
+        r.deferred_m2,
         r.defects.len()
     );
     if !r.defects.is_empty() {
@@ -460,7 +468,10 @@ fn recovery_obs(i: &Inputs, c: &TierCheck) -> Observation {
                     r.files + hf,
                     r.score_sum + hs,
                     r.full_skin_cases + hc,
-                    format!("held-out files {hf} ({hc} cases in 3 skins), score sum {hs:.3}"),
+                    format!(
+                        "held-out files {hf} ({hc} cases in 3 skins), score sum {hs:.3}, deferred to M2 {}",
+                        h["deferred_m2"].as_u64().unwrap_or(0)
+                    ),
                     false,
                 )
             }
@@ -854,14 +865,14 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
         None => json!({"status": "missing"}),
         Some(r) => json!({
             "bad_rejected": r.bad_passed, "bad_total": r.bad_total, "good_accepted": r.good_passed,
-            "good_total": r.good_total, "out_of_scope": r.out_of_scope, "defects": r.defects,
+            "good_total": r.good_total, "deferred_m2": r.deferred_m2, "out_of_scope": r.out_of_scope, "defects": r.defects,
             "failures": r.failures, "later_stage": r.later_stage,
             "reject_skins": r.reject_skins.iter().map(|s| s.id()).collect::<Vec<_>>(),
         }),
     };
     let fmt_json = |t: &FmtTally| {
         json!({"passed": t.passed, "total": t.total, "layout_kept": t.layout_kept, "excluded": t.excluded,
-               "failures": t.failures, "defects": t.defects})
+               "deferred_m2": t.deferred_m2, "failures": t.failures, "defects": t.defects})
     };
     let checks_json = json!({
         "keyword_table_load": {"pass": table_load.is_ok(), "error": table_load.clone().err(), "scope": "spec §7.4 rules 1-4"},
@@ -896,7 +907,8 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
             "seeded-errors": match &inputs.recovery {
                 None => json!({"status": "missing"}),
                 Some(r) => json!({"files": r.files, "value": r.value(), "full_skin_cases": r.full_skin_cases,
-                                  "first_match": r.first_match, "cascade_free": r.cascade_free, "defects": r.defects}),
+                                  "first_match": r.first_match, "cascade_free": r.cascade_free,
+                                  "deferred_m2": r.deferred_m2, "defects": r.defects}),
             },
             "conformance": inputs.conformance.as_ref().map(fmt_json).unwrap_or_else(|| json!({"status": "missing"})),
         },

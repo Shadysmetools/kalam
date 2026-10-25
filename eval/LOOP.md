@@ -52,7 +52,7 @@ This phase runs before iteration 1, and again whenever the founder approves a mi
 2. **Author the remaining pieces of the frozen set:**
    - the dev corpus tasks of the target tier (reviewer-gated);
    - the seed security corpus (`eval/seccorpus/`) and Trojan Source suite;
-   - the seeded-error suite (`eval/diagnostics/broken/`);
+   - the seeded-error suite (`eval/suites/seeded-errors/`, canonical per FOUNDER-QUEUE Q14);
    - the held-out tasks (holdout author, §6.2).
 3. **Pin** in `eval/FREEZE.json`:
    - `eval_version` (for example `eval-v0.1`) and `target_milestone`, a tier id from `scorecard.json` → `milestone_tiers.order` (`M1` for eval-v0.1);
@@ -244,7 +244,7 @@ M1 EXIT CHECKLIST  (frozen eval set, held-out included; every box must hold)
 [ ] 10 D7.skin_convert: P2 and P3 pass through the real `kalam convert`
 [ ] 11 D1.corpus_syntax_pass = 21/21: every case of T01-T15, T31-T33, T48-T50 (dev + held-out) parses, formats and round-trips in all three skins (T50 main: the same SEC rejection in all three)
 [ ] 12 D1.property_tests: the fmt-idempotence and round-trip properties pass on >= 10k cases each
-[ ] 13 D5.error_recovery_precision >= 0.5 on eval/diagnostics/broken/
+[ ] 13 D5.error_recovery_precision >= 0.5 on eval/suites/seeded-errors/
 [ ] 14 D5.diag_completeness >= 70% over the M1 code set (every spec §27 K01xx, K02xx, K09xx and SEC01xx code except retired ones such as SEC0107, plus any other code `kalam explain` lists)
 [ ] 15 P6 diagnostic catalog parity = 100% over the M1 code set (en/ar/franco message, help and `kalam explain` page)
 [ ] 16 P4 property round-trip: >= 10k generated programs per run through P1-P3 with 0 failures

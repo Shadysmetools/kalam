@@ -150,7 +150,7 @@ impl Rewriter<'_> {
                     let trimmed = code.trim();
                     out.push_str(&inner[copied..i + 1 + lead]);
                     let hole_abs = inner_abs + (i + 1 + lead) as u32;
-                    let lexed = kalam_lexer::lex(trimmed, self.from, FileId(0));
+                    let lexed = kalam_lexer::lex_fragment(trimmed, self.from, FileId(0));
                     let toks: Vec<Token> = lexed
                         .tokens
                         .into_iter()

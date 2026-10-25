@@ -15,3 +15,7 @@ kalam-syntax.workspace = true
 kalam-diagnostics.workspace = true
 # Path dependency so the shared root Cargo.toml needs no edit (see kalam-ast/Cargo.toml).
 kalam-ast = { path = "../kalam-ast" }
+
+[dev-dependencies]
+# Integration tests only: reads the shared eval suites' expect.json (tests/suites.rs).
+serde_json.workspace = true

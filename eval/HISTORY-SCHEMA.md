@@ -78,7 +78,7 @@ Run it from `compiler/`: `cargo run -p kalam-eval -- ...`. The repository root i
 }
 ```
 
-The scorecard JSON on stdout (and `--out`) carries more detail under `checks`: `parity` (P1, P2, P3, corpus syntax, corpus fmt, with failures), `suites` (per suite: counts, failures, defects, out-of-scope and later-stage cases), `catalog`, `p7_conflicts`, `props` and the per-case corpus records.
+The scorecard JSON on stdout (and `--out`) carries more detail under `checks`: `parity` (P1, P2, P3, corpus syntax, corpus fmt, with failures), `suites` (per suite: counts, failures, defects, `deferred_m2`, out-of-scope and later-stage cases), `catalog`, `p7_conflicts`, `props` and the per-case corpus records.
 
 ### Status values
 
@@ -114,6 +114,8 @@ The held-out sets are the corpus, the Trojan Source suite and the seeded-error s
 | `D7.formatter_idempotence` | corpus files + `eval/suites/conformance` | `fmt` (held-out corpus files) |
 | `D7.skin_convert` | P2 and P3 above | P2 and P3 above |
 
+**`[M2]` cases (FOUNDER-QUEUE Q10).** In every suite, dev and held-out, a case whose `expect.json` `notes` start with `[M2]` needs name resolution. Every runner leaves it out of the M1 pass/fail and the D5 value, and counts it as `deferred_m2` (in the evidence, the `suites` detail and the held-out `trojan`/`diag_recovery` objects). A malformed `expect.json` is still a defect. Those cases are checked from tier M2 on.
+
 Every other M1 check is judged on its whole scope without a held-out part: `G-INT`, `G-PAR.P4`, `G-PAR.P6`, `G-PAR.P7`, `G-PAR.P8`, `D2.lexing_hazard_suite`, `D1.property_tests`, `D5.diag_completeness`, `D1.fuzz_crash_free_hours`, `G-RATCHET` and the `ratchet_only` metrics.
 
 ### Gate states
@@ -137,7 +139,7 @@ All compiler access goes through one hook (`src/parity.rs`), the same entry poin
 | 10 | `D7.skin_convert` | P2 and P3 above, both through `kalam_driver::convert_source` |
 | 11 | `D1.corpus_syntax_pass` | a task counts when every case, in all three skins, is accepted, passes the formatter rule, P1, P2 and P3 (T50 main: the same lex-stage rejection in all three). Held-out split; value judged `>= 21` |
 | 12 | `D1.property_tests` | the props report (below): every **gating** fmt-idempotence property (name contains `idempot`) and every gating round-trip property (name contains `round_trip`/`roundtrip`; today `ast_print_parse_roundtrip` and `convert_roundtrip`), at least one of each, each with `>= 10000` cases and 0 failures. Any failure is a `fail` |
-| 13 | `D5.error_recovery_precision` | `eval/suites/seeded-errors` (scorecard.json and LOOP.md name `eval/diagnostics/broken/`; the shared suite is the same thing in the shared format). scorecard.json formula: per file, genuine / reported, where genuine = reported errors matching a seeded `(code, line)`; a file whose first seeded `(code, line)` is not reported scores 0. Value = mean over files. Every seeded code needs its line. Scope: `>= 30` cases with all three skins (dev + held-out). The spec sets no numeric cascade limit (§21.4 rule 2 hides follow-on errors), so cascades lower the ratio; the evidence also gives the files whose first reported error is seeded and the cascade-free files. Held-out split |
+| 13 | `D5.error_recovery_precision` | `eval/suites/seeded-errors`, the canonical seeded-error suite (FOUNDER-QUEUE Q14; it replaces the earlier `eval/diagnostics/broken/` path). scorecard.json formula: per file, genuine / reported, where genuine = reported errors matching a seeded `(code, line)`; a file whose first seeded `(code, line)` is not reported scores 0. Value = mean over files. Every seeded code needs its line. Scope: `>= 30` cases with all three skins (dev + held-out). The spec sets no numeric cascade limit (§21.4 rule 2 hides follow-on errors), so cascades lower the ratio; the evidence also gives the files whose first reported error is seeded and the cascade-free files. Held-out split |
 | 14 | `D5.diag_completeness` | **In M1 scope**: LOOP.md §5.1 item 14 and the scorecard.json M1 checks list it at stage S2. Denominator: every spec §27 code in K01xx, K02xx, K09xx and SEC01xx (ranges such as `K0901–K0926` expanded, *retired* rows dropped) plus every other code `kalam explain --catalog --json` lists (read in process from `kalam_diagnostics::explain::catalog_value()`). A code is complete when its en/ar/franco title and message, `help` text and rendered `explain` page are all non-empty. The listing has `help: null` for every code today, so the strict value is 0 until help text exists. The evidence also gives the message-and-explain-only figure |
 | 15 | `G-PAR.P6` | the same code set and per-code rule, judged `== 100 %` |
 | 16 | `G-PAR.P4` | the props report: failures over the gating properties whose own `parity` list names `P1`, `P2` or `P3` (coverage is never guessed from a name or description); each of P1, P2, P3 must be covered by a property with `>= 10000` cases (a failure is a failure at any count). Judged `== 0` |
@@ -166,22 +168,25 @@ All compiler access goes through one hook (`src/parity.rs`), the same entry poin
                 {"name": "skin_round_trip", "cases": 10000, "failures": 0, "parity": ["P1", "P2", "P3"]}]}
 ```
 
+What `kalam-props` (`cargo test -p kalam-props --release`, 10 000 cases per property by default, the M1 minimum) writes: `commit` (`git rev-parse HEAD` of the tree it ran on; `null` without git, which the harness treats as not measurable), and per property `name`, `gating`, `parity`, `cases`, `failures`, `examples`. The parity lists name only checks the property's code performs: `kcf_cross_skin_equality` `["P1", "P2"]` (equal KCF across the three printouts and every one-hop conversion; a program accepted in some skins but not others is a failure under the G-PAR scope rule, one rejected in all three is not run), `kcf_hash_stability` `["P1"]`, `convert_roundtrip` `["P2"]` (6 ordered pairs, both 3-hop cycles per skin, byte-identical), `source_fixpoint` `["P3"]` (`convert(convert(x, X->Y), Y->Y) == convert(x, X->Y)` for all 6 ordered pairs); every other property `[]`. Properties other than `ast_print_parse_roundtrip` and `kcf_cross_skin_equality` run only on programs that parse in all three skins; the run keeps drawing programs (up to 4x `cases`, reported as `cases_drawn`) until every gating per-program property has at least `cases` cases. `unsupported` counts drawn programs that no skin accepts.
+
 `properties` may also be an object keyed by name. Accepted aliases: `cases_run`/`programs` for `cases`, `failed` for `failures`, `git_sha` for `commit`. `gating: false` marks a report-only property, which never counts (default `true`). `parity` lists the G-PAR checks the property runs on every generated program (used by P4); a property without it covers none. `commit` is required for `eval/props/report.json` and must match the evaluated commit (full or abbreviated SHA, 7+ hex digits); a report without it, or for another commit, is `not_measurable` (stale). A report written by `--run-props` needs no commit. Other fields (`suite`, `passed`, `meets_m1`, `examples`, …) are ignored: the harness judges the per-property counts itself.
 
 **`eval/fuzz/status.json`** (fuzz runner): `{"crash_free_hours": <number >= 0>, "crashes": <int>, "last_run": "<ISO-8601>", "targets": ["lexer", "parser", "fmt", ...]}`. Other fields are ignored except `oracle_violations` (`{name: {count}}`), whose total is shown in the evidence. `targets` is optional; without it the harness looks for `compiler/fuzz/fuzz_targets/*.rs` or `compiler/crates/*/fuzz/fuzz_targets/*.rs`. Target names must cover `lex`, `pars` and `fmt`/`format`.
 
 ## The held-out aggregate (`kalam-holdout-aggregate/1`)
 
-`kalam-eval holdout` reads the store (corpus tasks under `corpus/` or the store root, suites under `suites/<suite>/` or `<suite>/`) and prints one line, then exits. It never prints a task name, case id, file name, diagnostic or source text; its panic hook is silent and the parent discards its stderr.
+`kalam-eval holdout` reads the store (corpus tasks under `corpus/` or the store root, where only `tNN-*` directories are tasks; held-out suite splits in the shared suite format under `suites/<suite>/` or `<suite>/`: `trojan-source` gives `trojan`, `seeded-errors` gives `diag_recovery`, each `null` when its split does not exist) and prints one line, then exits. It never prints a task name, case id, file name, diagnostic or source text; its panic hook is silent and the parent discards its stderr.
 
 ```text
 {"schema": "kalam-holdout-aggregate/1", "status": "measured"|"empty"|"encrypted", "manifest_sha256": "<hex>",
  "m1_syntax": {"status": "measured"|"not_measurable", "tasks_passed": n, "tasks_total": n},
  "parity": {"P1"|"P2"|"P3": {"pass": bool|null, "passed": n, "total": n}},
  "fmt": {"passed": n, "total": n, "layout_kept": n, "excluded": n},
- "trojan": {"bad_rejected": n, "bad_total": n, "good_accepted": n, "good_total": n, "defects": n} | null,
+ "trojan": {"bad_rejected": n, "bad_total": n, "good_accepted": n, "good_total": n, "deferred_m2": n,
+            "defects": n} | null,
  "diag_recovery": {"value": x|null, "files": n, "score_sum": x, "full_skin_cases": n, "first_match": n,
-                   "cascade_free": n, "defects": n} | null,
+                   "cascade_free": n, "deferred_m2": n, "defects": n} | null,
  "leak": {"hits": n}}
 ```
 
@@ -191,7 +196,7 @@ All compiler access goes through one hook (`src/parity.rs`), the same entry poin
 
 `kalam-eval freeze` (reviewer only; LOOP.md §2 step 4) writes:
 
-- **`eval/FREEZE.json`** (`kalam-freeze/1`): `eval_version` (copied from scorecard.json), `target_milestone`, `frozen_at` (`--timestamp` or `null`), `frozen_roots`, `frozen_files` (every frozen file except FREEZE.json and the manifest), `append_only`, `holdout` (`store`, `manifest_sha256`, `manifest_rule`, `split_seed`), `spec_llms_txt_sha256`, the founder fields `model_panel`, `llm_judge`, `api_cost_cap_usd`, `wallclock_cap_hours` (carried over from an existing FREEZE.json, `null` until the founder sets them) and `pending_founder` (the founder fields still `null`). The held-out store is pinned by its manifest hash only: SHA-256 over the sorted lines `<sha256(file)>  <relative path>` of every file in the store.
+- **`eval/FREEZE.json`** (`kalam-freeze/1`): `eval_version` (copied from scorecard.json), `target_milestone`, `frozen_at` (`--timestamp` or `null`), `frozen_roots`, `frozen_files` (every frozen file except FREEZE.json and the manifest), `append_only`, `holdout` (`store`, `manifest_sha256`, `manifest_rule`, `split_seed`, `split_seed_note`; seed and note are carried over from the existing FREEZE.json), `spec_llms_txt_sha256`, the founder fields `model_panel`, `llm_judge`, `api_cost_cap_usd`, `wallclock_cap_hours` (carried over from an existing FREEZE.json, `null` until the founder sets them) and `pending_founder` (the founder fields still `null`, plus `holdout.split_seed` while it is `null` or its `split_seed_note` starts with "provisional"; today it is the provisional `d3abd2d`, FOUNDER-QUEUE Q15). The held-out store is pinned by its manifest hash only: SHA-256 over the sorted lines `<sha256(file)>  <relative path>` of every file in the store.
 - **`eval/MANIFEST.sha256`**: `# kalam-manifest/1 <eval_version>`, then `# append-only <path> bytes=<n> sha256=<hex>` for each existing append-only log, then `<sha256>  <path>` for every frozen file (FREEZE.json included, the manifest itself excluded).
 
 Frozen roots: `eval/SCORECARD.md`, `eval/scorecard.json`, `eval/LOOP.md`, `eval/HISTORY-SCHEMA.md`, `eval/FREEZE.json`, `eval/corpus/`, `eval/suites/`, `eval/harness/`, `eval/diagnostics/`, `eval/seccorpus/` and the harness crate `compiler/crates/kalam-eval/` (LOOP.md A3: harness code changes need the reviewer). `target/` directories are skipped. The freeze is deterministic: it never reads the clock.

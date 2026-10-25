@@ -162,7 +162,7 @@ The spec's own self-report (§26, *not* a measurement) gives 31 keywords, 50 res
 | `D5.golden_coverage` | Codes with golden UI tests in all three skins (%) | kalam-eval diag --goldens: codes with >=1 .en/.ar/.franco .stderr golden / catalog codes. | higher | 0 | ≥ 70 | ≥ 100 | ≥ 100 | S3 |
 | `D5.machine_fix_rate` | Diagnostics whose machine fix compiles after applying (%) | kalam-eval diag --fixes: over all golden cases, apply every applicability=machine fix with `kalam fix`, re-run `kalam check`; value = cases whose fix exists and yields no error / cases. | higher | 0 | ≥ 20 | ≥ 40 | ≥ 60 | S3 |
 | `D5.judge_score` | Becker-rubric judge score (0-5) | kalam-eval diag --judge: pinned judge model and rubric (eval/FREEZE.json) grade each golden diagnostic 0-5 on the Becker et al. checklist; unavailable unless the milestone calibration on 50 human-graded diagnostics has mean absolute error <= 0.5. Noise rule: ci95. | higher | 0 | ≥ 3 | ≥ 3.8 | ≥ 4.2 | S3 |
-| `D5.error_recovery_precision` | Error recovery: genuine / reported errors (ratio) | kalam-eval diag --recovery over eval/diagnostics/broken/ (>=30 files x 3 skins with seeded errors); genuine = reported diagnostics matching a seeded (code, line); the first seeded error must be found or the file scores 0. | higher | 0 | ≥ 0.5 | ≥ 0.8 | ≥ 0.9 | S2 |
+| `D5.error_recovery_precision` | Error recovery: genuine / reported errors (ratio) | kalam-eval diag --recovery over eval/suites/seeded-errors/ (>=30 files x 3 skins with seeded errors; the canonical seeded-error suite, FOUNDER-QUEUE Q14); genuine = reported diagnostics matching a seeded (code, line); the first seeded error must be found or the file scores 0. | higher | 0 | ≥ 0.5 | ≥ 0.8 | ≥ 0.9 | S2 |
 <!--/TABLE:D5-->
 
 ### D6 Performance (weight 10)
@@ -309,7 +309,7 @@ DECISIONS D17 stops the loop at **every** roadmap milestone, so every milestone 
 | 10 | `D7.skin_convert` | `kalam convert` round-trips the corpus | pass | P2 and P3 through the real `kalam convert` | S2 |
 | 11 | `D1.corpus_syntax_pass` | Corpus syntax pass: MVP-tier tasks that parse, format and round-trip (dev + held-out, x3 skins) | ≥ 21 tasks | T01-T15, T31-T33, T48-T50; dev + held-out; x3 skins | S2 |
 | 12 | `D1.property_tests` | Property suites pass (fmt idempotence, round-trip, stdlib laws) | pass | fmt-idempotence and round-trip properties only (stdlib laws start at M4) | S2 |
-| 13 | `D5.error_recovery_precision` | Error recovery: genuine / reported errors | ≥ 0.5 | eval/diagnostics/broken/ (>= 30 files x 3 skins) | S2 |
+| 13 | `D5.error_recovery_precision` | Error recovery: genuine / reported errors | ≥ 0.5 | eval/suites/seeded-errors/ (>= 30 files x 3 skins; cases marked [M2] count from M2) | S2 |
 | 14 | `D5.diag_completeness` | Diagnostic completeness (code, span, help, docs link, x3 languages) | ≥ 70 % | the M1 code set: every spec §27 code in K01xx, K02xx, K09xx and SEC01xx except retired codes such as SEC0107, plus any other code `kalam explain --catalog --json` lists (codes that exist so far) | S2 |
 | 15 | `G-PAR.P6` | Diagnostic catalog parity | = 100 % | the M1 code set: every spec §27 code in K01xx, K02xx, K09xx and SEC01xx except retired codes such as SEC0107, plus any other code `kalam explain --catalog --json` lists (codes that exist so far) | S2 |
 | 16 | `G-PAR.P4` | Property round-trip | = 0 failures | >= 10k generated programs per run through P1-P3 | S2 |

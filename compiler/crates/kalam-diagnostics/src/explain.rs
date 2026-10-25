@@ -4,11 +4,14 @@
 //! A catalog message is a template whose `{name}` placeholders are filled from a
 //! diagnostic's arguments. An explain page has no diagnostic, so each placeholder is shown
 //! as a description in the reader's message language (`<the word from another skin>`),
-//! never as the raw `{found}`. `{kw_let}` is the one keyword placeholder; a page shows it in
-//! the reader's own skin spelling.
+//! never as the raw `{found}`. A keyword placeholder (`{kw_let}`, `{core_none}`,
+//! `{punct_try}`) is shown in the reader's own skin spelling.
+//!
+//! A page has the title, the message, the help text and the explain body of the catalog
+//! entry, in that order.
 
 use kalam_base::Skin;
-use kalam_skins::{Concept, KeywordTable};
+use kalam_skins::KeywordTable;
 use serde_json::{json, Value};
 
 use crate::catalog::{self, Entry, CATALOG};
@@ -120,13 +123,10 @@ const DESCRIPTIONS: &[(&str, &str, [&str; 3])] = &[
     ),
 ];
 
-/// Placeholders that stand for a keyword: a page shows the reader's own spelling.
-const KEYWORDS: &[(&str, Concept)] = &[("kw_let", Concept::KwLet)];
-
-/// The description of placeholder `name` in `code`'s message, in `lang`.
+/// The description of placeholder `name` in `code`'s templates, in `lang`.
 pub fn describe(code: &str, name: &str, lang: Lang) -> Option<String> {
-    if let Some((_, concept)) = KEYWORDS.iter().find(|(n, _)| *n == name) {
-        return Some(KeywordTable::builtin().spelling(*concept, lang).to_string());
+    if let Some(concept) = catalog::keyword_concept(name) {
+        return Some(KeywordTable::builtin().spelling(concept, lang).to_string());
     }
     DESCRIPTIONS
         .iter()
@@ -139,36 +139,11 @@ pub fn describe(code: &str, name: &str, lang: Lang) -> Option<String> {
         .map(|(_, _, texts)| format!("<{}>", texts[lang.index()]))
 }
 
-/// Placeholder names in `template`, in order of first use (the rule `render_template` fills).
-fn placeholder_names(template: &str) -> Vec<&str> {
-    let mut out: Vec<&str> = Vec::new();
-    let mut rest = template;
-    while let Some(open) = rest.find('{') {
-        let after = &rest[open + 1..];
-        match after.find('}') {
-            Some(close)
-                if close > 0
-                    && after[..close]
-                        .bytes()
-                        .all(|b| b.is_ascii_lowercase() || b == b'_') =>
-            {
-                let name = &after[..close];
-                if !out.contains(&name) {
-                    out.push(name);
-                }
-                rest = &after[close + 1..];
-            }
-            _ => rest = after,
-        }
-    }
-    out
-}
-
-/// Every placeholder name across `entry`'s three message templates.
+/// Every placeholder name across `entry`'s message and help templates (all languages).
 fn entry_placeholders(entry: &Entry) -> Vec<&'static str> {
     let mut out: Vec<&'static str> = Vec::new();
-    for template in entry.message {
-        for name in placeholder_names(template) {
+    for template in entry.message.iter().chain(entry.help.iter()) {
+        for name in catalog::placeholders(template) {
             if !out.contains(&name) {
                 out.push(name);
             }
@@ -177,13 +152,13 @@ fn entry_placeholders(entry: &Entry) -> Vec<&'static str> {
     out
 }
 
-/// `entry`'s message in `lang` with every placeholder replaced by its description.
-fn described_message(entry: &Entry, lang: Lang) -> String {
-    let args: Vec<(&'static str, String)> = entry_placeholders(entry)
+/// `template` with every placeholder replaced by its description in `lang`.
+fn described(entry: &Entry, template: &str, lang: Lang) -> String {
+    let args: Vec<(&str, String)> = entry_placeholders(entry)
         .into_iter()
         .filter_map(|name| describe(entry.code, name, lang).map(|d| (name, d)))
         .collect();
-    catalog::render_template(entry.message[lang.index()], &args)
+    catalog::render_template(template, &args)
 }
 
 fn docs_url(code: &str) -> String {
@@ -199,7 +174,13 @@ const PROPOSED_NOTE: [&str; 3] = [
 fn render_page(entry: &Entry, lang: Lang) -> String {
     let i = lang.index();
     let mut out = format!("{}  {}\n\n", entry.code, entry.title[i]);
-    out.push_str(&described_message(entry, lang));
+    out.push_str(&described(entry, entry.message[i], lang));
+    out.push_str("\n\n");
+    out.push_str(catalog::ui(lang, catalog::Ui::Help));
+    out.push(' ');
+    out.push_str(&described(entry, entry.help[i], lang));
+    out.push_str("\n\n");
+    out.push_str(entry.explain[i]);
     out.push('\n');
     if entry.proposed {
         out.push('\n');
@@ -241,8 +222,8 @@ fn by_lang(f: impl Fn(Lang) -> Value) -> Value {
 }
 
 /// `kalam explain --catalog --json`: every catalog code, sorted, with its title, message
-/// template, placeholder descriptions and explain page in `en`, `ar` and `franco`.
-/// `help` is `null`: the catalog has no help text separate from the message yet.
+/// and help templates, placeholder descriptions and explain page in `en`, `ar` and
+/// `franco`.
 pub fn catalog_value() -> Value {
     let mut entries: Vec<&Entry> = CATALOG.iter().collect();
     entries.sort_by_key(|e| e.code);
@@ -268,7 +249,7 @@ pub fn catalog_value() -> Value {
                 "title": by_lang(|lang| Value::String(e.title[lang.index()].to_string())),
                 "message": by_lang(|lang| Value::String(e.message[lang.index()].to_string())),
                 "placeholders": placeholders,
-                "help": Value::Null,
+                "help": by_lang(|lang| Value::String(e.help[lang.index()].to_string())),
                 "explain": by_lang(|lang| Value::String(render_page(e, lang))),
                 "url": docs_url(e.code),
             })

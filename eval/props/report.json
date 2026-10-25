@@ -1,87 +1,89 @@
 {
   "cases": 10000,
-  "elapsed_secs": 117.7,
-  "failures": 3284,
-  "meets_m1": false,
+  "cases_drawn": 10000,
+  "commit": "373f266700df131fe4c3a061dce9ad7f47c3eaca",
+  "elapsed_secs": 205.6,
+  "failures": 0,
+  "meets_m1": true,
   "metric": "D1.property_tests",
   "min_cases_per_property": 10000,
   "only_case": null,
-  "passed": false,
+  "passed": true,
   "profile": "release",
   "properties": [
     {
-      "busy_secs": 60.4,
+      "busy_secs": 67.0,
       "cases": 10000,
       "description": "random AST printed in each skin (en, ar, franco) parses cleanly to the same AST (kalam_fmt::normalized_shape)",
-      "examples": [
-        {
-          "case": 1,
-          "case_seed": "0xa7543b3aaeb3985",
-          "detail": "does not parse in franco: K0201@536:\"في\", K0250@536:\"في\"",
-          "input": "--- en\nuse std.{`Some`, adad, `else`, fe, fi, `for`, `if`, mafeesh, اذا, اطبع, في}\n\nfn عداد():\n    return false\n\n\nfn y() -> Box[Bool]:\n    if [`fi`(قيمة, y: false), fn(_tmp, `user`) -> (User, Float) => html\"\", -1.5]:\n        fn name(عداد: Result[Int, List[Float]], اسم: fn(List[`adad`], Map[Float, Float]) -> Item, items: Set[String] = 1.5):\n            items(\n                name..=World,\n                None,\n                  `if`: [.Circle, total, count],\n            )((42)())\n        في(value or 7)\n        عداد(قيمة: -\"\\\"law\").for(42 + _tmp, fe: 0.25)\n\n\nfn `for`(count: Map[adad[Int], Bool], count: Result[Float, Bool], `else`: `Some`[Decimal] = user) -> Float:\n    # c1 تعليق\n    if (if total: None else if 1.5: sql\"{100}\\n{_tmp}a, b\" else: 65535).اذا:\n        y[user] = (x, true)\n    if {100: false, \"\": ()()}: اطبع().total(y: mafeesh, else: -7, x: (15)[user])\n--- ar\nاستخدم std.{Some، adad، else، `fe`، fi, for، `if`، mafeesh, `اذا`, `اطبع`, `في`}\n\nدالة عداد():\n    أرجع خطا\n\n\nدالة y() -> Box[منطقي]:\n    اذا [fi(قيمة، y: خطأ)، دالة(_tmp, user) -> (User, كسري) => html\"\", -1.5]:\n        دالة name(عداد: نتيجة[عدد، قائمة[كسري]]، اسم: دالة(قائمة[adad], قاموس[کسری، كسري]) -> Item، items: مجموعة[نص] = 1.5):\n            items(\n                name..=عالم،\n                لا_شيء،\n                  if: [.Circle، total، count],\n            )((٤٢)())\n        `في`(value او 7)\n        عداد(قيمة: -\"\\\"law\").for(٤٢ + _tmp، fe: ٠٫٢٥)\n\n\nداله for(count: قاموس[adad[عدد], منطقي], count: نتيجة[كسري، منطقي]، `else`: Some[عشرى] = user) -> كسري:\n    # c1 تعليق\n    إذا (اذا total: لا_شيء وإلا إذا ١٫٥: sql\"{١٠٠}\\n{_tmp}a, b\" وإلا: ٦٥٥٣٥).اذا:\n        y[user] = (x، صح)\n    إذا {١٠٠: خطأ، \"\": ()()}: `اطبع`().total(y: mafeesh، else: -7, x: (١٥)[user])\n--- franco\nhatly std.{Some, `adad`, else, `fe`, `fi`, for, if, `mafeesh`, اذا, اطبع, `في`}\n\ndala عداد():\n    rg3 ghalt\n\n\ndalah y() -> Box[mante2i]:\n    law [`fi`(قيمة, y: ghalat), dala(_tmp, user) -> (User, kasri) => html\"\", -1.5]:\n        dalla name(عداد: natiga[adad, qayma[kasri]], اسم: dala(qayma[`adad`], qamoos[kasri, kasri]) -> Item, `items`: magmo3a[nass] = 1.5):\n            items(\n                name..=donya,\n                mafeesh,\n                  if: [.Circle, total, count],\n            )((42)())\n        في(value aw 7)\n        عداد(قيمة: -\"\\\"law\").for(42 + _tmp, `fe`: 0.25)\n\n\ndalla for(`count`: qamoos[`adad`[adad], mantiqi], `count`: natiga[kasri, mantiqi], else: Some[ashri] = user) -> kasri:\n    # c1 تعليق\n    lau (law total: mafeesh walla law 1.5: sql\"{100}\\n{`_tmp`}a, b\" wla: 65535).اذا:\n        y[user] = (x, sa7)\n    low {100: ghalat, \"\": ()()}: اطبع().total(y: `mafeesh`, else: -7, x: (15)[user])\n",
-          "reproduce": "KALAM_PROPS_SEED=0x4b414c414d KALAM_PROPS_CASE=1 cargo test -p kalam-props --release",
-          "skin": "franco"
-        },
-        {
-          "case": 4,
-          "case_seed": "0x8665129680551a2f",
-          "detail": "does not parse in franco: K0201@375:\"فی\", K0201@1887:\"عدد\"",
-          "input": "--- en\nuse std.{`None`, `Some`, adad, ektb, `else`, `for`, `in`, khali, law, lekol, lw, wala, عدد, فى, في, فی, لکل}\n\n\nfn wala[U: Ord + Ord]():\n    if .law():\n        pass\n        if -n1(false, name, `in`):\n            print(.Some(value: .Rect, items: لکل), law)()(عداد: 1000, items: if 0.25: 0x1F else: 7, user: .Circle * _tmp)\n            `for`[فی].count *= if false..=(): \"\" else if (fn() => \"{(100)(1.5, adad: World)}{42}\"): في * 1.5 else: 7 and \"\"\n            return 65535\n        else if .حالة:\n            x(print?)\n            var lekol: Set[Decimal] = adad or {65535: 100, \"\": Int}\n            let `in`: Float = []\n        else:\n            n1 /= \"\\\\{y}{(65535)()}a, b\"\n        match (fn(`total`) => url\"law{2e3}\")..-y:\n            case true:\n                break\n                var عداد = if x: html\"law\" >= 3.0e-2 else: (2)\n                عداد.total(count: \" if\", lekol: [false, url\"\", total], عداد: 0)\n            case Ok(_ as name | -1000..-7):\n                total.`total`.khali += (fn(_tmp: Result[Int, Float]) => value,)\n                return Err\n\n                فى(\n                     اسم: (2)(value, count: ektb),\n                    _tmp: fn(khali) -> Int => ()\n                )(عداد: (.Some), items: None and 1.5, قيمة: [0, 42, 1000])\n                var name = name\n            case (-65535..1000, \"x?\\{\", Err(\"\\}\")):\n                var wala: List[(Bool, Box)] = lekol\n                فى /= (1 >= main) % .None\n                # c1 note\n                `else`(\"\", n1: 1_000)\n                اسم(\n                      false,\n                     -قيمة,\n                      _tmp: lw\n                )\n    else:\n        اسم()(((),))\n        عداد.count()(items: None(.law), lekol: اسم)\n        while ([عدد, x, قيمة]): return\n        name((65535).name, \"\\}؟،؟،: \")\n    اسم.فی(\"\\t\", fn(name) => false)\n    name[0].user -= {0x1F: total and .None}\n--- ar\nاستخدم std.{`None`، Some، adad, ektb، else، for, in، khali، law, lekol، lw، wala, `عدد`، `فى`، `في`، `فی`, `لکل`}\n\n\nدالة wala[U: Ord + Ord]():\n    إذا .law():\n        تخطى\n        إذا -n1(خطأ، name، in):\n            اطبع(.Some(value: .Rect, items: `لکل`)، law)()(عداد: 1000، items: إذا 0.25: 0x1F وإلا: 7، user: .Circle * _tmp)\n            for[`فی`].count *= إذا خطأ..=(): \"\" وإلا إذا (دالة() => \"{(100)(1.5، adad: عالم)}{42}\"): `في` * ١٫٥ والا: ٧ و \"\"\n            أرجع 65535\n        والا إذا .حالة:\n            x(اطبع?)\n            متغير lekol: مجموعة[عشری] = adad أو {65535: ١٠٠، \"\": عدد}\n            لىکن in: كسري = []\n        وإلا:\n            n1 /= \"\\\\{y}{(٦٥٥٣٥)()}a, b\"\n        حسب (دالة(total) => url\"law{2e3}\")..-y:\n            عندما صح:\n                اخرج\n                متغير عداد = اذا x: html\"law\" >= 3.0e-2 والا: (2)\n                عداد.total(count: \" if\"، lekol: [خطأ، url\"\"، total]، عداد: 0)\n            عندما نجاح(_ بصفه name | -1000..-7):\n                total.total.khali += (دالة(_tmp: نتیجه[عدد، كسري]) => value،)\n                أرجع فشل\n\n                `فى`(\n                     اسم: (٢)(value، `count`: ektb)،\n                    _tmp: دالة(khali) -> عدد => ()\n                )(عداد: (.Some)، items: لا_شيء و 1.5، قيمة: [0، ٤٢، ١٠٠٠])\n                متغير name = name\n            عندما (-٦٥٥٣٥..1000, \"x?\\{\"، فشل(\"\\}\")):\n                متغير `wala`: قائمة[(منطقي، Box)] = lekol\n                `فى` /= (١ >= رئيسي) % .None\n                # c1 note\n                else(\"\", n1: 1_000)\n                `اسم`(\n                      خطأ،\n                     -قيمة،\n                      _tmp: lw\n                )\n    وإلا:\n        اسم()(((),))\n        عداد.count()(items: لا_شيء(.law)، lekol: اسم)\n        طالما ([`عدد`، x، قيمة]): ارجع\n        name((٦٥٥٣٥).name، \"\\}؟،؟،: \")\n    اسم.فی(\"\\t\", دالة(name) => خطا)\n    name[0].user -= {0x1F: total و .None}\n--- franco\nhatli std.{`None`, Some, `adad`, `ektb`, else, for, in, `khali`, `law`, `lekol`, `lw`, `wala`, `عدد`, فى, في, `فی`, لکل}\n\n\ndala `wala`[U: Ord + Ord]():\n    low .law():\n        foot\n        law -n1(ghalt, name, in):\n            ektb(.Some(value: .Rect, items: لکل), `law`)()(عداد: 1000, items: law 0.25: 0x1F walla: 7, user: .Circle * _tmp)\n            for[فی].count *= lw ghalat..=(): \"\" walla lau (dala() => \"{(100)(1.5, adad: dunya)}{42}\"): في * 1.5 wla: 7 wi \"\"\n            raga3 65535\n        wala lau .حالة:\n            x(ektb?)\n            motghayer `lekol`: magmo3a[ashri] = `adad` aw {65535: 100, \"\": adad}\n            khali in: kasri = []\n        walla:\n            n1 /= \"\\\\{y}{(65535)()}a, b\"\n        hasab (dala(total) => url\"law{2e3}\")..-y:\n            lama sa7:\n                kfaya\n                motghayyer عداد = lau x: html\"law\" >= 3.0e-2 walla: (2)\n                عداد.total(count: \" if\", lekol: [ghalat, url\"\", total], عداد: 0)\n            lama naga7(_ ka name | -1000..-7):\n                total.total.`khali` += (dala(_tmp: natiga[adad, kasri]) => value,)\n                rag3 fashal\n\n                فى(\n                     اسم: (2)(value, count: `ektb`),\n                    _tmp: dalah(`khali`) -> adad => ()\n                )(عداد: (.Some), items: mafeesh wi 1.5, قيمة: [0, 42, 1000])\n                mot8ayer name = name\n            lama (-65535..1000, \"x?\\{\", fashal(\"\\}\")):\n                motghayer `wala`: qaima[(mante2i, Box)] = `lekol`\n                فى /= (1 >= ra2isi) % .None\n                # c1 note\n                else(\"\", n1: 1_000)\n                اسم(\n                      ghalat,\n                     -قيمة,\n           …[315 more bytes]",
-          "reproduce": "KALAM_PROPS_SEED=0x4b414c414d KALAM_PROPS_CASE=4 cargo test -p kalam-props --release",
-          "skin": "franco"
-        },
-        {
-          "case": 7,
-          "case_seed": "0x562611009f50ef50",
-          "detail": "does not parse in franco: K0201@474:\"ليكن\", K0250@491:\"\\n\"",
-          "input": "--- en\nuse std.{ektb, `else`, `let`, lw, mafeesh, wala, في, ليكن, و}\n\n\nfn قيمة(value: Decimal, n1: Int = url\"\\{١٢٣ifa, b\", y: Bool = items):\n    let `lw` = و.n1.1\n    let `count` = None(\"{(65535).`name`}{.Empty}{not World}\")[\"\" - .Empty]\n\n\nfn `else`(اسم: Item[Shape[Float]], x: Float = self, y: نوع[نوع]) -> Point:\n    for `let` in ():\n        for lw in main:\n            return ()\n            _tmp.wala.قيمة *= [Some]\n        ليكن.اسم()\n\n        items(user: None)\n\n\nfn في[T]() => (not false)..mafeesh\n\n\nfn n1(ektb: Map[String, (Shape, String)] = .حالة, x: Item[(Float, Bool)], total: Decimal) => y\n--- ar\nاستخدم std.{ektb، else, let, lw، mafeesh، wala, `في`، `ليكن`، `و`}\n\n\nدالة قيمة(value: عشري، n1: عدد = url\"\\{١٢٣ifa, b\"، y: منطقي = items):\n    ليكن lw = `و`.n1.1\n    ليكن count = لا_شيء(\"{(65535).name}{.Empty}{ليس عالم}\")[\"\" - .Empty]\n\n\nدالە else(اسم: Item[Shape[كسري]], x: كسري = ذات، y: نوع[نوع]) -> Point:\n    لكل let فی ():\n        لكل lw في رئيسي:\n            ارجع ()\n            _tmp.wala.`قيمة` *= [موجود]\n        `ليكن`.اسم()\n\n        items(user: لا_شيء)\n\n\nدالة `في`[T]() => (ليس خطأ)..mafeesh\n\n\nدالة n1(ektb: قاموس[نص، (Shape، نص)] = .حالة، x: Item[(کسری، منطقي)], total: عشري) => y\n--- franco\nhat std.{`ektb`, else, let, `lw`, `mafeesh`, `wala`, في, `ليكن`, و}\n\n\ndala قيمة(value: ashri, n1: adad = url\"\\{١٢٣ifa, b\", y: mantiqi = items):\n    khaly `lw` = و.n1.1\n    khalli count = mafeesh(\"{(65535).name}{.Empty}{mesh donya}\")[\"\" - .Empty]\n\n\ndala else(اسم: Item[Shape[kasri]], x: kasri = nafso, y: نوع[نوع]) -> Point:\n    likol let fi ():\n        lekol `lw` fy ra2eesy:\n            raga3 ()\n            _tmp.`wala`.قيمة *= [mawgod]\n        ليكن.اسم()\n\n        items(user: mafeesh)\n\n\ndala في[T]() => (mesh ghalat)..`mafeesh`\n\n\ndala n1(`ektb`: qamoos[nass, (Shape, nass)] = .حالة, `x`: Item[(kasri, mante2i)], total: ashri) => `y`\n",
-          "reproduce": "KALAM_PROPS_SEED=0x4b414c414d KALAM_PROPS_CASE=7 cargo test -p kalam-props --release",
-          "skin": "franco"
-        }
-      ],
-      "failures": 3284,
+      "examples": [],
+      "failures": 0,
       "gating": true,
       "name": "ast_print_parse_roundtrip",
-      "passed": false
+      "parity": [],
+      "passed": true
     },
     {
-      "busy_secs": 194.5,
-      "cases": 6716,
+      "busy_secs": 344.9,
+      "cases": 10000,
       "description": "fmt succeeds without its fallback, fmt(fmt(x)) == fmt(x), and fmt keeps the AST and the comments, in every skin",
       "examples": [],
       "failures": 0,
       "gating": true,
       "name": "fmt_idempotence",
+      "parity": [],
       "passed": true
     },
     {
-      "busy_secs": 1002.2,
-      "cases": 6716,
+      "busy_secs": 1740.9,
+      "cases": 10000,
       "description": "all 6 ordered skin pairs (X->Y->X) and all six 3-hop cycles come back byte-identical; every intermediate parses to the same AST and comments; converting fmt output gives formatted output (G2 fixpoint)",
       "examples": [],
       "failures": 0,
       "gating": true,
       "name": "convert_roundtrip",
+      "parity": [
+        "P2"
+      ],
       "passed": true
     },
     {
-      "busy_secs": 96.7,
-      "cases": 6716,
-      "description": "KCF bytes of the same program are equal across the three skin printouts and across every conversion step (spec §4.4 G1)",
+      "busy_secs": 148.9,
+      "cases": 10000,
+      "description": "KCF bytes of the same program are equal across the three skin printouts and across every conversion step (spec §4.4 G1); a program accepted in some skins but not others fails (G-PAR scope rule), one rejected in all three is unsupported (not run)",
       "examples": [],
       "failures": 0,
       "gating": true,
       "name": "kcf_cross_skin_equality",
+      "parity": [
+        "P1",
+        "P2"
+      ],
       "passed": true
     },
     {
-      "busy_secs": 232.3,
-      "cases": 6716,
+      "busy_secs": 386.2,
+      "cases": 10000,
       "description": "KCF hash == SHA-256(KCF bytes), skin inference agrees with the file's skin, re-parsing gives the same hash, hashes are equal across skins and stable under re-formatting",
       "examples": [],
       "failures": 0,
       "gating": true,
       "name": "kcf_hash_stability",
+      "parity": [
+        "P1"
+      ],
+      "passed": true
+    },
+    {
+      "busy_secs": 152.7,
+      "cases": 10000,
+      "description": "P3: for every ordered skin pair X->Y, converting the X printout to Y and then Y->Y          again gives byte-identical text (print_Y(parse(print_Y(parse_X(s)))) ==          print_Y(parse_X(s)))",
+      "examples": [],
+      "failures": 0,
+      "gating": true,
+      "name": "source_fixpoint",
+      "parity": [
+        "P3"
+      ],
       "passed": true
     },
     {
@@ -92,33 +94,44 @@
       "failures": 0,
       "gating": true,
       "name": "kcf_hash_golden",
+      "parity": [],
       "passed": true
     },
     {
-      "busy_secs": 24.3,
+      "busy_secs": 16.6,
       "cases": 30000,
       "description": "lex + parse never panic on hostile text (bidi, ZWJ, tatweel, BOM, NUL, CR, tabs, deep brackets, unfinished strings) in any skin",
       "examples": [],
       "failures": 0,
       "gating": true,
       "name": "lexer_parser_never_panic",
+      "parity": [],
       "passed": true
     },
     {
-      "busy_secs": 19.3,
+      "busy_secs": 13.1,
       "cases": 30000,
       "description": "the CST of any input, valid or not, reproduces the input byte for byte",
       "examples": [],
       "failures": 0,
       "gating": true,
       "name": "cst_lossless",
+      "parity": [],
       "passed": true
     },
     {
-      "busy_secs": 111.5,
-      "cases": 6716,
+      "busy_secs": 188.1,
+      "cases": 10000,
       "description": "report only: kcf(fmt(x)) == kcf(x) for generated programs (known open: fmt's blank-line, trailing-comma and one-line-block normalization changes KCF)",
       "examples": [
+        {
+          "case": 218,
+          "case_seed": "0x52a38d4a0088ccae",
+          "detail": "kcf(fmt(x)) != kcf(x)\nfirst difference at byte 2553\n  expected: …\nK KW_LET\nI 1:_\nP =\nK KW_FALSE\nP (\nI 4:Some\nP :\nI 5:items\nP PUNCT_COMMA\nP )\nP .\nI 1:y\nNL\nK KW_IF\nP (\nN f 10.0\nP )\nP [\nK KW_TRUE\nP ]\nP (\nI 5:items\nP :\nK KW_NOT\nI…\n  actual:   …\nK KW_LET\nI 1:_\nP =\nK KW_FALSE\nP (\nI 4:Some\nP :\nI 5:items\nP )\nP .\nI 1:y\nNL\nK KW_IF\nP (\nN f 10.0\nP )\nP [\nK KW_TRUE\nP ]\nP (\nI 5:items\nP :\nK KW_NOT\nI 4:user\nP )\nP …",
+          "input": "--- en\nuse std.{`None`, `Some`, adad, dala, ektb, `else`, fe, fi, `for`, hasab, `if`, `in`, khali, law, lekol, lw, `match`, `print`, sa7, wala, walla, اذا, اطبع, فى, في, لكل, ليكن, لکل, `و`}\n\n\nfn `items`(اسم: Box[Set[Int]], count: fn() -> Int, اسم: Int):\n    if ((.None)..=42) // `if`.fi:\n        if Int:\n            var n1 = (.Empty or عداد)(7)\n            assert(اطبع // 2, -Ok, `n1`: -2)\n            let `count` = user\n        else if (10.0)?():\n            # c1 تعليق\n            continue\n            let user = `else`.0\n            return `None`\n        else if x:\n            fe += -.`None`[.law]\n        fn `adad`(عداد: (Bool, Result[Decimal, String], Bool)) -> Decimal => {}\n        fn adad(value: Bool) -> Result[Result[Float, Bool], Point[Bool]] => \"\" != اطبع?\n        while 0.25 or 1:\n            let name = walla\n            var اسم = [0.25 // 0x1F, hasab, (42)[items]]\n    else if (not \"١٢٣\")?:\n        _tmp.قيمة.items()\n        adad(x: count[adad])\n        panic.قيمة(total, `Some`: Err)\n        return false\n    else:\n        let _ = false(\n            `Some`: items,\n        ).y\n        if (10.0)[true](items: not user):\n            `in`.items = (100).اذا\n            break\n            return -name\n        else if name == (لکل):\n            panic(0x1F, \"iflaw{main}\")\n            var `match`: نوع[Int] = (42 != \"law{`x`}\")[self]\n            break\n        else:\n            `else`.wala[في] -= \"if\"\n            return \"١٢٣ \\n\"..=n1 and \"\\\\\\{\\u{41}\"?\n            break\n    if false:\n        return 42 * items - -قيمة\n        count(sql\"{3.0e-2}\"(n1, lekol: Ok), fn() => lekol, total: `match`..true)\n        match -(.None == None):\n            case _tmp if {}: break\n            case sa7:\n                عداد(y: {})(`y`: (اسم, عداد, قيمة))\n                user.عداد(x.ليكن, عداد: 42)\n                var count = ((3.0e-2)..=0)(\"{fe}{0.25 + items}\"(), n1.total)\n        while (-\"\").0:\n            print([], {1000: false})(lekol[0], `قيمة`?, قيمة: (عداد))\n    else if .حالة:\n        # c2 تعليق\n        while self:\n            let `in` = {}\n            return if .law: \": \\}\\u{41}\".عداد else if (): false else: \"\\n\\n\\n\".adad\n            lw /= self\n        if \"\\{\":\n            panic(count: fn(n1, x) => 2)\n            let adad = (65535)(1, ektb: 1.5, ektb: 100).x\n        else:\n            panic.items._tmp(wala: 100..\" \")\n            # c3 تعليق\n            اسم(عداد: value.اسم, قيمة: عداد, user: 1)(name: fn(`print`, total) => 0.25, _tmp: عداد[ليكن])\n        if Err.total?:\n            let name = .Empty.walla // true[1.5]\n        else if items:\n            var عداد: fn(\n                  fn(Bool, Float) -> Bool,\n            ) -> (Float, Float) = user != (fn(_, user) -> Option[Bool] => قيمة)\n            let عداد = (hasab..=true)\n            عداد += self\n        else if (if `name` + 42: items else if (\n             (),\n             hasab,\n              count,\n        ): 1_000 else: (0x1F, ())):\n            continue\n            continue\n            return ({7: 1, 1000: total}, .law((), _tmp: 15, اسم: 65535))\n            var `ektb`: (Float, Float) = 3.0e-2\n    else:\n        let _tmp = ([false, items, 0x1F],)\n        fn law(name: List[fn(Int) -> Bool]):\n            name()(\n                  `Some` + 1000,\n                (.law)..=Ok,\n                  total: 10.0\n            )\n            لکل(\n                 [law]\n            )(self.في, name: \"\"(name: user, اسم: 0), n1: (65535)[.حالة])\n            let و = [\n                 false / 42,\n            ]\n        # c4 a, b?\n        let اسم = items\n    continue\n\n\ntest \"\\{x?\":\n    value.`قيمة` += (not fe) >= (\"١٢٣\" < 0)\n    let name = -()\n    if ()(\n        _tmp: .Rect,\n    ):\n        n1.عداد = \"helloa, b{ليكن}\"\n        # c5 TODO: law fi lekol\n        print.total.اطبع(-\"{15}\", `user`: (count))\n        total(x: dala.عداد, total: (100)(), y: fn(name) => total)\n    else if -name:\n        fn value[عنصر: Show, عنصر: Show + Ord](y: Map[@sync fn() -> نوع, Shape], قيمة: Float, dala: Result[fn(adad) -> Decimal, Map[Bool, Float]]):\n            var _tmp: Int = -None.y\n        let (y, name) = ()()\n    else:\n        total((7), اسم: \"سلام عليكم\\\"{items}{2}\"())()\n        match Int(.Rect)():\n            case true:\n                count(0.25)\n                print(1000 <= (), {\"\": x, 1000: 0x1F}, قيمة: []).lekol(42, _tmp: count.اسم, n1: fn(walla, items: List[Decimal]) => 0x1F)\n                break\n                pass\n            case n1 if \"\\}x?\":\n                return\n                print.قيمة((self), main > 2)((قيمة, 42))\n                # c6 TODO: law fi lekol\n                return 2e3\n            case false | [] | count as x:\n                return 0.25\n                panic.None(()[`x`], قيمة, فى: (100).عداد)\n        value(\n              7 * قيمة,\n             if 1_000: name else: 2,\n            (2)\n        )()\n\n\nfn items(ektb: Result[\n    Item,\n    Bool\n], لکل: Result[Map[Bool, ()], List[Bool]], `user`: Int = .Circle):\n    for (user, فى, n1) in اسم.0:\n        if (fn() => true < sql\"١٢٣{y}\"):\n            value[\"\"(\n                 .`None`,\n                  _tmp,\n                None\n            )] -= قيمة\n            let x = (10.0)[.Rect]..=1000\n        else if lw(`n1`) < name:\n            let _ = items\n        else if (3.0e-2)?: return 0\n        else:\n            break\n        return .`Some`[name and khali]\n        pass\n    continue\n\n    match `for`:\n        case (n1 | false | n1, لكل | _tmp, true):\n            # c7 تعليق\n            value(items: World[10.0]).ektb((), sa7: not `n1`, عداد: World.و)\n--- ar\nاستخدم std.{None، Some, adad، dala، `ektb`، else، fe، fi, for, hasab، if, in، khali، law، lekol, lw، match، print, sa7، `wala`, walla, `اذا`، `اطبع`، `فى`…[12736 more bytes]",
+          "reproduce": "KALAM_PROPS_SEED=0x4b414c414d KALAM_PROPS_CASE=218 cargo test -p kalam-props --release",
+          "skin": "en"
+        },
         {
           "case": 350,
           "case_seed": "0xa559b4290472b90a",
@@ -128,31 +141,25 @@
           "skin": "en"
         },
         {
-          "case": 856,
-          "case_seed": "0x1ef68c74607bfbaf",
-          "detail": "kcf(fmt(x)) != kcf(x)\nfirst difference at byte 4043\n  expected: … KW_IF\nP (\nK KW_IF\nI 5:items\nP :\nK KW_FALSE\nP (\nK KW_TRUE\nP )\nK KW_ELSE\nK KW_IF\nP (\nK KW_IF\nI 5:print\nP :\nI 4:wala\nK KW_ELSE\nP :\nK CORE_NONE\nP )\nP :\nI 4:_tmp\nP …\n  actual:   … KW_IF\nP (\nK KW_IF\nI 5:items\nP :\nK KW_FALSE\nP (\nK KW_TRUE\nP PUNCT_COMMA\nP )\nK KW_ELSE\nK KW_IF\nP (\nK KW_IF\nI 5:print\nP :\nI 4:wala\nK KW_ELSE\nP :\nK CORE_NONE\nP )\nP…",
-          "input": "--- en\n# c1 تعليق\nuse std.{`None`, `Some`, adad, dala, ektb, `else`, fe, hasab, `if`, `in`, khali, lama, law, lekol, low, lw, mafeesh, `print`, sa7, wala, walla, اذا, اطبع, عدد, فى, فی, لكل, ليكن, لکل, و}\n\nfn `in`(walla: Float, `items`: Result[Result[\n    String,\n      Int,\n], Bool]):\n    اسم.items.n1 = _tmp\n    match 1000:\n        case (قيمة, false, adad(قيمة, اسم: \"hello١٢٣\")):\n            # c2 a, b?\n            fn لکل(items: String, اسم: Float, total: Int):\n                اسم[\"\\u{41}{print}\"].اطبع -= \"\"\n                continue\n                # c3 if x: y\n                return {15: \"{0.25} {[false]}{false}\"}()\n                عدد[value][Err] *= (n1 and Int)(_tmp: khali, name: (y, main, \"law\\t\"))\n            while {\"\\t\": self}?:\n                break\n\n                ektb.عداد(`print`: {}, x: total, count: if 1_000: 1.5 else: Ok)()\n                continue\n                value()(x: true, عداد: value(true), khali: false)(لكل, not self)\n            fn x(user: Set[Shape[Decimal]] = 3.0e-2, `else`: fn() -> Decimal, mafeesh: ()) -> Bool:\n                return\n                let `total` = {}\n                قيمة(\"\", فى: (\"\\u{41}\\}\"), _tmp: (7)())(0x1F, قيمة)\n                let فی = 0.25 and 10.0\n    match Some - اسم - sql\"{.حالة}hellohello\":\n        case .Rect(..) | (1000..=1000, total, count):\n            fn items(`print`: User[\n                  Bool,\n            ]):\n                break\n\n\nfn dala(x: Bool) => ()\n\n\nfn `lama`() -> Decimal:\n    if ():\n        اسم(not false, ليكن: (1).0)((), عداد(0x1F, اذا: 0, name: false), (\"١٢٣x?\"))(فی: Ok?, count: 0x1F == \"\\\"law\\{{low.name}\", لکل: true)\n        if 42 + (if `if`: y else: print): walla[false] += (2)[[]]\n        else if (if items: false(true) else if (if `print`: wala else: None): _tmp[7] else: 42 / sql\"\"):\n            var total: Map[(Int, Float), Shape[()]] = ()\n            # c4 a, b?\n            return ليكن.لكل * 1000\n            panic()\n            fe.name(not self)()\n        let fe = .law\n        panic(\n            [],\n            (\"{_tmp}\\\\hello\"),\n             y / 15\n        )(total == 1_000, true[n1], عداد or 65535)\n    else if x.dala:\n        if (if (if (): fe else if Int: World else: 42): ektb else: total):\n            let name: fn(Map[String, Int]) -> Bool = .`None`\n            y *= ()..=(0x1F)\n            user.عداد /= 0.25\n    else:\n        match `hasab`:\n            case و as lekol if \"hello\":\n                let (y, قيمة, اسم): User[(String, Float)] = false(x: _tmp < true)\n                let (count, lw) = n1()\n                لکل.name.items(not _tmp, _tmp - print, not 42)\n            case 0x1F:\n                fe._tmp(()._tmp, (n1, false))\n                let count = [قيمة, \"\"..\"\"]\n        while .law:\n            # c5 تعليق\n            continue\n        y(if عدد: .Some else: true, (_tmp), items..=lama)(\n            value: adad != 1_000,\n            _tmp: (1).2,\n        )\n\n        var low = (total, fn() => false)\n    name()\n    name.sa7.قيمة += فى\n--- ar\n# c1 تعليق\nاستخدم std.{None، Some، adad، dala، ektb، else, fe، hasab، if، in، khali، `lama`، law، lekol، low، lw، mafeesh، print, sa7، wala، walla، `اذا`، `اطبع`، `عدد`، `فى`، `فی`، `لكل`، `ليكن`، `لکل`، `و`}\n\nدالة in(walla: كسري, items: نتيجة[نتيجة[\n    نص,\n      عدد,\n]، منطقي]):\n    اسم.items.n1 = _tmp\n    حسب ١٠٠٠:\n        عندما (قيمة, خطأ، adad(قيمة، اسم: \"hello١٢٣\")):\n            # c2 a, b?\n            دالە `لکل`(items: نص، `اسم`: كسري، total: عدد):\n                اسم[\"\\u{41}{اطبع}\"].اطبع -= \"\"\n                استمر\n                # c3 if x: y\n                أرجع {15: \"{٠٫٢٥} {[خطأ]}{خطأ}\"}()\n                `عدد`[value][فشل] *= (n1 و عدد)(_tmp: khali، name: (y، رئيسي، \"law\\t\"))\n            طالما {\"\\t\": ذات}?:\n                اخرج\n\n                `ektb`.عداد(print: {}، x: `total`، count: اذا 1_000: 1.5 وإلا: نجاح)()\n                استمر\n                value()(x: صح, عداد: value(صح), `khali`: خطا)(`لكل`، ليس ذات)\n            دالة x(user: مجموعة[Shape[عشري]] = 3.0e-2، else: دالة() -> عشري، mafeesh: ()) -> منطقي:\n                أرجع\n                ليكن total = {}\n                قيمة(\"\"، فى: (\"\\u{41}\\}\")، _tmp: (٧)())(0x1F، قيمة)\n                ليكن `فی` = 0.25 و ١٠٫٠\n    حسب موجود - اسم - sql\"{.حالة}hellohello\":\n        عندما .Rect(..) | (١٠٠٠..=1000، total، count):\n            دالة items(print: User[\n                  منطقى,\n            ]):\n                اخرج\n\n\nدالة dala(x: منطقي) => ()\n\n\nداله lama() -> عشري:\n    اذا ():\n        اسم(ليس خطا، ليكن: (1).0)(()، عداد(0x1F, `اذا`: ٠، name: خطأ)، (\"١٢٣x?\"))(فی: نجاح؟, count: 0x1F == \"\\\"law\\{{low.name}\"، `لکل`: صح)\n        إذا 42 + (إذا if: y وإلا: اطبع): walla[خطأ] += (٢)[[]]\n        وإلا اذا (اذا items: خطأ(صح) والا إذا (اذا print: wala والا: لا_شيء): _tmp[7] وإلا: 42 / sql\"\"):\n            متغير total: قاموس[(عدد، كسري), Shape[()]] = ()\n            # c4 a, b?\n            ارجع `ليكن`.لكل * 1000\n            انهيار()\n            fe.name(ليس ذات)()\n        لیكن fe = .law\n        انهيار(\n            [],\n            (\"{_tmp}\\\\hello\"),\n             y / 15\n        )(`total` == 1_000، صح[n1], عداد أو 65535)\n    وإلا اذا x.dala:\n        اذا (اذا (إذا (): fe والا إذا عدد: عالم وإلا: 42): ektb وإلا: total):\n            ليكن name: دالە(قاموس[نص، عدد]) -> منطقي = .None\n            y *= ()..…[4089 more bytes]",
-          "reproduce": "KALAM_PROPS_SEED=0x4b414c414d KALAM_PROPS_CASE=856 cargo test -p kalam-props --release",
-          "skin": "en"
-        },
-        {
-          "case": 859,
-          "case_seed": "0xc1100c737a21b8b5",
-          "detail": "kcf(fmt(x)) != kcf(x)\nfirst difference at byte 4091\n  expected: …adad\nP )\nP PUNCT_COMMA\nI 1:_\nP )\nP =>\nN i 10 42\nP )\nP )\nP :\nK KW_LET\nI 2:و\nP =\nS\nT 1:\"\nH\nI 1:x\nP (\nN i 10 15\nP )\n/H\nH\nN f 10.0\n/H\nT 3:if\"\n/S\nNL\nK KW_ELSE\nP :\nN…\n  actual:   …adad\nP )\nP PUNCT_COMMA\nI 1:_\nP )\nP =>\nN i 10 42\nP )\nP )\nP :\nNL\nIN\nK KW_LET\nI 2:و\nP =\nS\nT 1:\"\nH\nI 1:x\nP (\nN i 10 15\nP )\n/H\nH\nN f 10.0\n/H\nT 3:if\"\n/S\nNL\nDE\nK KW_E…",
-          "input": "--- en\nuse std.{`None`, `Some`, adad, ektb, fe, `for`, hasab, `if`, khali, `let`, low, lw, mafeesh, `print`, walla, اذا, فى, فی, لكل, لکل, و}\n\n\nlet `_tmp`: User[Box[Int]] = y..=self and self?\n\n# c1 a, b?\nfn `let`(عداد: Map[List[Decimal], Item], lw: () = .`None`, y: () = true):\n    fn قيمة(count: Result[Shape[Int], Option[Float]], لكل: Bool):\n        if false:\n            continue\n            let قيمة = fe\n            let `print`: نوع = not (value)\n            break\n        else if ():\n            _tmp()\n            let n1: Item[Int] = if 3.0e-2: 1.5 else: `x`.2\n        _tmp(true..true, count or walla).count(\n             x: .`Some` * mafeesh,\n        )\n    if khali.user:\n        # c2 if x: y\n        match (self..true)():\n            case 65535..7:\n                value(count: `hasab`()).total(name: فی.x, لكل: (10.0).اسم, total: ()?)\n                _tmp(فی: ().2, عداد: \"if\", low: (true)).name()\n    else if [if html\"{user}سلام عليكم\": print else if self: 2 else: .Some, 42, \"a, b{-اسم}\\t{`for`()}\"]:\n        var x = None\n\nfn value(total: String = `if`) -> Float:\n    fn _tmp[U: Eq + Show]() -> Float:\n        return ()\n        var user = not not main\n    count()\n    for total in (not self):\n        return قيمة\n        return 1000\n        var اسم = fn(عداد, total) -> String => count\n\nfn _tmp(اسم: fn(Set[Int], Float) -> (`Some`, Item) = 1000, اسم: User = 7) -> Int:\n    for user in {1_000: count, 100: \"a, bifسلام عليكم{[.`Some`]}\"}..=(\"{.حالة(1)}law\\\"\\{\", false, lw):\n        items.walla.walla()\n        count.count.و *= []\n        total.value(عداد.Some, اذا: count)(x: true?)\n        var y: Result[adad[String], Set[Float]] = if (if self(): not .Circle else: (fn(`if`: (Float, `adad`), _) => 42)): let و = \"{x(15)}{10.0}if\"\n        else:\n            value(_tmp: false[\"\\} if\"], فى: (3.0e-2).mafeesh)\n    let total = url\"\\nlawlaw؟،\"\n    y.ektb.name(لکل: 0.25)\n--- ar\nاستخدم std.{None، Some, adad, ektb، fe، for, hasab، `if`، khali, let، low، lw, mafeesh، print، walla، `اذا`، `فى`, `فی`، `لكل`، `لکل`، `و`}\n\n\nلىكن _tmp: User[Box[عدد]] = y..=ذات و ذات؟\n\n# c1 a, b?\nدالة let(عداد: قاموس[قائمة[عشري]، Item], lw: () = .None, y: () = صح):\n    دالة قيمة(count: نتيجة[Shape[عدد], اختياري[كسري]]، `لكل`: منطقى):\n        إذا خطأ:\n            استمر\n            ليكن قيمة = fe\n            ليكن print: نوع = لیس (value)\n            اخرج\n        والا إذا ():\n            _tmp()\n            ليكن n1: Item[عدد] = اذا 3.0e-2: ١٫٥ والا: x.2\n        _tmp(صح..صح، count أو `walla`).count(\n             x: .Some * mafeesh،\n        )\n    إذا khali.user:\n        # c2 if x: y\n        حسب (ذات..صح)():\n            عندما 65535..٧:\n                value(count: hasab()).total(name: `فی`.x، `لكل`: (10.0).اسم، total: ()؟)\n                `_tmp`(فی: ().2، عداد: \"if\"، low: (صح)).name()\n    وإلا إذا [اذا html\"{user}سلام عليكم\": اطبع والا اذا ذات: ٢ وإلا: .Some, ٤٢، \"a, b{-اسم}\\t{for()}\"]:\n        متغىر x = لا_شيء\n\nدالة value(total: نص = if) -> كسري:\n    دالة _tmp[`U`: Eq + Show]() -> كسري:\n        أرجع ()\n        متغير user = ليس ليس رئيسي\n    count()\n    لكل total في (ليس ذات):\n        أرجع قيمة\n        أرجع ١٠٠٠\n        متغير اسم = دالة(عداد، total) -> نص => count\n\nدالة `_tmp`(اسم: دالة(مجموعة[عدد]، كسري) -> (Some, `Item`) = ١٠٠٠، اسم: User = 7) -> عدد:\n    لكل user فی {١_٠٠٠: count، 100: \"a, bifسلام عليكم{[.Some]}\"}..=(\"{.حالة(1)}law\\\"\\{\"، خطأ، lw):\n        items.walla.walla()\n        count.count.`و` *= []\n        total.value(عداد.Some, اذا: count)(x: صح?)\n        متغير y: نتىجه[adad[نص]، مجموعة[كسري]] = إذا (اذا ذات(): لیس .Circle وإلا: (دالة(if: (كسري، adad), _) => ٤٢)): ليکن `و` = \"{x(15)}{١٠٫٠}if\"\n        والا:\n            value(_tmp: خطأ[\"\\} if\"], فى: (3.0e-2).mafeesh)\n    ليكن total = url\"\\nlawlaw؟،\"\n    y.ektb.name(لکل: 0.25)\n--- franco\nhatly std.{None, Some, `adad`, `ektb`, `fe`, for, `hasab`, if, `khali`, let, `low`, `lw`, `mafeesh`, print, `walla`, اذا, فى, فی, لكل, لکل, و}\n\n\nkhaly _tmp: User[Box[adad]] = y..=nafsu we nafso?\n\n# c1 a, b?\ndala let(عداد: qamoos[qaima[ashri], Item], `lw`: () = .None, y: () = sa7):\n    dalla قيمة(count: natiga[Shape[adad], ekhtiyari[kasri]], لكل: mante2i):\n        law ghalat:\n            kammel\n            khali قيمة = `fe`\n            khaly print: نوع = mesh (value)\n            kfaya\n        wala lw ():\n            `_tmp`()\n            khali n1: Item[adad] = law 3.0e-2: 1.5 wla: x.2\n        _tmp(sa7e7..sa7, count aw `walla`).count(\n             x: .Some * `mafeesh`,\n        )\n    law `khali`.user:\n        # c2 if x: y\n        hasab (nafsu..sa7e7)():\n            lama 65535..7:\n                `value`(count: `hasab`()).total(name: فی.x, لكل: (10.0).اسم, total: ()?)\n                _tmp(فی: ().2, عداد: \"if\", low: (sa7)).name()\n    walla law [law html\"{user}سلام عليكم\": ekteb walla law nafsu: 2 wla: .Some, 42, \"a, b{-اسم}\\t{for()}\"]:\n        motghayer x = mafeesh\n\ndalla value(total: nass = if) -> kasri:\n    dala `_tmp`[U: Eq + Show]() -> kasri:\n        rg3 ()\n        motghayyer user = mish mesh ra2isi\n    count()\n    likol total fi (mesh nafsu):\n        rg3 قيمة\n        rg3 1000\n        motghayer اسم = dalla(عداد, total) -> nass => count\n\ndala _tmp(اسم: dala(magmo3a[adad], kasri) -> (Some, Item) = 1000, اسم: User = 7) -> adad:\n    lekol user fe {1_000: count, 100: \"a, bifسلام عليكم{[.Some]}\"}..=(\"{.حالة(1)}law\\\"\\{\", ghalat, `lw`):…[433 more bytes]",
-          "reproduce": "KALAM_PROPS_SEED=0x4b414c414d KALAM_PROPS_CASE=859 cargo test -p kalam-props --release",
+          "case": 416,
+          "case_seed": "0xde9476b9beed03ec",
+          "detail": "kcf(fmt(x)) != kcf(x)\nfirst difference at byte 1469\n  expected: …hali\nP :\nI 5:items\nP PUNCT_COMMA\nI 1:x\nP :\nI 4:_tmp\nP )\nP :\nK KW_LET\nP (\nI 8:عداد\nP PUNCT_COMMA\nI 4:else\nP PUNCT_COMMA\nI 1:_\nP )\nP =\nP {\nS\nT 6:\"\\n\\t\"\n/S\nP :…\n  actual:   …hali\nP :\nI 5:items\nP PUNCT_COMMA\nI 1:x\nP :\nI 4:_tmp\nP )\nP :\nNL\nIN\nK KW_LET\nP (\nI 8:عداد\nP PUNCT_COMMA\nI 4:else\nP PUNCT_COMMA\nI 1:_\nP )\nP =\nP {\nS\nT 6:\"\\n\\t\"\n…",
+          "input": "--- en\nuse std.{`Some`, adad, `else`, fe, `for`, hasab, `in`, khali, lama, law, lekol, low, اذا, فی, لكل, لکل}\n\nfn lama(`in`: Map[Bool, Result[Bool, String]], value: Bool, name: fn(Float, fn(Bool) -> User) -> String) => ((.law)..=\"\")()\n\ntest \"\\{hello\":\n    for _ in اسم:\n        for _ in [\n            items,\n              2,\n            قيمة,\n        ].0:\n            pass\n            var فی: fn(fn(\n                 Int\n            ) -> Bool, String) -> adad[()] = (true(main, 65535, items: ()))\n    match ():\n        case لکل:\n            var _tmp = if (not 15) + (65535)(3.0e-2, khali: items, x: _tmp): let (عداد, `else`, _) = {\n                \"\\n\\t\": (1000)?,\n                 \"\": 0.25\n            }\n            else:\n                return .`Some`\n            for user in \": \":\n                let total = y\n                var total = 2e3\n                let _ = 3.0e-2\n                n1.hasab(\": {`for`}\" / y)\n            اسم(قيمة(100, 0), 0, .`Some`)\n        case [] as value:\n            total()()\n            while 1:\n                var لكل = ()\n                return\n                var fe = total\n\n                let _tmp: fn() -> String = (`n1`)\n        case Err(0x1F):\n            if -x:\n                panic(None, law: (false, .Empty))\n                var n1: Int = 3.0e-2\n            else if []:\n                continue\n            else if (true / \"\\\\\\t\")?:\n                let count = 1.5\n                print(law[.Empty], (low, 1, None))(not self)\n                # c1 a, b?\n                n1._tmp.count /= `in`(fn(قيمة: Decimal) => .`Some`)\n            var `for` = {}\n    while 42:\n        lekol((3.0e-2)..`اذا`, \": \\}{false}\", n1: y)()\n        break\n\n\nlet قيمة: fn(Point, Result[Decimal, Bool]) -> Float = 1 / Int\n--- ar\nاستخدم std.{Some, adad، else، fe, for, hasab، in, khali, lama، `law`، lekol، low، `اذا`, `فی`، `لكل`، `لکل`}\n\nدالة lama(in: قاموس[منطقي، نتىجه[منطقی، نص]]، value: منطقي، name: دالة(كسري، دالة(منطقی) -> User) -> نص) => ((.`law`)..=\"\")()\n\nاختبار \"\\{hello\":\n    لکل _ في اسم:\n        لكل _ في [\n            items،\n              2،\n            قيمة،\n        ].0:\n            تخطى\n            متغیر `فی`: دالة(دالە(\n                 عدد\n            ) -> منطقي, نص) -> adad[()] = (صح(رئیسی، ٦٥٥٣٥، items: ()))\n    حسب ():\n        عندما `لکل`:\n            متغير _tmp = اذا (ليس ١٥) + (65535)(3.0e-2, khali: `items`، x: _tmp): لىكن (عداد، else, _) = {\n                \"\\n\\t\": (1000)?,\n                 \"\": ٠٫٢٥\n            }\n            وإلا:\n                أرجع .Some\n            لكل user في \": \":\n                ليكن total = y\n                متغير total = 2e3\n                ليكن _ = 3.0e-2\n                n1.hasab(\": {for}\" / y)\n            `اسم`(قيمة(100، 0), 0, .Some)\n        عندما [] بصفة value:\n            total()()\n            طالما ١:\n                متغير `لكل` = ()\n                أرجع\n                متغير fe = total\n\n                لیكن _tmp: دالە() -> نص = (n1)\n        عندما فشل(0x1F):\n            إذا -x:\n                انھيار(لا_شیء، law: (خطأ، .Empty))\n                متغیر n1: عدد = 3.0e-2\n            والا إذا []:\n                استمر\n            والا اذا (صح / \"\\\\\\t\")?:\n                ليكن count = 1.5\n                اطبع(law[.Empty]، (low, 1، لا_شيء))(ليس ذات)\n                # c1 a, b?\n                n1._tmp.count /= in(دالة(قيمة: عشري) => .Some)\n            متغير for = {}\n    طالما 42:\n        lekol((3.0e-2)..`اذا`, \": \\}{خطا}\", n1: y)()\n        اخرج\n\n\nليكن قيمة: دالة(Point, نتىجە[عشري، منطقى]) -> كسري = 1 / عدد\n--- franco\nhat std.{Some, `adad`, else, `fe`, for, `hasab`, in, `khali`, `lama`, `law`, `lekol`, `low`, اذا, فی, لكل, لکل}\n\ndalla `lama`(in: qamoos[mante2i, natiga[mante2i, nass]], value: mantiqi, name: dalah(kasri, dala(mante2i) -> User) -> nass) => ((.law)..=\"\")()\n\nekhtbar \"\\{hello\":\n    lekol _ fe اسم:\n        lekol _ fi [\n            items,\n              2,\n            قيمة,\n        ].0:\n            fot\n            mot8ayer فی: dalah(dala(\n                 adad\n            ) -> mante2i, nass) -> `adad`[()] = (sa7(ra2eesy, 65535, items: ()))\n    hasab ():\n        lamma لکل:\n            mot8ayer _tmp = lw (mesh 15) + (65535)(3.0e-2, `khali`: items, x: _tmp): khali (عداد, else, _) = {\n                \"\\n\\t\": (1000)?,\n                 \"\": 0.25\n            }\n            walla:\n                ragga3 .Some\n            lekol user fi \": \":\n                khali `total` = y\n                mot8ayer total = 2e3\n                khaly _ = 3.0e-2\n                n1.hasab(\": {for}\" / y)\n            اسم(قيمة(100, 0), 0, .Some)\n        lamma [] ka value:\n            total()()\n            tool_ma 1:\n                motaghayer لكل = ()\n                rag3\n                motghayer `fe` = total\n\n                khaly _tmp: dalla() -> nass = (n1)\n        lama fashal(0x1F):\n            law -x:\n                enhyar(mafish, `law`: (ghalt, .Empty))\n                motghayer n1: adad = 3.0e-2\n            walla law []:\n                kammel\n            walla lau (sa7 / \"\\\\\\t\")?:\n                khalli count = 1.5\n                ektb(`law`[.Empty], (`low`, 1, mafeesh))(mesh nafso)\n                # c1 a, b?\n                n1._tmp.count /= in(dala(قيمة: ashri) => .Some)\n            motghayer for = {}\n    tol_ma 42:\n        `lekol`((3.0e-2)..اذا, \": \\}{ghalat}\", n1: y)()\n        kefaya\n\n\nkhali `قيمة`: dala(Point, natiga[ashri, mante2i]) -> kasri = 1 / adad\n",
+          "reproduce": "KALAM_PROPS_SEED=0x4b414c414d KALAM_PROPS_CASE=416 cargo test -p kalam-props --release",
           "skin": "en"
         }
       ],
-      "failures": 15,
+      "failures": 40,
       "gating": false,
       "name": "kcf_fmt_invariance",
+      "parity": [],
       "passed": false
     }
   ],
-  "report_only_failures": 15,
+  "report_only_failures": 40,
   "seed": 323218063693,
   "seed_hex": "0x4b414c414d",
   "suite": "kalam-props",
+  "unsupported": 0,
   "version": "0.1.0"
 }

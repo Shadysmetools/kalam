@@ -424,7 +424,7 @@ fn odd_layouts_settle_into_a_stable_canonical_form() {
             Skin::En,
         ),
         ("cross-skin type and enum names", "type law:\n    walla: Int\n    fi: List[law]\n\nenum E:\n    law\n    walla\n".into(), Skin::En),
-        ("not/and/or around cross-skin names", "fn f():\n    let x = not law and law or fi\n".into(), Skin::En),
+        ("not/and/or around cross-skin names", "fn f(law: Bool, fi: Bool):\n    let x = not law and law or fi\n".into(), Skin::En),
         (
             "Arabic text near the column limit",
             format!("دالة f():\n    إذا {} و {}:\n        تخطى\n", "q".repeat(40), "r".repeat(40)),

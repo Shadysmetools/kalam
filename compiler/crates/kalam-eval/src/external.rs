@@ -459,7 +459,8 @@ mod tests {
         }
     }
 
-    /// The shape `kalam-props` writes: no `parity` lists, a `gating` flag, no commit.
+    /// The shape `kalam-props` wrote before iteration 5: no `parity` lists, a `gating` flag,
+    /// no commit.
     const KALAM_PROPS: &str = r#"{"suite": "kalam-props", "passed": false, "properties": [
         {"name": "ast_print_parse_roundtrip", "cases": 10000, "failures": 3, "gating": true},
         {"name": "fmt_idempotence", "cases": 10000, "failures": 0, "gating": true},
@@ -502,6 +503,44 @@ mod tests {
             matches!(property_tests(&ok), Observation::Passed(_)),
             "{ok:?}"
         );
+    }
+
+    /// The shape `kalam-props` writes now: a commit and a `parity` list per property. A
+    /// program accepted in some skins only fails `kcf_cross_skin_equality` (P1), so P4 is
+    /// measured even when the dependent properties ran on fewer than 10k programs.
+    #[test]
+    fn current_kalam_props_shape_makes_p4_measurable() {
+        let text = r#"{"suite": "kalam-props", "commit": "abc1234def", "properties": [
+            {"name": "ast_print_parse_roundtrip", "gating": true, "parity": [], "cases": 10000, "failures": 3300},
+            {"name": "fmt_idempotence", "gating": true, "parity": [], "cases": 6700, "failures": 0},
+            {"name": "convert_roundtrip", "gating": true, "parity": ["P2"], "cases": 6700, "failures": 0},
+            {"name": "kcf_cross_skin_equality", "gating": true, "parity": ["P1", "P2"], "cases": 10000, "failures": 3300},
+            {"name": "kcf_hash_stability", "gating": true, "parity": ["P1"], "cases": 6700, "failures": 0},
+            {"name": "source_fixpoint", "gating": true, "parity": ["P3"], "cases": 6700, "failures": 0},
+            {"name": "kcf_fmt_invariance", "gating": false, "parity": [], "cases": 6700, "failures": 9}
+        ]}"#;
+        let d = temp_dir("props-now");
+        write(&d, PROPS_REPORT, text);
+        let r = load_props(&d, Some("abc1234def"));
+        let clean = load_props(&d, Some("abc1234"));
+        write(
+            &d,
+            PROPS_REPORT,
+            &text.replace("3300", "0").replace("6700", "10000"),
+        );
+        let ok = load_props(&d, Some("abc1234def"));
+        let _ = fs::remove_dir_all(&d);
+        assert!(clean.is_ok());
+        match p4(&r) {
+            Observation::Measured { value, .. } => assert_eq!(value, MetricValue::Num(3300.0)),
+            o => panic!("{o:?}"),
+        }
+        assert!(matches!(property_tests(&r), Observation::Failed(_)));
+        match p4(&ok) {
+            Observation::Measured { value, .. } => assert_eq!(value, MetricValue::Num(0.0)),
+            o => panic!("{o:?}"),
+        }
+        assert!(matches!(property_tests(&ok), Observation::Passed(_)));
     }
 
     fn load_fresh_text(text: &str) -> Result<PropsReport, String> {

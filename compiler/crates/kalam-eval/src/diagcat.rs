@@ -309,8 +309,9 @@ mod tests {
         assert!(r.total() >= 60, "{}", r.total());
         assert!(r.retired_dropped.contains(&"SEC0107".to_string()));
         assert!(!r.codes.contains_key("SEC0107"));
-        // the catalog has no help text, so the strict figure is 0
-        assert_eq!(r.p6_pct(), 0.0);
-        assert!(r.message_and_explain_pct() < 100.0);
+        // the strict figure (help text too) never exceeds the message-and-explain one; the
+        // values themselves follow the catalog (help text landed in iteration 5)
+        assert!((0.0..=100.0).contains(&r.p6_pct()));
+        assert!(r.p6_pct() <= r.message_and_explain_pct());
     }
 }

@@ -15,8 +15,8 @@
 //! - **Skin-free:** the parser matches `TokenKind::Keyword(Concept)`, never spellings. A
 //!   `Keyword`/`Core` token is accepted as an identifier where §5.3 rule 8 allows it.
 //! - **Interpolation holes** are re-lexed in the file's skin and parsed as expressions.
-//! - **Leading-dot continuation** (§5.8 rule 2, DR-05) is applied to the token stream here,
-//!   because the lexer does not implement it yet (its module doc lists it as deferred).
+//! - **Leading-dot continuation** (§5.8 rule 2, DR-05) is done by the lexer: a joined `.`
+//!   line reaches the parser with no NEWLINE/INDENT/DEDENT before it.
 //! - **Error recovery:** a missing token is reported once and inserted virtually. On an
 //!   unexpected token the parser skips to the end of the logical line (and any block that
 //!   line opens) or to the closing DEDENT, wrapping the skipped tokens in an `Error` node.
@@ -47,10 +47,7 @@ pub struct ParseOutput {
 
 /// Parses one file's tokens (from `kalam_lexer::lex` with the same `skin`).
 pub fn parse(text: &str, tokens: &LexOutput, skin: Skin, file: FileId) -> ParseOutput {
-    let mut diags = Vec::new();
-    let toks = apply_continuations(&tokens.tokens, file, &mut diags);
-    let mut p = Parser::new(text, skin, file, toks, &tokens.trivia);
-    p.diags = diags;
+    let mut p = Parser::new(text, skin, file, tokens.tokens.clone(), &tokens.trivia);
     let root = p.start_node(SyntaxKind::File);
     let file_ast = p.file();
     let (cst, diagnostics) = p.finish(root);
@@ -558,67 +555,6 @@ impl<'t> Parser<'t> {
             self.diags,
         )
     }
-}
-
-/// Leading-dot continuation (spec §5.8 rule 2, DR-05): a line whose first token is `.` is
-/// joined to the previous logical line if it is indented deeper and that line does not end
-/// with a block colon. The lexer emits `NEWLINE INDENT .` for it; this removes the NEWLINE
-/// and INDENT, the NEWLINEs before further `.` lines at that depth, and the matching DEDENT.
-/// A non-`.` line inside such a continuation is K0120 (deeper indentation after a non-header
-/// line). If the lexer starts implementing continuation itself, this pass becomes a no-op.
-fn apply_continuations(tokens: &[Token], file: FileId, diags: &mut Vec<Diagnostic>) -> Vec<Token> {
-    let kind = |i: usize| tokens.get(i).map(|t| t.kind).unwrap_or(TokenKind::Eof);
-    let mut out: Vec<Token> = Vec::with_capacity(tokens.len());
-    // One entry per open INDENT: true for a continuation indent.
-    let mut stack: Vec<bool> = Vec::new();
-    let mut i = 0;
-    while i < tokens.len() {
-        let t = tokens[i];
-        match t.kind {
-            TokenKind::Newline => {
-                let prev_colon =
-                    matches!(out.last(), Some(p) if p.kind == TokenKind::Op(Op::Colon));
-                if kind(i + 1) == TokenKind::Indent
-                    && kind(i + 2) == TokenKind::Op(Op::Dot)
-                    && !prev_colon
-                {
-                    stack.push(true);
-                    i += 2;
-                    continue;
-                }
-                if stack.last() == Some(&true) {
-                    match kind(i + 1) {
-                        TokenKind::Op(Op::Dot) => {
-                            i += 1;
-                            continue;
-                        }
-                        TokenKind::Dedent | TokenKind::Eof | TokenKind::Indent => {}
-                        _ => {
-                            let s = tokens[i + 1].span;
-                            diags.push(Diagnostic::new(
-                                codes::UNEXPECTED_INDENT,
-                                file,
-                                mk_span(s.start, s.end),
-                            ));
-                        }
-                    }
-                }
-                out.push(t);
-            }
-            TokenKind::Indent => {
-                stack.push(false);
-                out.push(t);
-            }
-            TokenKind::Dedent => {
-                if stack.pop() != Some(true) {
-                    out.push(t);
-                }
-            }
-            _ => out.push(t),
-        }
-        i += 1;
-    }
-    out
 }
 
 /// Comments, doc comments and blank lines (outside string literals), in source order.

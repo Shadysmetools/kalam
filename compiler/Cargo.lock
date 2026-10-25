@@ -172,6 +172,7 @@ dependencies = [
  "kalam-lexer",
  "kalam-skins",
  "kalam-syntax",
+ "serde_json",
 ]
 
 [[package]]

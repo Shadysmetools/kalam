@@ -861,8 +861,9 @@
   ],
   "holdout": {
     "manifest_rule": "SHA-256 over the sorted lines `<sha256(file)>  <relative path>` of every file in the store",
-    "manifest_sha256": "f68ac4923c4cd68eb2eb4651fcca0eaf99f0d441dcb5fe9ff69370f93604c01e",
-    "split_seed": null,
+    "manifest_sha256": "747fe589a93b74426a79f9a9732e05734bce7058925f747974185626eff45f5a",
+    "split_seed": "d3abd2d",
+    "split_seed_note": "provisional, founder may override (FOUNDER-QUEUE Q15)",
     "store": "eval/holdout"
   },
   "llm_judge": null,

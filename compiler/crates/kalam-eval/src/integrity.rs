@@ -197,8 +197,14 @@ pub fn freeze(root: &Path, o: &FreezeOptions<'_>) -> Result<Frozen, String> {
         }
         carried.insert(k.to_string(), v);
     }
+    // The seed and its note are carried over. A seed is still the founder's to set while
+    // it is null or its note marks it provisional (FOUNDER-QUEUE Q15).
     let split_seed = old["holdout"]["split_seed"].clone();
-    if split_seed.is_null() {
+    let split_seed_note = old["holdout"]["split_seed_note"].clone();
+    let provisional = split_seed_note
+        .as_str()
+        .is_some_and(|n| n.trim_start().to_lowercase().starts_with("provisional"));
+    if split_seed.is_null() || provisional {
         pending.push(json!("holdout.split_seed"));
     }
     let llms = fs::read(root.join("spec/llms.txt"))
@@ -221,6 +227,7 @@ pub fn freeze(root: &Path, o: &FreezeOptions<'_>) -> Result<Frozen, String> {
             "manifest_sha256": tree_hash(&store),
             "manifest_rule": "SHA-256 over the sorted lines `<sha256(file)>  <relative path>` of every file in the store",
             "split_seed": split_seed,
+            "split_seed_note": split_seed_note,
         },
         "spec_llms_txt_sha256": llms,
         "pending_founder": pending,
@@ -678,6 +685,45 @@ mod tests {
         let r = run(&d, &opts(&store));
         let _ = fs::remove_dir_all(&d);
         assert_eq!(r.state(), State::Pending, "{}", r.reason());
+    }
+
+    #[test]
+    fn freeze_keeps_a_provisional_split_seed_pending_with_its_note() {
+        let d = tiny_repo();
+        let store = PathBuf::from(DEFAULT_HOLDOUT);
+        let fz = FreezeOptions {
+            eval_version: "v1",
+            target_milestone: "M1",
+            timestamp: None,
+            holdout_store: &store,
+        };
+        let pending = |f: &Frozen| f.freeze["pending_founder"].as_array().unwrap().clone();
+        // no seed yet: pending
+        let f = freeze(&d, &fz).unwrap();
+        assert!(pending(&f).contains(&json!("holdout.split_seed")));
+        // a provisional seed (FOUNDER-QUEUE Q15): carried with its note, still pending
+        let mut v: Value =
+            serde_json::from_str(&fs::read_to_string(d.join(FREEZE)).unwrap()).unwrap();
+        v["holdout"]["split_seed"] = json!("d3abd2d");
+        v["holdout"]["split_seed_note"] =
+            json!("provisional, founder may override (FOUNDER-QUEUE Q15)");
+        fs::write(d.join(FREEZE), v.to_string()).unwrap();
+        let f = freeze(&d, &fz).unwrap();
+        assert_eq!(f.freeze["holdout"]["split_seed"], "d3abd2d");
+        assert!(f.freeze["holdout"]["split_seed_note"]
+            .as_str()
+            .unwrap()
+            .starts_with("provisional"));
+        assert!(pending(&f).contains(&json!("holdout.split_seed")));
+        // the founder confirms (drops the provisional note): no longer pending
+        let mut v: Value =
+            serde_json::from_str(&fs::read_to_string(d.join(FREEZE)).unwrap()).unwrap();
+        v["holdout"]["split_seed_note"] = json!("founder-approved");
+        fs::write(d.join(FREEZE), v.to_string()).unwrap();
+        let f = freeze(&d, &fz).unwrap();
+        let _ = fs::remove_dir_all(&d);
+        assert!(!pending(&f).contains(&json!("holdout.split_seed")));
+        assert_eq!(f.freeze["holdout"]["split_seed_note"], "founder-approved");
     }
 
     #[test]

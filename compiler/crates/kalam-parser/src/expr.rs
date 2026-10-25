@@ -980,7 +980,7 @@ impl<'t> Parser<'t> {
     /// Parses the code of one interpolation hole: it is re-lexed in the file's skin (holes
     /// convert like code, §4.3) and must be exactly one expression.
     fn hole(&mut self, code: &str, abs: u32) -> Expr {
-        let lexed = kalam_lexer::lex(code, self.skin, self.file);
+        let lexed = kalam_lexer::lex_fragment(code, self.skin, self.file);
         let shift = |s: Span| Span {
             start: s.start.saturating_add(abs),
             end: s.end.saturating_add(abs),

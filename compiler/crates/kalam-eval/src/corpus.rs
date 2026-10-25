@@ -109,13 +109,21 @@ pub fn parse_expected(text: &str) -> Expect {
     out
 }
 
-/// Finds every case under `corpus_dir`: a directory that holds at least one skin file.
-/// Sorted by task, then case, so output is deterministic.
+/// Finds every case under `corpus_dir`: a directory that holds at least one skin file,
+/// inside a task directory (`tNN-slug`, INDEX.md §2). Other directories (a held-out store
+/// keeps its suite splits and tools beside its tasks) are not tasks. Sorted by task, then
+/// case, so output is deterministic.
 pub fn discover(corpus_dir: &Path) -> std::io::Result<Vec<Case>> {
     let mut cases = Vec::new();
     let mut tasks: Vec<PathBuf> = fs::read_dir(corpus_dir)?
         .filter_map(|e| e.ok().map(|e| e.path()))
-        .filter(|p| p.is_dir())
+        .filter(|p| {
+            p.is_dir()
+                && p.file_name()
+                    .and_then(|n| n.to_str())
+                    .and_then(crate::parity::task_number)
+                    .is_some()
+        })
         .collect();
     tasks.sort();
     for task_dir in tasks {
@@ -233,6 +241,12 @@ mod tests {
         .unwrap();
         fs::write(task.join("bad").join("main.franco.kl"), "x\n").unwrap();
         fs::write(task.join("ref.py"), "print('hi')\n").unwrap();
+        // a suite split or a tool directory beside the tasks (held-out store layout) is
+        // not a task
+        for other in ["trojan-source/case", "tools", "t-x"] {
+            fs::create_dir_all(root.join(other)).unwrap();
+            fs::write(root.join(other).join("main.kl"), "x\n").unwrap();
+        }
 
         let cases = discover(&root).unwrap();
         let _ = fs::remove_dir_all(&root);

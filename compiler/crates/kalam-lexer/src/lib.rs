@@ -3,9 +3,10 @@
 //!
 //! Spec references: §5 (lexical structure), §6 (D7: RTL, digits, punctuation), §7 (keywords).
 //! ARCHITECTURE.md §5 describes the design and §5.4 lists what this scaffold still defers:
-//! leading-dot continuation, NFC verification, exact XID and single-script checks, the
-//! emoji ZWJ and variation-selector exceptions, interpolation sub-lexing, and K0201 for
-//! another skin's word inside an interpolation hole.
+//! NFC verification (SEC0101), unassigned code points (SEC0112 needs the Unicode 16.0
+//! tables), exact XID and Script data (the single-script check SEC0105 uses a block table
+//! for the spoofing-relevant scripts), interpolation sub-lexing, and K0201 for an undeclared
+//! word of another skin inside an interpolation hole ([`lex_fragment`], Q9).
 //!
 //! K0201 (spec §5.4): another skin's keyword, core name or Franco variant is reported where
 //! reading it as a name is a syntax error (`word()`: it is followed by another word) or an
@@ -134,7 +135,29 @@ pub fn lex(text: &str, skin: Skin, file: FileId) -> LexOutput {
 }
 
 pub fn lex_with(text: &str, skin: Skin, file: FileId, table: &KeywordTable) -> LexOutput {
+    // Compatibility: a text without a line break is taken for an interpolation hole lexed by a
+    // caller that does not use [`lex_fragment`] yet, so it skips the undefined-name check.
+    run_lexer(text, skin, file, table, !text.contains('\n'))
+}
+
+/// Lexes the code of one interpolation hole (re-lexed on its own by the parser, KCF and
+/// convert). A hole cannot see the file's declarations, so the undefined-name half of K0201
+/// is never decided here (FOUNDER-QUEUE Q9: holes are not checked yet), whether the hole is
+/// on one line or spans several lines of a `"""` string.
+pub fn lex_fragment(code: &str, skin: Skin, file: FileId) -> LexOutput {
+    run_lexer(code, skin, file, KeywordTable::builtin(), true)
+}
+
+fn run_lexer(
+    text: &str,
+    skin: Skin,
+    file: FileId,
+    table: &KeywordTable,
+    fragment: bool,
+) -> LexOutput {
     let lexer = Lexer {
+        fragment,
+        logical_width: 0,
         text,
         chars: text.char_indices().collect(),
         i: 0,
@@ -196,6 +219,8 @@ fn classify(c: char) -> Class {
         | '\u{E000}'..='\u{F8FF}'
         | '\u{F0000}'..='\u{FFFFD}'
         | '\u{100000}'..='\u{10FFFD}' => Class::TagOrPrivate,
+        // Noncharacters: U+FDD0–FDEF and the last two code points of every plane.
+        _ if is_noncharacter(c) => Class::TagOrPrivate,
         '\u{00A0}'
         | '\u{1680}'
         | '\u{2000}'..='\u{200A}'
@@ -209,6 +234,152 @@ fn classify(c: char) -> Class {
         | '\u{007F}'..='\u{009F}' => Class::Control,
         _ => Class::Ok,
     }
+}
+
+fn is_noncharacter(c: char) -> bool {
+    let n = c as u32;
+    (0xFDD0..=0xFDEF).contains(&n) || n & 0xFFFE == 0xFFFE
+}
+
+/// Arabic Presentation Forms-A and -B (spec §5.3 rule 4, FOUNDER-QUEUE Q12): SEC0106 inside a
+/// name or keyword. U+FEFF (the BOM) is SEC0100 and is classified before this is asked.
+fn is_presentation_form(c: char) -> bool {
+    matches!(c, '\u{FB50}'..='\u{FDFF}' | '\u{FE70}'..='\u{FEFF}')
+}
+
+/// `Extended_Pictographic` (Unicode emoji-data, 16.0), for the §5.1 emoji exceptions: a raw
+/// ZWJ between two of these in a string, a variation selector directly after one.
+fn is_extended_pictographic(c: char) -> bool {
+    matches!(
+        c,
+        '\u{00A9}'
+            | '\u{00AE}'
+            | '\u{203C}'
+            | '\u{2049}'
+            | '\u{2122}'
+            | '\u{2139}'
+            | '\u{2194}'..='\u{2199}'
+            | '\u{21A9}'..='\u{21AA}'
+            | '\u{231A}'..='\u{231B}'
+            | '\u{2328}'
+            | '\u{2388}'
+            | '\u{23CF}'
+            | '\u{23E9}'..='\u{23F3}'
+            | '\u{23F8}'..='\u{23FA}'
+            | '\u{24C2}'
+            | '\u{25AA}'..='\u{25AB}'
+            | '\u{25B6}'
+            | '\u{25C0}'
+            | '\u{25FB}'..='\u{25FE}'
+            | '\u{2600}'..='\u{2605}'
+            | '\u{2607}'..='\u{2612}'
+            | '\u{2614}'..='\u{2685}'
+            | '\u{2690}'..='\u{2705}'
+            | '\u{2708}'..='\u{2712}'
+            | '\u{2714}'
+            | '\u{2716}'
+            | '\u{271D}'
+            | '\u{2721}'
+            | '\u{2728}'
+            | '\u{2733}'..='\u{2734}'
+            | '\u{2744}'
+            | '\u{2747}'
+            | '\u{274C}'
+            | '\u{274E}'
+            | '\u{2753}'..='\u{2755}'
+            | '\u{2757}'
+            | '\u{2763}'..='\u{2767}'
+            | '\u{2795}'..='\u{2797}'
+            | '\u{27A1}'
+            | '\u{27B0}'
+            | '\u{27BF}'
+            | '\u{2934}'..='\u{2935}'
+            | '\u{2B05}'..='\u{2B07}'
+            | '\u{2B1B}'..='\u{2B1C}'
+            | '\u{2B50}'
+            | '\u{2B55}'
+            | '\u{3030}'
+            | '\u{303D}'
+            | '\u{3297}'
+            | '\u{3299}'
+            | '\u{1F000}'..='\u{1F0FF}'
+            | '\u{1F10D}'..='\u{1F10F}'
+            | '\u{1F12F}'
+            | '\u{1F16C}'..='\u{1F171}'
+            | '\u{1F17E}'..='\u{1F17F}'
+            | '\u{1F18E}'
+            | '\u{1F191}'..='\u{1F19A}'
+            | '\u{1F1AD}'..='\u{1F1E5}'
+            | '\u{1F201}'..='\u{1F20F}'
+            | '\u{1F21A}'
+            | '\u{1F22F}'
+            | '\u{1F232}'..='\u{1F23A}'
+            | '\u{1F23C}'..='\u{1F23F}'
+            | '\u{1F249}'..='\u{1F3FA}'
+            | '\u{1F400}'..='\u{1F53D}'
+            | '\u{1F546}'..='\u{1F64F}'
+            | '\u{1F680}'..='\u{1F6FF}'
+            | '\u{1F774}'..='\u{1F77F}'
+            | '\u{1F7D5}'..='\u{1F7FF}'
+            | '\u{1F80C}'..='\u{1F80F}'
+            | '\u{1F848}'..='\u{1F84F}'
+            | '\u{1F85A}'..='\u{1F85F}'
+            | '\u{1F888}'..='\u{1F88F}'
+            | '\u{1F8AE}'..='\u{1F8FF}'
+            | '\u{1F90C}'..='\u{1F93A}'
+            | '\u{1F93C}'..='\u{1F945}'
+            | '\u{1F947}'..='\u{1FAFF}'
+            | '\u{1FC00}'..='\u{1FFFD}'
+    )
+}
+
+fn is_variation_selector(c: char) -> bool {
+    matches!(c, '\u{FE00}'..='\u{FE0F}' | '\u{E0100}'..='\u{E01EF}')
+}
+
+/// The scripts that matter for spoofing (spec §5.3 rule 3, UTS #39 "Single Script"), by
+/// block. `None` for Common/Inherited characters (`_`, digits, marks) and for scripts this
+/// table does not list yet, which never count as a second script. Stand-in until the
+/// Unicode Script property data is added (ARCHITECTURE.md §5.4).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Script {
+    Latin,
+    Greek,
+    Cyrillic,
+    Armenian,
+    Hebrew,
+    Arabic,
+}
+
+fn script_of(c: char) -> Option<Script> {
+    if !c.is_alphabetic() || is_tatweel_or_haraka(c) {
+        return None;
+    }
+    Some(match c {
+        'A'..='Z'
+        | 'a'..='z'
+        | '\u{00AA}'
+        | '\u{00BA}'
+        | '\u{00C0}'..='\u{024F}'
+        | '\u{1E00}'..='\u{1EFF}'
+        | '\u{2C60}'..='\u{2C7F}'
+        | '\u{A720}'..='\u{A7FF}'
+        | '\u{FF21}'..='\u{FF3A}'
+        | '\u{FF41}'..='\u{FF5A}' => Script::Latin,
+        '\u{0370}'..='\u{03FF}' | '\u{1F00}'..='\u{1FFF}' => Script::Greek,
+        '\u{0400}'..='\u{052F}'
+        | '\u{1C80}'..='\u{1C8F}'
+        | '\u{2DE0}'..='\u{2DFF}'
+        | '\u{A640}'..='\u{A69F}' => Script::Cyrillic,
+        '\u{0530}'..='\u{058F}' => Script::Armenian,
+        '\u{0590}'..='\u{05FF}' => Script::Hebrew,
+        '\u{0600}'..='\u{06FF}'
+        | '\u{0750}'..='\u{077F}'
+        | '\u{0870}'..='\u{08FF}'
+        | '\u{FB50}'..='\u{FDFF}'
+        | '\u{FE70}'..='\u{FEFF}' => Script::Arabic,
+        _ => return None,
+    })
 }
 
 /// A short Unicode name for the characters diagnostics mention most often.
@@ -323,9 +494,16 @@ fn declared_names(tokens: &[Token], word: &dyn Fn(&Token) -> String) -> HashSet<
     let mut out = HashSet::new();
     let kind = |j: usize| tokens.get(j).map(|t| t.kind);
     let is = |j: usize, op: Op| kind(j) == Some(TokenKind::Op(op));
+    // A backticked declaration (`` let `law` = 1 ``) declares the bare name: the backticks are
+    // not part of it (§5.3 rule 7).
     let mut add = |j: usize, out: &mut HashSet<String>| {
         if kind(j) == Some(TokenKind::Ident) && !(j > 0 && is(j - 1, Op::Dot)) {
-            out.insert(word(&tokens[j]));
+            let w = word(&tokens[j]);
+            let bare = w
+                .strip_prefix('`')
+                .and_then(|s| s.strip_suffix('`'))
+                .unwrap_or(&w);
+            out.insert(bare.to_string());
         }
     };
     // Identifiers directly inside the bracket group opened at `open` that start an item
@@ -666,6 +844,10 @@ struct Lexer<'a> {
     depth: u32,
     /// Whether the current logical line has produced a significant token.
     line_has_token: bool,
+    /// Interpolation-hole code ([`lex_fragment`]): no undefined-name check.
+    fragment: bool,
+    /// Indentation of the first physical line of the current logical line (§5.8 rule 2).
+    logical_width: u32,
 }
 
 impl<'a> Lexer<'a> {
@@ -761,10 +943,9 @@ impl<'a> Lexer<'a> {
             self.push_layout(TokenKind::Dedent, Span::new(end, end));
         }
         self.push_layout(TokenKind::Eof, Span::new(end, end));
-        // A one-line fragment is interpolation-hole code re-lexed on its own (by the
-        // parser, KCF and convert): it cannot see the file's declarations, so the
-        // undefined-name half of K0201 is decided by the file's own lex instead.
-        if self.text.contains('\n') {
+        // Interpolation-hole code is re-lexed on its own and cannot see the file's
+        // declarations, so it skips the undefined-name half of K0201 (Q9).
+        if !self.fragment {
             self.cross_skin_names();
         }
         self.out
@@ -902,6 +1083,12 @@ impl<'a> Lexer<'a> {
         let start = self.pos();
         self.i += len;
         if self.depth == 0 {
+            if self.line_has_token && self.continues_with_dot() {
+                // Leading-dot continuation: the logical line goes on, so no NEWLINE, and
+                // `line_start` leaves the indent stack alone (it sees `line_has_token`).
+                self.line_start();
+                return;
+            }
             if self.line_has_token {
                 let span = Span::new(start, self.pos());
                 self.push_layout(TokenKind::Newline, span);
@@ -911,8 +1098,51 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Leading-dot continuation (spec §5.8 rule 2, DR-05), decided at the end of a physical
+    /// line that ended a non-empty logical line, with `self.i` at the next line's start. The
+    /// next non-blank, non-comment line joins this logical line if, and only if, its first
+    /// token is `.` (not `..`), it is indented strictly deeper than the first line of this
+    /// logical line, and this line does not end with a block colon.
+    fn continues_with_dot(&self) -> bool {
+        if matches!(
+            self.out.tokens.last(),
+            Some(Token {
+                kind: TokenKind::Op(Op::Colon),
+                ..
+            })
+        ) {
+            return false;
+        }
+        let mut j = self.i;
+        loop {
+            let mut width = 0u32;
+            loop {
+                match self.chars.get(j).map(|&(_, c)| c) {
+                    Some(' ') => width += 1,
+                    Some('\t') => width += 4,
+                    _ => break,
+                }
+                j += 1;
+            }
+            let at = |k: usize| self.chars.get(k).map(|&(_, c)| c);
+            match at(j) {
+                // A blank or comment-only line: layout looks past it.
+                Some('\n') => j += 1,
+                Some('\r') if at(j + 1) == Some('\n') => j += 2,
+                Some('#') => {
+                    while !matches!(at(j), None | Some('\n')) {
+                        j += 1;
+                    }
+                }
+                Some('.') => return at(j + 1) != Some('.') && width > self.logical_width,
+                _ => return false,
+            }
+        }
+    }
+
     /// Measures indentation at the start of a physical line and emits INDENT/DEDENT.
-    /// Blank and comment-only lines do not affect layout.
+    /// Blank and comment-only lines do not affect layout, and neither does a leading-dot
+    /// continuation line (the logical line already has a token).
     fn line_start(&mut self) {
         let start = self.pos();
         let mut width = 0u32;
@@ -936,9 +1166,11 @@ impl<'a> Lexer<'a> {
                 _ => break,
             }
         }
-        if matches!(self.peek(), None | Some('\n') | Some('\r') | Some('#')) {
+        if matches!(self.peek(), None | Some('\n') | Some('\r') | Some('#')) || self.line_has_token
+        {
             return;
         }
+        self.logical_width = width;
         let span = Span::new(start, self.pos());
         let top = *self.indents.last().expect("indent stack is never empty");
         if width > top {
@@ -964,6 +1196,25 @@ impl<'a> Lexer<'a> {
     /// Reports a §5.1 character class problem for a character in a comment or string.
     /// Returns true if the character was reported.
     fn check_text_char(&mut self, c: char, ctx: Context) -> bool {
+        // §5.1 emoji exceptions (text only, `c` is at `self.i`): a variation selector directly
+        // after an emoji, in a comment or string; a ZWJ directly between two emoji, in a
+        // string only.
+        let prev = self
+            .i
+            .checked_sub(1)
+            .and_then(|p| self.chars.get(p))
+            .map(|&(_, p)| p);
+        let after_emoji = prev.is_some_and(is_extended_pictographic);
+        if ctx != Context::Code && is_variation_selector(c) && after_emoji {
+            return false;
+        }
+        if ctx == Context::Str
+            && c == '\u{200D}'
+            && after_emoji
+            && self.peek_at(1).is_some_and(is_extended_pictographic)
+        {
+            return false;
+        }
         let code = match classify(c) {
             Class::Ok => return false,
             Class::Bom => "SEC0100",
@@ -1263,13 +1514,44 @@ impl<'a> Lexer<'a> {
                     .arg("cp", code_point(c))
                     .fix(Fix::machine("use an ASCII digit", span, ascii));
                 self.report(d);
-            } else if is_joiner(c) {
+            } else if is_joiner(c) || classify(c) == Class::Invisible {
+                // ZWJ/ZWNJ (Q12: SEC0111, not SEC0106) and letters that render as nothing
+                // (the Hangul fillers U+115F, U+1160, U+3164, U+FFA0).
                 let d = self
                     .diag("SEC0111", span)
                     .arg("cp", code_point(c))
                     .arg("name", display_name(c))
                     .fix(Fix::machine("remove the invisible character", span, ""));
                 self.report(d);
+            } else if is_presentation_form(c) {
+                // Q12: no machine fix yet (the replacement needs the NFKC mapping).
+                let d = self
+                    .diag("SEC0106", span)
+                    .arg("cp", code_point(c))
+                    .arg("name", display_name(c));
+                self.report(d);
+            }
+        }
+        // §5.3 rule 3: one script per identifier (plus Common: `_`, digits).
+        let mut first_script = None;
+        for k in start_i..self.i {
+            let (off, c) = self.chars[k];
+            let Some(s) = script_of(c) else {
+                continue;
+            };
+            match first_script {
+                None => first_script = Some(s),
+                Some(f) if f != s => {
+                    let span = Span::new(off as u32, self.offset(k + 1));
+                    let d = self
+                        .diag("SEC0105", span)
+                        .arg("cp", code_point(c))
+                        .arg("name", display_name(c))
+                        .arg("word", text);
+                    self.report(d);
+                    break;
+                }
+                Some(_) => {}
             }
         }
 
@@ -1403,8 +1685,13 @@ impl<'a> Lexer<'a> {
             flags.arabic_glyph = true;
             if self.skin != Skin::Ar {
                 let fixed = to_ascii_digits(text);
+                let first = text
+                    .chars()
+                    .find(|c| is_arabic_indic_digit(*c))
+                    .unwrap_or('0');
                 let d = self
                     .diag("SEC0122", span)
+                    .arg("cp", code_point(first))
                     .arg("literal", text)
                     .arg("fixed", fixed.clone())
                     .fix(Fix::machine("use ASCII digits", span, fixed));
@@ -1437,6 +1724,19 @@ impl<'a> Lexer<'a> {
                             .arg("literal", text)
                             .arg("fixed", fixed.clone())
                             .fix(Fix::machine("remove the leading zeros", span, fixed));
+                    }
+                    "SEC0120" | "SEC0121" => {
+                        // The first digit or separator from the other system (a Persian digit
+                        // for SEC0121), so the message can name the code point (§5.1).
+                        let odd = |c: &char| {
+                            if code == "SEC0121" {
+                                is_persian_digit(*c)
+                            } else {
+                                !c.is_ascii()
+                            }
+                        };
+                        let cp = text.chars().find(odd).unwrap_or('0');
+                        d = d.arg("cp", code_point(cp)).arg("literal", text);
                     }
                     _ => d = d.arg("literal", text),
                 }
@@ -2089,10 +2389,11 @@ mod tests {
 
     #[test]
     fn holes_are_not_checked_for_undefined_names() {
-        // Hole code is re-lexed alone (by the parser, KCF and convert) and cannot see the
-        // file's declarations, so a declared `law` used in `"{law}"` must not be K0201.
-        // One-line fragments therefore skip the undefined-name check. KNOWN GAP: an
-        // undeclared other-skin word inside a hole (`"{kfaya}"`) is not reported yet.
+        // Hole code is re-lexed alone (`lex_fragment`, by the parser and convert) and cannot
+        // see the file's declarations, so a declared `law` used in `"{law}"` must not be
+        // K0201. Q9: holes are not checked yet, so an undeclared other-skin word inside a
+        // hole (`"{kfaya}"`) is not reported either. `lex` still treats a text without a line
+        // break as a hole, for callers that have not moved to `lex_fragment` (KCF).
         assert!(codes("law", Skin::En).is_empty());
         assert!(codes("x + law", Skin::En).is_empty());
         assert!(codes(
@@ -2159,6 +2460,255 @@ mod tests {
             out.kinds(),
             vec![T::Ident, T::Op(Op::Eq), T::Int, T::Newline, T::Eof]
         );
+    }
+
+    #[test]
+    fn a_backticked_declaration_declares_the_bare_name() {
+        // §5.3 rule 7: the backticks are not part of the name, so `` let `law` `` declares
+        // `law` and a later bare use is the declared name, not K0201 (Q9).
+        for src in [
+            "let `law` = 1\nprint(law)\n",
+            "fn f(`fi`: Int):\n    print(fi)\n",
+            "for `lekol` in xs:\n    print(lekol)\n",
+            "use std/io.{`ektb`}\nektb(1)\n",
+        ] {
+            let out = lex(src, Skin::En, FileId(0));
+            assert!(out.diagnostics.is_empty(), "{src:?}: {:?}", out.diagnostics);
+        }
+        // An undeclared bare use is still K0201.
+        assert_eq!(
+            codes("let `law` = 1\nprint(walla)\n", Skin::En),
+            vec!["K0201"]
+        );
+    }
+
+    #[test]
+    fn fragments_never_get_the_undefined_name_check() {
+        // Q9: interpolation-hole code is re-lexed alone with `lex_fragment` and is not
+        // checked for undefined names, whether it is one line or (in a `"""` string) several.
+        for code in ["law", "x + law", "law +\n    kfaya", "f(\n    law,\n)"] {
+            let out = lex_fragment(code, Skin::En, FileId(0));
+            assert!(
+                out.diagnostics.is_empty(),
+                "{code:?}: {:?}",
+                out.diagnostics
+            );
+            assert!(
+                out.tokens
+                    .iter()
+                    .all(|t| !matches!(t.kind, T::Keyword(Concept::KwIf | Concept::KwBreak))),
+                "{code:?}: a hole name was turned into a keyword"
+            );
+        }
+        // The syntax-error half (two words side by side) is still reported in a fragment.
+        assert_eq!(
+            lex_fragment("kfaya x", Skin::En, FileId(0))
+                .diagnostics
+                .iter()
+                .map(|d| d.code)
+                .collect::<Vec<_>>(),
+            vec!["K0201"]
+        );
+    }
+
+    #[test]
+    fn leading_dot_continuation_never_touches_the_indent_stack() {
+        // §5.8 rule 2: deeper than the logical line's first line, previous line not a block
+        // header: joined, whatever the exact depth (no K0120/K0122, no INDENT/DEDENT).
+        let src = "fn main():\n    let n = xs\n            .filter(f)\n        .map(g)\n            .len()\n    print(n)\n";
+        let out = lex(src, Skin::En, FileId(0));
+        assert!(out.diagnostics.is_empty(), "{:?}", out.diagnostics);
+        let k = out.kinds();
+        assert_eq!(k.iter().filter(|t| **t == T::Indent).count(), 1, "{k:?}");
+        assert_eq!(k.iter().filter(|t| **t == T::Dedent).count(), 1, "{k:?}");
+        // `xs . filter ( f ) . map …` on one logical line: no NEWLINE before a `.` line.
+        let ops: Vec<_> = out
+            .tokens
+            .windows(2)
+            .filter(|w| w[1].kind == T::Op(Dot))
+            .map(|w| w[0].kind)
+            .collect();
+        assert_eq!(ops, vec![T::Ident, T::Op(RParen), T::Op(RParen)]);
+        // Blank and comment-only lines inside the chain do not break it.
+        let src = "let n = xs\n\n    # why\n    .len()\n";
+        assert_eq!(
+            kinds(src, Skin::En),
+            vec![
+                T::Keyword(Concept::KwLet),
+                T::Ident,
+                T::Op(Eq),
+                T::Ident,
+                T::Op(Dot),
+                T::Ident,
+                T::Op(LParen),
+                T::Op(RParen),
+                T::Newline,
+                T::Eof
+            ]
+        );
+        // Same depth: a new statement (a value block's final `.None`).
+        assert_eq!(
+            kinds("x\n.foo\n", Skin::En),
+            vec![
+                T::Ident,
+                T::Newline,
+                T::Op(Dot),
+                T::Ident,
+                T::Newline,
+                T::Eof
+            ]
+        );
+        // After a block colon: the first line of the block, never a continuation.
+        assert_eq!(
+            kinds("if x:\n    .foo\n", Skin::En),
+            vec![
+                T::Keyword(Concept::KwIf),
+                T::Ident,
+                T::Op(Colon),
+                T::Newline,
+                T::Indent,
+                T::Op(Dot),
+                T::Ident,
+                T::Newline,
+                T::Dedent,
+                T::Eof
+            ]
+        );
+        // `..` is not a leading dot.
+        assert!(lex("x\n    ..y\n", Skin::En, FileId(0))
+            .kinds()
+            .contains(&T::Indent));
+        // Not deeper than the logical line's first line: the normal rules (here K0122).
+        let out = lex("if a:\n    x\n  .y\n", Skin::En, FileId(0));
+        assert_eq!(
+            out.diagnostics.iter().map(|d| d.code).collect::<Vec<_>>(),
+            vec!["K0122"]
+        );
+        // A deeper line that does not start with `.` after a chain follows the normal rules.
+        let k = kinds("x\n    .y\n    z\n", Skin::En);
+        assert_eq!(
+            k,
+            vec![
+                T::Ident,
+                T::Op(Dot),
+                T::Ident,
+                T::Newline,
+                T::Indent,
+                T::Ident,
+                T::Newline,
+                T::Dedent,
+                T::Eof
+            ]
+        );
+    }
+
+    #[test]
+    fn q12_security_codes() {
+        // Presentation forms (U+FB50–FDFF, U+FE70–FEFF) inside a name or keyword: SEC0106.
+        let out = lex("ليكن \u{FEB3}\u{FECC}\u{FEAE} = 1\n", Skin::Ar, FileId(0));
+        let sec: Vec<_> = out.diagnostics.iter().map(|d| d.code).collect();
+        assert_eq!(sec, vec!["SEC0106", "SEC0106", "SEC0106"]);
+        assert_eq!(arg(&out.diagnostics[0], "cp"), "U+FEB3");
+        assert_eq!(out.tokens[1].kind, T::Ident);
+        assert!(codes("\u{FDF2} = 1\n", Skin::Ar).contains(&"SEC0106"));
+        assert!(codes("\u{FB50}x = 1\n", Skin::Ar).contains(&"SEC0106"));
+        // In text they are text.
+        assert!(codes("x = \"\u{FEB3}\" # \u{FEB3}\n", Skin::En).is_empty());
+        // ZWJ/ZWNJ inside a name: SEC0111 (not SEC0106).
+        assert_eq!(codes("let a\u{200D}b = 1\n", Skin::En), vec!["SEC0111"]);
+        assert_eq!(codes("let a\u{200C}b = 1\n", Skin::En), vec!["SEC0111"]);
+        // A dedent to a column no open block uses: K0122 only.
+        assert_eq!(
+            codes("if x:\n    if y:\n        z\n  w\n", Skin::En),
+            vec!["K0122"]
+        );
+    }
+
+    #[test]
+    fn invisible_letters_inside_a_name_are_sec0111() {
+        // U+3164 HANGUL FILLER is a letter to Unicode but renders as nothing: the classic
+        // invisible-identifier backdoor. Reported where it is used as a name.
+        let out = lex("let \u{3164} = 1\n", Skin::En, FileId(0));
+        let sec: Vec<_> = out.diagnostics.iter().map(|d| d.code).collect();
+        assert_eq!(sec, vec!["SEC0111"]);
+        assert_eq!(arg(&out.diagnostics[0], "cp"), "U+3164");
+        for c in ['\u{115F}', '\u{1160}', '\u{FFA0}'] {
+            assert_eq!(codes(&format!("a{c}b = 1\n"), Skin::En), vec!["SEC0111"]);
+        }
+    }
+
+    #[test]
+    fn noncharacters_are_sec0112() {
+        for c in [
+            '\u{FDD0}',
+            '\u{FDEF}',
+            '\u{FFFE}',
+            '\u{1FFFF}',
+            '\u{10FFFF}',
+        ] {
+            assert_eq!(codes(&format!("# x{c}\n"), Skin::En), vec!["SEC0112"]);
+            assert_eq!(codes(&format!("x = \"{c}\"\n"), Skin::En), vec!["SEC0112"]);
+        }
+    }
+
+    #[test]
+    fn emoji_sequences_are_the_only_raw_joiners_and_selectors() {
+        // §5.1: ZWJ directly between two Extended_Pictographic characters, raw, in a string.
+        assert!(codes(
+            "x = \"\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}\"\n",
+            Skin::En
+        )
+        .is_empty());
+        // ...but not in a comment, and not next to a letter.
+        assert_eq!(
+            codes("# \u{1F468}\u{200D}\u{1F469}\n", Skin::En),
+            vec!["SEC0111"]
+        );
+        assert_eq!(
+            codes("x = \"a\u{200D}\u{1F469}\"\n", Skin::En),
+            vec!["SEC0111"]
+        );
+        // A variation selector directly after an emoji, in a string or a comment.
+        assert!(codes("x = \"\u{2764}\u{FE0F} ok\" # \u{2764}\u{FE0F}\n", Skin::En).is_empty());
+        assert_eq!(codes("x = \"a\u{FE0F}\"\n", Skin::En), vec!["SEC0111"]);
+        assert_eq!(codes("# note\u{E0100}\n", Skin::En), vec!["SEC0111"]);
+        // In code a selector is always rejected.
+        assert_eq!(codes("x\u{FE0F} = 1\n", Skin::En), vec!["SEC0111"]);
+    }
+
+    #[test]
+    fn mixed_script_identifiers_are_sec0105() {
+        for (src, skin, cp) in [
+            ("let p\u{0430}ypal = 1\n", Skin::En, "U+0430"),
+            ("khali c\u{03BF}unt = 1\n", Skin::Franco, "U+03BF"),
+            ("ليكن user_اسم = 1\n", Skin::Ar, "U+0627"),
+        ] {
+            let out = lex(src, skin, FileId(0));
+            let c: Vec<_> = out.diagnostics.iter().map(|d| d.code).collect();
+            assert_eq!(c, vec!["SEC0105"], "{src:?}");
+            assert_eq!(arg(&out.diagnostics[0], "cp"), cp, "{src:?}");
+        }
+        // One script plus Common (`_`, ASCII digits) is fine, in every script.
+        for src in [
+            "let user_2 = 1\n",
+            "let اسم_2 = 1\n",
+            "let \u{0436}\u{0443}\u{043A} = 1\n",
+        ] {
+            assert!(codes(src, Skin::En).is_empty(), "{src:?}");
+        }
+    }
+
+    #[test]
+    fn digit_system_diagnostics_name_their_code_point() {
+        for (src, skin, code, cp) in [
+            ("x = \u{0661}\u{0660}\n", Skin::En, "SEC0122", "U+0661"),
+            ("x = 1\u{0662}3\n", Skin::Ar, "SEC0120", "U+0662"),
+            ("x = \u{06F1}\n", Skin::Ar, "SEC0121", "U+06F1"),
+        ] {
+            let out = lex(src, skin, FileId(0));
+            let d = out.diagnostics.iter().find(|d| d.code == code).expect(code);
+            assert_eq!(arg(d, "cp"), cp, "{src:?}");
+        }
     }
 
     #[test]

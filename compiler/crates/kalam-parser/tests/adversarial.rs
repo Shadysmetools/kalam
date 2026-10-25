@@ -385,6 +385,39 @@ fn leading_dot_edge_cases() {
         codes_of("fn main():\n    x\n        .", Skin::En),
         (NONE, vec![codes::UNEXPECTED_TOKEN])
     );
+    // Uneven but deeper `.` lines are one chain (eval/suites/conformance/leading-dot-chain):
+    // the lexer joins them without touching the indent stack.
+    let src = "fn main():\n    let xs = [1, 2, 3, 4]\n    let n = xs\n            .filter(fn(x) => x > 1)\n        .map(fn(x) => x * 2)\n            .len()\n    print(\"{n}\")\n";
+    let r = run(src, Skin::En);
+    assert_eq!((r.lex, r.parse), (NONE, NONE));
+    let flat = run(
+        "fn main():\n    let xs = [1, 2, 3, 4]\n    let n = xs.filter(fn(x) => x > 1).map(fn(x) => x * 2).len()\n    print(\"{n}\")\n",
+        Skin::En,
+    );
+    assert_eq!(r.shape, flat.shape);
+    // A deeper line that does not start with `.` after a chain is still an unexpected indent.
+    assert_eq!(
+        codes_of(
+            "fn main():\n    let n = xs\n        .len()\n        g()\n",
+            Skin::En
+        ),
+        (NONE, vec![codes::UNEXPECTED_INDENT])
+    );
+}
+
+#[test]
+fn interpolation_holes_are_not_checked_for_undefined_names() {
+    // FOUNDER-QUEUE Q9: hole code is re-lexed alone, so the undefined-name half of K0201 is
+    // not decided there, in one-line and multi-line (`"""`) holes alike.
+    for src in [
+        "fn main():\n    let law = 1\n    print(\"{law}\")\n",
+        "fn main():\n    let law = 1\n    print(\"\"\"{law +\n        1}\"\"\")\n",
+        "fn main():\n    print(\"{kfaya}\")\n",
+        "fn main():\n    print(\"\"\"{kfaya}\"\"\")\n",
+        "fn main():\n    print(\"\"\"{1 +\n        kfaya}\"\"\")\n",
+    ] {
+        assert_eq!(codes_of(src, Skin::En), (NONE, NONE), "{src:?}");
+    }
 }
 
 #[test]
