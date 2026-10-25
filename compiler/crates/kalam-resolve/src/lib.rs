@@ -77,7 +77,11 @@ pub struct ResolvedModule {
     pub defs: Vec<Def>,
 }
 
-pub fn resolve_module(_path: ModulePath, _file: FileId, _cst: &Cst) -> (ResolvedModule, Vec<Diagnostic>) {
+pub fn resolve_module(
+    _path: ModulePath,
+    _file: FileId,
+    _cst: &Cst,
+) -> (ResolvedModule, Vec<Diagnostic>) {
     todo!("name resolution (Phase 1)")
 }
 

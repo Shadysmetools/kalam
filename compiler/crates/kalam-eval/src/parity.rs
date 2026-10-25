@@ -1,34 +1,70 @@
 //! Pluggable measurement hooks for the parser-dependent checks: G-PAR P1 (canonical
 //! identity: equal KCF across en/ar/franco), G-PAR P2 (pairwise and 3-hop round-trip,
-//! KCF-equal) and `D1.corpus_syntax_pass` (a task's every case parses, formats and
-//! round-trips in all three skins).
+//! KCF-equal), G-PAR P3 (source fixpoint, byte-identical) and `D1.corpus_syntax_pass` (a
+//! task's every case parses, formats and round-trips in all three skins).
 //!
-//! The harness talks to the parser only through [`ParseHook`]. The real hook
-//! ([`KalamParserHook`], cargo feature `parser-hook`, on by default) calls
-//! `kalam_parser::parse_source` and compares a skin-free canonical form: the KCF bytes from
-//! `kalam_syntax::kcf::serialize` when that serializer works, otherwise the AST shape with
-//! trivia from `kalam_ast::shape` (spec §4.3: conversions of each other have byte-identical
-//! shapes). The form in use is named in every evidence string ([`ParseHook::name`]). The
-//! parser is probed once on an empty file: while it is a stub (`todo!()`), the probe panics,
-//! the panic is caught, and every parser-dependent result is `Unavailable`. The CST text and
-//! the token-level converter round-trip are never used as the canonical form, and a crash on
-//! a corpus case after a successful probe is a failure, never a skip.
+//! The harness talks to the compiler only through [`ParseHook`]. The real hook
+//! ([`KalamParserHook`], cargo feature `parser-hook`, on by default) uses the same entry
+//! points as the `kalam` CLI:
+//! - parse: `kalam_parser::parse_source` (lexer and parser diagnostics together);
+//! - canonical form: the KCF bytes of `kalam_syntax::kcf::serialize_in` (spec §4.4). KCF
+//!   records comments and blank lines, so KCF equality also checks that they are kept;
+//! - `kalam convert`: `kalam_driver::convert_source`;
+//! - `kalam fmt`: `kalam_driver::format_source`.
+//!
+//! There is no fallback canonical form: if KCF or the parser panics on an empty file, the
+//! probe fails and every parser-dependent result is `Unavailable`. A crash on a corpus case
+//! after a successful probe is a failure, never a skip.
 
 use kalam_base::Skin;
 use std::collections::BTreeMap;
 
-/// One parsed file: error-diagnostic codes (lex and parse) and its canonical skin-free
-/// bytes (KCF, or the AST shape while KCF is a stub; see the module docs).
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// One error diagnostic as the compiler reported it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Reported {
+    pub code: String,
+    /// 1-based line of the primary span's start.
+    pub line: usize,
+    /// The rendered English message.
+    pub message_en: String,
+    /// The source text under the primary span, or the whole line when the span is empty.
+    pub context: String,
+}
+
+impl Reported {
+    pub fn new(code: &str, line: usize) -> Reported {
+        Reported {
+            code: code.to_string(),
+            line,
+            ..Reported::default()
+        }
+    }
+}
+
+/// One parsed file: its error diagnostics (lex and parse, in the order the compiler reports
+/// them) and its canonical skin-free bytes (KCF).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Parsed {
-    pub errors: Vec<String>,
+    pub errors: Vec<Reported>,
     pub kcf: Vec<u8>,
 }
 
 impl Parsed {
-    fn accepted(&self) -> bool {
+    pub fn accepted(&self) -> bool {
         self.errors.is_empty()
     }
+
+    pub fn codes(&self) -> Vec<&str> {
+        self.errors.iter().map(|r| r.code.as_str()).collect()
+    }
+}
+
+/// The output of `kalam fmt` for one file.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct FmtOut {
+    pub text: String,
+    /// The formatter re-spelled the file but kept its layout (`kalam_driver::Formatted`).
+    pub layout_kept: bool,
 }
 
 pub trait ParseHook {
@@ -40,10 +76,10 @@ pub trait ParseHook {
     fn probe_format(&self) -> Result<(), String>;
     /// Lex + parse + KCF of one file. `Err` is a crash.
     fn parse(&self, text: &str, skin: Skin) -> Result<Parsed, String>;
-    /// The skin printer (X → Y source text).
+    /// `kalam convert` (X → Y source text).
     fn convert(&self, text: &str, from: Skin, to: Skin) -> Result<String, String>;
     /// `kalam fmt`.
-    fn format(&self, text: &str, skin: Skin) -> Result<String, String>;
+    fn format(&self, text: &str, skin: Skin) -> Result<FmtOut, String>;
 }
 
 /// One corpus case as the parity runner sees it.
@@ -102,6 +138,9 @@ pub enum SyntaxOutcome {
 pub struct ParityReport {
     pub p1: Outcome,
     pub p2: Outcome,
+    /// P3 source fixpoint: `convert(convert(s, X, Y), Y, Y) == convert(s, X, Y)` byte for
+    /// byte, for all 9 ordered (X, Y) pairs of every case in P1 scope.
+    pub p3: Outcome,
     pub syntax: SyntaxOutcome,
 }
 
@@ -155,13 +194,34 @@ const CYCLES: [[Skin; 4]; 2] = [
     [Skin::En, Skin::Franco, Skin::Ar, Skin::En],
 ];
 
-/// Runs P1, P2 and the per-task syntax check over `cases` through `hook`.
+/// Formats one accepted file and checks `fmt(fmt(x)) == fmt(x)` and
+/// `kcf(fmt(x)) == kcf(x)`. `Ok(layout_kept)` on success.
+pub fn fmt_check(hook: &dyn ParseHook, text: &str, skin: Skin, kcf: &[u8]) -> Result<bool, String> {
+    let f1 = hook
+        .format(text, skin)
+        .map_err(|e| format!("fmt refused it: {e}"))?;
+    let f2 = hook
+        .format(&f1.text, skin)
+        .map_err(|e| format!("fmt refused its own output: {e}"))?;
+    if f2.text != f1.text {
+        return Err("fmt(fmt(x)) != fmt(x)".into());
+    }
+    match hook.parse(&f1.text, skin) {
+        Err(e) => Err(format!("fmt output crashed the parser: {e}")),
+        Ok(p) if !p.accepted() => Err(format!("fmt output does not parse ({:?})", p.codes())),
+        Ok(p) if p.kcf != kcf => Err("kcf(fmt(x)) != kcf(x)".into()),
+        Ok(_) => Ok(f1.layout_kept),
+    }
+}
+
+/// Runs P1, P2, P3 and the per-task syntax check over `cases` through `hook`.
 pub fn measure(hook: &dyn ParseHook, cases: &[ParityCase]) -> ParityReport {
     if let Err(why) = hook.probe() {
         let msg = format!("{}: {why}", hook.name());
         return ParityReport {
             p1: Outcome::Unavailable(msg.clone()),
             p2: Outcome::Unavailable(msg.clone()),
+            p3: Outcome::Unavailable(msg.clone()),
             syntax: SyntaxOutcome::Unavailable(msg),
         };
     }
@@ -171,6 +231,7 @@ pub fn measure(hook: &dyn ParseHook, cases: &[ParityCase]) -> ParityReport {
         .map(|w| format!("{}: {w}", hook.name()));
     let mut p1 = Tally::default();
     let mut p2 = Tally::default();
+    let mut p3 = Tally::default();
     let mut tasks: BTreeMap<String, TaskState> = BTreeMap::new();
 
     for c in cases {
@@ -205,7 +266,7 @@ pub fn measure(hook: &dyn ParseHook, cases: &[ParityCase]) -> ParityReport {
         let errors = || -> String {
             parsed
                 .iter()
-                .filter_map(|(s, r)| r.as_ref().ok().map(|p| format!("{s}: {:?}", p.errors)))
+                .filter_map(|(s, r)| r.as_ref().ok().map(|p| format!("{s}: {:?}", p.codes())))
                 .collect::<Vec<_>>()
                 .join(", ")
         };
@@ -271,19 +332,26 @@ pub fn measure(hook: &dyn ParseHook, cases: &[ParityCase]) -> ParityReport {
             }
         }
 
+        // P3: print_Y(parse(print_Y(parse_X(s)))) == print_Y(parse_X(s)), byte for byte.
+        for x in Skin::ALL {
+            for y in Skin::ALL {
+                let ok = hook
+                    .convert(&c.sources[&x], x, y)
+                    .is_ok_and(|once| hook.convert(&once, y, y).is_ok_and(|twice| twice == once));
+                if let Some(w) = p3.check(ok, || format!("{id}: {x}->{y} is not a fixpoint")) {
+                    task.fail(w);
+                }
+            }
+        }
+
         // Formatting: fmt(fmt(x)) == fmt(x) and kcf(fmt(x)) == kcf(x), every skin.
         if format_unavailable.is_some() {
             task.undecided = true;
             continue;
         }
         for (&s, src) in &c.sources {
-            let ok = hook.format(src, s).is_ok_and(|f1| {
-                hook.format(&f1, s).is_ok_and(|f2| f2 == f1) && reparse(&f1, s, kcf(s))
-            });
-            if !ok {
-                task.fail(format!(
-                    "{id}: {s}: fmt is not idempotent or changes the KCF"
-                ));
+            if let Err(why) = fmt_check(hook, src, s, kcf(s)) {
+                task.fail(format!("{id}: {s}: {why}"));
             }
         }
     }
@@ -299,6 +367,7 @@ pub fn measure(hook: &dyn ParseHook, cases: &[ParityCase]) -> ParityReport {
     ParityReport {
         p1: p1.outcome("no corpus case is accepted in any skin, so P1 has no case in scope"),
         p2: p2.outcome("no corpus case is accepted in all three skins, so P2 has no case in scope"),
+        p3: p3.outcome("no corpus case is accepted in all three skins, so P3 has no case in scope"),
         syntax: SyntaxOutcome::Measured {
             passed,
             failed,
@@ -308,7 +377,7 @@ pub fn measure(hook: &dyn ParseHook, cases: &[ParityCase]) -> ParityReport {
     }
 }
 
-/// The task numbers named by a tier check scope such as `"T01-T15, T31-T33, T48-T50; dev"`.
+// The task numbers named by a tier check scope such as `"T01-T15, T31-T33, T48-T50; dev"`.
 pub fn scope_tasks(scope: &str) -> Vec<u32> {
     let num = |t: &str| t.strip_prefix('T').and_then(|n| n.parse::<u32>().ok());
     let mut out = Vec::new();
@@ -365,14 +434,13 @@ impl ParseHook for NoParserHook {
     fn convert(&self, _: &str, _: Skin, _: Skin) -> Result<String, String> {
         Err("no parser linked".into())
     }
-    fn format(&self, _: &str, _: Skin) -> Result<String, String> {
+    fn format(&self, _: &str, _: Skin) -> Result<FmtOut, String> {
         Err("no parser linked".into())
     }
 }
 
-#[cfg(feature = "parser-hook")]
 /// Runs `f`, turning a panic (such as a stub's `todo!()`) into `Err(message)`.
-fn catch<T>(f: impl FnOnce() -> T) -> Result<T, String> {
+pub fn catch<T>(f: impl FnOnce() -> T) -> Result<T, String> {
     std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)).map_err(|p| {
         p.downcast_ref::<&str>()
             .map(|s| s.to_string())
@@ -381,43 +449,44 @@ fn catch<T>(f: impl FnOnce() -> T) -> Result<T, String> {
     })
 }
 
-#[cfg(feature = "parser-hook")]
-fn codes(diags: &[kalam_diagnostics::Diagnostic]) -> String {
-    diags
-        .iter()
-        .filter(|d| d.is_error())
-        .map(|d| d.code.to_string())
-        .collect::<Vec<_>>()
-        .join(",")
+/// The 1-based line of `offset` and the text under `start..end` (the whole line when the
+/// span is empty).
+pub fn locate(text: &str, start: u32, end: u32) -> (usize, String) {
+    let index = kalam_base::LineIndex::new(text);
+    let start = (start as usize).min(text.len()) as u32;
+    let line = index.line_of(start);
+    let under = text
+        .get(start as usize..(end as usize).min(text.len()))
+        .unwrap_or("");
+    let context = if under.is_empty() {
+        text.get(index.line_range(text, line)).unwrap_or("")
+    } else {
+        under
+    };
+    (line + 1, context.to_string())
 }
 
-/// The real hook: `kalam_parser::parse_source`, canonical form KCF
-/// (`kalam_syntax::kcf::serialize`) or, while that is a stub, the AST shape
-/// (`kalam_ast::shape`); `kalam_fmt::convert` is the skin printer and `kalam_fmt::format`
-/// the formatter.
+/// The real hook: the same entry points as the `kalam` CLI (see the module docs).
 #[cfg(feature = "parser-hook")]
 pub struct KalamParserHook {
-    /// `kalam_syntax::kcf::serialize` works (probed once at construction).
-    kcf: bool,
-    /// `kalam_parser::parse_source` on an empty file (probed once at construction).
+    /// `kalam_parser::parse_source` and KCF on an empty file (probed once at construction).
     probe: Result<(), String>,
 }
 
 #[cfg(feature = "parser-hook")]
 impl KalamParserHook {
     pub fn new() -> Self {
-        match catch(|| kalam_parser::parse_source("", Skin::En, kalam_base::FileId(0))) {
-            Err(e) => KalamParserHook {
-                kcf: false,
-                probe: Err(format!(
-                    "panicked on an empty file ({e}); the parser is still a stub"
-                )),
-            },
-            Ok(out) => KalamParserHook {
-                kcf: catch(|| kalam_syntax::kcf::serialize(&out.cst)).is_ok(),
-                probe: Ok(()),
-            },
-        }
+        let probe = catch(|| {
+            let out = kalam_parser::parse_source("", Skin::En, kalam_base::FileId(0));
+            kalam_syntax::kcf::serialize_in(&out.cst, Skin::En)
+        })
+        .map(|_| ())
+        .map_err(|e| format!("parse + KCF panicked on an empty file ({e})"));
+        KalamParserHook { probe }
+    }
+
+    fn path(skin: Skin) -> String {
+        format!("main{}", skin.extension())
     }
 }
 
@@ -429,15 +498,27 @@ impl Default for KalamParserHook {
 }
 
 #[cfg(feature = "parser-hook")]
+fn source_error(e: kalam_driver::SourceError) -> String {
+    match e {
+        kalam_driver::SourceError::NotKalam(p) => format!("not a Kalam path: {}", p.0),
+        kalam_driver::SourceError::Diagnostics(c) => {
+            let codes: Vec<&str> = c
+                .diagnostics
+                .iter()
+                .filter(|d| d.is_error())
+                .map(|d| d.code)
+                .collect();
+            format!("the source has errors {codes:?}")
+        }
+    }
+}
+
+#[cfg(feature = "parser-hook")]
 impl ParseHook for KalamParserHook {
     fn name(&self) -> String {
-        if self.kcf {
-            "kalam_parser::parse_source, canonical form = KCF (kalam_syntax::kcf::serialize)".into()
-        } else {
-            "kalam_parser::parse_source, canonical form = AST shape with trivia (kalam_ast::shape; \
-             kalam_syntax::kcf::serialize is not available yet)"
-                .into()
-        }
+        "kalam_parser::parse_source + KCF (kalam_syntax::kcf::serialize_in); kalam convert = \
+         kalam_driver::convert_source; kalam fmt = kalam_driver::format_source"
+            .into()
     }
 
     fn probe(&self) -> Result<(), String> {
@@ -445,40 +526,53 @@ impl ParseHook for KalamParserHook {
     }
 
     fn probe_format(&self) -> Result<(), String> {
-        catch(|| kalam_fmt::format("", Skin::En, &kalam_fmt::FmtConfig::default()))
+        let cfg = kalam_driver::FmtConfig::default();
+        catch(|| kalam_driver::format_source("main.kl", "", &cfg))
+            .map_err(|e| format!("kalam_driver::format_source panicked on an empty file ({e})"))?
             .map(|_| ())
-            .map_err(|e| format!("kalam_fmt::format panicked on an empty file ({e}); the formatter is still a stub"))
+            .map_err(source_error)
     }
 
     fn parse(&self, text: &str, skin: Skin) -> Result<Parsed, String> {
         catch(|| {
-            let file = kalam_base::FileId(0);
             // `parse_source` returns lexer and parser diagnostics together.
-            let out = kalam_parser::parse_source(text, skin, file);
-            let kcf = if self.kcf {
-                kalam_syntax::kcf::serialize(&out.cst)
-            } else {
-                kalam_ast::shape::shape(&out.ast, kalam_ast::shape::ShapeOptions::default())
-                    .into_bytes()
-            };
+            let out = kalam_parser::parse_source(text, skin, kalam_base::FileId(0));
             let errors = out
                 .diagnostics
                 .iter()
                 .filter(|d| d.is_error())
-                .map(|d| d.code.to_string())
+                .map(|d| {
+                    let (line, context) = locate(text, d.span.start, d.span.end);
+                    Reported {
+                        code: d.code.to_string(),
+                        line,
+                        message_en: d.message(Skin::En),
+                        context,
+                    }
+                })
                 .collect();
-            Parsed { errors, kcf }
+            Parsed {
+                errors,
+                kcf: kalam_syntax::kcf::serialize_in(&out.cst, skin),
+            }
         })
     }
 
     fn convert(&self, text: &str, from: Skin, to: Skin) -> Result<String, String> {
-        catch(|| kalam_fmt::convert(text, from, to, &kalam_fmt::FmtConfig::default()))?
-            .map_err(|d| format!("convert failed: {}", codes(&d)))
+        let cfg = kalam_driver::FmtConfig::default();
+        catch(|| kalam_driver::convert_source(&Self::path(from), text, to, &cfg))?
+            .map(|c| c.text)
+            .map_err(|e| format!("kalam convert failed: {}", source_error(e)))
     }
 
-    fn format(&self, text: &str, skin: Skin) -> Result<String, String> {
-        catch(|| kalam_fmt::format(text, skin, &kalam_fmt::FmtConfig::default()))?
-            .map_err(|d| format!("fmt failed: {}", codes(&d)))
+    fn format(&self, text: &str, skin: Skin) -> Result<FmtOut, String> {
+        let cfg = kalam_driver::FmtConfig::default();
+        catch(|| kalam_driver::format_source(&Self::path(skin), text, &cfg))?
+            .map(|f| FmtOut {
+                text: f.text,
+                layout_kept: f.layout_kept.is_some(),
+            })
+            .map_err(|e| format!("kalam fmt failed: {}", source_error(e)))
     }
 }
 
@@ -556,7 +650,7 @@ mod tests {
                 return Err("panicked".into());
             }
             let errors = if text.contains('!') {
-                vec!["K0201".to_string()]
+                vec![Reported::new("K0201", 1)]
             } else {
                 vec![]
             };
@@ -575,12 +669,15 @@ mod tests {
                 out
             })
         }
-        fn format(&self, text: &str, _skin: Skin) -> Result<String, String> {
-            Ok(text
-                .lines()
-                .map(str::trim_end)
-                .collect::<Vec<_>>()
-                .join("\n"))
+        fn format(&self, text: &str, _skin: Skin) -> Result<FmtOut, String> {
+            Ok(FmtOut {
+                text: text
+                    .lines()
+                    .map(str::trim_end)
+                    .collect::<Vec<_>>()
+                    .join("\n"),
+                layout_kept: false,
+            })
         }
     }
 
@@ -613,6 +710,19 @@ mod tests {
     fn equal_kcf_across_skins_passes_p1_and_p2() {
         let r = measure(&Fake::default(), &[case("t01-a", "EN_fn x # c")]);
         assert_eq!(r.p1.pct(), Some(100.0));
+        // 9 ordered (X, Y) pairs, X == Y included
+        assert!(
+            matches!(
+                r.p3,
+                Outcome::Measured {
+                    passed: 9,
+                    total: 9,
+                    ..
+                }
+            ),
+            "{:?}",
+            r.p3
+        );
         // 6 ordered pairs + 2 three-hop cycles
         assert!(
             matches!(
@@ -815,5 +925,66 @@ mod tests {
         assert_eq!(task_number("t01-hello"), Some(1));
         assert_eq!(task_number("t50-trojan-source"), Some(50));
         assert_eq!(task_number("INDEX.md"), None);
+    }
+
+    /// A converter whose output changes on every pass: P3 (fixpoint) fails, and so does
+    /// the task.
+    struct Drifting;
+
+    impl ParseHook for Drifting {
+        fn name(&self) -> String {
+            "drifting".into()
+        }
+        fn probe(&self) -> Result<(), String> {
+            Ok(())
+        }
+        fn probe_format(&self) -> Result<(), String> {
+            Ok(())
+        }
+        fn parse(&self, text: &str, _: Skin) -> Result<Parsed, String> {
+            Ok(Parsed {
+                errors: vec![],
+                kcf: text.trim_end().as_bytes().to_vec(),
+            })
+        }
+        fn convert(&self, text: &str, _: Skin, _: Skin) -> Result<String, String> {
+            Ok(format!("{text} "))
+        }
+        fn format(&self, text: &str, _: Skin) -> Result<FmtOut, String> {
+            Ok(FmtOut {
+                text: text.to_string(),
+                layout_kept: false,
+            })
+        }
+    }
+
+    #[test]
+    fn a_converter_that_is_not_a_fixpoint_fails_p3() {
+        let r = measure(&Drifting, &[case("t01-a", "x")]);
+        // trailing spaces are not in this fake KCF, so P2 holds
+        assert_eq!(r.p2.pct(), Some(100.0));
+        assert_eq!(r.p3.pct(), Some(0.0), "{:?}", r.p3);
+        assert!(
+            matches!(r.syntax, SyntaxOutcome::Measured { ref failed, .. } if failed.len() == 1)
+        );
+    }
+
+    #[test]
+    fn fmt_check_requires_idempotence_and_kcf_identity() {
+        let ok = fmt_check(&Fake::default(), "EN_fn x  ", Skin::En, b"K_fn x");
+        assert_eq!(ok, Ok(false));
+        let wrong_kcf = fmt_check(&Fake::default(), "EN_fn x", Skin::En, b"other");
+        assert!(wrong_kcf.unwrap_err().contains("kcf"));
+    }
+
+    #[test]
+    fn locate_gives_line_and_span_or_line_text() {
+        let text = "a\nb\u{202E}c\nd\n";
+        let start = text.find('\u{202E}').unwrap() as u32;
+        let (line, ctx) = locate(text, start, start + 3);
+        assert_eq!((line, ctx.as_str()), (2, "\u{202E}"));
+        let (line, ctx) = locate(text, start, start);
+        assert_eq!((line, ctx.as_str()), (2, "b\u{202E}c"));
+        assert_eq!(locate("", 9, 9).0, 1);
     }
 }

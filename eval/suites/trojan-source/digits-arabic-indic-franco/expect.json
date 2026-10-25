@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0122"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Arabic-Indic digit in a Franco file: SEC0122 (٥ also looks like Latin o)."
+}

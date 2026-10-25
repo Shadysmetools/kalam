@@ -1,0 +1,3 @@
+fn main():
+    let us​er = 1
+    print("{user}")

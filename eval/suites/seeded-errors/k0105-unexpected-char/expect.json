@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0105"
+  ],
+  "lines": [
+    8
+  ],
+  "notes": "`$` is not a Kalam character outside strings and comments (spec 5.2 last row)."
+}

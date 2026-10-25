@@ -1,0 +1,8 @@
+fn main():
+    let a = 0x1e+5
+    let b = 1.5e-3
+    let c = 2E+10
+    let d = 1_000_000
+    let e = 0b1010 + 0o17 + 0x0F + 0
+    let f = 0.5
+    print("{a} {b} {c} {d} {e} {f}")

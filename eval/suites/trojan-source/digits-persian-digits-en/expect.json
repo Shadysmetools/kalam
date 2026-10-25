@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0121"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Persian digits in an English file: SEC0121 in every skin."
+}

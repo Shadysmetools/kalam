@@ -18,12 +18,31 @@ use kalam_ir::{Artifact, Backend, BackendError, EmitOptions, Program, Target};
 
 /// Helpers the generated code imports from the vendored `@kalam/runtime` (spec §22).
 pub const RUNTIME_HELPERS: &[&str] = &[
-    "$i", "$floordiv", "$mod", "$Panic", "$Ok", "$Err", "$Some", "$eq", "$List", "$Map", "$box",
-    "$task", "$Sql", "$Html",
+    "$i",
+    "$floordiv",
+    "$mod",
+    "$Panic",
+    "$Ok",
+    "$Err",
+    "$Some",
+    "$eq",
+    "$List",
+    "$Map",
+    "$box",
+    "$task",
+    "$Sql",
+    "$Html",
 ];
 
 /// Constructs that must never appear in emitted JS (checked by a CI scan of all output).
-pub const FORBIDDEN_OUTPUT: &[&str] = &["eval(", "new Function", "with (", " == ", " != ", "for (const k in"];
+pub const FORBIDDEN_OUTPUT: &[&str] = &[
+    "eval(",
+    "new Function",
+    "with (",
+    " == ",
+    " != ",
+    "for (const k in",
+];
 
 pub struct JsBackend;
 
@@ -36,7 +55,11 @@ impl Backend for JsBackend {
         &[Target::JsNode, Target::JsBrowser]
     }
 
-    fn emit(&self, _program: &Program, _options: &EmitOptions) -> Result<Vec<Artifact>, BackendError> {
+    fn emit(
+        &self,
+        _program: &Program,
+        _options: &EmitOptions,
+    ) -> Result<Vec<Artifact>, BackendError> {
         Err(BackendError::Unimplemented("JS code generation (Phase 1)"))
     }
 }
@@ -131,9 +154,27 @@ mod tests {
     #[test]
     fn mappings_use_relative_fields_and_line_separators() {
         let m = [
-            Mapping { generated_line: 0, generated_col: 0, source: 0, original_line: 0, original_col: 0 },
-            Mapping { generated_line: 0, generated_col: 9, source: 0, original_line: 0, original_col: 3 },
-            Mapping { generated_line: 2, generated_col: 2, source: 0, original_line: 1, original_col: 4 },
+            Mapping {
+                generated_line: 0,
+                generated_col: 0,
+                source: 0,
+                original_line: 0,
+                original_col: 0,
+            },
+            Mapping {
+                generated_line: 0,
+                generated_col: 9,
+                source: 0,
+                original_line: 0,
+                original_col: 3,
+            },
+            Mapping {
+                generated_line: 2,
+                generated_col: 2,
+                source: 0,
+                original_line: 1,
+                original_col: 4,
+            },
         ];
         assert_eq!(encode_mappings(&m), "AAAA,SAAG;;EACC");
     }

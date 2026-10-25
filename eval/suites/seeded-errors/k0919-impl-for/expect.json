@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0919"
+  ],
+  "lines": [
+    4
+  ],
+  "notes": "`impl Show for Money:` instead of `impl Money as Show:` (spec 21.3, DR-10)."
+}

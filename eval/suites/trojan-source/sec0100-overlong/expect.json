@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0100"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Overlong encoding C0 AF of '/' in a comment: invalid UTF-8."
+}

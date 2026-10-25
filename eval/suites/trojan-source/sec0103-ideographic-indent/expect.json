@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0103"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "U+3000 (IDEOGRAPHIC SPACE). Spec 5.1: the only whitespace is U+0020; non-ASCII whitespace in code and comments is SEC0103 (fix-it: space)."
+}

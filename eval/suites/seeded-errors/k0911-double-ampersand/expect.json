@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0911"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "`&&` instead of `and` (spec 5.9, 21.3)."
+}

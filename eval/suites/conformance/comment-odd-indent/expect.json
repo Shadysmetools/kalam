@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Comment-only lines do not take part in indentation (spec 5.8 rule 2)."
+}

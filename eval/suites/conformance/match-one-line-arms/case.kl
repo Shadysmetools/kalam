@@ -1,0 +1,12 @@
+enum Light:
+    Red
+    Green
+
+fn name(l: Light) -> String:
+    return match l:
+        case .Red:   "red"
+
+        case .Green :"green"
+
+fn main():
+    print(name(.Red))

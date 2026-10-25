@@ -1,0 +1,6 @@
+dala ra2isi():
+    khalli n = 3
+    lw n > 2:
+        ekteb("big")
+    wala:
+        etb3("small")

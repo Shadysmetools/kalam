@@ -133,7 +133,10 @@ mod tests {
         g.add_call(pure_a, pure_b); // mutual recursion without I/O stays sync
         g.add_call(pure_b, pure_a);
         assert_eq!(infer_suspension(&g), vec![true, true, true, false, false]);
-        assert_eq!(suspension_chain(&g, update), Some(vec![update, save, db_exec]));
+        assert_eq!(
+            suspension_chain(&g, update),
+            Some(vec![update, save, db_exec])
+        );
         assert_eq!(suspension_chain(&g, pure_a), None);
     }
 }

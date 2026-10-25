@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0100"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Byte 0xFF (never valid UTF-8) in a comment."
+}

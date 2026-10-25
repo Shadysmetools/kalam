@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0111"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "U+200C inside an Arabic identifier. Spec 5.1 (source-text pass, runs first) gives SEC0111; spec 5.3 rule 4 and 27 also list ZWJ/ZWNJ under SEC0106. Only SEC0111 is required here; SEC0106 as well is acceptable. Spec conflict recorded for the founder."
+}

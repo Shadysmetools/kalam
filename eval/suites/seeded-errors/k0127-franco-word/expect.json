@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0127"
+  ],
+  "lines": [
+    9
+  ],
+  "notes": "`3ala`: a name that starts with a digit, in every skin (spec 5.3 rule 2)."
+}

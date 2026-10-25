@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0131"
+  ],
+  "lines": [
+    10
+  ],
+  "notes": "String literal inside an interpolation hole (spec 5.7)."
+}

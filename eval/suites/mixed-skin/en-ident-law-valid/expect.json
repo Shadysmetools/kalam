@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "`law` declared as a variable in an English file: legal (spec 5.4); LSP hint H0202 only."
+}

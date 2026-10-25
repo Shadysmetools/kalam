@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0904"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Trailing Arabic semicolon `؛` (spec 6.4)."
+}

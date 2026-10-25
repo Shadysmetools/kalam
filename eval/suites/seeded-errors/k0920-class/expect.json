@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0920"
+  ],
+  "lines": [
+    1
+  ],
+  "notes": "`class X:` instead of `type X:` (spec 21.3)."
+}

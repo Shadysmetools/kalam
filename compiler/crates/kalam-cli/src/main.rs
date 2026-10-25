@@ -9,7 +9,7 @@
 use std::process::ExitCode;
 
 use kalam_base::Skin;
-use kalam_diagnostics::{catalog, Lang};
+use kalam_diagnostics::Lang;
 use kalam_fmt::FmtConfig;
 use kalam_skins::KeywordTable;
 
@@ -42,6 +42,7 @@ fn usage() -> &'static str {
      \x20 kalam convert --to en|ar|franco [--write] FILE\n\
      \x20                                    print FILE in another skin (--write: rename it)\n\
      \x20 kalam explain CODE                  explain a diagnostic code (KALAM_LANG sets the language)\n\
+     \x20 kalam explain --catalog [--json]    list every code (--json: all codes, en/ar/franco)\n\
      \x20 kalam test | lsp | mcp              planned (Phase 1)\n\
      \x20 kalam version\n\
      \n\
@@ -268,25 +269,31 @@ fn convert(args: &[String]) -> ExitCode {
     ExitCode::SUCCESS
 }
 
+/// `kalam explain CODE`, `kalam explain --catalog [--json]` (logic in kalam-driver).
 fn explain(args: &[String]) -> ExitCode {
-    let Some(code) = args.first() else {
-        eprintln!("usage: kalam explain CODE");
-        return ExitCode::from(2);
-    };
-    let code = code.to_ascii_uppercase();
-    match catalog::lookup(&code) {
-        Some(entry) => {
-            let lang = message_lang();
-            println!("{}  {}\n", entry.code, entry.title[lang.index()]);
-            println!("{}", entry.message[lang.index()]);
-            if entry.proposed {
-                println!("\n(This code is proposed and not yet listed in spec §27.)");
-            }
+    let args: Vec<&str> = args.iter().map(String::as_str).collect();
+    match args.as_slice() {
+        ["--catalog", "--json"] | ["--json", "--catalog"] => {
+            println!("{}", kalam_driver::explain_catalog_json());
             ExitCode::SUCCESS
         }
-        None => {
-            eprintln!("no explanation for `{code}` yet");
-            ExitCode::from(1)
+        ["--catalog"] => {
+            print!("{}", kalam_driver::explain_catalog(message_lang()));
+            ExitCode::SUCCESS
+        }
+        [code] if !code.starts_with("--") => match kalam_driver::explain(code, message_lang()) {
+            Some(page) => {
+                print!("{page}");
+                ExitCode::SUCCESS
+            }
+            None => {
+                eprintln!("no explanation for `{}` yet", code.to_ascii_uppercase());
+                ExitCode::from(1)
+            }
+        },
+        _ => {
+            eprintln!("usage: kalam explain CODE | kalam explain --catalog [--json]");
+            ExitCode::from(2)
         }
     }
 }

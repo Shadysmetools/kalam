@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0110"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "Trojan Source early-return shape: RLI/PDI/LRI in a trailing comment make a `return` appear to be code. Kalam rejects the raw controls in the comment."
+}

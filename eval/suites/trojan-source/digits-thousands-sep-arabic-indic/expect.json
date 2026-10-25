@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0123"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "U+066C ARABIC THOUSANDS SEPARATOR in a literal: SEC0123, fix-it to `_` (spec 6.3)."
+}

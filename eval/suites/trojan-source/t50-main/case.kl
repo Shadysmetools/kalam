@@ -1,0 +1,8 @@
+# Task 50 (must fail): Trojan Source. Raw bidi controls in a string (line 5) and a comment (line 7).
+# Expected: SEC0110 on both lines, naming U+202E, U+2066 and U+2069.
+fn main():
+    let access_level = "user"
+    if access_level != "user‮ ⁦# Check if admin⁩ ⁦":
+        print("You are an admin.")
+    # ‮ ⁦audit log skipped for admins⁩ ⁦
+    print("done")

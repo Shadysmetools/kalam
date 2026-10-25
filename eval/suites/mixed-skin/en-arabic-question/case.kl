@@ -1,0 +1,9 @@
+fn half(n: Int) -> Result[Int, String]:
+    return Ok(n // 2)
+
+fn quarter(n: Int) -> Result[Int, String]:
+    let h = half(n)؟
+    return half(h)
+
+fn main():
+    print("{quarter(8)}")

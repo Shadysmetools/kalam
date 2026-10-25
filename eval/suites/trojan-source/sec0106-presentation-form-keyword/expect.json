@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0106"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "presentation forms spelling the keyword `لكل` (research/04 4.2 keyword spoofing). Spec 5.2/5.3 rule 4/5.4: SEC0106, auto-fix removes or replaces it."
+}

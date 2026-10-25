@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0110"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Raw U+061C ARABIC LETTER MARK inside a string literal. Spec 5.1: bidi controls and marks are escape-only in strings (write \\u{061C}). The message must name U+061C."
+}

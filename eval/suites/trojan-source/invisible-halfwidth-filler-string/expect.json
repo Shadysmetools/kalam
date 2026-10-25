@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0111"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "U+FFA0 HALFWIDTH HANGUL FILLER HALFWIDTH HANGUL FILLER raw in a string. Spec 5.1 zero-width/invisible/variation-selector rows: SEC0111."
+}

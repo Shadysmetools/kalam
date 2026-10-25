@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0128"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Exponent with Arabic-Indic digits: K0128 (FLOAT_LIT: Arabic-Indic floats have no exponent)."
+}

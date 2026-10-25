@@ -1,0 +1,5 @@
+fn main():
+    let we = 1
+    let aw = 2
+    for fi in [we, aw]:
+        print("{fi}")

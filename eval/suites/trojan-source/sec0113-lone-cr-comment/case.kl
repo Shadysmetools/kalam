@@ -1,0 +1,3 @@
+fn main():
+    # looks like a commentprint("hidden")
+    print("ok")

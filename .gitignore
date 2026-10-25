@@ -1,2 +1,7 @@
 target/
 **/target/
+
+# sealed held-out tasks: never commit contents (only MANIFEST/README)
+eval/holdout/*
+!eval/holdout/MANIFEST.json
+!eval/holdout/README.md

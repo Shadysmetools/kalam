@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Legitimate Arabic: an Arabic comment mixing English and ASCII digits, and a string containing raw harakat and tatweel (they are only forbidden in identifiers and keywords, spec 5.3 rule 4). The bidi algorithm orders it implicitly; no controls needed."
+}

@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0110"
+  ],
+  "lines": [
+    5
+  ],
+  "notes": "Mirror of corpus T50 main: raw U+202E, U+2066, U+2069 in a string (line 5) and a comment (line 7). SEC0110 on both lines (INDEX.md G14: every violating line is reported); the first is line 5."
+}

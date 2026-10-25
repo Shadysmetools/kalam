@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0106"
+  ],
+  "lines": [
+    1
+  ],
+  "notes": "fatha inside the keyword `دالة`: SEC0106 (spec 5.4, 7.3)."
+}

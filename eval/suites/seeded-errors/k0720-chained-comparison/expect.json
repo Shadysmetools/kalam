@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0720"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Chained comparison `a < b < c` (spec 8.2 cmp_expr, non-associative)."
+}

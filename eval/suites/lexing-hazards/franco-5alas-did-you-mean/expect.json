@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0127"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "`5alas` is did_you_mean for `kfaya` (break); the accepted variant is `khalas`. K0127 suggesting `kfaya`."
+}

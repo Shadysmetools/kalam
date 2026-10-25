@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0912"
+  ],
+  "lines": [
+    8
+  ],
+  "notes": "`const x` (spec 21.3)."
+}

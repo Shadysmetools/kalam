@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0102"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "U+0085 (NEXT LINE (NEL)). Spec 5.1: C0/C1 controls other than LF/CR are rejected in code and comments, escape-only in strings."
+}

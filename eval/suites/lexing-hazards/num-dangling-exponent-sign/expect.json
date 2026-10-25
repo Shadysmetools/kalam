@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0127"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "`1e+`: the sign is absorbed only when a digit follows, so the run is `1e`; K0127."
+}

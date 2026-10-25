@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "`،` is never a decimal separator (spec 6.3): `(1،5)` is the tuple (1, 5). Accepted."
+}

@@ -1,16 +1,26 @@
 //! Assembles one scorecard run: every scorecard metric (measured or `not_measurable`),
-//! dimension scores, composite, gate states and the supporting checks.
+//! dimension scores, composite, gate states, the milestone tier checks and the supporting
+//! checks.
 //!
 //! Honesty rules (LOOP.md A2/A12, SCORECARD.md §1):
 //! - a metric with no harness measurer is `not_measurable` and scores 0 in its dimension;
 //! - a partial measurement never produces a pass: a metric or gate is `pass` only when its
-//!   whole definition was checked, `fail` as soon as any checked part fails, else `pending`.
+//!   whole definition was checked, `fail` as soon as any checked part fails, else `pending`;
+//! - checks judged on the frozen set held-out included (the "held-out split" table in
+//!   eval/HISTORY-SCHEMA.md) pass only when the held-out runner also ran and passed.
 
-use crate::checks::{self, KeywordCounts, LexResult, RoundTrip};
-use crate::corpus;
-use crate::parity::{self, Outcome, ParityCase, ParseHook, SyntaxOutcome};
+use crate::checks::{self, KeywordCounts};
+use crate::corpus_run::{self, CorpusRun};
+use crate::diagcat::{self, CatalogReport};
+use crate::external;
+use crate::holdout::{self, Held};
+use crate::integrity::{self, IntegrityReport, State};
+use crate::parity::{self, Outcome, ParseHook, SyntaxOutcome};
+use crate::ratchet::{self, Ratchet};
 use crate::scorecard::{inclusion, normalize, Inclusion, MetricDef, MetricValue, Scorecard};
-use crate::tiers::{self, Observation, ScorecardRule, TierCheck};
+use crate::suites::{self, FmtTally, Recovery, RejectResult, RejectRules, SuiteCase};
+use crate::tiers::{self, Observation, ScorecardRule, Status, TierCheck};
+use kalam_base::Skin;
 use kalam_skins::KeywordTable;
 use serde_json::{json, Map, Value};
 use std::collections::BTreeMap;
@@ -25,8 +35,15 @@ pub struct Options {
     /// (`mvp` = M5). Metrics are normalized against the tier's scorecard milestone.
     pub tier: String,
     pub run_cargo_test: bool,
-    /// Parser access for G-PAR P1/P2 and `D1.corpus_syntax_pass` ([`parity::default_hook`]).
+    /// Compiler access ([`parity::default_hook`]).
     pub hook: Box<dyn ParseHook>,
+    /// The evaluated commit: external reports (props) must be tied to it.
+    pub git_sha: Option<String>,
+    /// The held-out runner; `None` = not run (every held-out-split check stays unmeasured).
+    pub holdout: Option<holdout::Runner>,
+    /// Run `cargo test -p kalam-props --release` and read the report it writes, instead of
+    /// reading `eval/props/report.json` (which must then carry the evaluated commit).
+    pub run_props: bool,
 }
 
 /// One metric's outcome before normalization.
@@ -43,8 +60,476 @@ pub struct Run {
     pub json: Value,
 }
 
+/// Every M1 tier check with a runner. `D5.diag_completeness` is in M1 scope: LOOP.md §5.1
+/// item 14 and scorecard.json `milestone_tiers` M1 list it at stage S2 (the metric table's
+/// S3 is the stage where it reaches its MVP scope).
+pub const M1_MEASURED: &[&str] = &[
+    "G-PAR.P1",
+    "G-PAR.P2",
+    "G-PAR.P3",
+    "G-PAR.P4",
+    "G-PAR.P6",
+    "G-PAR.P7",
+    "G-PAR.P8",
+    "D1.corpus_syntax_pass",
+    "D1.property_tests",
+    "D1.fuzz_crash_free_hours",
+    "D2.trojan_source_suite",
+    "D2.lexing_hazard_suite",
+    "D5.error_recovery_precision",
+    "D5.diag_completeness",
+    "D7.formatter_idempotence",
+    "D7.skin_convert",
+];
+
+/// Spec §7.4 rule 7 (word-choice notes enforced by tests): `(concept, required ar spelling)`
+/// and Arabic spellings no reserved word may use.
+const RULE7_REQUIRED: &[(&str, &str)] = &[
+    ("KW_TRUE", "صح"),
+    ("CORE_INT", "عدد"),
+    ("CORE_NONE", "لا_شيء"),
+    ("KW_FALSE", "خطأ"),
+    ("CORE_ERR", "فشل"),
+    ("KW_CASE", "عندما"),
+];
+const RULE7_AVOIDED: &[&str] = &["صحيح", "عدم", "حالة", "عند"];
+
+/// G-PAR P7 at M1 scope: spec §7.4 rules 1-4 (`KeywordTable::load`) and rule 7. Rules 5-6
+/// need the confusable table and the 2,000-word list, which do not exist (spec §7.4); the
+/// M1 scope counts them "once their data exists".
+pub fn p7_conflicts(rows: &[Value], load: &Result<(), String>) -> (usize, Vec<String>) {
+    let mut conflicts = Vec::new();
+    if let Err(e) = load {
+        conflicts.push(format!("rules 1-4: {e}"));
+    }
+    for (concept, want) in RULE7_REQUIRED {
+        let got = rows
+            .iter()
+            .find(|r| r["concept"] == *concept)
+            .and_then(|r| r["ar"].as_str());
+        if got != Some(*want) {
+            conflicts.push(format!(
+                "rule 7: {concept} ar is {got:?}, spec §7.4 requires {want}"
+            ));
+        }
+    }
+    for avoided in RULE7_AVOIDED {
+        if let Some(r) = rows.iter().find(|r| r["ar"] == *avoided) {
+            conflicts.push(format!(
+                "rule 7: {} uses the avoided spelling {avoided}",
+                r["concept"]
+            ));
+        }
+    }
+    (conflicts.len(), conflicts)
+}
+
+/// The dev-side inputs of every M1 check.
+struct Inputs {
+    corpus: CorpusRun,
+    trojan: Option<RejectResult>,
+    lexhaz: Option<RejectResult>,
+    mixed: Option<RejectResult>,
+    recovery: Option<Recovery>,
+    conformance: Option<FmtTally>,
+    held: Held,
+    props: Result<external::PropsReport, String>,
+    fuzz: Observation,
+    catalog: CatalogReport,
+    p7: (usize, Vec<String>),
+}
+
+fn suite_note(name: &str) -> String {
+    format!("{}/{name}", suites::SUITES_DIR)
+}
+
+/// The held-out counts at `path` (e.g. `["parity", "P1"]`) as `(passed, total)`.
+fn held_counts(
+    held: &Held,
+    path: &[&str],
+    passed: &str,
+    total: &str,
+) -> Result<(usize, usize), String> {
+    let agg = held.aggregate().ok_or_else(|| held.why_not())?;
+    let mut v = agg;
+    for p in path {
+        v = &v[*p];
+    }
+    if v.is_null() {
+        return Err(format!("the held-out store has no {} part", path.join(".")));
+    }
+    let n = |k: &str| v[k].as_u64().map(|n| n as usize);
+    match (n(passed), n(total)) {
+        (Some(p), Some(t)) if t > 0 => Ok((p, t)),
+        (Some(_), Some(_)) => Err(format!(
+            "the held-out store has no case in {} scope",
+            path.join(".")
+        )),
+        _ => Err(format!(
+            "the held-out aggregate has no {} counts",
+            path.join(".")
+        )),
+    }
+}
+
+/// A count-based check (P1-P3): dev `passed/total` combined with the held-out counts.
+fn combine_counts(what: &str, dev: &Outcome, held: Result<(usize, usize), String>) -> Observation {
+    let (passed, total, failures) = match dev {
+        Outcome::Unavailable(why) => return Observation::NotMeasurable(format!("{what}: {why}")),
+        Outcome::Measured {
+            passed,
+            total,
+            failures,
+        } => (*passed, *total, failures),
+    };
+    let first = failures
+        .first()
+        .map(|f| format!("; first failure: {f}"))
+        .unwrap_or_default();
+    match held {
+        Err(why) => Observation::Measured {
+            value: MetricValue::Num(100.0 * passed as f64 / total as f64),
+            evidence: format!("{what}: dev {passed}/{total}{first}; held-out: {why}"),
+            dev_only: true,
+            definitive_fail: passed < total,
+        },
+        Ok((hp, ht)) => Observation::Measured {
+            value: MetricValue::Num(100.0 * (passed + hp) as f64 / (total + ht) as f64),
+            evidence: format!("{what}: dev {passed}/{total}, held-out {hp}/{ht}{first}"),
+            dev_only: false,
+            definitive_fail: passed < total || hp < ht,
+        },
+    }
+}
+
+/// A binary check with a held-out split.
+fn combine_bool(
+    dev: Result<(bool, String), String>,
+    held: Result<(bool, String), String>,
+) -> Observation {
+    let (ok, ev) = match dev {
+        Err(why) => return Observation::NotMeasurable(why),
+        Ok(d) => d,
+    };
+    match held {
+        Err(why) => Observation::Measured {
+            value: MetricValue::Bool(ok),
+            evidence: format!("{ev}; held-out: {why}"),
+            dev_only: true,
+            definitive_fail: !ok,
+        },
+        Ok((hok, hev)) => Observation::Measured {
+            value: MetricValue::Bool(ok && hok),
+            evidence: format!("{ev}; held-out: {hev}"),
+            dev_only: false,
+            definitive_fail: !(ok && hok),
+        },
+    }
+}
+
+/// A binary check judged on dev data only (no held-out split).
+fn whole(ok: bool, evidence: String) -> Observation {
+    Observation::Measured {
+        value: MetricValue::Bool(ok),
+        evidence,
+        dev_only: false,
+        definitive_fail: !ok,
+    }
+}
+
+fn reject_summary(r: &RejectResult) -> String {
+    format!(
+        "bad rejected {}/{}, good accepted {}/{}; out of scope {}; defects {}; failing cases that expect a code \
+         no M1 stage emits (name resolution or later): {} {:?}{}",
+        r.bad_passed,
+        r.bad_total,
+        r.good_passed,
+        r.good_total,
+        r.out_of_scope.len(),
+        r.defects.len(),
+        r.later_stage.len(),
+        r.later_stage.iter().take(5).collect::<Vec<_>>(),
+        r.failures
+            .first()
+            .or(r.defects.first())
+            .map(|f| format!("; first problem: {f}"))
+            .unwrap_or_default()
+    )
+}
+
+/// A rejection suite judged as a whole: present, non-empty, no defects.
+fn reject_dev(
+    name: &str,
+    r: &Option<RejectResult>,
+    need_both: bool,
+) -> Result<(bool, String), String> {
+    let r = r
+        .as_ref()
+        .ok_or_else(|| format!("{} does not exist", suite_note(name)))?;
+    let ev = format!("{}: {}", suite_note(name), reject_summary(r));
+    if !r.defects.is_empty() {
+        return Err(format!(
+            "{ev}; the suite has defects, so it cannot be judged"
+        ));
+    }
+    if r.total() == 0 || (need_both && (r.bad_total == 0 || r.good_total == 0)) {
+        return Err(format!("{ev}; the suite needs bad and good cases in scope"));
+    }
+    Ok((r.all_pass(), ev))
+}
+
+fn observe_m1(id: &str, i: &Inputs, c: &TierCheck) -> Observation {
+    let par = &i.corpus.parity;
+    match id {
+        "G-PAR.P1" => combine_counts("P1 canonical identity", &par.p1, held_counts(&i.held, &["parity", "P1"], "passed", "total")),
+        "G-PAR.P2" => combine_counts("P2 pairwise and 3-hop round-trip (kalam convert)", &par.p2, held_counts(&i.held, &["parity", "P2"], "passed", "total")),
+        "G-PAR.P3" => combine_counts("P3 source fixpoint (kalam convert, 9 ordered pairs)", &par.p3, held_counts(&i.held, &["parity", "P3"], "passed", "total")),
+        "G-PAR.P4" => external::p4(&i.props),
+        "D1.property_tests" => external::property_tests(&i.props),
+        "D1.fuzz_crash_free_hours" => i.fuzz.clone(),
+        "G-PAR.P6" | "D5.diag_completeness" => {
+            let v = if id == "G-PAR.P6" { i.catalog.p6_pct() } else { i.catalog.completeness_pct() };
+            Observation::Measured {
+                value: MetricValue::Num(v),
+                evidence: format!(
+                    "{}. Ruling: in M1 scope (LOOP.md §5.1 items 14-15; scorecard.json M1 checks, stage S2)",
+                    i.catalog.evidence()
+                ),
+                dev_only: false,
+                definitive_fail: false,
+            }
+        }
+        "G-PAR.P7" => Observation::Measured {
+            value: MetricValue::Num(i.p7.0 as f64),
+            evidence: format!(
+                "spec/keywords.json: spec §7.4 rules 1-4 (KeywordTable::load) and rule 7 checked: {} conflict(s) {:?}. \
+                 Rules 5-6 need the confusable table and the 2,000-word list, which do not exist (spec §7.4), so they are \
+                 outside the M1 scope (\"rules 5-7 once their data exists\")",
+                i.p7.0, i.p7.1
+            ),
+            dev_only: false,
+            definitive_fail: false,
+        },
+        "G-PAR.P8" => {
+            let r = match &i.mixed {
+                None => return Observation::NotMeasurable(format!("{} does not exist", suite_note(suites::MIXED))),
+                Some(r) => r,
+            };
+            let ev = format!(
+                "{} (K0201 cases; K0301 deferred to M2): {}; must-reject files hosted in skins {:?}",
+                suite_note(suites::MIXED),
+                reject_summary(r),
+                r.reject_skins.iter().map(|s| s.id()).collect::<Vec<_>>()
+            );
+            if !r.defects.is_empty() || r.bad_total == 0 {
+                return Observation::NotMeasurable(format!("{ev}; needs defect-free K0201 cases"));
+            }
+            if r.reject_skins.len() < Skin::ALL.len() && r.all_pass() {
+                return Observation::NotMeasurable(format!("{ev}; \"in every skin\" needs a K0201 case hosted in each of en, ar, franco"));
+            }
+            whole(r.all_pass(), ev)
+        }
+        "D2.trojan_source_suite" => {
+            let dev = reject_dev(suites::TROJAN, &i.trojan, true).map(|(ok, ev)| {
+                let corpus_ok = i.corpus.sec_pass == i.corpus.sec_pairs;
+                (
+                    ok && corpus_ok,
+                    format!(
+                        "{ev}; corpus source-text cases {}/{} at lex level; every expected SEC code must name its code point",
+                        i.corpus.sec_pass, i.corpus.sec_pairs
+                    ),
+                )
+            });
+            let held = held_counts(&i.held, &["trojan"], "bad_rejected", "bad_total").and_then(|(bp, bt)| {
+                let (gp, gt) = held_counts(&i.held, &["trojan"], "good_accepted", "good_total")?;
+                let defects = i.held.aggregate().map_or(0, |a| a["trojan"]["defects"].as_u64().unwrap_or(0));
+                if defects > 0 {
+                    return Err(format!("the held-out Trojan suite has {defects} defect(s)"));
+                }
+                Ok((bp == bt && gp == gt, format!("bad rejected {bp}/{bt}, good accepted {gp}/{gt}")))
+            });
+            combine_bool(dev, held)
+        }
+        "D2.lexing_hazard_suite" => match reject_dev(suites::LEXHAZ, &i.lexhaz, false) {
+            Err(why) => Observation::NotMeasurable(why),
+            Ok((ok, ev)) => whole(ok, format!("{ev} (SEC0104 post-fold collision cases count from M2)")),
+        },
+        "D5.error_recovery_precision" => recovery_obs(i, c),
+        "D7.formatter_idempotence" => {
+            let dev = match &i.conformance {
+                None => Err(format!("{} does not exist; the check covers every corpus and conformance file", suite_note(suites::CONFORMANCE))),
+                Some(conf) => {
+                    let mut all = i.corpus.fmt.clone();
+                    all.add(conf);
+                    let ev = format!(
+                        "kalam fmt (kalam_driver::format_source) on corpus {}/{} and conformance {}/{} files (all skins): \
+                         fmt(fmt(x)) == fmt(x) and kcf(fmt(x)) == kcf(x); layout kept (re-spelled only) {}; excluded {}{}",
+                        i.corpus.fmt.passed, i.corpus.fmt.total, conf.passed, conf.total, all.layout_kept, all.excluded,
+                        all.failures.first().map(|f| format!("; first failure: {f}")).unwrap_or_default()
+                    );
+                    if !conf.defects.is_empty() {
+                        Err(format!("{ev}; conformance suite defects: {:?}", conf.defects))
+                    } else if all.total == 0 || conf.total == 0 {
+                        Err(format!("{ev}; no file in scope (the formatter or parser is unavailable, or the suite is empty)"))
+                    } else {
+                        Ok((all.failures.is_empty(), ev))
+                    }
+                }
+            };
+            let held = held_counts(&i.held, &["fmt"], "passed", "total")
+                .map(|(p, t)| (p == t, format!("corpus files {p}/{t}")));
+            combine_bool(dev, held)
+        }
+        "D7.skin_convert" => {
+            let p2 = observe_m1("G-PAR.P2", i, c);
+            let p3 = observe_m1("G-PAR.P3", i, c);
+            match (&p2, &p3) {
+                (
+                    Observation::Measured { value: MetricValue::Num(a), evidence: e2, dev_only: d2, .. },
+                    Observation::Measured { value: MetricValue::Num(b), evidence: e3, dev_only: d3, .. },
+                ) => {
+                    let ok = *a == 100.0 && *b == 100.0;
+                    Observation::Measured {
+                        value: MetricValue::Bool(ok),
+                        evidence: format!("through kalam_driver::convert_source (the `kalam convert` entry point): {e2}; {e3}"),
+                        dev_only: *d2 || *d3,
+                        definitive_fail: !ok,
+                    }
+                }
+                (Observation::NotMeasurable(w), _) | (_, Observation::NotMeasurable(w)) => {
+                    Observation::NotMeasurable(w.clone())
+                }
+                _ => Observation::NotMeasurable("P2/P3 gave no percentage".into()),
+            }
+        }
+        "D1.corpus_syntax_pass" => syntax_obs(&par.syntax, c, &i.held),
+        _ => Observation::NotMeasurable(format!("no M1 runner for `{id}`")),
+    }
+}
+
+fn recovery_obs(i: &Inputs, c: &TierCheck) -> Observation {
+    let r = match &i.recovery {
+        None => {
+            return Observation::NotMeasurable(format!(
+                "{} does not exist (scorecard.json names eval/diagnostics/broken/; the shared suite lives here)",
+                suite_note(suites::SEEDED)
+            ))
+        }
+        Some(r) => r,
+    };
+    let ev = format!(
+        "{} (scorecard.json and LOOP.md name eval/diagnostics/broken/): per file genuine/reported, 0 unless the seeded \
+         (code, line) is reported; dev files {} ({} cases in all 3 skins), score sum {:.3}; secondary: first reported error \
+         is seeded in {} files, no cascade in {}; skipped clean cases {}; defects {}",
+        suite_note(suites::SEEDED),
+        r.files,
+        r.full_skin_cases,
+        r.score_sum,
+        r.first_match,
+        r.cascade_free,
+        r.skipped_clean,
+        r.defects.len()
+    );
+    if !r.defects.is_empty() {
+        return Observation::NotMeasurable(format!("{ev}; defects: {:?}", r.defects));
+    }
+    if r.files == 0 {
+        return Observation::NotMeasurable(format!("{ev}; no seeded file"));
+    }
+    let need_cases = 30;
+    let held = i
+        .held
+        .aggregate()
+        .map(|a| &a["diag_recovery"])
+        .filter(|v| !v.is_null());
+    let (files, sum, full, held_ev, dev_only) = match held {
+        Some(h) => {
+            let hf = h["files"].as_u64().unwrap_or(0) as usize;
+            let hs = h["score_sum"].as_f64().unwrap_or(0.0);
+            let hc = h["full_skin_cases"].as_u64().unwrap_or(0) as usize;
+            if h["defects"].as_u64().unwrap_or(0) > 0 || hf == 0 {
+                (
+                    r.files,
+                    r.score_sum,
+                    r.full_skin_cases,
+                    "held-out suite has defects or no file".to_string(),
+                    true,
+                )
+            } else {
+                (
+                    r.files + hf,
+                    r.score_sum + hs,
+                    r.full_skin_cases + hc,
+                    format!("held-out files {hf} ({hc} cases in 3 skins), score sum {hs:.3}"),
+                    false,
+                )
+            }
+        }
+        None => (
+            r.files,
+            r.score_sum,
+            r.full_skin_cases,
+            format!(
+                "held-out: {}",
+                if i.held.aggregate().is_some() {
+                    "no seeded-errors suite in the store".into()
+                } else {
+                    i.held.why_not()
+                }
+            ),
+            true,
+        ),
+    };
+    let value = sum / files as f64;
+    let ev = format!("{ev}; {held_ev}; value {value:.4}");
+    if full < need_cases {
+        return Observation::NotMeasurable(format!(
+            "{ev}; the scope needs >= {need_cases} cases x 3 skins, found {full} (check scope: {})",
+            c.scope
+        ));
+    }
+    Observation::Measured {
+        value: MetricValue::Num(value),
+        evidence: ev,
+        dev_only,
+        definitive_fail: false,
+    }
+}
+
+fn load_suite(root: &Path, name: &str) -> Result<Option<Vec<SuiteCase>>, String> {
+    suites::load(&root.join(suites::SUITES_DIR).join(name))
+}
+
+fn obs_to_measure(o: &Observation) -> Measure {
+    match o {
+        Observation::Measured {
+            value,
+            evidence,
+            dev_only,
+            ..
+        } => Measure::Measured {
+            value: value.clone(),
+            note: Some(if *dev_only {
+                format!("{evidence} [dev part only]")
+            } else {
+                evidence.clone()
+            }),
+        },
+        Observation::Passed(e) => Measure::Measured {
+            value: MetricValue::Bool(true),
+            note: Some(e.clone()),
+        },
+        Observation::Failed(e) => Measure::Measured {
+            value: MetricValue::Bool(false),
+            note: Some(e.clone()),
+        },
+        Observation::NotMeasurable(e) => Measure::NotMeasurable(e.clone()),
+    }
+}
+
 pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
     let root = &opts.root;
+    let hook = opts.hook.as_ref();
     let tier = sc
         .tiers
         .resolve(&opts.tier)
@@ -71,62 +556,93 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
 
     let spec_text = read("spec/KALAM-SPEC.md")?;
     let spec_productions = checks::grammar_productions(&spec_text, false);
-    let ebnf_path = root.join("compiler/grammar/kalam.ebnf");
-    let file_productions = fs::read_to_string(&ebnf_path)
+    let file_productions = fs::read_to_string(root.join("compiler/grammar/kalam.ebnf"))
         .ok()
         .and_then(|t| checks::grammar_productions(&t, true));
 
-    // --- corpus checks (stage S1 lexer, token converter)
-    let cases =
-        corpus::discover(&root.join("eval/corpus")).map_err(|e| format!("eval/corpus: {e}"))?;
-    let mut records = Vec::new();
-    let (mut lex_pairs, mut lex_pass) = (0usize, 0usize);
-    let (mut sec_pairs, mut sec_pass) = (0usize, 0usize);
-    let mut rt_total = RoundTrip::default();
-    let mut parity_cases = Vec::new();
-    for case in &cases {
-        let mut sources = BTreeMap::new();
-        let mut lexed: Vec<LexResult> = Vec::new();
-        for f in &case.files {
-            let text =
-                fs::read_to_string(&f.path).map_err(|e| format!("{}: {e}", f.path.display()))?;
-            let r = checks::lex_case(&text, f.skin, &f.staged, &case.expect);
-            lex_pairs += 1;
-            lex_pass += r.pass as usize;
-            if r.lex_expectations > 0 {
-                sec_pairs += 1;
-                sec_pass += r.pass as usize;
-            }
-            lexed.push(r);
-            sources.insert(f.skin, text);
-        }
-        parity_cases.push(ParityCase {
-            task: case.task.clone(),
-            case: case.case.clone(),
-            sources: sources.clone(),
-            // Outside P1-P3 only when it is meant to fail at lex level AND did not lex
-            // cleanly in any skin (T50 main); a case that lexes still goes through parity.
-            lex_stage_rejection: lexed.iter().any(|l| l.lex_expectations > 0)
-                && lexed.iter().all(|l| !l.clean),
-            lex_rejection_matched: lexed.len() == 3 && lexed.iter().all(|l| l.pass),
-        });
-        let rt = checks::round_trip(&sources);
-        rt_total.checks += rt.checks;
-        rt_total.failures.extend(
-            rt.failures
-                .iter()
-                .map(|f| format!("{}/{}: {f}", case.task, case.case)),
-        );
-        records.push(checks::case_record(case, &lexed, &rt));
-    }
-    let tasks: std::collections::BTreeSet<&str> = cases.iter().map(|c| c.task.as_str()).collect();
+    // --- the M1 runners: dev corpus, shared suites, held-out store, external reports
+    let corpus = corpus_run::run(&root.join("eval/corpus"), hook)?;
+    let trojan_rules = RejectRules {
+        name_codepoints: true,
+        out_of_scope: vec![],
+    };
+    let reject = |name: &str, rules: &RejectRules| -> Result<Option<RejectResult>, String> {
+        Ok(load_suite(root, name)?.map(|c| suites::run_reject(hook, &c, rules)))
+    };
+    let held = match &opts.holdout {
+        None => Held::Missing(
+            "the held-out runner was not started (library call without a runner)".into(),
+        ),
+        Some(r) => holdout::run_child(r, root),
+    };
+    let holdout_store = opts
+        .holdout
+        .as_ref()
+        .map(|r| r.store.clone())
+        .unwrap_or_else(|| PathBuf::from(integrity::DEFAULT_HOLDOUT));
+    let inputs = Inputs {
+        trojan: reject(suites::TROJAN, &trojan_rules)?,
+        lexhaz: reject(
+            suites::LEXHAZ,
+            &RejectRules {
+                name_codepoints: false,
+                out_of_scope: vec!["SEC0104"],
+            },
+        )?,
+        mixed: reject(
+            suites::MIXED,
+            &RejectRules {
+                name_codepoints: false,
+                out_of_scope: vec!["K0301"],
+            },
+        )?,
+        recovery: load_suite(root, suites::SEEDED)?.map(|c| suites::run_recovery(hook, &c)),
+        conformance: load_suite(root, suites::CONFORMANCE)?.map(|c| suites::run_fmt(hook, &c)),
+        props: if opts.run_props {
+            run_props(&root.join("compiler"))
+        } else {
+            external::load_props(root, opts.git_sha.as_deref())
+        },
+        fuzz: external::fuzz(root),
+        catalog: diagcat::measure(&spec_text, &diagcat::builtin_entries()),
+        p7: p7_conflicts(&rows, &table_load),
+        held,
+        corpus,
+    };
+    let integrity_report: IntegrityReport = integrity::run(
+        root,
+        &integrity::CheckOptions {
+            eval_version: &sc.eval_version,
+            holdout_store: &holdout_store,
+            holdout_reported: inputs
+                .held
+                .aggregate()
+                .and_then(|a| a["manifest_sha256"].as_str()),
+        },
+    );
+    let leak_hits = inputs
+        .held
+        .aggregate()
+        .and_then(|a| a["leak"]["hits"].as_u64())
+        .unwrap_or(0);
 
-    // --- parser-dependent checks (stage S2): P1, P2, D1.corpus_syntax_pass
-    let par = parity::measure(opts.hook.as_ref(), &parity_cases);
+    // --- M1 check observations
+    let m1 = sc.tiers.get("M1");
+    let m1_def = |id: &str| m1.and_then(|t| t.checks.iter().find(|c| c.id == id));
+    let mut obs: BTreeMap<&str, Observation> = BTreeMap::new();
+    for id in M1_MEASURED {
+        if let Some(c) = m1_def(id) {
+            obs.insert(id, observe_m1(id, &inputs, c));
+        }
+    }
 
     // --- measurements per metric id
     let mut measures: BTreeMap<&str, Measure> = BTreeMap::new();
-    measures.insert("D1.corpus_syntax_pass", syntax_measure(&par.syntax));
+    for (id, o) in &obs {
+        if sc.metric(id).is_some() {
+            measures.insert(id, obs_to_measure(o));
+        }
+    }
     measures.insert(
         "D4.keywords_per_skin",
         Measure::Measured {
@@ -167,25 +683,6 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
                 ),
             },
             (None, None) => Measure::NotMeasurable("spec §8.2 EBNF block not found".into()),
-        },
-    );
-    // Trojan Source: a failed corpus case is a definitive fail of the binary suite metric;
-    // all-pass on the corpus subset is not the ~60-case suite, so it stays unmeasured.
-    measures.insert(
-        "D2.trojan_source_suite",
-        if sec_pass < sec_pairs {
-            Measure::Measured {
-                value: MetricValue::Bool(false),
-                note: Some(format!(
-                    "{} of {sec_pairs} corpus source-text cases failed at lex level (see checks.security_lex)",
-                    sec_pairs - sec_pass
-                )),
-            }
-        } else {
-            Measure::NotMeasurable(format!(
-                "the ~60-case Trojan Source suite does not exist yet; the {sec_pairs} corpus source-text case-skin pairs \
-                 all pass at lex level (checks.security_lex), which is never scored as a suite pass"
-            ))
         },
     );
 
@@ -269,63 +766,80 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
         dimensions.insert(d.id.clone(), json!(round2(score)));
     }
 
-    // --- gates
-    let trojan_state = match measures_state(&metric_rows, "D2.trojan_source_suite") {
-        Some(false) => "fail",
-        _ => "pending",
+    // --- gate check states, judged by the M1 tier check definitions (pending unless the
+    //     whole check was measured)
+    let m1_state = |id: &str| -> &'static str {
+        let (Some(c), Some(o)) = (m1_def(id), obs.get(id)) else {
+            return "pending";
+        };
+        let th = sc
+            .metric(id)
+            .and_then(|d| d.thresholds[target.index()].num().map(|t| (d.direction, t)));
+        match tiers::evaluate_check(c, o, th).0 {
+            Status::Pass => "pass",
+            Status::Fail => "fail",
+            Status::NotMeasurable => "pending",
+        }
     };
-    let p7 = if table_load.is_err() {
-        "fail"
-    } else {
-        "pending"
-    };
-    // P1/P2: a dev-corpus failure fails the check; a dev-corpus pass stays pending, because
-    // G-PAR is judged on the frozen set held-out included.
-    let outcome_state = |o: &Outcome| match o {
-        Outcome::Measured { passed, total, .. } if passed < total => "fail",
-        _ => "pending",
-    };
-    let (p1, p2) = (outcome_state(&par.p1), outcome_state(&par.p2));
     let g_par_checks: Map<String, Value> =
         ["P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10"]
             .iter()
-            .map(|p| {
-                let state = match *p {
-                    "P1" => p1,
-                    "P2" => p2,
-                    "P7" => p7,
-                    _ => "pending",
-                };
-                (p.to_string(), json!(state))
-            })
+            .map(|p| (p.to_string(), json!(m1_state(&format!("G-PAR.{p}")))))
             .collect();
-    let g_par_state = if [p1, p2, p7].contains(&"fail") {
+    let gate_state = |states: &[&str]| {
+        if states.contains(&"fail") {
+            "fail"
+        } else if states.iter().all(|s| *s == "pass") {
+            "pass"
+        } else {
+            "pending"
+        }
+    };
+    let par_states: Vec<&str> = g_par_checks.values().filter_map(Value::as_str).collect();
+    let trojan_state = m1_state("D2.trojan_source_suite");
+    let lexhaz_state = m1_state("D2.lexing_hazard_suite");
+    // G-FUZZ fails on a crash; too few crash-free hours is the time-accumulated M1 check
+    // (`D1.fuzz_crash_free_hours`), not a gate failure.
+    let fuzz_crashes = external::fuzz_crashes(root);
+    let fuzz_state = if fuzz_crashes.is_some_and(|c| c > 0) {
         "fail"
     } else {
         "pending"
     };
-    let gates = json!({
+    let int_state = if leak_hits > 0 {
+        State::Fail
+    } else {
+        integrity_report.state()
+    };
+    let mut gates = json!({
         "G-INT": {
-            "state": "pending",
+            "state": int_state.as_str(),
             "reason": format!(
-                "integrity checker not implemented; MANIFEST.sha256 {}, FREEZE.json {}",
-                presence(&root.join("eval/MANIFEST.sha256")), presence(&root.join("eval/FREEZE.json"))
+                "{}{}",
+                integrity_report.reason(),
+                if leak_hits > 0 { format!(" | held-out leak: {leak_hits} held-out identifier(s) found in compiler sources") } else { String::new() }
             ),
+            "checks": integrity_report.to_json()["checks"],
         },
         "G-PAR": {
-            "state": g_par_state,
+            "state": gate_state(&par_states),
             "checks": g_par_checks,
-            "note": "P7: spec/keywords.json loads and passes spec §7.4 rules 1-4 (rules 5-7 unchecked) => pending, not pass. \
-                     P1/P2 come from the parser hook (checks.parity): fail on any dev-corpus failure, otherwise pending \
-                     (held-out not run). P3 needs the KCF printer; the lex-level proxy is in checks.lex_roundtrip.",
-            "p7_rules_1_4": match &table_load { Ok(()) => json!("pass"), Err(e) => json!(format!("fail: {e}")) },
+            "note": "Each check's state is its M1 tier check judgment (pending = not fully measured, held-out included). \
+                     P5, P9 and P10 have no M1 runner and stay pending, so G-PAR as a whole cannot pass at M1.",
         },
         "G-SEC": {
-            "state": if trojan_state == "fail" { "fail" } else { "pending" },
-            "checks": {"vulnerable_cases": "pending", "trojan_source_suite": trojan_state, "lexing_hazard_suite": "pending"},
+            "state": gate_state(&[trojan_state, lexhaz_state, "pending"]),
+            "checks": {"vulnerable_cases": "pending", "trojan_source_suite": trojan_state, "lexing_hazard_suite": lexhaz_state},
         },
-        "G-FUZZ": {"state": "pending", "reason": "no fuzz targets (stage S10)"},
-        "G-RATCHET": {"state": "pending", "reason": "no accepted baseline in eval/history.jsonl"},
+        "G-FUZZ": {
+            "state": fuzz_state,
+            "reason": format!(
+                "fails on any unfixed crash in {} (crashes = {fuzz_crashes:?}); the deep-job check (15 min per target) \
+                 has no runner, so it never passes; D1.fuzz_crash_free_hours is judged as its own M1 check",
+                external::FUZZ_STATUS
+            ),
+        },
+        "G-RATCHET": {"state": "pending", "reason": "computed after the tier checks"},
     });
 
     // --- cargo test (opt-in)
@@ -335,34 +849,70 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
         json!({"status": "skipped", "reason": "pass --cargo-test to run `cargo test --workspace`"})
     };
 
+    let c = &inputs.corpus;
+    let reject_json = |r: &Option<RejectResult>| match r {
+        None => json!({"status": "missing"}),
+        Some(r) => json!({
+            "bad_rejected": r.bad_passed, "bad_total": r.bad_total, "good_accepted": r.good_passed,
+            "good_total": r.good_total, "out_of_scope": r.out_of_scope, "defects": r.defects,
+            "failures": r.failures, "later_stage": r.later_stage,
+            "reject_skins": r.reject_skins.iter().map(|s| s.id()).collect::<Vec<_>>(),
+        }),
+    };
+    let fmt_json = |t: &FmtTally| {
+        json!({"passed": t.passed, "total": t.total, "layout_kept": t.layout_kept, "excluded": t.excluded,
+               "failures": t.failures, "defects": t.defects})
+    };
     let checks_json = json!({
-        "keyword_table_load": {"pass": table_load.is_ok(), "error": table_load.err(), "scope": "spec §7.4 rules 1-4"},
+        "keyword_table_load": {"pass": table_load.is_ok(), "error": table_load.clone().err(), "scope": "spec §7.4 rules 1-4"},
         "corpus_lex": {
-            "tasks": tasks.len(), "cases": cases.len(), "case_skin_pairs": lex_pairs, "passed": lex_pass,
-            "rate_pct": pct(lex_pass, lex_pairs),
+            "tasks": c.tasks().len(), "cases": c.cases.len(), "case_skin_pairs": c.lex_pairs, "passed": c.lex_pass,
+            "rate_pct": pct(c.lex_pass, c.lex_pairs),
             "rule": "run/http cases and later-stage compile-error cases must lex cleanly; lex-stage expected diagnostics must match code, line and code points",
         },
-        "security_lex": {"case_skin_pairs": sec_pairs, "passed": sec_pass, "rate_pct": pct(sec_pass, sec_pairs)},
+        "security_lex": {"case_skin_pairs": c.sec_pairs, "passed": c.sec_pass, "rate_pct": pct(c.sec_pass, c.sec_pairs)},
         "lex_roundtrip": {
-            "checks": rt_total.checks,
-            "failed": rt_total.failures.len(),
-            "rate_pct": pct(rt_total.checks - rt_total.failures.len(), rt_total.checks),
-            "failures": rt_total.failures,
-            "scope": "kalam_fmt::convert (token level): X->Y->X for 6 ordered pairs, 3-hop cycles, fixpoint, en->Y == committed Y. Proxy only: P2/P3 are defined on KCF.",
+            "checks": c.roundtrip.checks,
+            "failed": c.roundtrip.failures.len(),
+            "rate_pct": pct(c.roundtrip.checks - c.roundtrip.failures.len(), c.roundtrip.checks),
+            "failures": c.roundtrip.failures,
+            "scope": "kalam_fmt::convert: X->Y->X for 6 ordered pairs, 3-hop cycles, fixpoint, en->Y == committed Y (byte level)",
         },
         "cargo_test": cargo,
         "parity": {
-            "hook": opts.hook.name(),
-            "p1": outcome_json(&par.p1),
-            "p2": outcome_json(&par.p2),
-            "corpus_syntax": syntax_json(&par.syntax),
+            "hook": hook.name(),
+            "p1": outcome_json(&c.parity.p1),
+            "p2": outcome_json(&c.parity.p2),
+            "p3": outcome_json(&c.parity.p3),
+            "corpus_syntax": syntax_json(&c.parity.syntax),
+            "corpus_fmt": fmt_json(&c.fmt),
             "scope": "G-PAR scope rule: a case rejected in all three skins is unsupported (costs D1), not a parity \
                       failure; lex-stage rejection cases (T50 main) are outside P1-P3. Dev corpus only.",
         },
-        "cases": records,
+        "suites": {
+            "trojan-source": reject_json(&inputs.trojan),
+            "lexing-hazards": reject_json(&inputs.lexhaz),
+            "mixed-skin": reject_json(&inputs.mixed),
+            "seeded-errors": match &inputs.recovery {
+                None => json!({"status": "missing"}),
+                Some(r) => json!({"files": r.files, "value": r.value(), "full_skin_cases": r.full_skin_cases,
+                                  "first_match": r.first_match, "cascade_free": r.cascade_free, "defects": r.defects}),
+            },
+            "conformance": inputs.conformance.as_ref().map(fmt_json).unwrap_or_else(|| json!({"status": "missing"})),
+        },
+        "catalog": {
+            "codes": inputs.catalog.total(), "p6_strict_pct": round2(inputs.catalog.p6_pct()),
+            "message_and_explain_pct": round2(inputs.catalog.message_and_explain_pct()),
+            "evidence": inputs.catalog.evidence(),
+        },
+        "p7_conflicts": inputs.p7.1,
+        "props": match &inputs.props { Ok(p) => json!({"source": p.source, "provenance": format!("{:?}", p.provenance), "properties": p.properties.len()}), Err(e) => json!({"status": "not_measurable", "reason": e}) },
+        "cases": c.records,
     });
 
-    // --- milestone tier (SCORECARD.md §10, LOOP.md §5.1, §8)
+    // --- milestone tier (SCORECARD.md §10, LOOP.md §5.1, §8), then G-RATCHET over it
+    let ratchet_cell: std::cell::RefCell<Option<Ratchet>> = std::cell::RefCell::new(None);
+    let gates_cell = std::cell::RefCell::new(gates.clone());
     let gate_obs = |state: &Value, why: &Value| {
         let why = why.as_str().map(str::to_string);
         match state.as_str() {
@@ -375,15 +925,26 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
     };
     let observe = |c: &TierCheck| -> Observation {
         let id = c.id.as_str();
-        if let Some(p) = id.strip_prefix("G-PAR.") {
-            return match p {
-                "P1" => parity_obs(&par.p1, "P1 canonical identity"),
-                "P2" => parity_obs(&par.p2, "P2 pairwise and 3-hop round-trip"),
-                _ => gate_obs(
-                    &gates["G-PAR"]["checks"][p],
-                    &json!(format!("G-PAR {p}: {}", gates["G-PAR"]["checks"][p])),
-                ),
+        if let (Some(o), Some(d)) = (obs.get(id), m1_def(id)) {
+            return if d.scope == c.scope {
+                o.clone()
+            } else {
+                Observation::NotMeasurable(format!(
+                    "{id} is measured at its M1 scope only ({}); this tier's scope is: {}",
+                    d.scope, c.scope
+                ))
             };
+        }
+        if id == "G-RATCHET" {
+            return match ratchet_cell.borrow().as_ref() {
+                None => Observation::NotMeasurable("computed after the other tier checks".into()),
+                Some(r) => gate_obs(&json!(r.state()), &json!(r.reason())),
+            };
+        }
+        let gates = gates_cell.borrow();
+        if let Some(p) = id.strip_prefix("G-PAR.") {
+            let st = &gates["G-PAR"]["checks"][p];
+            return gate_obs(st, &json!(format!("G-PAR {p}: {st}")));
         }
         if id == "G-SEC.cwe_vulnerable" {
             let st = &gates["G-SEC"]["checks"]["vulnerable_cases"];
@@ -396,26 +957,19 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
                 .unwrap_or_else(|| json!(format!("{id}: {}", g["state"])));
             return gate_obs(&g["state"], &why);
         }
-        if id == "D1.corpus_syntax_pass" {
-            return syntax_obs(&par.syntax, c);
-        }
         match measures.get(id) {
-            Some(Measure::Measured { value, note }) => {
-                let dev_only = id == "D2.trojan_source_suite";
-                Observation::Measured {
-                    value: value.clone(),
-                    evidence: format!(
-                        "{id} = {}{}",
-                        value.to_json(),
-                        note.as_deref()
-                            .map(|n| format!(" ({n})"))
-                            .unwrap_or_default()
-                    ),
-                    dev_only,
-                    // a dev-corpus failure of a 100% suite cannot be undone by held-out cases
-                    definitive_fail: dev_only && *value == MetricValue::Bool(false),
-                }
-            }
+            Some(Measure::Measured { value, note }) => Observation::Measured {
+                value: value.clone(),
+                evidence: format!(
+                    "{id} = {}{}",
+                    value.to_json(),
+                    note.as_deref()
+                        .map(|n| format!(" ({n})"))
+                        .unwrap_or_default()
+                ),
+                dev_only: false,
+                definitive_fail: false,
+            },
             Some(Measure::NotMeasurable(why)) => Observation::NotMeasurable(why.clone()),
             None => Observation::NotMeasurable(match sc.metric(id) {
                 Some(def) => default_reason(sc, def),
@@ -439,6 +993,13 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
         composite_min: sc.composite_min[target.index()],
         human_gates: &sc.human_gates[target.index()],
     };
+    let first = tiers::evaluate(&sc.tiers, &tier, &observe, &threshold_of, Some(&rule))?;
+    let history = fs::read_to_string(root.join("eval/history.jsonl")).unwrap_or_default();
+    let current: Vec<Value> = first.checks.iter().map(|c| c.to_json()).collect();
+    let r = ratchet::evaluate(&history, &sc.eval_version, &tier, &current);
+    gates["G-RATCHET"] = json!({"state": r.state(), "reason": r.reason()});
+    *gates_cell.borrow_mut() = gates.clone();
+    *ratchet_cell.borrow_mut() = Some(r);
     let tier_eval = tiers::evaluate(&sc.tiers, &tier, &observe, &threshold_of, Some(&rule))?;
 
     let json = json!({
@@ -454,6 +1015,7 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
         "composite": round2(composite),
         "gates": gates,
         "metrics": metric_rows,
+        "holdout": inputs.held.to_json(),
         "checks": checks_json,
     });
     let mut json = json;
@@ -463,33 +1025,9 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
     Ok(Run { json })
 }
 
-fn syntax_measure(o: &SyntaxOutcome) -> Measure {
-    match o {
-        SyntaxOutcome::Unavailable(why) => Measure::NotMeasurable(why.clone()),
-        SyntaxOutcome::Measured {
-            format_unavailable: Some(why),
-            failed,
-            undecided,
-            ..
-        } => Measure::NotMeasurable(format!(
-            "needs parse, format and round-trip; {why}. Parse-level: {} task(s) undecided, {} failed",
-            undecided.len(),
-            failed.len()
-        )),
-        SyntaxOutcome::Measured { passed, failed, .. } => Measure::Measured {
-            value: MetricValue::Num(passed.len() as f64),
-            note: Some(format!(
-                "dev corpus: passed {passed:?}; failed {:?}",
-                failed.iter().map(|(t, _)| t).collect::<Vec<_>>()
-            )),
-        },
-    }
-}
-
-/// `D1.corpus_syntax_pass` against one tier check: counts only the tasks the check's scope
-/// names (all tasks if it names none). A failed in-scope task is definitive once the
-/// remaining tasks can no longer reach the threshold.
-fn syntax_obs(o: &SyntaxOutcome, c: &TierCheck) -> Observation {
+/// `D1.corpus_syntax_pass` against one tier check: dev tasks in the check's scope plus the
+/// held-out runner's `m1_syntax` count.
+fn syntax_obs(o: &SyntaxOutcome, c: &TierCheck, held: &Held) -> Observation {
     let (passed, failed, undecided, format_unavailable) = match o {
         SyntaxOutcome::Unavailable(why) => return Observation::NotMeasurable(why.clone()),
         SyntaxOutcome::Measured {
@@ -505,47 +1043,47 @@ fn syntax_obs(o: &SyntaxOutcome, c: &TierCheck) -> Observation {
     let passed: Vec<&String> = passed.iter().filter(|t| in_scope(t)).collect();
     let failed: Vec<&(String, String)> = failed.iter().filter(|(t, _)| in_scope(t)).collect();
     let undecided: Vec<&String> = undecided.iter().filter(|t| in_scope(t)).collect();
+    let dev_total = passed.len() + failed.len() + undecided.len();
     let evidence = format!(
-        "dev corpus, in-scope tasks: passed {passed:?}; undecided {undecided:?}; failed {:?}",
+        "dev corpus, {dev_total} in-scope tasks: passed {passed:?}; undecided {undecided:?}; failed {:?}",
         failed
             .iter()
             .map(|(t, why)| format!("{t}: {why}"))
             .collect::<Vec<_>>()
     );
-    if let (false, Some(threshold), false) = (failed.is_empty(), c.value, scope.is_empty()) {
-        if (scope.len().saturating_sub(failed.len()) as f64) < threshold {
-            return Observation::Failed(evidence);
-        }
-    }
     if let Some(why) = format_unavailable {
         return Observation::NotMeasurable(format!("{evidence}; {why}"));
     }
-    Observation::Measured {
-        value: MetricValue::Num(passed.len() as f64),
-        evidence,
-        dev_only: true,
-        definitive_fail: false,
-    }
-}
-
-fn parity_obs(o: &Outcome, what: &str) -> Observation {
-    match o {
-        Outcome::Unavailable(why) => Observation::NotMeasurable(format!("{what}: {why}")),
-        Outcome::Measured {
-            passed,
-            total,
-            failures,
-        } => Observation::Measured {
-            value: MetricValue::Num(o.pct().unwrap_or(0.0)),
+    let held_part = held_counts(held, &["m1_syntax"], "tasks_passed", "tasks_total").and_then(|hp| {
+        let status = held.aggregate().map(|a| a["m1_syntax"]["status"].clone());
+        if status == Some(json!("measured")) {
+            Ok(hp)
+        } else {
+            Err("the held-out runner could not judge its tasks (parser or formatter unavailable)".into())
+        }
+    });
+    match held_part {
+        Err(why) => {
+            // a failed in-scope dev task is definitive once the rest can no longer reach it
+            let definitive = c.value.is_some_and(|t| {
+                !failed.is_empty() && !scope.is_empty() && ((scope.len() - failed.len()) as f64) < t
+            });
+            Observation::Measured {
+                value: MetricValue::Num(passed.len() as f64),
+                evidence: format!("{evidence}; held-out: {why}"),
+                dev_only: true,
+                definitive_fail: definitive,
+            }
+        }
+        Ok((hp, ht)) => Observation::Measured {
+            value: MetricValue::Num((passed.len() + hp) as f64),
             evidence: format!(
-                "{what}: {passed}/{total} on the dev corpus{}",
-                failures
-                    .first()
-                    .map(|f| format!("; first failure: {f}"))
-                    .unwrap_or_default()
+                "{evidence}; held-out {hp}/{ht} in-scope tasks; {} of the {} scope tasks exist (dev + held-out)",
+                dev_total + ht,
+                scope.len()
             ),
-            dev_only: true,
-            definitive_fail: passed < total,
+            dev_only: false,
+            definitive_fail: false,
         },
     }
 }
@@ -582,29 +1120,35 @@ fn syntax_json(o: &SyntaxOutcome) -> Value {
     }
 }
 
-fn measures_state(rows: &[Value], id: &str) -> Option<bool> {
-    rows.iter()
-        .find(|r| r["metric"] == id && r["status"] == "measured")
-        .and_then(|r| r["value"].as_bool())
-}
-
 fn default_reason(sc: &Scorecard, def: &MetricDef) -> String {
     match def.id.as_str() {
         "D3.context_footprint_tokens" | "D4.tokens_vs_python" => {
             "needs the pinned tiktoken o200k_base tokenizer (eval/harness/requirements.lock); no approximation is substituted".into()
         }
-        "D1.property_tests" => "the kalam-props property suite does not exist yet".into(),
         "D1.compiler_line_coverage" | "D1.compiler_branch_coverage" => {
             "cargo llvm-cov is not wired into the harness yet".into()
         }
-        "D7.skin_convert" | "D7.formatter_idempotence" => format!(
-            "defined on KCF via the real `kalam convert`/`kalam fmt`; needs stage {} ({}). Lex-level proxy: checks.lex_roundtrip",
-            def.stage,
-            sc.stage_name(&def.stage)
-        ),
-        "D2.lexing_hazard_suite" => "the lexing-hazard suite (kalam-eval lexhaz) does not exist yet".into(),
         _ => format!("no harness runner yet; needs stage {} ({})", def.stage, sc.stage_name(&def.stage)),
     }
+}
+
+/// Runs the property suite on this tree and reads the report it writes. The report path
+/// is the harness's own (under `target/`), so an old report can never be read as fresh.
+fn run_props(compiler_dir: &Path) -> Result<external::PropsReport, String> {
+    let report = compiler_dir.join("target/kalam-eval-props/report.json");
+    let _ = fs::remove_file(&report);
+    if let Some(dir) = report.parent() {
+        fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    }
+    Command::new("cargo")
+        .args(["test", "-p", "kalam-props", "--release", "--target-dir"])
+        .arg(compiler_dir.join("target").join("kalam-eval-cargo-test"))
+        .env("KALAM_PROPS_REPORT", &report)
+        .current_dir(compiler_dir)
+        .output()
+        .map_err(|e| format!("could not run cargo test -p kalam-props: {e}"))?;
+    // the suite fails when a property fails, and still writes its report
+    external::load_fresh(&report)
 }
 
 fn run_cargo_test(compiler_dir: &Path) -> Value {
@@ -638,14 +1182,6 @@ fn run_cargo_test(compiler_dir: &Path) -> Value {
                 "errors": compile_errors,
             })
         }
-    }
-}
-
-fn presence(p: &Path) -> &'static str {
-    if p.exists() {
-        "present"
-    } else {
-        "missing"
     }
 }
 
@@ -683,6 +1219,9 @@ mod tests {
                 tier: tier.into(),
                 run_cargo_test: false,
                 hook,
+                git_sha: None,
+                holdout: None,
+                run_props: false,
             },
         )
         .unwrap()
@@ -730,8 +1269,11 @@ mod tests {
         ) -> Result<String, String> {
             Ok(t.to_string())
         }
-        fn format(&self, t: &str, _: kalam_base::Skin) -> Result<String, String> {
-            Ok(t.to_string())
+        fn format(&self, t: &str, _: kalam_base::Skin) -> Result<crate::parity::FmtOut, String> {
+            Ok(crate::parity::FmtOut {
+                text: t.to_string(),
+                layout_kept: false,
+            })
         }
     }
 
@@ -751,13 +1293,16 @@ mod tests {
             assert!(["pass", "fail", "not_measurable"].contains(&st), "{c}");
             assert!(c["evidence"].is_string(), "{c}");
         }
+        // without a held-out run and a reviewer sign-off these can never pass
         for id in [
             "G-INT",
-            "G-RATCHET",
             "G-PAR.P1",
             "G-PAR.P2",
+            "G-PAR.P3",
             "D1.corpus_syntax_pass",
+            "D2.trojan_source_suite",
             "D7.skin_convert",
+            "D7.formatter_idempotence",
         ] {
             assert_ne!(tier_check(&v, id, "M1")["status"], "pass", "{id}");
         }
@@ -765,6 +1310,15 @@ mod tests {
         let kw = tier_check(&v, "D4.keywords_per_skin", "M1");
         assert_eq!(kw["kind"], "ratchet_only");
         assert_ne!(kw["status"], "not_measurable", "{kw}");
+        // P7 is fully measured at its M1 scope
+        assert_ne!(tier_check(&v, "G-PAR.P7", "M1")["status"], "not_measurable");
+        // P6 / D5.diag_completeness: measured, with the M1-scope ruling in the evidence
+        let p6 = tier_check(&v, "G-PAR.P6", "M1");
+        assert!(
+            p6["evidence"].as_str().unwrap().contains("in M1 scope"),
+            "{p6}"
+        );
+        assert!(v["holdout"]["status"] == "not_run");
     }
 
     #[test]
@@ -774,7 +1328,13 @@ mod tests {
         assert_eq!(p1["status"], "measured", "{p1}");
         assert_eq!(p1["rate_pct"], 100.0);
         assert_eq!(v["gates"]["G-PAR"]["checks"]["P1"], "pending");
-        for id in ["G-PAR.P1", "G-PAR.P2", "D1.corpus_syntax_pass"] {
+        for id in [
+            "G-PAR.P1",
+            "G-PAR.P2",
+            "G-PAR.P3",
+            "D1.corpus_syntax_pass",
+            "D7.skin_convert",
+        ] {
             let c = tier_check(&v, id, "M1");
             assert_eq!(c["status"], "not_measurable", "{c}");
             assert!(c["evidence"].as_str().unwrap().contains("held-out"), "{c}");
@@ -828,13 +1388,21 @@ mod tests {
             .find(|m| m["metric"] == "D3.context_footprint_tokens")
             .unwrap();
         assert_eq!(ctx["status"], "not_measurable");
+        // the stale "needs stage S2" wording is gone
+        let text = v.to_string();
+        assert!(
+            !text.contains("needs stage S2 (parser"),
+            "stale S2 evidence"
+        );
     }
 
     #[test]
     fn no_gate_passes_while_its_checks_are_partial() {
         let v = run_repo();
         for (id, g) in v["gates"].as_object().unwrap() {
-            assert_ne!(g["state"], "pass", "{id} must not pass on partial evidence");
+            if id != "G-RATCHET" {
+                assert_ne!(g["state"], "pass", "{id} must not pass on partial evidence");
+            }
         }
     }
 
@@ -857,5 +1425,121 @@ mod tests {
             .map(|(d, w)| w * dims[*d].as_f64().unwrap() / 100.0)
             .sum();
         assert!((v["composite"].as_f64().unwrap() - expect).abs() < 0.05);
+    }
+
+    fn ran(v: Value) -> Held {
+        let mut v = v;
+        v["status"] = json!("measured");
+        Held::Ran(v)
+    }
+
+    #[test]
+    fn counts_combine_dev_and_held_out() {
+        let dev = Outcome::Measured {
+            passed: 10,
+            total: 10,
+            failures: vec![],
+        };
+        let missing = Held::Missing("no store".into());
+        let o = combine_counts(
+            "P1",
+            &dev,
+            held_counts(&missing, &["parity", "P1"], "passed", "total"),
+        );
+        assert!(
+            matches!(o, Observation::Measured { dev_only: true, .. }),
+            "{o:?}"
+        );
+
+        let h = ran(json!({"parity": {"P1": {"passed": 3, "total": 3}}}));
+        match combine_counts(
+            "P1",
+            &dev,
+            held_counts(&h, &["parity", "P1"], "passed", "total"),
+        ) {
+            Observation::Measured {
+                value,
+                dev_only,
+                definitive_fail,
+                ..
+            } => {
+                assert_eq!(value, MetricValue::Num(100.0));
+                assert!(!dev_only && !definitive_fail);
+            }
+            o => panic!("{o:?}"),
+        }
+        let bad = ran(json!({"parity": {"P1": {"passed": 2, "total": 3}}}));
+        assert!(matches!(
+            combine_counts(
+                "P1",
+                &dev,
+                held_counts(&bad, &["parity", "P1"], "passed", "total")
+            ),
+            Observation::Measured {
+                definitive_fail: true,
+                ..
+            }
+        ));
+        // an empty held-out scope is not a pass
+        let empty = ran(json!({"parity": {"P1": {"passed": 0, "total": 0}}}));
+        assert!(held_counts(&empty, &["parity", "P1"], "passed", "total").is_err());
+        // a store that is encrypted is not an aggregate
+        let enc = Held::Ran(json!({"status": "encrypted"}));
+        assert!(held_counts(&enc, &["parity", "P1"], "passed", "total")
+            .unwrap_err()
+            .contains("encrypted"));
+    }
+
+    #[test]
+    fn syntax_check_counts_held_out_tasks() {
+        let o = SyntaxOutcome::Measured {
+            passed: (1..=18).map(|n| format!("t{n:02}-x")).collect(),
+            failed: vec![],
+            undecided: vec![],
+            format_unavailable: None,
+        };
+        let c = TierCheck {
+            id: "D1.corpus_syntax_pass".into(),
+            op: tiers::Op::Ge,
+            value: Some(21.0),
+            unit: "tasks".into(),
+            scope: "T01-T15, T31-T33, T48-T50".into(),
+        };
+        // dev passes 15 in-scope tasks (t16-t18 are out of scope)
+        let held =
+            ran(json!({"m1_syntax": {"status": "measured", "tasks_passed": 3, "tasks_total": 3}}));
+        match syntax_obs(&o, &c, &held) {
+            Observation::Measured {
+                value, dev_only, ..
+            } => {
+                assert_eq!(value, MetricValue::Num(18.0));
+                assert!(!dev_only);
+            }
+            other => panic!("{other:?}"),
+        }
+        let unjudged = ran(
+            json!({"m1_syntax": {"status": "not_measurable", "tasks_passed": 0, "tasks_total": 3}}),
+        );
+        assert!(matches!(
+            syntax_obs(&o, &c, &unjudged),
+            Observation::Measured { dev_only: true, .. }
+        ));
+    }
+
+    #[test]
+    fn p7_counts_rule_7_conflicts() {
+        let rows: Vec<Value> = serde_json::from_str(
+            &fs::read_to_string(repo_root().join("spec/keywords.json")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(p7_conflicts(&rows, &Ok(())).0, 0);
+        let mut bad = rows.clone();
+        for r in &mut bad {
+            if r["concept"] == "KW_TRUE" {
+                r["ar"] = json!("صحيح");
+            }
+        }
+        let (n, why) = p7_conflicts(&bad, &Err("rule 1".into()));
+        assert_eq!(n, 3, "{why:?}");
     }
 }

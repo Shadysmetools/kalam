@@ -1,0 +1,114 @@
+//! The sealed held-out runner, run as a child process on a synthetic store: it must print
+//! aggregate counts only, never a task name, case id, file name or source text.
+
+use kalam_eval::holdout::{self, Held, Runner};
+use std::fs;
+use std::path::{Path, PathBuf};
+
+fn temp_dir(tag: &str) -> PathBuf {
+    let d = std::env::temp_dir().join(format!("kalam-eval-it-{tag}-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&d);
+    fs::create_dir_all(&d).unwrap();
+    d
+}
+
+fn write(root: &Path, rel: &str, text: &str) {
+    let p = root.join(rel);
+    fs::create_dir_all(p.parent().unwrap()).unwrap();
+    fs::write(p, text).unwrap();
+}
+
+fn repo_root() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../..")
+        .canonicalize()
+        .unwrap()
+}
+
+const SECRET_TASK: &str = "t05-zebra-secret-name";
+const SECRET_TEXT: &str = "zebra-secret-greeting";
+
+fn store() -> PathBuf {
+    let s = temp_dir("store");
+    let en = format!("fn main():\n    print(\"{SECRET_TEXT}\")\n");
+    let ar = format!("دالة رئيسي():\n    اطبع(\"{SECRET_TEXT}\")\n");
+    let fr = format!("dala ra2isi():\n    ektb(\"{SECRET_TEXT}\")\n");
+    let t = format!("corpus/{SECRET_TASK}");
+    write(&s, &format!("{t}/en.kalam"), &en);
+    write(&s, &format!("{t}/ar.kalam"), &ar);
+    write(&s, &format!("{t}/franco.kalam"), &fr);
+    write(
+        &s,
+        &format!("{t}/expected.txt"),
+        &format!("kind: run\n--- stdout\n{SECRET_TEXT}\n"),
+    );
+    write(
+        &s,
+        "suites/trojan-source/zebra-bad/expect.json",
+        r#"{"must_reject": true, "codes": ["SEC0110"], "lines": [2]}"#,
+    );
+    write(
+        &s,
+        "suites/trojan-source/zebra-bad/main.kl",
+        "fn main():\n    let s = \"a\u{202E}b\"\n    print(s)\n",
+    );
+    write(
+        &s,
+        "suites/trojan-source/zebra-good/expect.json",
+        r#"{"must_reject": false}"#,
+    );
+    write(&s, "suites/trojan-source/zebra-good/main.kl", &en);
+    s
+}
+
+#[test]
+fn child_prints_aggregates_only() {
+    let s = store();
+    let runner = Runner {
+        exe: PathBuf::from(env!("CARGO_BIN_EXE_kalam-eval")),
+        store: s.clone(),
+    };
+    let held = holdout::run_child(&runner, &repo_root());
+    let text = held.to_json().to_string();
+    let _ = fs::remove_dir_all(&s);
+    let v = match &held {
+        Held::Ran(v) => v.clone(),
+        other => panic!("{other:?}"),
+    };
+    assert_eq!(v["schema"], holdout::SCHEMA);
+    assert_eq!(v["status"], "measured");
+    for secret in [SECRET_TASK, SECRET_TEXT, "zebra", "main.kl", "t05"] {
+        assert!(!text.contains(secret), "leaked {secret}: {text}");
+    }
+    // the one task is out of... no: T05 is in the M1 scope
+    assert_eq!(v["m1_syntax"]["tasks_total"], 1, "{text}");
+    assert_eq!(v["parity"]["P1"]["total"], 1, "{text}");
+    assert_eq!(v["trojan"]["bad_total"], 1, "{text}");
+    assert_eq!(v["trojan"]["good_total"], 1, "{text}");
+    assert_eq!(v["trojan"]["bad_rejected"], 1, "{text}");
+    assert_eq!(v["leak"]["hits"], 0, "{text}");
+    assert!(v["manifest_sha256"].as_str().is_some_and(|h| h.len() == 64));
+    assert!(v["diag_recovery"].is_null());
+}
+
+#[test]
+fn missing_and_encrypted_stores_measure_nothing() {
+    let runner = Runner {
+        exe: PathBuf::from(env!("CARGO_BIN_EXE_kalam-eval")),
+        store: PathBuf::from("/no/such/store"),
+    };
+    assert!(matches!(
+        holdout::run_child(&runner, &repo_root()),
+        Held::Missing(_)
+    ));
+    let s = temp_dir("enc");
+    write(&s, "store.age", "age-encryption.org/v1 ...");
+    let runner = Runner {
+        exe: PathBuf::from(env!("CARGO_BIN_EXE_kalam-eval")),
+        store: s.clone(),
+    };
+    let held = holdout::run_child(&runner, &repo_root());
+    let _ = fs::remove_dir_all(&s);
+    assert!(held.aggregate().is_none(), "{held:?}");
+    assert!(held.why_not().contains("encrypted"), "{held:?}");
+}

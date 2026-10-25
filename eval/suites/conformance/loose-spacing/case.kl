@@ -1,0 +1,5 @@
+fn   main ( ) :
+    let   x   =   1   +   2
+    print(  "{x}"  )
+    let xs = [ 1 , 2 , 3 ]
+    print( "{xs.len( )}" )

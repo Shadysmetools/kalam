@@ -9,6 +9,7 @@
 //! - The JSON renderer follows spec §21.4 and carries all three languages.
 
 pub mod catalog;
+pub mod explain;
 
 use kalam_base::{FileId, LineIndex, Skin, Span};
 use serde_json::json;
@@ -195,7 +196,12 @@ impl<'a> SourceView<'a> {
 ///
 /// For `ar` files the spec asks for a second excerpt re-printed in the English skin
 /// (§6.1 rule 5). That needs the CST printer, so the caller passes it in once it exists.
-pub fn render_human(diag: &Diagnostic, src: &SourceView<'_>, lang: Lang, en_excerpt: Option<&str>) -> String {
+pub fn render_human(
+    diag: &Diagnostic,
+    src: &SourceView<'_>,
+    lang: Lang,
+    en_excerpt: Option<&str>,
+) -> String {
     let mut out = String::new();
     let title = diag.title(lang);
     let used = 3 + title.chars().count() + 1 + 1 + src.path.chars().count() + 2 + diag.code.len();
@@ -231,7 +237,11 @@ pub fn render_human(diag: &Diagnostic, src: &SourceView<'_>, lang: Lang, en_exce
     for fix in &diag.fixes {
         for edit in &fix.edits {
             if !edit.insert.is_empty() {
-                out.push_str(&format!("\n{} `{}`\n", catalog::ui(lang, catalog::Ui::Try), edit.insert));
+                out.push_str(&format!(
+                    "\n{} `{}`\n",
+                    catalog::ui(lang, catalog::Ui::Try),
+                    edit.insert
+                ));
             }
         }
     }
@@ -247,7 +257,9 @@ pub fn render_human(diag: &Diagnostic, src: &SourceView<'_>, lang: Lang, en_exce
 /// are included, so an agent or LSP client can choose.
 pub fn render_json(diag: &Diagnostic, src: &SourceView<'_>) -> serde_json::Value {
     let pos = |offset: u32| {
-        let lc = src.lines.line_col(src.text, offset.min(src.text.len() as u32));
+        let lc = src
+            .lines
+            .line_col(src.text, offset.min(src.text.len() as u32));
         json!({"line": lc.line, "col": lc.col})
     };
     let span = |s: Span| json!({"start": pos(s.start), "end": pos(s.end)});

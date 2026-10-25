@@ -21,18 +21,38 @@
 //!   file's skin and serialized like any other code;
 //! - comments and doc comments → byte for byte (trailing spaces trimmed), each marked as on
 //!   its own line or at the end of a code line;
-//! - logical-line structure → the parser's `NEWLINE`/`INDENT`/`DEDENT` tokens;
-//! - blank lines → one record each, except blank lines at the end of the file.
+//! - logical-line structure → the parser's `NEWLINE`/`INDENT`/`DEDENT` tokens; a one-line
+//!   block (`if x: f()`, `fn f(): return 1`, `case 1: g()`) is serialized exactly like its
+//!   indented form (`:` `NL` `IN` … `NL` `DE`);
+//! - blank lines → only "at least one blank line here" (a run of blank lines is one `B`), and
+//!   only where `fmt` keeps them: between two statements or members of one block, and between
+//!   comments there.
 //!
-//! Not recorded, because `fmt` may change it and it carries no meaning: spaces between
-//! tokens, indentation bytes (the INDENT/DEDENT tokens carry the structure), `\r`, line
-//! breaks inside brackets (§5.8 bracket suppression), trailing blank lines and a missing
-//! final newline. CST node boundaries are not recorded either: they are implied by the
-//! tokens, and leaving them out keeps hashes stable when the CST gets finer.
+//! Not recorded, because `fmt` may change it and it carries no meaning (spec §4.4, KCF2,
+//! FOUNDER-QUEUE Q8): spaces between tokens, indentation bytes (the INDENT/DEDENT tokens
+//! carry the structure), `\r`, line breaks inside brackets (§5.8 bracket suppression), a
+//! missing final newline, and:
 //!
-//! # Byte format (version 1)
+//! - blank lines inside brackets, at the start of a block (before its first comment or
+//!   statement), after an attribute line, before an `else`, at the top level of the file
+//!   (`fmt` puts exactly one between items itself) and at the end of the file;
+//! - the number of blank lines in a run;
+//! - a trailing comma before a closing bracket (`f(a, b,)`, `[1, 2,]`), except in a
+//!   one-element tuple (`(x,)`), where the comma is what makes it a tuple;
+//! - whether a block was written on its header line or indented (an inline `if`
+//!   *expression*, `if c: a else: b`, is not a block and keeps its form).
 //!
-//! UTF-8. The magic [`MAGIC`] (`KCF1\n`), then one record per line: a tag, then for most
+//! The order of a comment and the INDENT/DEDENT records next to it is not recorded either:
+//! the comment's column decides which block `fmt` puts it in, and KCF has no columns. Layout
+//! records are written as they come; own-line comments and blank lines wait for the next
+//! code token, which decides which blank lines count.
+//!
+//! CST node boundaries are not recorded: they are implied by the tokens, and leaving them
+//! out keeps hashes stable when the CST gets finer.
+//!
+//! # Byte format (version 2)
+//!
+//! UTF-8. The magic [`MAGIC`] (`KCF2\n`), then one record per line: a tag, then for most
 //! tags a space and a payload. Payloads that hold source text are length-prefixed
 //! (`<byte length>:<bytes>`), so identifier or string text can never be mistaken for
 //! structure, even when it contains a newline.
@@ -52,7 +72,7 @@
 //! | `# own 6:# note` · `# end …` | comment on its own line, or after code |
 //! | `## own 8:## docs` | doc comment |
 //! | `NL` · `IN` · `DE` | logical NEWLINE, INDENT, DEDENT |
-//! | `B` | one blank line |
+//! | `B` | at least one blank line |
 //! | `X 1:;` | source bytes that are neither tokens, comments nor spaces (lexer errors) |
 //!
 //! Everything is computed with explicit loops over a flat token list (no recursion over the
@@ -66,8 +86,9 @@ use kalam_skins::{is_tatweel_or_haraka, Concept, KeywordTable};
 
 use crate::{Cst, GreenNode, SyntaxKind};
 
-/// The first bytes of every KCF serialization (format version 1).
-pub const MAGIC: &[u8] = b"KCF1\n";
+/// The first bytes of every KCF serialization (format version 2: layout `fmt` may change is
+/// not recorded, spec §4.4).
+pub const MAGIC: &[u8] = b"KCF2\n";
 
 /// Strings nest inside interpolation holes only in invalid files (a string literal inside a
 /// hole is K0131); past this depth the hole code is recorded raw.
@@ -233,6 +254,102 @@ fn is_rule_8(l: &Leaf, prev: Option<&Leaf>, next: Option<&Leaf>, open: Option<&s
     open == Some("(") && colon_next && (is_punct(prev, "(") || is_comma(prev))
 }
 
+/// For every leaf: true if it is a trailing comma that KCF leaves out, i.e. a comma directly
+/// before a closing bracket (comments and line breaks between them do not count), except the
+/// comma of a one-element tuple `(x,)`.
+fn trailing_commas(leaves: &[Leaf]) -> Vec<bool> {
+    let mut out = vec![false; leaves.len()];
+    // Per open bracket: (index of the opening leaf, commas directly inside it).
+    let mut open: Vec<(usize, usize)> = Vec::new();
+    let mut prev: Option<usize> = None;
+    let mut prev_of: Vec<Option<usize>> = vec![None; leaves.len()];
+    for (i, l) in leaves.iter().enumerate() {
+        if !significant(l) || is_layout(Some(l)) {
+            continue;
+        }
+        prev_of[i] = prev;
+        if l.kind == SyntaxKind::Punct {
+            match l.text {
+                "(" | "[" | "{" => open.push((i, 0)),
+                "," | "\u{060C}" => {
+                    if let Some(top) = open.last_mut() {
+                        top.1 += 1;
+                    }
+                }
+                ")" | "]" | "}" => {
+                    if let (Some((o, commas)), Some(p)) = (open.pop(), prev) {
+                        let one_tuple = leaves[o].text == "("
+                            && commas == 1
+                            && !opens_a_call(prev_of[o].map(|q| &leaves[q]));
+                        if is_comma(Some(&leaves[p])) && !one_tuple {
+                            out[p] = true;
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        prev = Some(i);
+    }
+    out
+}
+
+/// Whether a `(` after `prev` opens an argument or parameter list (a call, a declaration's
+/// parameters, a variant's fields, a lambda's parameters) rather than a tuple or a
+/// parenthesized expression.
+fn opens_a_call(prev: Option<&Leaf>) -> bool {
+    let Some(p) = prev else { return false };
+    match p.kind {
+        SyntaxKind::Ident
+        | SyntaxKind::Core(_)
+        | SyntaxKind::IntLit
+        | SyntaxKind::FloatLit
+        | SyntaxKind::StrLit
+        | SyntaxKind::TaggedStrLit => true,
+        SyntaxKind::Keyword(c) => matches!(c, Concept::KwFn | Concept::KwSelf),
+        SyntaxKind::Punct => matches!(p.text, ")" | "]" | "}" | "?" | "\u{061F}"),
+        _ => false,
+    }
+}
+
+/// For every leaf: true if it is the `:` of a one-line block, which KCF writes as if the
+/// block were indented. Those are a `Block` colon followed by code on the same line, and the
+/// colon of a statement `if x: stmt` (parent `IfForm`). The colons of an inline `if`
+/// *expression* (`if c: a else: b`) also have parent `IfForm`; they are told apart by the
+/// `else` that follows on the same line, or precedes the colon.
+fn one_line_block_colons(leaves: &[Leaf]) -> Vec<bool> {
+    let sig: Vec<usize> = (0..leaves.len())
+        .filter(|&i| significant(&leaves[i]))
+        .collect();
+    let mut out = vec![false; leaves.len()];
+    for (k, &i) in sig.iter().enumerate() {
+        let l = &leaves[i];
+        if !(is_punct(Some(l), ":") && matches!(l.parent, SyntaxKind::Block | SyntaxKind::IfForm)) {
+            continue;
+        }
+        let Some(&n) = sig.get(k + 1) else { continue };
+        if is_layout(Some(&leaves[n])) {
+            continue; // an indented block
+        }
+        if l.parent == SyntaxKind::IfForm {
+            let is_inline_else = |j: usize| {
+                leaves[j].kind == SyntaxKind::Keyword(Concept::KwElse)
+                    && leaves[j].parent == SyntaxKind::IfForm
+            };
+            let after_else = k.checked_sub(1).is_some_and(|p| is_inline_else(sig[p]));
+            let else_follows = sig[k + 1..]
+                .iter()
+                .take_while(|&&j| leaves[j].kind != SyntaxKind::Newline)
+                .any(|&j| is_inline_else(j));
+            if after_else || else_follows {
+                continue;
+            }
+        }
+        out[i] = true;
+    }
+    out
+}
+
 // ----- skin inference ---------------------------------------------------------------------
 
 fn skin_index(skin: Skin) -> usize {
@@ -282,14 +399,50 @@ fn infer_skin_of(leaves: &[Leaf]) -> Skin {
 
 // ----- writer -----------------------------------------------------------------------------
 
+/// An own-line comment or a blank line, waiting for the next code token.
+enum GapItem {
+    Blank,
+    /// A serialized `#`/`##` record.
+    Comment(Vec<u8>),
+}
+
+/// Which blank lines of a gap (the own-line comments and blank lines before a code token)
+/// KCF records. These mirror the formatter's rules (spec §21.1 rule 4), so that
+/// `kcf(fmt(x)) == kcf(x)`.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Blanks {
+    /// Between statements or members of one block: `fmt` keeps one blank line wherever
+    /// there was at least one.
+    Keep,
+    /// At the start of a block, and after an attribute line: `fmt` drops the blank lines
+    /// before the first comment or code line, and keeps the others.
+    DropFirst,
+    /// At the top level, before `else` and at the end of the file: `fmt` decides alone.
+    /// Which of them it keeps depends on comment columns, which KCF does not record.
+    DropAll,
+}
+
 struct Ser {
     out: Vec<u8>,
     skin: Skin,
     /// The current physical line already has a token or a comment.
     line_has_content: bool,
-    /// Blank lines seen but not yet written: they are written before the next content, so
-    /// blank lines at the end of the file are dropped.
-    pending_blanks: usize,
+    /// Own-line comments and blank lines since the last code token.
+    gap: Vec<GapItem>,
+    /// INDENT depth, including the blocks that one-line blocks are written as.
+    indent: usize,
+    /// Bracket depth: blank lines inside brackets are not recorded.
+    brackets: usize,
+    /// An INDENT was written and no code token has followed it yet.
+    block_start: bool,
+    /// The next code token is the first of its logical line.
+    at_line_start: bool,
+    /// The current logical line starts with `@`.
+    line_is_attr: bool,
+    /// The previous logical line started with `@`.
+    after_attr: bool,
+    /// One-line blocks opened on the current line: each gets a DEDENT after its NEWLINE.
+    open_one_line: usize,
 }
 
 fn serialize_leaves(leaves: &[Leaf], skin: Skin) -> Vec<u8> {
@@ -297,9 +450,21 @@ fn serialize_leaves(leaves: &[Leaf], skin: Skin) -> Vec<u8> {
         out: MAGIC.to_vec(),
         skin,
         line_has_content: false,
-        pending_blanks: 0,
+        gap: Vec::new(),
+        indent: 0,
+        brackets: 0,
+        block_start: false,
+        at_line_start: true,
+        line_is_attr: false,
+        after_attr: false,
+        open_one_line: 0,
     };
     s.leaves(leaves, 0);
+    s.flush(Blanks::DropAll);
+    if s.open_one_line > 0 {
+        // A one-line block on a last line without a NEWLINE (only in broken input).
+        s.newline();
+    }
     s.out
 }
 
@@ -326,23 +491,75 @@ impl Ser {
         self.out.push(b'\n');
     }
 
-    /// Writes pending blank lines; returns true if the content starts its line.
-    fn content(&mut self) -> bool {
-        for _ in 0..std::mem::take(&mut self.pending_blanks) {
+    /// Writes the waiting gap, keeping the blank lines `policy` allows (at most one per run).
+    fn flush(&mut self, policy: Blanks) {
+        let mut first = true;
+        let mut blank = false;
+        for item in std::mem::take(&mut self.gap) {
+            match item {
+                GapItem::Blank => blank = true,
+                GapItem::Comment(bytes) => {
+                    self.blank(policy, first, blank);
+                    self.out.extend_from_slice(&bytes);
+                    first = false;
+                    blank = false;
+                }
+            }
+        }
+        if policy != Blanks::DropAll {
+            self.blank(policy, first, blank);
+        }
+    }
+
+    fn blank(&mut self, policy: Blanks, first: bool, blank: bool) {
+        let keep = match policy {
+            Blanks::Keep => true,
+            Blanks::DropFirst => !first,
+            Blanks::DropAll => false,
+        };
+        if blank && keep {
             self.rec("B");
         }
-        let own_line = !self.line_has_content;
+    }
+
+    /// Before a code token: writes the gap, and tracks the logical line.
+    fn code(&mut self, is_else: bool, is_at: bool) {
+        let policy = if self.indent == 0 || is_else {
+            Blanks::DropAll
+        } else if self.block_start || (self.at_line_start && self.after_attr) {
+            Blanks::DropFirst
+        } else {
+            Blanks::Keep
+        };
+        self.flush(policy);
+        if self.at_line_start {
+            self.line_is_attr = is_at;
+            self.at_line_start = false;
+        }
+        self.block_start = false;
         self.line_has_content = true;
-        own_line
+    }
+
+    fn newline(&mut self) {
+        self.rec("NL");
+        for _ in 0..std::mem::take(&mut self.open_one_line) {
+            self.rec("DE");
+            self.indent = self.indent.saturating_sub(1);
+        }
+        self.after_attr = std::mem::take(&mut self.line_is_attr);
+        self.at_line_start = true;
     }
 
     fn leaves(&mut self, leaves: &[Leaf], depth: u32) {
         let rule_8 = rule_8_identifiers(leaves);
+        let dropped_comma = trailing_commas(leaves);
+        let one_line_colon = one_line_block_colons(leaves);
         for (i, l) in leaves.iter().enumerate() {
             match l.kind {
                 SyntaxKind::Whitespace => self.whitespace(l.text),
                 SyntaxKind::Comment | SyntaxKind::DocComment => {
-                    let own = self.content();
+                    let own = !self.line_has_content;
+                    self.line_has_content = true;
                     let tag = if l.kind == SyntaxKind::Comment {
                         "#"
                     } else {
@@ -350,16 +567,30 @@ impl Ser {
                     };
                     let place = if own { "own" } else { "end" };
                     let text = l.text.trim_end_matches([' ', '\r']);
+                    let start = self.out.len();
                     self.out.extend_from_slice(tag.as_bytes());
                     self.out.push(b' ');
                     self.text(place, text);
+                    if own {
+                        let record = self.out.split_off(start);
+                        self.gap.push(GapItem::Comment(record));
+                    }
                 }
-                SyntaxKind::Newline => self.rec("NL"),
-                SyntaxKind::Indent => self.rec("IN"),
-                SyntaxKind::Dedent => self.rec("DE"),
+                SyntaxKind::Newline => self.newline(),
+                SyntaxKind::Indent => {
+                    self.rec("IN");
+                    self.indent += 1;
+                    self.block_start = true;
+                    self.at_line_start = true;
+                }
+                SyntaxKind::Dedent => {
+                    self.rec("DE");
+                    self.indent = self.indent.saturating_sub(1);
+                    self.at_line_start = true;
+                }
                 _ if l.text.is_empty() => {}
                 SyntaxKind::Keyword(c) | SyntaxKind::Core(c) => {
-                    self.content();
+                    self.code(c == Concept::KwElse && !rule_8[i], false);
                     if rule_8[i] {
                         self.text("I", strip_backticks(l.text));
                     } else {
@@ -367,57 +598,75 @@ impl Ser {
                     }
                 }
                 SyntaxKind::Ident => {
-                    self.content();
+                    self.code(false, false);
                     self.text("I", strip_backticks(l.text));
                 }
                 SyntaxKind::IntLit | SyntaxKind::FloatLit => {
-                    self.content();
+                    self.code(false, false);
                     self.number(l.kind == SyntaxKind::IntLit, l.text);
                 }
                 SyntaxKind::StrLit | SyntaxKind::TaggedStrLit => {
-                    self.content();
+                    self.code(false, false);
                     self.string(l.text, depth);
                 }
                 SyntaxKind::Punct => {
-                    self.content();
+                    self.code(false, l.text == "@");
+                    match l.text {
+                        "(" | "[" | "{" => self.brackets += 1,
+                        ")" | "]" | "}" => self.brackets = self.brackets.saturating_sub(1),
+                        _ => {}
+                    }
+                    if dropped_comma[i] {
+                        continue;
+                    }
                     let p = match l.text {
                         "," | "\u{060C}" => Concept::PunctComma.name(),
                         "?" | "\u{061F}" => Concept::PunctTry.name(),
                         other => other,
                     };
                     self.word("P", p);
+                    if one_line_colon[i] {
+                        // Written as the indented block it is equivalent to.
+                        self.rec("NL");
+                        self.rec("IN");
+                        self.indent += 1;
+                        self.open_one_line += 1;
+                        self.block_start = true;
+                        self.at_line_start = true;
+                    }
                 }
                 _ => {
-                    self.content();
+                    self.code(false, false);
                     self.text("X", l.text);
                 }
             }
         }
     }
 
-    /// Spaces and `\r` are layout. A `\n` ends a line, which is blank if it had no content.
-    /// Any other byte (left between tokens by a lexer error) is recorded as `X`.
+    /// Spaces and `\r` are layout. A `\n` ends a line, which is blank if it had no content
+    /// (blank lines inside brackets are not recorded). Any other byte (left between tokens
+    /// by a lexer error) is recorded as `X`.
     fn whitespace(&mut self, text: &str) {
         let mut junk_start = None;
         for (i, c) in text.char_indices() {
             let layout = matches!(c, ' ' | '\r' | '\n');
             if layout {
                 if let Some(s) = junk_start.take() {
-                    self.content();
+                    self.code(false, false);
                     self.text("X", &text[s..i]);
                 }
             } else if junk_start.is_none() {
                 junk_start = Some(i);
             }
             if c == '\n' {
-                if !self.line_has_content {
-                    self.pending_blanks += 1;
+                if !self.line_has_content && self.brackets == 0 {
+                    self.gap.push(GapItem::Blank);
                 }
                 self.line_has_content = false;
             }
         }
         if let Some(s) = junk_start {
-            self.content();
+            self.code(false, false);
             self.text("X", &text[s..]);
         }
     }
@@ -504,7 +753,10 @@ impl Ser {
         items.sort_by_key(|(start, _)| *start);
         let hole_leaves: Vec<Leaf> = items.into_iter().map(|(_, l)| l).collect();
         self.rec("H");
+        let brackets = std::mem::take(&mut self.brackets);
         self.leaves(&hole_leaves, depth);
+        self.flush(Blanks::DropAll);
+        self.brackets = brackets;
         self.rec("/H");
     }
 }

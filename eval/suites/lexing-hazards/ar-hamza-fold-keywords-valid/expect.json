@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "`داله` (ة written ه), `اذا` (no hamza), `والا` (no hamza), `تخطي` (ي for ى): all match their keywords after arabic_fold; fmt writes the canonical spelling (spec 5.4, 7.3)."
+}

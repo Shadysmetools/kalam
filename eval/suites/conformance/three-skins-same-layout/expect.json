@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "The same non-canonical layout (no spaces, missing blank line) in all three skins. KCF NOTE: spec 4.4 keeps blank lines in KCF byte for byte while 21.1 rule 4 makes fmt change them, so kcf(fmt(x)) == kcf(x) can only hold if KCF ignores this layout; recorded as a founder fork."
+}

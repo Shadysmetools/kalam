@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0111"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "U+2062 INVISIBLE TIMES INVISIBLE TIMES glued into an expression. Spec 5.1 zero-width/invisible/variation-selector rows: SEC0111."
+}

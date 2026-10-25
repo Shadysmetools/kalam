@@ -13,19 +13,19 @@ kalam-skins.workspace = true
 kalam-diagnostics.workspace = true
 kalam-lexer.workspace = true
 kalam-fmt.workspace = true
+kalam-syntax.workspace = true
 serde_json.workspace = true
-# Parser hook (src/parity.rs): measures G-PAR P1/P2 and D1.corpus_syntax_pass through the
-# public `kalam_parser::parse_source` (canonical form: `kalam_syntax::kcf::serialize`, or
-# `kalam_ast::shape` while KCF is a stub). While the parser is a stub the hook reports
-# `not_measurable`. Build with `--no-default-features` if these signatures move.
+# Parser hook (src/parity.rs): the same entry points as the `kalam` CLI. Parse =
+# `kalam_parser::parse_source`, canonical form = KCF (`kalam_syntax::kcf::serialize_in`),
+# `kalam fmt` / `kalam convert` = `kalam_driver::format_source` / `convert_source`. There is
+# no fallback canonical form. Build with `--no-default-features` if these signatures move:
+# every parser-dependent check then reports `not_measurable`.
 kalam-parser = { workspace = true, optional = true }
-kalam-syntax = { workspace = true, optional = true }
-# Path dependency: the root Cargo.toml does not list kalam-ast yet.
-kalam-ast = { path = "../kalam-ast", optional = true }
+kalam-driver = { workspace = true, optional = true }
 
 [features]
 default = ["parser-hook"]
-parser-hook = ["dep:kalam-parser", "dep:kalam-syntax", "dep:kalam-ast"]
+parser-hook = ["dep:kalam-parser", "dep:kalam-driver"]
 
 [[bin]]
 name = "kalam-eval"

@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0100"
+  ],
+  "lines": [
+    1
+  ],
+  "notes": "UTF-8 BOM U+FEFF at offset 0. Spec 4.1/5.1: no BOM, anywhere, including offset 0."
+}

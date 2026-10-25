@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0110"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Raw U+202E RIGHT-TO-LEFT OVERRIDE inside a comment. Spec 5.1: rejected in comments (no attribute can suppress it). The message must name U+202E."
+}

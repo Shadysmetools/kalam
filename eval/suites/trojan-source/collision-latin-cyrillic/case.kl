@@ -1,0 +1,4 @@
+fn main():
+    let ax = 1
+    let ах = 2
+    print("{ax} {ах}")

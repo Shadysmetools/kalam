@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0101"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "e + U+0301 COMBINING ACUTE ACCENT in a string: not NFC. Spec 4.1/5.1: rejected everywhere; fmt fixes it."
+}

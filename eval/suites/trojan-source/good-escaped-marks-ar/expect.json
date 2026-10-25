@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "RLM and ALM written as escapes in an Arabic file: allowed."
+}

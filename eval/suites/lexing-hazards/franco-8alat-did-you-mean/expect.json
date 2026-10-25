@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0127"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "`8alat` is did_you_mean for `ghalat` (false): K0127. No canonical Franco form uses regional digit 8 at the start."
+}

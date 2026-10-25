@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0120"
+  ],
+  "lines": [
+    9
+  ],
+  "notes": "Deeper indentation after a line that opens no block (spec 5.8 rule 2-3)."
+}

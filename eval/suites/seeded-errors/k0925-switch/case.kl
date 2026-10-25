@@ -1,0 +1,9 @@
+fn describe(n: Int) -> String:
+    switch n {
+        case 0 -> return "zero"
+    }
+    return "other"
+
+fn main():
+    let label = describe(5)
+    print(label)

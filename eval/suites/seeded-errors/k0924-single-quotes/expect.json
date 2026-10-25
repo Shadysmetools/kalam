@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0924"
+  ],
+  "lines": [
+    11
+  ],
+  "notes": "Single-quoted string (spec 21.3)."
+}

@@ -49,8 +49,16 @@ pub struct NpmDependency {
 /// One `kalam.lock` entry.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum LockedPackage {
-    Kalam { name: String, version: String, kcf_sha256: String },
-    Npm { name: String, version: String, integrity: String },
+    Kalam {
+        name: String,
+        version: String,
+        kcf_sha256: String,
+    },
+    Npm {
+        name: String,
+        version: String,
+        integrity: String,
+    },
 }
 
 /// A change in capabilities between two resolutions, shown by `kalam add`/`update`.

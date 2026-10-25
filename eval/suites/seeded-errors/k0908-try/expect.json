@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0908"
+  ],
+  "lines": [
+    10
+  ],
+  "notes": "`try:` block (spec 21.3)."
+}

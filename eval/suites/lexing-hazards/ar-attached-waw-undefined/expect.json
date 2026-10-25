@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0401"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "[M2] `وصح` (and + true glued): undefined name K0401 with the cross-skin hint 'did you mean `و صح`' and a machine fix inserting the space (spec 5.4). Needs name resolution."
+}

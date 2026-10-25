@@ -1,0 +1,4 @@
+fn main():
+    let x = 3
+    lw x > 2:
+        print("big")

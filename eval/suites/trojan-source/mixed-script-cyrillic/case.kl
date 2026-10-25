@@ -1,0 +1,3 @@
+fn main():
+    let pаypal = 1
+    print("ok")

@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0122"
+  ],
+  "lines": [
+    5
+  ],
+  "notes": "Dedent from 8 spaces to 3, which is no open level (spec 5.8 rule 3, 27 K0122). K0120 may also be reported; the first error at this line must be K0122."
+}

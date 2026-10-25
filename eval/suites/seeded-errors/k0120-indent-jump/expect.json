@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0120"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "Indent grows by two levels at once (spec 5.8 rule 3)."
+}

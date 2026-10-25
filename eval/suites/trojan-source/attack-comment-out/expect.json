@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0110"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "Trojan Source commenting-out shape: RLO plus isolates make a comment look like an `if` guard around the next line."
+}

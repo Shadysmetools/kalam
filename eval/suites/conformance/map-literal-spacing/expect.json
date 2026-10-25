@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Map literal with odd spacing and a trailing comma. KCF NOTE: the trailing comma is a CST token and today's KCF serializes it (PUNCT_COMMA), while fmt adds or drops trailing commas (spec 21.1 rule 1), so kcf(fmt(x)) == kcf(x) needs KCF to ignore trailing commas; recorded as a founder fork."
+}

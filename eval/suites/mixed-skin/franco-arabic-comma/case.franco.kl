@@ -1,0 +1,3 @@
+dala ra2isi():
+    khali xs = [1، 2]
+    ektb("{xs}")

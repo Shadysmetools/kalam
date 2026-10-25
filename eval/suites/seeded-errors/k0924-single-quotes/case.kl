@@ -1,0 +1,11 @@
+fn describe(n: Int) -> String:
+    if n < 0:
+        return "negative"
+    else if n == 0:
+        return "zero"
+    else:
+        return "positive"
+
+fn main():
+    let label = describe(5)
+    print('done')

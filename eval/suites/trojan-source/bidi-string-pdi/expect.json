@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0110"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Raw U+2069 POP DIRECTIONAL ISOLATE inside a string literal. Spec 5.1: bidi controls and marks are escape-only in strings (write \\u{2069}). The message must name U+2069."
+}

@@ -1,0 +1,9 @@
+dala ra2isi():
+    khalli x = 5
+    mot8ayer y = 0
+    lw x > 3:
+        y += 1
+    wala:
+        y -= 1
+    low y == 1:
+        ekteb("{y}")

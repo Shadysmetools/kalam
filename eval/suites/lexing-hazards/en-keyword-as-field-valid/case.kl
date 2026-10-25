@@ -1,0 +1,6 @@
+type Doc:
+    type: String
+
+fn main():
+    let d = Doc(type: "memo")
+    print(d.type)

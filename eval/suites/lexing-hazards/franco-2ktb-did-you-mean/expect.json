@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0127"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "`2ktb` is did_you_mean for core name `ektb` (print): K0127 suggesting `ektb`."
+}

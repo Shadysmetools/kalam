@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "An Arabic identifier spelled like the Arabic keyword `إذا`, declared in an English file: legal (spec 4.3 says such identifiers are escaped only when converted to `ar`)."
+}

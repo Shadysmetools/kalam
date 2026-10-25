@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0914"
+  ],
+  "lines": [
+    1
+  ],
+  "notes": "`List<Int>` (spec 21.3)."
+}

@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0106"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Fatha inside `إذا`: SEC0106 with auto-fix (spec 5.4)."
+}

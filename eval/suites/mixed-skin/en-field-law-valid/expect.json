@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Franco keyword as a record field, label and member in English (spec 5.3 rule 8)."
+}

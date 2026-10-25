@@ -1,0 +1,10 @@
+dala total(items: qayma[adad]) -> adad:
+    motghayer sum = 0
+    for item in items:
+        sum += item
+    rag3 sum
+
+dala ra2isi():
+    khali xs = [1, 2, 3]
+    khali n = total(xs)
+    ektb("total {n}")

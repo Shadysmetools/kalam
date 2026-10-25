@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0111"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "U+200D ZERO WIDTH JOINER ZWJ between two emoji in a COMMENT: the emoji exception is for string literals only (spec 5.1 table: comments reject). Spec 5.1 zero-width/invisible/variation-selector rows: SEC0111."
+}

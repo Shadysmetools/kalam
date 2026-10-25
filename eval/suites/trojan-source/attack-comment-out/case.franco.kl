@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali is_admin = ghalat
+    # ‮ ⁦law is_admin⁩ ⁦ admins only
+    ektb("panel")

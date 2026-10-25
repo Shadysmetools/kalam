@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0103"
+  ],
+  "lines": [
+    9
+  ],
+  "notes": "NBSP U+00A0 between tokens (spec 5.1)."
+}

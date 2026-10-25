@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "File without a final newline; fmt adds it (spec 5.8 rule 6)."
+}

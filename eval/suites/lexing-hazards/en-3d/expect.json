@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0127"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Unit-suffix style `3d`: K0127 (there are no numeric suffixes)."
+}

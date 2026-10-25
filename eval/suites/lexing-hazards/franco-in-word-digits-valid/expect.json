@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Canonical Franco spellings with digits inside the word (rag3, sa7, naga7, fashal, ra2isi): a digit only starts a number at the START of a word. Must be accepted."
+}

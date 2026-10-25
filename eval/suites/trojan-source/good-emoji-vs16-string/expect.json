@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Variation selector VS16 U+FE0F directly after an emoji in a string: allowed (spec 5.1)."
+}

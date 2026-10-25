@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0110"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "A correctly paired LRI...PDI inside an Arabic string is still rejected: Kalam rejects any raw bidi control, paired or not (stricter than GCC -Wbidirectional=unpaired). Arabic text never needs one (spec 5.1 rationale)."
+}

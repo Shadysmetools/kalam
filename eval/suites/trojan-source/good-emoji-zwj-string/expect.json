@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "ZWJ U+200D directly between two Extended_Pictographic characters in a string: the only raw ZWJ allowed (spec 5.1)."
+}

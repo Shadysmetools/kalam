@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0101"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Alef U+0627 + U+0654 HAMZA ABOVE in a comment: NFC composes it to U+0623, so the file is not NFC."
+}

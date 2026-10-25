@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0710"
+  ],
+  "lines": [
+    9
+  ],
+  "notes": "Assignment to a call, which is not a place (spec 8.4 point 3)."
+}

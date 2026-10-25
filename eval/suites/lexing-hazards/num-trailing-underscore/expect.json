@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0127"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "`1_`: trailing underscore; K0127."
+}

@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "A tab inside a comment is allowed (spec 5.1 tab row)."
+}

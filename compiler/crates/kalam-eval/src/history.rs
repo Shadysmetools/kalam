@@ -100,6 +100,7 @@ pub fn record(run: &Value, iteration: u64, args: &AppendArgs<'_>) -> Value {
                 "failed": c["cargo_test"]["failed"],
             },
         },
+        "holdout": run.get("holdout").cloned().unwrap_or(Value::Null),
         "summary": run["summary"],
         "notes": args.notes,
     })

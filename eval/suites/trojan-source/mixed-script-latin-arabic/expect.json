@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0105"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "`user_<Arabic>`: Latin + Arabic in one identifier is SEC0105 (spec 5.3 rule 3 example)."
+}

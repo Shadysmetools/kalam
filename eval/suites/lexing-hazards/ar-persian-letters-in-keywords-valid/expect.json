@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "`لکل` with Persian keheh U+06A9 and `فی` with Farsi yeh U+06CC fold to `لكل`/`في` (D19, spec 5.4 example). No SEC0107 (retired)."
+}

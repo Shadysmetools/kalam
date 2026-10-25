@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Mirror of corpus T50 good twin: the same controls written as \\u{...} escapes, plus an ordinary Arabic comment. Must be accepted."
+}

@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0110"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Raw U+2069 POP DIRECTIONAL ISOLATE between tokens in code. Spec 5.1: rejected in code. LRM/RLM are Pattern_White_Space in UAX #31 but Kalam rejects them anyway (research/02 7.5). ALM U+061C is SEC0110, not SEC0111."
+}

@@ -1,0 +1,3 @@
+fn main():
+    let n = 0X1F
+    print("{n}")

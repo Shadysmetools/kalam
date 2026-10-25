@@ -510,7 +510,10 @@ mod tests {
         let e = lookup("K0126").expect("K0126 is in the catalog");
         for msg in e.message {
             assert!(msg.contains("9223372036854775807"), "{msg}");
-            assert!(!msg.contains("2⁵³") && !msg.contains("9007199254740991"), "{msg}");
+            assert!(
+                !msg.contains("2⁵³") && !msg.contains("9007199254740991"),
+                "{msg}"
+            );
         }
     }
 

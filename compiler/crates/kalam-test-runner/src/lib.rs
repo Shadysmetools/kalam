@@ -41,6 +41,9 @@ pub struct TestOptions {
 }
 
 /// Runs the package's tests. Not implemented yet; returns an explanation instead.
-pub fn run(_package_dir: &str, _options: &TestOptions) -> Result<Vec<(TestCase, TestOutcome)>, String> {
+pub fn run(
+    _package_dir: &str,
+    _options: &TestOptions,
+) -> Result<Vec<(TestCase, TestOutcome)>, String> {
     Err("`kalam test` needs the parser, type checker and JS emitter (Phase 1)".to_string())
 }

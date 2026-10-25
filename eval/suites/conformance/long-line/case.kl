@@ -1,0 +1,5 @@
+fn sum6(a: Int, b: Int, c: Int, d: Int, e: Int, f: Int) -> Int:
+    return a + b + c + d + e + f
+
+fn main():
+    print("{sum6(100000000, 200000000, 300000000, 400000000, 500000000, 600000000)} is the total of six large numbers")

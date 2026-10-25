@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Inside brackets newlines and indentation are ignored (spec 5.8 rule 2 bracket suppression)."
+}

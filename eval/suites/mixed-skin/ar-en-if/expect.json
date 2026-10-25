@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0201"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "English `if` in an Arabic file: syntax error as an identifier, so K0201 with a fix to `إذا`."
+}

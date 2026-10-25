@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0106"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "presentation forms U+FEB3 U+FECC U+FEAE spelling `سعر` (NFC-stable, so not SEC0101). Spec 5.2/5.3 rule 4/5.4: SEC0106, auto-fix removes or replaces it."
+}

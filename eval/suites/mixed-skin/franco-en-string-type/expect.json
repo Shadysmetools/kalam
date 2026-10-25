@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0201"
+  ],
+  "lines": [
+    1
+  ],
+  "notes": "English core type `String` in a Franco file (should be `nass`)."
+}

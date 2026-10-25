@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "`type` as a field name, label and member (spec 5.3 rule 8: `x.type` is legal)."
+}

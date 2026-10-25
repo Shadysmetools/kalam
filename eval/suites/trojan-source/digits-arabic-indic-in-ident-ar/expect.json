@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0124"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Arabic-Indic digit after the first character of an identifier: SEC0124 (١ is confusable with ا, l and 1; spec 5.3 rule 5)."
+}

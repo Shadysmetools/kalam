@@ -1,0 +1,3 @@
+fn main():
+    let n = 0o8
+    print("{n}")

@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Closed-list Franco variants (khalli, mot8ayer, lw, wala, low, ekteb) are accepted silently; fmt rewrites them to canonical (spec 7.3). `mot8ayer` has 8 inside the word, which is fine."
+}

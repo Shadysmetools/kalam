@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Raw identifier `law` in a Franco file, also inside an interpolation hole (hole code is code)."
+}

@@ -1,0 +1,3 @@
+# if for while print let
+دالة رئيسي():
+    اطبع("if x: for y in z: print(law)")

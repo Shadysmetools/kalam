@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0121"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Persian digits U+06F1-06F3 in an Arabic-file literal: always SEC0121 (spec 6.2; D19 does not change this)."
+}

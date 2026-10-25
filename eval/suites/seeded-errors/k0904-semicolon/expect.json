@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0904"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Trailing `;` (spec 5.8 rule 5, 21.3)."
+}

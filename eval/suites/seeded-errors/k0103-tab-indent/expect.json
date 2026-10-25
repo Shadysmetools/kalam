@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0103"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Tab used as indentation (spec 5.8 rule 1)."
+}

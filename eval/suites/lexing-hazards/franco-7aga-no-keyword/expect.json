@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0127"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "`7aga` (thing) is not a keyword spelling at all: still K0127 (fuzzy suggestion only)."
+}

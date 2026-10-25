@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0201"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Franco core name `ektb` (undeclared) in an English file."
+}

@@ -6,8 +6,15 @@
 
 pub mod checks;
 pub mod corpus;
+pub mod corpus_run;
+pub mod diagcat;
+pub mod external;
 pub mod history;
+pub mod holdout;
+pub mod integrity;
 pub mod parity;
+pub mod ratchet;
 pub mod report;
 pub mod scorecard;
+pub mod suites;
 pub mod tiers;

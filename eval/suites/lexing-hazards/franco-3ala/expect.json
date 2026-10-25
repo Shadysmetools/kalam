@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0127"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Franco `3ala` (على): a digit always starts a number (spec 5.6, DR-03); the run is not a number, so K0127. Write `ala` or `_3ala` (spec 5.3 rule 2)."
+}

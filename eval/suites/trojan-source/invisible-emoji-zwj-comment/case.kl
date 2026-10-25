@@ -1,0 +1,3 @@
+fn main():
+    # family 👨‍👩
+    print("ok")

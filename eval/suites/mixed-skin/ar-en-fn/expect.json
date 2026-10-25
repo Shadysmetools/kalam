@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0201"
+  ],
+  "lines": [
+    1
+  ],
+  "notes": "English `fn` in an Arabic file."
+}

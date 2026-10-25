@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0201"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "A keyword of another skin where the word, read as an identifier, is a syntax error: en file uses Arabic `لكل ... في`, ar and franco files use English `for ... in` (spec 5.4, 21.4 rule 6)."
+}

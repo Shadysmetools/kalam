@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0121"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Persian ۲ between Arabic-Indic digits (visually near-identical): SEC0121 required (SEC0120 may also be reported)."
+}

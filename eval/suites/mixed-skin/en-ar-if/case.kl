@@ -1,0 +1,4 @@
+fn main():
+    let x = 3
+    إذا x > 2:
+        print("big")

@@ -1,0 +1,59 @@
+{
+  "schema": "kalam-holdout-manifest/1",
+  "eval_version": "eval-v0.1",
+  "sealing": "contents sealed; see README.md. This file lists ids and hashes only.",
+  "inputs": {
+    "spec/keywords.json": "ca6033653bb9ee8e374e55200311ba815c0c1e117d5d5045fd24bad05d50ade7",
+    "spec/KALAM-SPEC.md": "27393c16bc9194089fbf1e400dfe6915d6e3d8ce44314a3f7655043fc54c4b28"
+  },
+  "tasks": [
+    {
+      "id": "T05",
+      "dir": "t05-fibonacci",
+      "tier": "mvp",
+      "cases": 1,
+      "files": {
+        "ar.kalam": "36cb987425c17a09a2f0407dd6e0393368ee32e2357440774e31b0c1f67d2a42",
+        "en.kalam": "f6ab621209621d54fcf7be4aa8ee514b3251e9178674979761b4c2a914ab1a24",
+        "expected.txt": "950000651786fce606d4c72e27487edb661e3a4649158c8b2e4e8cc450cec16a",
+        "franco.kalam": "abe1c4e41bfed4d8d53e0440c8b7cc222a6efed57e4fbb1494b1586eaf5bbe37",
+        "ref.py": "9fb4f3b4f1a0c22b0591042bc8f2e41204a6d9dfe2fcf82c9b738893fe08708b",
+        "task.toml": "11c95598061a21c98e0b4d4beddb64dc924d11d46c5394e558f614ef0391a086"
+      }
+    },
+    {
+      "id": "T10",
+      "dir": "t10-prime-sieve",
+      "tier": "mvp",
+      "cases": 1,
+      "files": {
+        "ar.kalam": "1168688b86534e06c1201a5161e5ce42f3b98e45ac8bbc5994887e08b6d3d67d",
+        "en.kalam": "13c05982fd9228f12d0d5d4e95fdfc5462263197648b9d8402a7f7f9a0f74b9e",
+        "expected.txt": "f26efcb6936098aaac9174cee1ad230a085b54a523221795078d3f10936d0d1e",
+        "franco.kalam": "ba91997213ca173df2a101edfeb553bb0c98b449bfde7116fc963c71990e6369",
+        "ref.py": "de96b743de8859c93c3e7abf99a8a92dcab519d064b8593c1fcc2ddf4092233e",
+        "task.toml": "0aa66f41373cd653cb86aab270c3a8347c28d66e5f549ddec971506664acf8a8"
+      }
+    },
+    {
+      "id": "T13",
+      "dir": "t13-safe-lookup",
+      "tier": "mvp",
+      "cases": 1,
+      "files": {
+        "ar.kalam": "3d14c3975069b34aa26caf648b97f393f2fa7917a7363e1bd408d8ffd4514225",
+        "en.kalam": "c27d87225e3acc9061a3a430ab6de06f655c6889d15914fbb211aa7bd2883dfa",
+        "expected.txt": "81609848049ed5ec32601b3ad39837777fee1adde5b98867ba16c70f24e04e28",
+        "franco.kalam": "7637a83c568c8c0f8b5618d6d057ca0362cb658d2d1939081f17a00833eb25f3",
+        "ref.py": "58ba97749cb7686b8ec4d2c5dcc892d5c6e012d9b1b63bb58080ba46fa8fd2b9",
+        "task.toml": "f71b56b7ef6ebc6ec1a874af37ff4b1609482e3f4b1adf036cfdeb44f76c86ae"
+      }
+    }
+  ],
+  "other_files": {
+    "README.md": "f0942546e6123887e64adc541e822f295baf18b9623c88cc8df5fd17911de3e7",
+    "tools/convert.py": "f141b8cda02ad6466fd3ca8ab863c24639f5c483c4bec7b57dd77aba04a4c2fb",
+    "tools/gen_expected.py": "ba5b2517af6efe6f376139a76e46361878fe760b32a662b6bf830228bfe42bbb",
+    "tools/seal.py": "9c4696ee20129b2157d494265761d217bf1150e2f2cd173e721adde37b0551a2"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "ASCII commas in an Arabic file (also inside an interpolation hole); fmt prints `،` (spec 6.4), KCF maps both to PUNCT_COMMA."
+}

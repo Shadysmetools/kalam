@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0127"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Arabic-Indic digits glued to an Arabic letter: a digit always starts a number, the run is not a number, K0127."
+}

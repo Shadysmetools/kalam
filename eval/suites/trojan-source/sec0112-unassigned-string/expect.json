@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0112"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "U+0378 (unassigned). Spec 5.1: tag characters (ASCII smuggling), private use, noncharacters and code points unassigned in Unicode 16.0 are SEC0112 everywhere, raw in strings too."
+}

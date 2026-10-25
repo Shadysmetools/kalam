@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0111"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "U+200D ZERO WIDTH JOINER ZWJ raw in a string between Arabic letters (not between two emoji, so the exception does not apply). Spec 5.1 zero-width/invisible/variation-selector rows: SEC0111."
+}

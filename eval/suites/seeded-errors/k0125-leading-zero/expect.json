@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0125"
+  ],
+  "lines": [
+    9
+  ],
+  "notes": "Leading zero `007` (spec 5.6)."
+}

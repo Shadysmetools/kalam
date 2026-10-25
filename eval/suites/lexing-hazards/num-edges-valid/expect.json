@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Valid edges (spec 5.6): `0x1e+5` lexes as `0x1e` `+` `5` (no exponent after a hex prefix), `1.5e-3` and `2E+10` are floats, single `_` separators, 0b/0o/0x, `0` and `0.5`."
+}

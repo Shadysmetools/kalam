@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Franco variants are rewritten to canonical by fmt; KCF uses concept ids, so it is unchanged (spec 4.4, 7.3)."
+}

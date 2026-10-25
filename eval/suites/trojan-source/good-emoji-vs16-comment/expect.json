@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "VS16 directly after an emoji in a comment: allowed (spec 5.1 variation-selector row)."
+}

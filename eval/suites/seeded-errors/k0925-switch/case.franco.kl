@@ -1,0 +1,9 @@
+dala describe(n: adad) -> nass:
+    switch n {
+        lama 0 -> rag3 "zero"
+    }
+    rag3 "other"
+
+dala ra2isi():
+    khali label = describe(5)
+    ektb(label)

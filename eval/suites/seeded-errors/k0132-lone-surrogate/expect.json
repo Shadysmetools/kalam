@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0132"
+  ],
+  "lines": [
+    10
+  ],
+  "notes": "Lone surrogate escape (spec 5.7)."
+}

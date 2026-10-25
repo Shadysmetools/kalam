@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0110"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Raw U+2066 LEFT-TO-RIGHT ISOLATE inside a string literal. Spec 5.1: bidi controls and marks are escape-only in strings (write \\u{2066}). The message must name U+2066."
+}

@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0128"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Hex with Arabic-Indic digits: K0128 (hex, binary, octal and exponents are ASCII only)."
+}

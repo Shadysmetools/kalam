@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0130"
+  ],
+  "lines": [
+    10
+  ],
+  "notes": "Unknown escape `\\q` (spec 5.7)."
+}

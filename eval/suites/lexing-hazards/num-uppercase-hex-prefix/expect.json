@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0127"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "`0X1F`: the hex prefix is lowercase only, so the run matches no literal; K0127."
+}

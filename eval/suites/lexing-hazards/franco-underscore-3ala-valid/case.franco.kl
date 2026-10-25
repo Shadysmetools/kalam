@@ -1,0 +1,3 @@
+dala ra2isi():
+    khali _3ala = 1
+    ektb("{_3ala}")

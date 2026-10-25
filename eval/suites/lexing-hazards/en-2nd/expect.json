@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0127"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Names never start with a digit in any skin (spec 5.3 rule 2): `2nd` is K0127."
+}

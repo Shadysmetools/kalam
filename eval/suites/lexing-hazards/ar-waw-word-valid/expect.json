@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "An identifier that begins with و (`وزن`, weight) is legal; `و` with spaces is the keyword `and`. Accepted."
+}

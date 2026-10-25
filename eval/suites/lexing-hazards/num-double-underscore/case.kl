@@ -1,0 +1,3 @@
+fn main():
+    let n = 1__000
+    print("{n}")

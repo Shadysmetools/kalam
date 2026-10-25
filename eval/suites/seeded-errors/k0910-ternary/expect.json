@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0910"
+  ],
+  "lines": [
+    10
+  ],
+  "notes": "C ternary `c ? a : b` (spec 21.3)."
+}

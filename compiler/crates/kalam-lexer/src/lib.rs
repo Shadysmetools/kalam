@@ -5,10 +5,16 @@
 //! ARCHITECTURE.md §5 describes the design and §5.4 lists what this scaffold still defers:
 //! leading-dot continuation, NFC verification, exact XID and single-script checks, the
 //! emoji ZWJ and variation-selector exceptions, interpolation sub-lexing, and K0201 for
-//! English keywords in `ar`/`franco` files (which needs parser position).
+//! another skin's word inside an interpolation hole.
+//!
+//! K0201 (spec §5.4): another skin's keyword, core name or Franco variant is reported where
+//! reading it as a name is a syntax error (`word()`: it is followed by another word) or an
+//! undefined name (`cross_skin_names()`: a file-local declaration lookup, FOUNDER-QUEUE Q9).
 //!
 //! The lexer scans by `char` index and keeps byte offsets for spans, so it never slices a
 //! string inside a multi-byte Arabic character.
+
+use std::collections::HashSet;
 
 use kalam_base::{FileId, Skin, Span};
 use kalam_diagnostics::{Diagnostic, Fix};
@@ -167,9 +173,11 @@ enum Class {
 fn classify(c: char) -> Class {
     match c {
         '\u{FEFF}' => Class::Bom,
-        '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}' | '\u{200E}' | '\u{200F}' | '\u{061C}' => {
-            Class::Bidi
-        }
+        '\u{202A}'..='\u{202E}'
+        | '\u{2066}'..='\u{2069}'
+        | '\u{200E}'
+        | '\u{200F}'
+        | '\u{061C}' => Class::Bidi,
         '\u{2028}' | '\u{2029}' => Class::LineSeparator,
         '\u{200B}'
         | '\u{200C}'
@@ -188,9 +196,12 @@ fn classify(c: char) -> Class {
         | '\u{E000}'..='\u{F8FF}'
         | '\u{F0000}'..='\u{FFFFD}'
         | '\u{100000}'..='\u{10FFFD}' => Class::TagOrPrivate,
-        '\u{00A0}' | '\u{1680}' | '\u{2000}'..='\u{200A}' | '\u{202F}' | '\u{205F}' | '\u{3000}' => {
-            Class::NonAsciiSpace
-        }
+        '\u{00A0}'
+        | '\u{1680}'
+        | '\u{2000}'..='\u{200A}'
+        | '\u{202F}'
+        | '\u{205F}'
+        | '\u{3000}' => Class::NonAsciiSpace,
         '\u{0000}'..='\u{0008}'
         | '\u{000B}'
         | '\u{000C}'
@@ -279,8 +290,169 @@ fn is_joiner(c: char) -> bool {
 fn may_follow_a_name(concept: Concept) -> bool {
     matches!(
         concept,
-        Concept::KwIn | Concept::KwAnd | Concept::KwOr | Concept::KwAs | Concept::KwElse | Concept::KwIf | Concept::KwNot
+        Concept::KwIn
+            | Concept::KwAnd
+            | Concept::KwOr
+            | Concept::KwAs
+            | Concept::KwElse
+            | Concept::KwIf
+            | Concept::KwNot
     )
+}
+
+/// A token after which an identifier would be a second operand side by side with the
+/// first (a syntax error), while an infix keyword would be fine.
+fn ends_an_operand(kind: TokenKind) -> bool {
+    matches!(
+        kind,
+        TokenKind::Ident
+            | TokenKind::Core(_)
+            | TokenKind::Int
+            | TokenKind::Float
+            | TokenKind::Str
+            | TokenKind::TaggedStr
+            | TokenKind::Op(Op::RParen | Op::RBracket | Op::RBrace | Op::Question)
+            | TokenKind::Keyword(Concept::KwTrue | Concept::KwFalse | Concept::KwSelf)
+    )
+}
+
+/// Every name the file declares or imports, by its text (tatweel, harakat and joiners
+/// removed). Scope-insensitive on purpose: a name declared anywhere counts as declared
+/// everywhere, so a doubtful position never produces K0201.
+fn declared_names(tokens: &[Token], word: &dyn Fn(&Token) -> String) -> HashSet<String> {
+    let mut out = HashSet::new();
+    let kind = |j: usize| tokens.get(j).map(|t| t.kind);
+    let is = |j: usize, op: Op| kind(j) == Some(TokenKind::Op(op));
+    let mut add = |j: usize, out: &mut HashSet<String>| {
+        if kind(j) == Some(TokenKind::Ident) && !(j > 0 && is(j - 1, Op::Dot)) {
+            out.insert(word(&tokens[j]));
+        }
+    };
+    // Identifiers directly inside the bracket group opened at `open` that start an item
+    // (after the opening bracket or a comma): parameters, generic parameters.
+    let group = |open: usize,
+                 out: &mut HashSet<String>,
+                 add: &mut dyn FnMut(usize, &mut HashSet<String>)|
+     -> usize {
+        let mut depth = 0usize;
+        let mut j = open;
+        while let Some(k) = kind(j) {
+            match k {
+                TokenKind::Op(Op::LParen | Op::LBracket | Op::LBrace) => depth += 1,
+                TokenKind::Op(Op::RParen | Op::RBracket | Op::RBrace) => {
+                    depth = depth.saturating_sub(1);
+                    if depth == 0 {
+                        return j + 1;
+                    }
+                }
+                TokenKind::Newline | TokenKind::Eof => return j,
+                TokenKind::Ident if depth == 1 && (j == open + 1 || is(j - 1, Op::Comma)) => {
+                    add(j, out)
+                }
+                _ => {}
+            }
+            j += 1;
+        }
+        j
+    };
+    // Identifiers from `from` up to (not including) a stop token at bracket depth 0. In a
+    // pattern (`pattern`), an identifier right after a complete operand ends it too: that is
+    // another skin's keyword (`for x in xs` in an Arabic file), not a binding.
+    let until = |from: usize,
+                 stop: &dyn Fn(TokenKind) -> bool,
+                 pattern: bool,
+                 out: &mut HashSet<String>,
+                 add: &mut dyn FnMut(usize, &mut HashSet<String>)| {
+        let mut depth = 0usize;
+        let mut j = from;
+        while let Some(k) = kind(j) {
+            match k {
+                TokenKind::Newline | TokenKind::Eof => break,
+                _ if depth == 0 && stop(k) => break,
+                TokenKind::Ident
+                    if pattern
+                        && depth == 0
+                        && j > from
+                        && kind(j - 1).is_some_and(ends_an_operand) =>
+                {
+                    break
+                }
+                TokenKind::Op(Op::LParen | Op::LBracket | Op::LBrace) => depth += 1,
+                TokenKind::Op(Op::RParen | Op::RBracket | Op::RBrace) => {
+                    depth = depth.saturating_sub(1)
+                }
+                TokenKind::Ident => add(j, out),
+                _ => {}
+            }
+            j += 1;
+        }
+    };
+    for (i, t) in tokens.iter().enumerate() {
+        let TokenKind::Keyword(c) = t.kind else {
+            continue;
+        };
+        match c {
+            Concept::KwLet | Concept::KwVar => until(
+                i + 1,
+                &|k| matches!(k, TokenKind::Op(Op::Eq | Op::Colon)),
+                true,
+                &mut out,
+                &mut add,
+            ),
+            Concept::KwFor => until(
+                i + 1,
+                &|k| k == TokenKind::Keyword(Concept::KwIn),
+                true,
+                &mut out,
+                &mut add,
+            ),
+            Concept::KwCase => until(
+                i + 1,
+                &|k| {
+                    matches!(
+                        k,
+                        TokenKind::Op(Op::Colon) | TokenKind::Keyword(Concept::KwIf)
+                    )
+                },
+                true,
+                &mut out,
+                &mut add,
+            ),
+            Concept::KwUse => until(i + 1, &|_| false, false, &mut out, &mut add),
+            Concept::KwAs => add(i + 1, &mut out),
+            Concept::KwFn
+            | Concept::KwType
+            | Concept::KwEnum
+            | Concept::KwTrait
+            | Concept::KwImpl => {
+                let mut j = i + 1;
+                if kind(j) == Some(TokenKind::Ident) {
+                    add(j, &mut out);
+                    j += 1;
+                }
+                if is(j, Op::LBracket) {
+                    j = group(j, &mut out, &mut add);
+                }
+                if c == Concept::KwFn && is(j, Op::LParen) {
+                    group(j, &mut out, &mut add);
+                }
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
+/// Inserts `new` (in source order) among `existing` (in report order) by span start,
+/// keeping the existing relative order.
+fn merge_by_position(existing: &mut Vec<Diagnostic>, new: Vec<Diagnostic>) {
+    for d in new {
+        let at = existing
+            .iter()
+            .position(|e| e.span.start > d.span.start)
+            .unwrap_or(existing.len());
+        existing.insert(at, d);
+    }
 }
 
 fn is_dec(c: char) -> bool {
@@ -313,13 +485,25 @@ fn validate_ascii_number(s: &str) -> Result<TokenKind, &'static str> {
         return Err("SEC0120"); // Arabic decimal separator with ASCII digits
     }
     if let Some(rest) = s.strip_prefix("0x") {
-        return if digits_ok(rest, is_hex) { Ok(TokenKind::Int) } else { Err("K0127") };
+        return if digits_ok(rest, is_hex) {
+            Ok(TokenKind::Int)
+        } else {
+            Err("K0127")
+        };
     }
     if let Some(rest) = s.strip_prefix("0b") {
-        return if digits_ok(rest, is_bin) { Ok(TokenKind::Int) } else { Err("K0127") };
+        return if digits_ok(rest, is_bin) {
+            Ok(TokenKind::Int)
+        } else {
+            Err("K0127")
+        };
     }
     if let Some(rest) = s.strip_prefix("0o") {
-        return if digits_ok(rest, is_oct) { Ok(TokenKind::Int) } else { Err("K0127") };
+        return if digits_ok(rest, is_oct) {
+            Ok(TokenKind::Int)
+        } else {
+            Err("K0127")
+        };
     }
     let (mantissa, exponent) = match s.find(['e', 'E']) {
         Some(i) => (&s[..i], Some(&s[i + 1..])),
@@ -427,7 +611,11 @@ pub fn int_literal_value(text: &str) -> Option<u128> {
 /// integer on every backend, [−2⁶³, 2⁶³−1] (DECISIONS.md D18). `negated` is true when
 /// the literal is the direct operand of unary minus, so `-9223372036854775808` fits.
 pub fn int_literal_fits_int(magnitude: u128, negated: bool) -> bool {
-    let limit = if negated { 1u128 << 63 } else { (1u128 << 63) - 1 };
+    let limit = if negated {
+        1u128 << 63
+    } else {
+        (1u128 << 63) - 1
+    };
     magnitude <= limit
 }
 
@@ -452,7 +640,11 @@ pub fn to_ascii_digits(s: &str) -> String {
 fn strip_leading_zeros(s: &str) -> String {
     let trimmed = s.trim_start_matches(['0', '\u{0660}', '_']);
     if trimmed.is_empty() || trimmed.starts_with('.') || trimmed.starts_with('\u{066B}') {
-        let zero = if s.starts_with('\u{0660}') { '\u{0660}' } else { '0' };
+        let zero = if s.starts_with('\u{0660}') {
+            '\u{0660}'
+        } else {
+            '0'
+        };
         format!("{zero}{trimmed}")
     } else {
         trimmed.to_string()
@@ -569,7 +761,141 @@ impl<'a> Lexer<'a> {
             self.push_layout(TokenKind::Dedent, Span::new(end, end));
         }
         self.push_layout(TokenKind::Eof, Span::new(end, end));
+        // A one-line fragment is interpolation-hole code re-lexed on its own (by the
+        // parser, KCF and convert): it cannot see the file's declarations, so the
+        // undefined-name half of K0201 is decided by the file's own lex instead.
+        if self.text.contains('\n') {
+            self.cross_skin_names();
+        }
         self.out
+    }
+
+    /// The undefined-name half of K0201 (spec §5.4 bullet 3, §21.4 rule 6; eval P8).
+    ///
+    /// Another skin's keyword, core name or Franco variant that the file lexed as an
+    /// identifier is K0201, with a machine fix to this skin's spelling, unless it is
+    /// legitimately a name:
+    /// - it is declared in this file (by `let`/`var`, `fn` and its parameters, `for` and
+    ///   `case` patterns, `type`/`enum`/`trait` names, generic parameters, `use` items and
+    ///   `as` aliases); spec §5.4 bullet 2, §4.3. Without glob imports or globals (§21.2)
+    ///   every name a file uses is declared or imported in it, so a name that is not is
+    ///   undefined. The lookup ignores scopes, so it errs towards "declared";
+    /// - it is in a §5.3 rule 8 position: after `.` or `@`, a label (`f(match: 1)`), or a
+    ///   field name in a `type` body or a variant name in an `enum` body;
+    /// - it is written in backticks (§5.3 rule 7).
+    ///
+    /// Where reading the word as a name would be a syntax error, the token becomes the
+    /// keyword (so the parser recovers without a cascade): at the start of a line, before
+    /// `:`, after an operand (`a we (b)`), and always for core names and the value keywords
+    /// `true`/`false`/`self`. Elsewhere (`x = law`) it stays an identifier.
+    fn cross_skin_names(&mut self) {
+        let text = self.text;
+        let tokens = &self.out.tokens;
+        let word = |t: &Token| -> String {
+            text[t.span.range()]
+                .chars()
+                .filter(|&c| !is_tatweel_or_haraka(c) && !is_joiner(c))
+                .collect()
+        };
+        let declared = declared_names(tokens, &word);
+        let mut found: Vec<(usize, Concept, Option<TokenKind>)> = Vec::new();
+        let mut brackets: Vec<Op> = Vec::new();
+        let mut bodies: Vec<Option<Concept>> = Vec::new();
+        let mut line_head: Option<Concept> = None;
+        let mut prev_line_head: Option<Concept> = None;
+        for (i, t) in tokens.iter().enumerate() {
+            let prev = i.checked_sub(1).map(|p| tokens[p].kind);
+            let next = tokens.get(i + 1).map(|n| n.kind);
+            let line_start = matches!(
+                prev,
+                None | Some(TokenKind::Newline | TokenKind::Indent | TokenKind::Dedent)
+            );
+            match t.kind {
+                TokenKind::Newline => {
+                    prev_line_head = line_head.take();
+                    continue;
+                }
+                TokenKind::Indent => {
+                    bodies.push(prev_line_head);
+                    continue;
+                }
+                TokenKind::Dedent => {
+                    bodies.pop();
+                    continue;
+                }
+                TokenKind::Op(op @ (Op::LParen | Op::LBracket | Op::LBrace)) => {
+                    brackets.push(op);
+                }
+                TokenKind::Op(Op::RParen | Op::RBracket | Op::RBrace) => {
+                    brackets.pop();
+                }
+                TokenKind::Keyword(c)
+                    if line_head.is_none()
+                        && !matches!(c, Concept::KwExport | Concept::KwOpaque) =>
+                {
+                    line_head = Some(c);
+                }
+                _ => {}
+            }
+            if t.kind != TokenKind::Ident || t.flags.raw_ident {
+                continue;
+            }
+            if matches!(prev, Some(TokenKind::Op(Op::Dot | Op::At))) {
+                continue;
+            }
+            let colon_next = next == Some(TokenKind::Op(Op::Colon));
+            let label = colon_next
+                && matches!(prev, Some(TokenKind::Op(Op::LParen | Op::Comma)))
+                && brackets.last() == Some(&Op::LParen);
+            let body = bodies.last().copied().flatten();
+            let field = line_start && colon_next && body == Some(Concept::KwType);
+            let variant = line_start && body == Some(Concept::KwEnum);
+            if label || field || variant {
+                continue;
+            }
+            let w = word(t);
+            if declared.contains(&w) {
+                continue;
+            }
+            let Some(m) = Skin::ALL
+                .into_iter()
+                .filter(|&s| s != self.skin)
+                .filter_map(|s| self.table.skin(s).lookup_word(&w))
+                .find(|m| matches!(m.kind, Kind::Keyword | Kind::CoreName))
+            else {
+                continue;
+            };
+            let keyword_reading = m.kind == Kind::CoreName
+                || matches!(
+                    m.concept,
+                    Concept::KwTrue | Concept::KwFalse | Concept::KwSelf
+                )
+                || line_start
+                || colon_next
+                || prev.is_some_and(ends_an_operand);
+            let as_kind = match m.kind {
+                _ if !keyword_reading => None,
+                Kind::CoreName => Some(TokenKind::Core(m.concept)),
+                _ => Some(TokenKind::Keyword(m.concept)),
+            };
+            found.push((i, m.concept, as_kind));
+        }
+        let mut new_diags = Vec::new();
+        for (i, concept, as_kind) in found {
+            let span = self.out.tokens[i].span;
+            let written = &text[span.range()];
+            let expected = self.words.spelling(concept).to_string();
+            new_diags.push(
+                self.diag("K0201", span)
+                    .arg("found", written)
+                    .arg("expected", expected.clone())
+                    .fix(Fix::machine(format!("write `{expected}`"), span, expected)),
+            );
+            if let Some(kind) = as_kind {
+                self.out.tokens[i].kind = kind;
+            }
+        }
+        merge_by_position(&mut self.out.diagnostics, new_diags);
     }
 
     fn newline(&mut self, len: usize) {
@@ -598,9 +924,11 @@ impl<'a> Lexer<'a> {
                 }
                 Some('\t') => {
                     let span = self.char_span();
-                    let d = self
-                        .diag("K0103", span)
-                        .fix(Fix::machine("replace the tab with 4 spaces", span, "    "));
+                    let d = self.diag("K0103", span).fix(Fix::machine(
+                        "replace the tab with 4 spaces",
+                        span,
+                        "    ",
+                    ));
                     self.report(d);
                     width += 4;
                     self.i += 1;
@@ -751,9 +1079,11 @@ impl<'a> Lexer<'a> {
                 }
                 '\t' => {
                     let span = self.char_span();
-                    let d = self
-                        .diag("K0103", span)
-                        .fix(Fix::machine("write the tab as \\t", span, "\\t"));
+                    let d = self.diag("K0103", span).fix(Fix::machine(
+                        "write the tab as \\t",
+                        span,
+                        "\\t",
+                    ));
                     self.report(d);
                     self.i += 1;
                 }
@@ -788,15 +1118,22 @@ impl<'a> Lexer<'a> {
                     }
                     let count = self.i - hex_start;
                     if self.peek() == Some('}') && (1..=6).contains(&count) {
-                        let hex: String = self.chars[hex_start..self.i].iter().map(|&(_, c)| c).collect();
+                        let hex: String = self.chars[hex_start..self.i]
+                            .iter()
+                            .map(|&(_, c)| c)
+                            .collect();
                         self.i += 1;
                         let value = u32::from_str_radix(&hex, 16).unwrap_or(u32::MAX);
                         let escape = self.text[start as usize..self.pos() as usize].to_string();
                         if (0xD800..=0xDFFF).contains(&value) {
-                            let d = self.diag("K0132", Span::new(start, self.pos())).arg("escape", escape);
+                            let d = self
+                                .diag("K0132", Span::new(start, self.pos()))
+                                .arg("escape", escape);
                             self.report(d);
                         } else if char::from_u32(value).is_none() {
-                            let d = self.diag("K0130", Span::new(start, self.pos())).arg("escape", escape);
+                            let d = self
+                                .diag("K0130", Span::new(start, self.pos()))
+                                .arg("escape", escape);
                             self.report(d);
                         }
                         ok = true;
@@ -804,18 +1141,24 @@ impl<'a> Lexer<'a> {
                 }
                 if !ok {
                     let escape = self.text[start as usize..self.pos() as usize].to_string();
-                    let d = self.diag("K0130", Span::new(start, self.pos())).arg("escape", escape);
+                    let d = self
+                        .diag("K0130", Span::new(start, self.pos()))
+                        .arg("escape", escape);
                     self.report(d);
                 }
             }
             Some(c) if c != '\n' && c != '\r' => {
                 self.i += 1;
                 let escape = self.text[start as usize..self.pos() as usize].to_string();
-                let d = self.diag("K0130", Span::new(start, self.pos())).arg("escape", escape);
+                let d = self
+                    .diag("K0130", Span::new(start, self.pos()))
+                    .arg("escape", escape);
                 self.report(d);
             }
             _ => {
-                let d = self.diag("K0130", Span::new(start, self.pos())).arg("escape", "\\");
+                let d = self
+                    .diag("K0130", Span::new(start, self.pos()))
+                    .arg("escape", "\\");
                 self.report(d);
             }
         }
@@ -829,14 +1172,21 @@ impl<'a> Lexer<'a> {
         while matches!(self.peek(), Some(c) if c != '\'' && c != '\n' && c != '\r') {
             self.i += 1;
         }
-        let content: String = self.chars[content_start..self.i].iter().map(|&(_, c)| c).collect();
+        let content: String = self.chars[content_start..self.i]
+            .iter()
+            .map(|&(_, c)| c)
+            .collect();
         if self.peek() == Some('\'') {
             self.i += 1;
         }
         let span = Span::new(start, self.pos());
         let mut d = self.diag("K0924", span);
         if !content.contains('"') && !content.contains('\\') {
-            d = d.fix(Fix::machine("use double quotes", span, format!("\"{content}\"")));
+            d = d.fix(Fix::machine(
+                "use double quotes",
+                span,
+                format!("\"{content}\""),
+            ));
         }
         self.report(d);
         self.push(TokenKind::Str, start, TokenFlags::default());
@@ -879,7 +1229,10 @@ impl<'a> Lexer<'a> {
         loop {
             match self.peek() {
                 Some(c) if is_ident_continue(c) => self.i += 1,
-                Some(c) if is_joiner(c) && matches!(self.peek_at(1), Some(n) if is_ident_continue(n)) => {
+                Some(c)
+                    if is_joiner(c)
+                        && matches!(self.peek_at(1), Some(n) if is_ident_continue(n)) =>
+                {
                     self.i += 1
                 }
                 _ => break,
@@ -1071,7 +1424,11 @@ impl<'a> Lexer<'a> {
                         d = d.arg("word", text);
                         if let Some(concept) = self.table.did_you_mean(text) {
                             let spelling = self.table.spelling(concept, self.skin).to_string();
-                            d = d.fix(Fix::machine(format!("did you mean `{spelling}`?"), span, spelling));
+                            d = d.fix(Fix::machine(
+                                format!("did you mean `{spelling}`?"),
+                                span,
+                                spelling,
+                            ));
                         }
                     }
                     "K0125" => {
@@ -1099,24 +1456,30 @@ impl<'a> Lexer<'a> {
         match c {
             '\t' => {
                 let span = self.char_span();
-                let d = self
-                    .diag("K0103", span)
-                    .fix(Fix::machine("replace the tab with 4 spaces", span, "    "));
+                let d = self.diag("K0103", span).fix(Fix::machine(
+                    "replace the tab with 4 spaces",
+                    span,
+                    "    ",
+                ));
                 self.report(d);
                 self.i += 1;
                 return;
             }
             ';' | '\u{061B}' => {
                 let span = self.char_span();
-                let d = self
-                    .diag("K0904", span)
-                    .fix(Fix::machine("remove the semicolon", span, ""));
+                let d =
+                    self.diag("K0904", span)
+                        .fix(Fix::machine("remove the semicolon", span, ""));
                 self.report(d);
                 self.i += 1;
                 return;
             }
             '\u{060C}' | '\u{061F}' => {
-                let op = if c == '\u{060C}' { Op::Comma } else { Op::Question };
+                let op = if c == '\u{060C}' {
+                    Op::Comma
+                } else {
+                    Op::Question
+                };
                 if self.skin != Skin::Ar {
                     let ascii = if c == '\u{060C}' { "," } else { "?" };
                     let span = self.char_span();
@@ -1137,9 +1500,11 @@ impl<'a> Lexer<'a> {
             }
             '\u{066C}' => {
                 let span = self.char_span();
-                let d = self
-                    .diag("SEC0123", span)
-                    .fix(Fix::machine("use `_` to group digits", span, "_"));
+                let d = self.diag("SEC0123", span).fix(Fix::machine(
+                    "use `_` to group digits",
+                    span,
+                    "_",
+                ));
                 self.report(d);
                 self.i += 1;
                 return;
@@ -1249,12 +1614,20 @@ mod tests {
 
     fn kinds(text: &str, skin: Skin) -> Vec<TokenKind> {
         let out = lex(text, skin, FileId(0));
-        assert!(out.diagnostics.is_empty(), "unexpected diagnostics: {:?}", out.diagnostics);
+        assert!(
+            out.diagnostics.is_empty(),
+            "unexpected diagnostics: {:?}",
+            out.diagnostics
+        );
         out.kinds()
     }
 
     fn codes(text: &str, skin: Skin) -> Vec<&'static str> {
-        lex(text, skin, FileId(0)).diagnostics.iter().map(|d| d.code).collect()
+        lex(text, skin, FileId(0))
+            .diagnostics
+            .iter()
+            .map(|d| d.code)
+            .collect()
     }
 
     use Op::*;
@@ -1302,14 +1675,25 @@ mod tests {
         );
         assert_eq!(
             kinds("t.0.1\n", Skin::En),
-            vec![T::Ident, T::Op(Dot), T::Int, T::Op(Dot), T::Int, T::Newline, T::Eof]
+            vec![
+                T::Ident,
+                T::Op(Dot),
+                T::Int,
+                T::Op(Dot),
+                T::Int,
+                T::Newline,
+                T::Eof
+            ]
         );
         assert_eq!(
             kinds("0x1e+5\n", Skin::En),
             vec![T::Int, T::Op(Plus), T::Int, T::Newline, T::Eof]
         );
         assert_eq!(kinds("1e5\n", Skin::En), vec![T::Float, T::Newline, T::Eof]);
-        assert_eq!(kinds("1.5e-3\n", Skin::En), vec![T::Float, T::Newline, T::Eof]);
+        assert_eq!(
+            kinds("1.5e-3\n", Skin::En),
+            vec![T::Float, T::Newline, T::Eof]
+        );
     }
 
     #[test]
@@ -1367,21 +1751,47 @@ mod tests {
         assert!(!int_literal_fits_int(min_mag, false)); // 2^63 is out of range...
         assert!(int_literal_fits_int(min_mag, true)); // ...but -2^63 is i64::MIN
         assert!(!int_literal_fits_int(min_mag + 1, true));
-        assert!(int_literal_fits_int(int_literal_value("0x7fff_ffff_ffff_ffff").unwrap(), false));
-        assert!(!int_literal_fits_int(int_literal_value("0x8000_0000_0000_0000").unwrap(), false));
+        assert!(int_literal_fits_int(
+            int_literal_value("0x7fff_ffff_ffff_ffff").unwrap(),
+            false
+        ));
+        assert!(!int_literal_fits_int(
+            int_literal_value("0x8000_0000_0000_0000").unwrap(),
+            false
+        ));
         // The old 53-bit limit is gone: 2^53 is an ordinary Int literal.
-        assert!(int_literal_fits_int(int_literal_value("9007199254740992").unwrap(), false));
+        assert!(int_literal_fits_int(
+            int_literal_value("9007199254740992").unwrap(),
+            false
+        ));
         // The lexer itself never rejects a large literal (it may be a BigInt).
-        assert_eq!(codes("99999999999999999999999\n", Skin::En), Vec::<&str>::new());
+        assert_eq!(
+            codes("99999999999999999999999\n", Skin::En),
+            Vec::<&str>::new()
+        );
     }
 
     #[test]
     fn persian_and_urdu_letters_are_folded_not_rejected() {
         // D19: ی ک ە ھ ۀ are ordinary Arabic-script letters in identifiers...
-        for word in ["\u{06A9}تاب", "عل\u{06CC}", "\u{06BE}ذا", "\u{06D5}", "خان\u{06C0}"] {
+        for word in [
+            "\u{06A9}تاب",
+            "عل\u{06CC}",
+            "\u{06BE}ذا",
+            "\u{06D5}",
+            "خان\u{06C0}",
+        ] {
             let text = format!("{word}\n");
-            assert_eq!(kinds(&text, Skin::Ar), vec![T::Ident, T::Newline, T::Eof], "{word}");
-            assert_eq!(kinds(&text, Skin::En), vec![T::Ident, T::Newline, T::Eof], "{word}");
+            assert_eq!(
+                kinds(&text, Skin::Ar),
+                vec![T::Ident, T::Newline, T::Eof],
+                "{word}"
+            );
+            assert_eq!(
+                kinds(&text, Skin::En),
+                vec![T::Ident, T::Newline, T::Eof],
+                "{word}"
+            );
         }
         // ...and in an Arabic file they match keywords after folding, flagged for `fmt`.
         let out = lex("ل\u{06A9}ل س ف\u{06CC} ق\n", Skin::Ar, FileId(0));
@@ -1439,8 +1849,19 @@ mod tests {
 
     #[test]
     fn skins_keep_their_own_words() {
-        // `law` is Franco for `if`; in an English file it is an ordinary identifier.
-        assert_eq!(kinds("law\n", Skin::En), vec![T::Ident, T::Newline, T::Eof]);
+        // `law` is Franco for `if`; in an English file that declares it, it is an ordinary
+        // identifier.
+        assert_eq!(
+            kinds("let law = 1\n", Skin::En),
+            vec![
+                T::Keyword(Concept::KwLet),
+                T::Ident,
+                T::Op(Op::Eq),
+                T::Int,
+                T::Newline,
+                T::Eof
+            ]
+        );
         assert_eq!(
             kinds("law\n", Skin::Franco),
             vec![T::Keyword(Concept::KwIf), T::Newline, T::Eof]
@@ -1457,7 +1878,16 @@ mod tests {
         // `،` is a comma in Arabic files only.
         assert_eq!(
             kinds("f(a\u{060C} b)\n", Skin::Ar),
-            vec![T::Ident, T::Op(LParen), T::Ident, T::Op(Comma), T::Ident, T::Op(RParen), T::Newline, T::Eof]
+            vec![
+                T::Ident,
+                T::Op(LParen),
+                T::Ident,
+                T::Op(Comma),
+                T::Ident,
+                T::Op(RParen),
+                T::Newline,
+                T::Eof
+            ]
         );
         assert_eq!(codes("f(a\u{060C} b)\n", Skin::En), vec!["K0201"]);
     }
@@ -1472,7 +1902,11 @@ mod tests {
     }
 
     fn arg<'d>(d: &'d Diagnostic, name: &str) -> &'d str {
-        d.args.iter().find(|(n, _)| *n == name).map(|(_, v)| v.as_str()).unwrap_or("")
+        d.args
+            .iter()
+            .find(|(n, _)| *n == name)
+            .map(|(_, v)| v.as_str())
+            .unwrap_or("")
     }
 
     #[test]
@@ -1498,7 +1932,13 @@ mod tests {
             assert_eq!(&src[fix.edits[0].span.range()], found);
             assert_eq!(fix.edits[0].insert, expected);
             // The word lexes as the keyword, so the parser recovers without a cascade.
-            assert!(matches!(out.tokens[0].kind, T::Keyword(Concept::KwIf | Concept::KwFor)), "{src:?}");
+            assert!(
+                matches!(
+                    out.tokens[0].kind,
+                    T::Keyword(Concept::KwIf | Concept::KwFor)
+                ),
+                "{src:?}"
+            );
         }
         // Every English word in an Arabic file gets its own fix.
         let out = lex("for x in xs:\n", Skin::Ar, FileId(0));
@@ -1510,21 +1950,54 @@ mod tests {
         assert!(d.message(Skin::En).contains("إذا"));
     }
 
+    /// THE RULE (spec §5.4 bullets 2–3, §5.3 rules 7–8, §4.3, §21.4 rule 6; eval P8).
+    ///
+    /// Another skin's keyword, core name or Franco variant is K0201 wherever reading it as a
+    /// name would be a syntax error or an undefined name. It is a legal identifier when:
+    /// 1. the file declares it: `let`/`var`, `fn` name and parameters, `for` and `case`
+    ///    patterns, `type`/`enum`/`trait` names, generic parameters, `use` items, `as`
+    ///    aliases. (No globs or globals, §21.2, so an undeclared name is undefined.)
+    /// 2. it is in a §5.3 rule 8 position: after `.` or `@`, a label `(word: …)`, a field
+    ///    name in a `type` body, a variant name in an `enum` body;
+    /// 3. it is written in backticks (§5.3 rule 7);
+    /// 4. it is inside a string or a comment (text, not code).
+    ///
+    /// Interpolation-hole code is not checked by this rule (see
+    /// `holes_are_not_checked_for_undefined_names`).
     #[test]
     fn another_skins_word_used_as_a_name_is_legal() {
-        // Spec §5.4 bullet 2: a declared identifier equal to another skin's reserved word is
-        // fine. K0201 is only where reading it as a name would be a syntax error.
         for (src, skin) in [
-            ("law\n", Skin::En),
-            ("let law = 1\n", Skin::En),
-            ("fn law(x):\n", Skin::En),
-            ("for law in xs:\n", Skin::En),
-            ("law(x) + law\n", Skin::En),
-            ("contract.law\n", Skin::Franco),
+            // 1. declared
+            ("let law = 1\nprint(law)\n", Skin::En),
+            ("var law = 1\nlaw = law + 1\n", Skin::En),
+            ("fn law(x: Int):\n    law(x)\n", Skin::En),
+            ("fn f(law: Int, fi: Int):\n    print(law + fi)\n", Skin::En),
+            ("let g = fn(law) => law\n", Skin::En),
+            ("for law in xs:\n    print(law)\n", Skin::En),
+            ("let (we, aw) = t\nprint(we + aw)\n", Skin::En),
+            ("match x:\n    case Some(law): print(law)\n", Skin::En),
+            ("type law:\n    a: Int\n", Skin::En),
+            ("enum hat:\n    A\n", Skin::En),
+            ("fn f[ka](x: ka) -> ka:\n    return x\n", Skin::En),
+            ("use std/io.{law}\nlaw()\n", Skin::En),
+            ("use std/io as law\nlaw.f()\n", Skin::En),
+            ("let law = 1\nlet y = law\n", Skin::En),
+            ("ليكن if = 1\nاطبع(if)\n", Skin::Ar),
+            ("دالة print(t: نص):\n    اطبع(t)\nprint(\"x\")\n", Skin::Ar),
+            ("khali let = 1\nektb(let)\n", Skin::Franco),
+            ("let إذا = 1\nprint(إذا)\n", Skin::En),
+            // 2. rule 8 positions
+            ("contract.law\n", Skin::En),
             ("contract.if x\n", Skin::Ar),
+            ("f(if: 1, law: 2)\n", Skin::Ar),
+            ("@law\nfn f():\n    pass\n", Skin::En),
+            ("type R:\n    law: Int\n    walla: Int\n", Skin::En),
+            ("enum E:\n    law\n    fot(x: Int)\n", Skin::En),
+            // 3. backticks
             ("`law` صح\n", Skin::Ar),
-            ("إذا = 1\n", Skin::En),
-            ("f(if: 1)\n", Skin::Ar),
+            ("let x = `law`\n", Skin::En),
+            // 4. strings and comments
+            ("# if for law\nprint(\"if x: law\")\n", Skin::En),
         ] {
             let out = lex(src, skin, FileId(0));
             assert!(
@@ -1533,41 +2006,159 @@ mod tests {
                 out.diagnostics
             );
         }
-        // Core names (`print` in an Arabic file) need name resolution: not the lexer's job.
-        assert!(codes("print(1)\n", Skin::Ar).is_empty());
+    }
+
+    #[test]
+    fn every_other_skin_word_is_k0201_in_every_direction() {
+        // (source, skin, found, expected): keywords, core names and Franco variants, used
+        // where they are not declared names.
+        let cases = [
+            // Franco in English
+            ("fn main():\n    kfaya\n", Skin::En, "kfaya", "break"),
+            ("fn main():\n    khalas\n", Skin::En, "khalas", "break"),
+            ("fn main():\n    let x = sa7\n", Skin::En, "sa7", "true"),
+            ("fn main():\n    ektb(\"hi\")\n", Skin::En, "ektb", "print"),
+            ("fn main():\n    let x = mafeesh\n", Skin::En, "mafeesh", "None"),
+            ("fn f() -> adad:\n    return 1\n", Skin::En, "adad", "Int"),
+            ("fn main():\n    foot\n", Skin::En, "foot", "pass"),
+            // English in Franco
+            ("dala ra2isi():\n    khali x = true\n", Skin::Franco, "true", "sa7"),
+            ("dala ra2isi():\n    pass\n", Skin::Franco, "pass", "fot"),
+            ("dala ra2isi():\n    print(\"x\")\n", Skin::Franco, "print", "ektb"),
+            ("dala f(n: String):\n    fot\n", Skin::Franco, "String", "nass"),
+            ("dala ra2isi():\n    motghayer i = 0\n    tool_ma i < 3:\n        kfaya\n    else:\n        fot\n", Skin::Franco, "else", "walla"),
+            // English and Franco in Arabic
+            ("دالة رئيسي():\n    print(\"x\")\n", Skin::Ar, "print", "اطبع"),
+            ("دالة رئيسي():\n    ليكن x: Int = 1\n", Skin::Ar, "Int", "عدد"),
+            ("دالة رئيسي():\n    ليكن x = Some(1)\n", Skin::Ar, "Some", "موجود"),
+            ("دالة رئيسي():\n    ليكن x = true\n", Skin::Ar, "true", "صح"),
+            ("دالة رئيسي():\n    break\n", Skin::Ar, "break", "اخرج"),
+            ("دالة رئيسي():\n    ektb(1)\n", Skin::Ar, "ektb", "اطبع"),
+            ("دالة رئيسي():\n    ليكن x = sa7\n", Skin::Ar, "sa7", "صح"),
+            // Arabic in English and Franco
+            ("fn main():\n    اطبع(\"x\")\n", Skin::En, "اطبع", "print"),
+            ("fn main():\n    let x = صح\n", Skin::En, "صح", "true"),
+            ("dala ra2isi():\n    اطبع(1)\n", Skin::Franco, "اطبع", "ektb"),
+        ];
+        for (src, skin, found, expected) in cases {
+            let out = lex(src, skin, FileId(0));
+            let k: Vec<_> = out
+                .diagnostics
+                .iter()
+                .filter(|d| d.code == "K0201")
+                .collect();
+            assert_eq!(k.len(), 1, "{src:?} ({skin:?}): {:?}", out.diagnostics);
+            assert_eq!(arg(k[0], "found"), found, "{src:?}");
+            assert_eq!(arg(k[0], "expected"), expected, "{src:?}");
+            let fix = &k[0].fixes[0];
+            assert_eq!(fix.applicability, kalam_diagnostics::Applicability::Machine);
+            assert_eq!(&src[fix.edits[0].span.range()], found);
+            assert_eq!(fix.edits[0].insert, expected);
+        }
+        // Core names and statement keywords become the concept, so parsing recovers.
+        let out = lex("دالة رئيسي():\n    print(\"x\")\n", Skin::Ar, FileId(0));
+        assert!(out.kinds().contains(&T::Core(Concept::CorePrint)));
+        let out = lex("fn main():\n    kfaya\n", Skin::En, FileId(0));
+        assert!(out.kinds().contains(&T::Keyword(Concept::KwBreak)));
+        // In operand position (`x = law`) the word stays a name: one error, no cascade.
+        let out = lex("fn main():\n    let x = law\n", Skin::En, FileId(0));
+        assert_eq!(
+            codes("fn main():\n    let x = law\n", Skin::En),
+            vec!["K0201"]
+        );
+        assert!(!out.kinds().contains(&T::Keyword(Concept::KwIf)));
+        // A foreign `in`/`if` that ends a `for`/`case` pattern is a keyword, not a binding of
+        // that pattern: reported and converted, so the parser does not cascade.
+        let out = lex(
+            "دالة رئيسي():\n    for x in [1، 2]:\n        اطبع(x)\n",
+            Skin::Ar,
+            FileId(0),
+        );
+        assert_eq!(
+            out.diagnostics.iter().map(|d| d.code).collect::<Vec<_>>(),
+            vec!["K0201", "K0201"]
+        );
+        assert!(out.kinds().contains(&T::Keyword(Concept::KwIn)));
+        let src = "dala ra2isi():\n    hasab v:\n        lama x if x > 1: fot\n";
+        assert_eq!(codes(src, Skin::Franco), vec!["K0201"]);
+        // Diagnostics stay in source order.
+        let out = lex("fn main():\n    x = 007\n    kfaya\n", Skin::En, FileId(0));
+        let order: Vec<_> = out.diagnostics.iter().map(|d| d.code).collect();
+        assert_eq!(order, vec!["K0125", "K0201"]);
+    }
+
+    #[test]
+    fn holes_are_not_checked_for_undefined_names() {
+        // Hole code is re-lexed alone (by the parser, KCF and convert) and cannot see the
+        // file's declarations, so a declared `law` used in `"{law}"` must not be K0201.
+        // One-line fragments therefore skip the undefined-name check. KNOWN GAP: an
+        // undeclared other-skin word inside a hole (`"{kfaya}"`) is not reported yet.
+        assert!(codes("law", Skin::En).is_empty());
+        assert!(codes("x + law", Skin::En).is_empty());
+        assert!(codes(
+            "fn main():\n    let law = 1\n    print(\"{law}\")\n",
+            Skin::En
+        )
+        .is_empty());
+        assert!(codes("fn main():\n    print(\"{kfaya}\")\n", Skin::En).is_empty());
     }
 
     #[test]
     fn zero_width_joiners_inside_a_name_keep_one_token() {
-        for (src, cp) in [("let a\u{200D}b = 1\n", "U+200D"), ("let a\u{200C}b = 1\n", "U+200C")] {
+        for (src, cp) in [
+            ("let a\u{200D}b = 1\n", "U+200D"),
+            ("let a\u{200C}b = 1\n", "U+200C"),
+        ] {
             let out = lex(src, Skin::En, FileId(0));
             let codes: Vec<_> = out.diagnostics.iter().map(|d| d.code).collect();
             assert_eq!(codes, vec!["SEC0111"], "{src:?}");
             let d = &out.diagnostics[0];
             assert_eq!(arg(d, "cp"), cp);
-            assert_eq!(d.fixes[0].applicability, kalam_diagnostics::Applicability::Machine);
+            assert_eq!(
+                d.fixes[0].applicability,
+                kalam_diagnostics::Applicability::Machine
+            );
             assert_eq!(d.fixes[0].edits[0].insert, "");
             assert_eq!(&src[d.fixes[0].edits[0].span.range()], &src[5..8]);
             assert_eq!(
                 out.kinds(),
-                vec![T::Keyword(Concept::KwLet), T::Ident, T::Op(Op::Eq), T::Int, T::Newline, T::Eof]
+                vec![
+                    T::Keyword(Concept::KwLet),
+                    T::Ident,
+                    T::Op(Op::Eq),
+                    T::Int,
+                    T::Newline,
+                    T::Eof
+                ]
             );
             assert_eq!(&src[out.tokens[1].span.range()], &src[4..9]);
         }
         // Arabic words join letters with ZWNJ in some typing habits: still one name.
         let out = lex("خلي ك\u{200C}تاب = 1\n", Skin::Ar, FileId(0));
-        assert_eq!(out.diagnostics.iter().map(|d| d.code).collect::<Vec<_>>(), vec!["SEC0111"]);
+        assert_eq!(
+            out.diagnostics.iter().map(|d| d.code).collect::<Vec<_>>(),
+            vec!["SEC0111"]
+        );
         assert_eq!(out.tokens[1].kind, T::Ident);
         assert_eq!(out.tokens[2].kind, T::Op(Op::Eq));
         // A joiner hidden inside a keyword still reads as the keyword it looks like.
         let out = lex("i\u{200D}f x:\n", Skin::En, FileId(0));
-        assert_eq!(out.diagnostics.iter().map(|d| d.code).collect::<Vec<_>>(), vec!["SEC0111"]);
+        assert_eq!(
+            out.diagnostics.iter().map(|d| d.code).collect::<Vec<_>>(),
+            vec!["SEC0111"]
+        );
         assert_eq!(out.tokens[0].kind, T::Keyword(Concept::KwIf));
         assert!(out.tokens[0].flags.variant_spelling);
         // A trailing joiner (not between name characters) is reported on its own.
         let out = lex("a\u{200D} = 1\n", Skin::En, FileId(0));
-        assert_eq!(out.diagnostics.iter().map(|d| d.code).collect::<Vec<_>>(), vec!["SEC0111"]);
-        assert_eq!(out.kinds(), vec![T::Ident, T::Op(Op::Eq), T::Int, T::Newline, T::Eof]);
+        assert_eq!(
+            out.diagnostics.iter().map(|d| d.code).collect::<Vec<_>>(),
+            vec!["SEC0111"]
+        );
+        assert_eq!(
+            out.kinds(),
+            vec![T::Ident, T::Op(Op::Eq), T::Int, T::Newline, T::Eof]
+        );
     }
 
     #[test]

@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0201"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "English `and` in an Arabic file (should be `و`)."
+}

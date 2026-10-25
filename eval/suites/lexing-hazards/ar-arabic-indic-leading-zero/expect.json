@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0125"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "`٠٠٧`: leading zero in Arabic-Indic, K0125."
+}

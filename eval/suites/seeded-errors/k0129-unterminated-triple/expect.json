@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0129"
+  ],
+  "lines": [
+    10
+  ],
+  "notes": "Triple-quoted string never closed (spec 27 K0129)."
+}

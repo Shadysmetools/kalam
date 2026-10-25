@@ -1,0 +1,10 @@
+dala describe(n: adad) -> nass:
+    law n < 0 { rag3 "negative" }
+    law n == 0:
+        rag3 "zero"
+    walla:
+        rag3 "positive"
+
+dala ra2isi():
+    khali label = describe(5)
+    ektb(label)

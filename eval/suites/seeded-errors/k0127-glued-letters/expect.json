@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0127"
+  ],
+  "lines": [
+    9
+  ],
+  "notes": "`10px`: number glued to letters (spec 5.6)."
+}

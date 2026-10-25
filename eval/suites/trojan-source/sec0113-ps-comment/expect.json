@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0113"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "U+2029. Spec 4.1/5.1: U+2028, U+2029 and a CR not followed by LF are SEC0113 everywhere (a lone CR can make code look like part of a comment in some viewers). Line numbers count LF only."
+}

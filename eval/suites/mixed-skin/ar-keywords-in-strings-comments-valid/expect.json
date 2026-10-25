@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Other-skin keywords inside comments and strings are text, never checked."
+}

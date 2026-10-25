@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0120"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "`1٢3`: ASCII and Arabic-Indic in one literal (spec 5.6 example)."
+}

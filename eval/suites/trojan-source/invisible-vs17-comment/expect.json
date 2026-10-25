@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0111"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "U+E0100 VARIATION SELECTOR-17 VS17 U+E0100 in a comment, not after an emoji. Spec 5.1 zero-width/invisible/variation-selector rows: SEC0111."
+}

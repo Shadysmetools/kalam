@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "`دالە` with U+06D5 (ae) folds to `داله`, the same key as `دالة` (D19). Accepted."
+}

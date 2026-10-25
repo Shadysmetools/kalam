@@ -1,0 +1,24 @@
+[package]
+name = "kalam-props"
+description = "Property suites: random ASTs printed in every skin, fmt idempotence, skin round trips, KCF equality and hash stability, lexer robustness (D1.property_tests)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+# No property-testing framework: `proptest` is not in the offline registry cache, and the
+# repo already standardizes on seeded xorshift generators (one reproducible `seed` per run,
+# zero new dependencies; ARCHITECTURE.md §3.2 rule 5).
+[dependencies]
+kalam-base.workspace = true
+kalam-skins.workspace = true
+kalam-lexer.workspace = true
+kalam-syntax.workspace = true
+kalam-parser.workspace = true
+kalam-fmt.workspace = true
+serde_json.workspace = true
+# Path dependency, as in kalam-parser and kalam-fmt (the root Cargo.toml does not list it).
+kalam-ast = { path = "../kalam-ast" }
+
+[dev-dependencies]

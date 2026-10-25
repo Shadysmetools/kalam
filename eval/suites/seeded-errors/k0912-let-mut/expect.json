@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0912"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "`let mut` (spec 21.3)."
+}

@@ -1,0 +1,3 @@
+dala ra2isi():
+    khali n = ٥
+    ektb("{n}")

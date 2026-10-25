@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0909"
+  ],
+  "lines": [
+    4
+  ],
+  "notes": "`x++` (spec 21.3). The intended code is `sum += item`; the seeded error is the `++`."
+}

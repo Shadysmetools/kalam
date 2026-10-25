@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Inline `if` expression with odd spacing (spec 8.3)."
+}

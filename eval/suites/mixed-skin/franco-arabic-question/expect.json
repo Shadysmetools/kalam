@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0201"
+  ],
+  "lines": [
+    5
+  ],
+  "notes": "Arabic question mark `؟` (try) in a Franco file: K0201 (spec 6.4)."
+}

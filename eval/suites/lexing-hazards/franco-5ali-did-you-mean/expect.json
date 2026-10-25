@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0127"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "`5ali` is did_you_mean for `khali` (let): K0127 suggesting `khali`."
+}

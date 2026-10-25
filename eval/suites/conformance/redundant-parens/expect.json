@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Redundant parentheses; fmt removes them (spec 21.1 rule 7). KCF NOTE: if KCF serializes the paren tokens, kcf(fmt(x)) != kcf(x); recorded as a founder fork."
+}

@@ -1,0 +1,7 @@
+haykal Q:
+    law: adad
+    walla: adad
+
+dala ra2isi():
+    khali q = Q(law: 1, walla: 2)
+    ektb("{q.law} {q.walla}")

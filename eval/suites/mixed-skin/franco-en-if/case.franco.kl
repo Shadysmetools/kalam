@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali x = 3
+    if x > 2:
+        ektb("big")

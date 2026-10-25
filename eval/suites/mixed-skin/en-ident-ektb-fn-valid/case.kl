@@ -1,0 +1,5 @@
+fn ektb(text: String):
+    print(text)
+
+fn main():
+    ektb("hi")

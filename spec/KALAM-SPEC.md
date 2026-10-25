@@ -252,7 +252,16 @@ KCF is a skin-free serialization of the CST (04 U7, DR-21):
 - punctuation aliases → their ASCII concept (`،` → `PUNCT_COMMA`);
 - numeric literals → their kind plus exact value (digit glyphs are not recorded);
 - identifiers → their exact NFC code points (no folding);
-- strings, comments and blank lines → kept byte for byte. For string and tagged literals this applies to the literal text **outside** interpolation holes. The code inside each `{…}` hole is serialized like any other code (keywords as concept IDs, `،` as `PUNCT_COMMA`, numbers as values), because conversion translates it (§4.3). Otherwise `"{a and b}"` and `"{a و b}"` would hash differently and P1 would fail.
+- strings and comments → kept byte for byte. For string and tagged literals this applies to the literal text **outside** interpolation holes. The code inside each `{…}` hole is serialized like any other code (keywords as concept IDs, `،` as `PUNCT_COMMA`, numbers as values), because conversion translates it (§4.3). Otherwise `"{a and b}"` and `"{a و b}"` would hash differently and P1 would fail.
+
+**KCF records no layout that `kalam fmt` may change** (format `KCF2`, provisional: FOUNDER-QUEUE Q8). So `kcf(fmt(x)) == kcf(x)` holds for every file that parses (D7 formatter idempotence), and reformatting never changes a program's identity:
+
+- **Blank lines** are recorded only as "at least one blank line here": a run of blank lines counts as one. They are recorded only where `fmt` keeps them, which is between two statements or members of one block, and between comments there. They are not recorded at the start of a block (before its first comment or statement), after an attribute line, before `else`, inside brackets, at the top level of the file (`fmt` puts exactly one blank line between items itself, §21.1 rule 4) or at the end of the file.
+- **A trailing comma** before a closing bracket is not recorded (`f(a, b,)` = `f(a, b)`, `[1, 2,]` = `[1, 2]`). The exception is a one-element tuple `(x,)`, where the comma is what makes it a tuple.
+- **A one-line block** (`if x: stmt`, `fn f() -> Int: return 1`, `case 1: f()`) serializes identically to its indented form. An inline `if` *expression* (`if c: a else: b`) is not a block and keeps its form.
+- Spaces, indentation bytes (INDENT/DEDENT carry the structure), CR, line breaks inside brackets and a missing final newline are not recorded either.
+
+The serialization starts with the header `KCF2`. A KCF hash is only comparable with hashes of the same header version.
 
 **The KCF hash (SHA-256) is the unit of identity.** It is what gets signed, what `kalam.lock` records, what the registry stores, and what parity gate P1 compares. The registry renders any skin on demand. Code-review tools SHOULD let a reviewer pick a skin and MUST show the KCF hash, so the PR that was reviewed is provably the PR that was merged.
 
@@ -2894,3 +2903,4 @@ Spec errata are recorded here with a date, as ROADMAP M0 requires. Each erratum 
 | 2026-10-25 | DR-31, §7.4, §30 | Vocabulary tables provisional pending the pre-beta survey (was F3) | `DECISIONS.md` D22 |
 | 2026-10-25 | DR-18, §30 | Franco skin ID `franco` and extension `.franco.kl` are locked | `DECISIONS.md` D24 |
 | 2026-10-25 | header, §30 | §30 "Founder questions" replaced by "Founder decisions (resolved)"; binding inputs are now D1–D25 | `DECISIONS.md` D18–D25 |
+| 2026-10-25 | §4.4 | KCF no longer keeps blank lines "byte for byte" (that contradicted §21.1 rules 1, 2 and 4, so `kcf(fmt(x)) == kcf(x)` could not hold). KCF2 records a blank-line run as one blank line, and only where `fmt` keeps blank lines. It drops trailing commas except in `(x,)`, and serializes a one-line block like its indented form. The header is bumped to `KCF2`. Provisional | `FOUNDER-QUEUE.md` Q8; `eval/suites/conformance` |

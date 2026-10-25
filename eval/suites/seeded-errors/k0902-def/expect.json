@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0902"
+  ],
+  "lines": [
+    1
+  ],
+  "notes": "`def` instead of `fn` (spec 21.3)."
+}

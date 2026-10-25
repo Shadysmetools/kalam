@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0921"
+  ],
+  "lines": [
+    9
+  ],
+  "notes": "Multi-line lambda `fn(x):` + block (spec 21.3, DR-15)."
+}

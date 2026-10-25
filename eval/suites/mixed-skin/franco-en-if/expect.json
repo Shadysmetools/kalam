@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0201"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "English `if` in a Franco file (spec 5.4 example `if x:`)."
+}

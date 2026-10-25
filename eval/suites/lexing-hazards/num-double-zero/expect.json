@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0125"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "`00`: leading zero, K0125."
+}

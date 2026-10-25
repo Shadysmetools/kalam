@@ -1,0 +1,6 @@
+haykal Contract:
+    law: nass
+
+dala ra2isi():
+    khali c = Contract(law: "civil")
+    ektb(c.law)

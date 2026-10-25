@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0111"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "U+FE0F VARIATION SELECTOR-16 VS16 after a letter in a string (not after an emoji). Spec 5.1 zero-width/invisible/variation-selector rows: SEC0111."
+}

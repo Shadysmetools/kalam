@@ -1,0 +1,43 @@
+{
+  "clock_rule": "crash_free_hours accumulates across runs only while `version` (SHA-256 of the fuzz target binary) is unchanged and no crash is open on it; it resets to 0 on a new binary or a crash",
+  "corpus_seeds": 604,
+  "corpus_size": 1852,
+  "crash_free_hours": 0.1667,
+  "crash_free_secs": 600.057,
+  "crash_list": [],
+  "crashes": 0,
+  "execs_per_sec": 967.0,
+  "features": 1525,
+  "jobs": 4,
+  "last_run": "2026-10-25T11:49:59Z",
+  "last_run_execs": 580253,
+  "last_run_secs": 600.1,
+  "metric": "D1.fuzz_crash_free_hours",
+  "oracle_violations": {
+    "convert_roundtrip": {
+      "count": 49,
+      "detail": "en->ar->en is not byte-identical to en->en",
+      "examples": [
+        "oracle/convert_roundtrip-1.kl",
+        "oracle/convert_roundtrip-2.kl",
+        "oracle/convert_roundtrip-3.kl"
+      ]
+    }
+  },
+  "previous_version": null,
+  "replay_checked": 0,
+  "replay_open": 0,
+  "runs": 1,
+  "targets": [
+    "lexer",
+    "parser",
+    "kcf",
+    "fmt",
+    "convert"
+  ],
+  "total_execs": 580253,
+  "version": "aff482b7205cb09bca39841368a7bab3ecfb864cdc985da7e43878dd4bbceb44",
+  "version_execs": 580253,
+  "version_fuzz_hours": 0.1667,
+  "version_fuzz_secs": 600.057
+}

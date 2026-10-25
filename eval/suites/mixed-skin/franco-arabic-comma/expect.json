@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0201"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Arabic comma `،` in a Franco file: K0201 with a fix (spec 6.4)."
+}

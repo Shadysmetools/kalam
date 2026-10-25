@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0926"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "C-style `for (init; cond; step)` (spec 21.3). K0904 for the `;` may follow but the first error at the line must be K0926."
+}

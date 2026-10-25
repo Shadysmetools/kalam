@@ -329,7 +329,8 @@ fn meaning_comments_and_blank_lines_change_kcf() {
         &format!("# doc\n{base}"),
         Skin::En,
     );
-    differ(base, &base.replacen('\n', "\n\n", 1), Skin::En);
+    // A blank line between two statements of a block (KCF2 records "at least one").
+    differ(base, &base.replacen("= 1\n", "= 1\n\n", 1), Skin::En);
     // A trailing comment and a comment on its own line are different layouts.
     differ(
         "fn main():\n    let x = 1 # c\n    pass\n",
@@ -346,6 +347,162 @@ fn meaning_comments_and_blank_lines_change_kcf() {
     differ("let x = 16\n", "let x = 0x10\n", Skin::En);
     // A string's text, quotes and escapes are kept byte for byte.
     differ("let x = \"a\\{b\"\n", "let x = \"a{b}\"\n", Skin::En);
+}
+
+// ----- KCF2: layout `fmt` may change is not recorded (spec §4.4, FOUNDER-QUEUE Q8) -------
+
+#[test]
+fn header_is_kcf2() {
+    assert_eq!(kcf::MAGIC, b"KCF2\n");
+    assert!(kcf_of("fn main():\n    pass\n", Skin::En).starts_with(b"KCF2\n"));
+}
+
+#[test]
+fn blank_line_runs_are_at_least_one_blank_line() {
+    let one = "fn main():\n    let x = 1\n\n    print(x)\n";
+    let three = "fn main():\n    let x = 1\n\n\n\n    print(x)\n";
+    equal(one, three, Skin::En);
+    assert_eq!(show(&kcf_of(one, Skin::En)).matches("\nB\n").count(), 1);
+    // Between comments inside a block, too.
+    equal(
+        "fn main():\n    f()\n\n    # a\n\n    # b\n    g()\n",
+        "fn main():\n    f()\n\n\n    # a\n\n\n\n    # b\n    g()\n",
+        Skin::En,
+    );
+    differ(
+        "fn main():\n    f()\n    # a\n\n    g()\n",
+        "fn main():\n    f()\n\n    # a\n    g()\n",
+        Skin::En,
+    );
+}
+
+#[test]
+fn blank_lines_fmt_decides_are_not_recorded() {
+    let base = "fn main():\n    f(a, b)\n    # c\n    g()\n";
+    // At the start of a block, before its first comment or statement.
+    equal(base, &base.replacen(":\n", ":\n\n\n", 1), Skin::En);
+    // Inside brackets.
+    equal(
+        "fn main():\n    f(\n        a,\n        b,\n    )\n",
+        "fn main():\n    f(\n\n        a,\n\n\n        b,\n\n    )\n",
+        Skin::En,
+    );
+    // At the top level: none, one or three between items, at the start and at the end.
+    let items = "fn a():\n    pass\n\nfn b():\n    pass\n";
+    equal(items, &items.replace("\n\n", "\n"), Skin::En);
+    equal(items, &items.replace("\n\n", "\n\n\n\n"), Skin::En);
+    equal(items, &format!("\n\n{items}\n\n\n"), Skin::En);
+    equal(
+        "use std/io\n\n# head\nfn a():\n    pass\n",
+        "use std/io\n# head\n\nfn a():\n    pass\n",
+        Skin::En,
+    );
+    // Before `else`.
+    equal(
+        "fn main():\n    if x:\n        f()\n    else:\n        g()\n",
+        "fn main():\n    if x:\n        f()\n\n    else:\n        g()\n",
+        Skin::En,
+    );
+    equal(
+        "fn main():\n    if x:\n        f()\n    # c\n    else:\n        g()\n",
+        "fn main():\n    if x:\n        f()\n\n    # c\n\n    else:\n        g()\n",
+        Skin::En,
+    );
+    // After an attribute line.
+    equal(
+        "impl A:\n    @inline\n    fn f():\n        pass\n",
+        "impl A:\n    @inline\n\n    fn f():\n        pass\n",
+        Skin::En,
+    );
+}
+
+#[test]
+fn trailing_commas_are_not_recorded_except_in_a_one_element_tuple() {
+    equal("let x = f(a, b,)\n", "let x = f(a, b)\n", Skin::En);
+    equal("let x = [1, 2,]\n", "let x = [1, 2]\n", Skin::En);
+    equal("let x = {1: 2,}\n", "let x = {1: 2}\n", Skin::En);
+    equal("let x = (1, 2,)\n", "let x = (1, 2)\n", Skin::En);
+    equal(
+        "fn f(a: Int,):\n    pass\n",
+        "fn f(a: Int):\n    pass\n",
+        Skin::En,
+    );
+    equal("let g = fn(x,) => x\n", "let g = fn(x) => x\n", Skin::En);
+    equal("let x = f(a,)\n", "let x = f(a)\n", Skin::En);
+    equal("let x = xs[0](a,)\n", "let x = xs[0](a)\n", Skin::En);
+    equal("use a/{b, c,}\n", "use a/{b, c}\n", Skin::En);
+    // The Arabic comma is the same concept.
+    equal(
+        "دالة رئيسي():\n    ليكن x = f(a، b،)\n",
+        "دالة رئيسي():\n    ليكن x = f(a، b)\n",
+        Skin::Ar,
+    );
+    // `(x,)` is a one-element tuple and `(x)` is just `x`.
+    differ("let t = (x,)\n", "let t = (x)\n", Skin::En);
+    differ(
+        "fn f() -> (Int,):\n    pass\n",
+        "fn f() -> (Int):\n    pass\n",
+        Skin::En,
+    );
+    differ(
+        "fn main():\n    match t:\n        case (x,): pass\n",
+        "fn main():\n    match t:\n        case (x): pass\n",
+        Skin::En,
+    );
+    // A comma between items is always recorded.
+    differ("let x = f(a, b)\n", "let x = f(ab)\n", Skin::En);
+}
+
+#[test]
+fn one_line_blocks_are_their_indented_form() {
+    for (one, indented) in [
+        (
+            "fn main():\n    if x: f()\n",
+            "fn main():\n    if x:\n        f()\n",
+        ),
+        (
+            "fn main():\n    if x: f()\n    else if y: g()\n    else: h()\n",
+            "fn main():\n    if x:\n        f()\n    else if y:\n        g()\n    else:\n        h()\n",
+        ),
+        (
+            "fn main():\n    for n in xs: print(n)\n    g()\n",
+            "fn main():\n    for n in xs:\n        print(n)\n    g()\n",
+        ),
+        (
+            "fn main():\n    while c: f()  # note\n",
+            "fn main():\n    while c:\n        f()  # note\n",
+        ),
+        ("fn f() -> Int: return 1\n", "fn f() -> Int:\n    return 1\n"),
+        (
+            "fn main():\n    match x:\n        case 1: f()\n        case _: g()\n",
+            "fn main():\n    match x:\n        case 1:\n            f()\n        case _:\n            g()\n",
+        ),
+    ] {
+        equal(one, indented, Skin::En);
+    }
+    // An inline `if` expression is not a block: it keeps its form.
+    differ(
+        "fn main():\n    if c: f() else: g()\n",
+        "fn main():\n    if c:\n        f()\n    else:\n        g()\n",
+        Skin::En,
+    );
+    differ(
+        "fn main():\n    let v = if c: a else: b\n",
+        "fn main():\n    let v = if c:\n        a\n    else:\n        b\n",
+        Skin::En,
+    );
+    // ... and inside a one-line block it stays inline.
+    equal(
+        "fn main():\n    if c: return if a: b else: d\n",
+        "fn main():\n    if c:\n        return if a: b else: d\n",
+        Skin::En,
+    );
+    // Where the next statement goes is still structure.
+    differ(
+        "fn main():\n    if x: f()\n    g()\n",
+        "fn main():\n    if x:\n        f()\n        g()\n",
+        Skin::En,
+    );
 }
 
 #[test]

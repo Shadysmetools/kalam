@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0110"
+  ],
+  "lines": [
+    8
+  ],
+  "notes": "Raw U+202E in a trailing comment (spec 5.1)."
+}

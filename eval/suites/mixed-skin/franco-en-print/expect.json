@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0201"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "English core name `print` (undeclared) in a Franco file."
+}

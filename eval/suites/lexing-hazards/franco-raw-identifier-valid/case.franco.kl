@@ -1,0 +1,3 @@
+dala ra2isi():
+    khali `law` = 1
+    ektb("{`law`}")

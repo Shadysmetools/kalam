@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0105"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "`count` with Greek omicron U+03BF: mixed-script identifier."
+}

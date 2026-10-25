@@ -1,0 +1,4 @@
+fn main():
+    let al = 1
+    let a1 = 2
+    print("{al} {a1}")

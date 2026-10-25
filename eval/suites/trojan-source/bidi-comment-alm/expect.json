@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0110"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Raw U+061C ARABIC LETTER MARK inside a comment. Spec 5.1: rejected in comments (no attribute can suppress it). The message must name U+061C."
+}

@@ -8,7 +8,15 @@
 //! Status: stub (Phase 1).
 
 /// The tools the server exposes (spec §21.5).
-pub const TOOLS: &[&str] = &["check", "fix", "fmt", "convert_skin", "run_tests", "doc_search", "explain"];
+pub const TOOLS: &[&str] = &[
+    "check",
+    "fix",
+    "fmt",
+    "convert_skin",
+    "run_tests",
+    "doc_search",
+    "explain",
+];
 
 /// Runs the server on stdin/stdout.
 pub fn run_stdio() -> Result<(), String> {

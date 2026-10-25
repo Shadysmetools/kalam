@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0201"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Franco closed-list variant `khalli` (let) in an Arabic file: other-skin aliases count as that skin's reserved spellings."
+}

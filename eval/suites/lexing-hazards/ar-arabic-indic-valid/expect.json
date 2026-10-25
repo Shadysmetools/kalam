@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Arabic-Indic integer, float with U+066B decimal separator, `_` group separator and a range: all valid in `ar` files (one system per literal)."
+}

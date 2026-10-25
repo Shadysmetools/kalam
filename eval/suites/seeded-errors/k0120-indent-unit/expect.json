@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0120"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Block indented by 2 spaces; the unit is 4 (spec 5.8 rule 1)."
+}

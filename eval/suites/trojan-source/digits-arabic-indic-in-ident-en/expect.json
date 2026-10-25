@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0124"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Arabic-Indic digit inside a Latin identifier: SEC0124."
+}

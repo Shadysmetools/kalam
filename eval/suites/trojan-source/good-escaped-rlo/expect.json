@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Bidi control written as a visible \\u{202E} escape: allowed (spec 5.1 rationale)."
+}

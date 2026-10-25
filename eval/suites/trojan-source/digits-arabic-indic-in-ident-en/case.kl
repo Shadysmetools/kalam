@@ -1,0 +1,3 @@
+fn main():
+    let item١ = 1
+    print("ok")

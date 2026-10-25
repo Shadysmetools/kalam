@@ -1,0 +1,5 @@
+dala greet(name: String) -> nass:
+    rag3 "hi {name}"
+
+dala ra2isi():
+    ektb(greet("x"))

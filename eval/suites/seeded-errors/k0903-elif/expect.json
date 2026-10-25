@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0903"
+  ],
+  "lines": [
+    4
+  ],
+  "notes": "`elif` instead of `else if` (spec 21.3)."
+}

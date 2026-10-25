@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "ASCII `,` and `?` are also accepted in Arabic files (keywords.json ar_also_accepts; spec 6.4); fmt prints `،` and `؟`."
+}

@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Hamza-less and ة/ه, ى/ي keyword spellings; fmt writes canonical spellings, KCF unchanged."
+}

@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0201"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "English core name `print` used (not declared) in an Arabic file: would be an undefined name, so K0201 (spec 5.4 example). Decidable by a file-local lookup."
+}

@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0925"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "`switch x {` with `->` arms (spec 21.3)."
+}

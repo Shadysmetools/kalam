@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0913"
+  ],
+  "lines": [
+    10
+  ],
+  "notes": "Python f-string prefix (spec 21.3)."
+}

@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0123"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "U+066C between ASCII digits: SEC0123."
+}

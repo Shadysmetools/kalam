@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "No blank line between items; fmt inserts one. KCF NOTE: spec 4.4 keeps blank lines in KCF byte for byte while 21.1 rule 4 makes fmt change them, so kcf(fmt(x)) == kcf(x) can only hold if KCF ignores this layout; recorded as a founder fork."
+}

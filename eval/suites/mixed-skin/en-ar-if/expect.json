@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0201"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "Arabic `إذا` in an English file."
+}

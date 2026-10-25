@@ -1,0 +1,10 @@
+fn total(items: List[Int]) -> Int:
+    var sum = 0
+    for item in items:
+        sum += item
+    return sum
+
+fn main():
+    let xs = [1, 2, 3]
+        let n = total(xs)
+    print("total {n}")

@@ -192,6 +192,24 @@ pub fn convert_source(
     })
 }
 
+/// `kalam explain CODE`: the explain page in `lang` (`KALAM_LANG`), with every message
+/// placeholder described rather than printed raw (spec §21.4 rule 5). `None` for a code
+/// with no catalog entry. The code is matched case-insensitively.
+pub fn explain(code: &str, lang: Lang) -> Option<String> {
+    kalam_diagnostics::explain::page(code, lang)
+}
+
+/// `kalam explain --catalog`: every catalog code and its title in `lang`.
+pub fn explain_catalog(lang: Lang) -> String {
+    kalam_diagnostics::explain::catalog_list(lang)
+}
+
+/// `kalam explain --catalog --json`: every code × en/ar/franco (title, message template,
+/// placeholder descriptions, explain page; `help` is `null` until the catalog has it).
+pub fn explain_catalog_json() -> String {
+    kalam_diagnostics::explain::catalog_json()
+}
+
 /// Build targets accepted by `kalam build --target`.
 pub fn parse_target(name: &str) -> Option<kalam_ir::Target> {
     match name {
@@ -265,6 +283,22 @@ mod tests {
             convert_source("x.kl", "law = 1\n", Skin::Ar, &cfg),
             Err(SourceError::Diagnostics(_))
         ));
+    }
+
+    #[test]
+    fn explain_describes_placeholders_and_lists_the_catalog() {
+        let page = explain("k0201", Skin::En).expect("K0201 page");
+        assert!(page.starts_with("K0201  WORD FROM ANOTHER SKIN"), "{page}");
+        assert!(
+            !page.contains("{found}") && !page.contains("{expected}"),
+            "{page}"
+        );
+        let ar = explain("K0201", Skin::Ar).unwrap();
+        assert!(ar.contains("كلمة من واجهة أخرى"), "{ar}");
+        assert!(explain("K9999", Skin::En).is_none());
+        assert!(explain_catalog(Skin::En).contains("K0201"));
+        let json = explain_catalog_json();
+        assert!(json.contains("\"K0201\"") && json.contains("\"franco\""));
     }
 
     #[test]

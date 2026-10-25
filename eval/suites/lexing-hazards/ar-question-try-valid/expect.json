@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "`؟` is the Arabic spelling of the `?` operator and `،` of `,` (spec 6.4). Accepted in `ar` files."
+}

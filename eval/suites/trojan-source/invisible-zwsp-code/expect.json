@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0111"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "U+200B ZERO WIDTH SPACE between tokens in code. Spec 5.1 zero-width/invisible/variation-selector rows: SEC0111."
+}

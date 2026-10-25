@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0923"
+  ],
+  "lines": [
+    9
+  ],
+  "notes": "`a ** b` (spec 5.9, 21.3)."
+}

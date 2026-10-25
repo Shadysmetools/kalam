@@ -84,9 +84,9 @@ dependencies = [
 name = "kalam-eval"
 version = "0.1.0"
 dependencies = [
- "kalam-ast",
  "kalam-base",
  "kalam-diagnostics",
+ "kalam-driver",
  "kalam-fmt",
  "kalam-lexer",
  "kalam-parser",
@@ -109,6 +109,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "kalam-fuzz"
+version = "0.1.0"
+dependencies = [
+ "kalam-base",
+ "kalam-driver",
+ "kalam-fmt",
+ "kalam-lexer",
+ "kalam-parser",
+ "kalam-props",
+ "kalam-skins",
+ "kalam-syntax",
+ "serde_json",
+]
+
+[[package]]
 name = "kalam-ir"
 version = "0.1.0"
 dependencies = [
@@ -125,6 +140,7 @@ dependencies = [
  "kalam-base",
  "kalam-diagnostics",
  "kalam-skins",
+ "serde_json",
 ]
 
 [[package]]
@@ -167,6 +183,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "kalam-props"
+version = "0.1.0"
+dependencies = [
+ "kalam-ast",
+ "kalam-base",
+ "kalam-fmt",
+ "kalam-lexer",
+ "kalam-parser",
+ "kalam-skins",
+ "kalam-syntax",
+ "serde_json",
+]
+
+[[package]]
 name = "kalam-resolve"
 version = "0.1.0"
 dependencies = [
@@ -197,9 +227,11 @@ name = "kalam-syntax"
 version = "0.1.0"
 dependencies = [
  "kalam-base",
+ "kalam-fmt",
  "kalam-lexer",
  "kalam-parser",
  "kalam-skins",
+ "serde_json",
 ]
 
 [[package]]

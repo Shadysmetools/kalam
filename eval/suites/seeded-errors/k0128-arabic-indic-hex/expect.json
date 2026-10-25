@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0128"
+  ],
+  "lines": [
+    9
+  ],
+  "notes": "Hex literal written with Arabic-Indic digits (spec 5.6)."
+}

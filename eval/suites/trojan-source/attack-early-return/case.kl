@@ -1,0 +1,4 @@
+fn main():
+    let balance = 100
+    print("{balance}")  # ⁧ return⁩ ⁦
+    print("charged")

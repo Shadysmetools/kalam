@@ -1,0 +1,5 @@
+dala print(text: nass):
+    ektb(text)
+
+dala ra2isi():
+    print("hi")

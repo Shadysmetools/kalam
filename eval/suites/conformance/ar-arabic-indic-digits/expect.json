@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Arabic-Indic literals with the default `digits = \"ascii\"`: fmt prints ASCII; KCF stores values only (spec 4.4, 6.2)."
+}

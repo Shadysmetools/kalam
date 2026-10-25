@@ -1,0 +1,7 @@
+fn one() -> Int:
+    return 1
+
+
+
+fn main():
+    print("{one()}")

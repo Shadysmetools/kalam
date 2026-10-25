@@ -1,0 +1,6 @@
+type Rule:
+    law: String
+
+fn main():
+    let r = Rule(law: "x")
+    print(r.law)

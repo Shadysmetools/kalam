@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0100"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "U+FEFF (ZERO WIDTH NO-BREAK SPACE / BOM) inside a string. Spec 5.1: BOM anywhere is SEC0100."
+}

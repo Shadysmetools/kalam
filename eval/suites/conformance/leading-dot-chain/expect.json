@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Leading-dot continuation with uneven (but deeper) indentation (spec 5.8 rule 2, DR-05)."
+}

@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0201"
+  ],
+  "lines": [
+    10
+  ],
+  "notes": "A core name of another skin used where it would be an undefined name: `اطبع` in the en file, `print` in ar and franco (spec 5.4). The file declares no such name, so a file-local lookup decides it."
+}

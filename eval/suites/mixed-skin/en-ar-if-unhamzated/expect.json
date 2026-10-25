@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0201"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "Arabic `اذا` (no hamza) in an English file: the ar lookup folds hamza, so it is the Arabic keyword `if` and K0201 applies."
+}

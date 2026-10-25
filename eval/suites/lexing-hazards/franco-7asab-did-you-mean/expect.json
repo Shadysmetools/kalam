@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0127"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "`7asab` is the digit-leading spelling of `hasab` (match). It is in did_you_mean only, never accepted: K0127 and the message should suggest `hasab` (spec 5.6, 7.3)."
+}

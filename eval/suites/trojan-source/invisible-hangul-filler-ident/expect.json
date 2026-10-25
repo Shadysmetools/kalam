@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0111"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "U+3164 HANGUL FILLER HANGUL FILLER used as an invisible identifier (classic invisible-variable backdoor). Spec 5.1 zero-width/invisible/variation-selector rows: SEC0111."
+}

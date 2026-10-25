@@ -1,0 +1,3 @@
+fn main():
+    # col1	col2
+    print("ok")

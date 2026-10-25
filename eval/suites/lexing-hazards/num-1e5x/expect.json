@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0127"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "`1e5x`: one letter flips a float into garbage; K0127 (spec 5.6 example, research/04 4.2)."
+}

@@ -1,0 +1,12 @@
+دالة total(items: قائمة[عدد]) -> عدد:
+    متغير sum = 0
+    لكل item في items:
+        sum += item
+    أرجع sum
+
+دالة رئيسي():
+    ليكن xs = [1، 2، 3]
+    ليكن double = دالة(x: عدد):
+        أرجع x * 2
+    ليكن n = total(xs.map(double))
+    اطبع("total {n}")

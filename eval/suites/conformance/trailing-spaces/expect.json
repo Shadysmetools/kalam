@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Trailing spaces at line ends (U+0020 is the only whitespace; trailing runs are trivia)."
+}

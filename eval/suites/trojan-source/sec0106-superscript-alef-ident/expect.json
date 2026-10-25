@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0106"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "superscript alef U+0670 inside an identifier. Spec 5.2/5.3 rule 4/5.4: SEC0106, auto-fix removes or replaces it."
+}

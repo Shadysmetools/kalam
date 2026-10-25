@@ -1,0 +1,3 @@
+fn main():
+    let pass­word = 1
+    print("{password}")

@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Persian keheh U+06A9 and Farsi yeh U+06CC in an identifier, used with the same spelling: legal since D19 (fold, not reject; SEC0107 is retired)."
+}

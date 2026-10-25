@@ -1,0 +1,7 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0104"
+  ],
+  "notes": "[M2] Two distinct identifiers with one skeleton in one scope: both letters Persian (keheh U+06A9, Farsi yeh U+06CC) vs Arabic. SEC0104 needs name resolution, so it counts from tier M2 (scorecard D2.lexing_hazard_suite scope). No exact line is pinned (the error may point at either declaration)."
+}

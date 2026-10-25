@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0904"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Arabic semicolon `؛` is rejected like `;` (spec 6.4, 5.8 rule 5): K0904 with a fix that splits the line."
+}

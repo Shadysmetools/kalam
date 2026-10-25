@@ -125,10 +125,25 @@ mod tests {
     fn spec_trait_exclusions() {
         assert!(never_implements(&Ty::Float, BuiltinTrait::Eq));
         assert!(!never_implements(&Ty::Decimal, BuiltinTrait::Eq));
-        assert!(never_implements(&Ty::Secret(Box::new(Ty::String)), BuiltinTrait::Encode));
-        assert!(!never_implements(&Ty::Secret(Box::new(Ty::String)), BuiltinTrait::Show));
-        assert!(never_implements(&Ty::Capability(Capability::Net), BuiltinTrait::Decode));
-        assert!(never_implements(&Ty::Sink(SinkType::Sql), BuiltinTrait::Decode));
-        assert!(!never_implements(&Ty::Sink(SinkType::Url), BuiltinTrait::Decode));
+        assert!(never_implements(
+            &Ty::Secret(Box::new(Ty::String)),
+            BuiltinTrait::Encode
+        ));
+        assert!(!never_implements(
+            &Ty::Secret(Box::new(Ty::String)),
+            BuiltinTrait::Show
+        ));
+        assert!(never_implements(
+            &Ty::Capability(Capability::Net),
+            BuiltinTrait::Decode
+        ));
+        assert!(never_implements(
+            &Ty::Sink(SinkType::Sql),
+            BuiltinTrait::Decode
+        ));
+        assert!(!never_implements(
+            &Ty::Sink(SinkType::Url),
+            BuiltinTrait::Decode
+        ));
     }
 }

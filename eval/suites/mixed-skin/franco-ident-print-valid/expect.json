@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "A user function named `print` in a Franco file: declared, so it is not an undefined name and K0201 does not apply (spec 5.4)."
+}

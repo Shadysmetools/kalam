@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "`let` declared as an identifier in a Franco file: English keywords are ordinary identifiers in other skins when declared (spec 5.4)."
+}

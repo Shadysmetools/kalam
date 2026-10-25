@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0103"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Raw tab inside a string: escape-only (write \\t), K0103 (spec 5.1 tab row)."
+}

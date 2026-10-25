@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0907"
+  ],
+  "lines": [
+    1
+  ],
+  "notes": "`async fn`: suspension is inferred (spec 15, 21.3)."
+}

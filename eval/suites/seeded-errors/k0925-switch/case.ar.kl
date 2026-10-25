@@ -1,0 +1,9 @@
+دالة describe(n: عدد) -> نص:
+    switch n {
+        عندما 0 -> أرجع "zero"
+    }
+    أرجع "other"
+
+دالة رئيسي():
+    ليكن label = describe(5)
+    اطبع(label)

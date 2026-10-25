@@ -1,0 +1,3 @@
+fn main():
+    let ages = { "sara" : 30 , "omar":25, }
+    print("{ages.len()}")

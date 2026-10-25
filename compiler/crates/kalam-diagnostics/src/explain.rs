@@ -1,0 +1,287 @@
+//! `kalam explain` pages (spec §21.4 rule 5) and the machine-readable catalog behind
+//! `kalam explain --catalog --json` (eval M1 checks 14 and 15).
+//!
+//! A catalog message is a template whose `{name}` placeholders are filled from a
+//! diagnostic's arguments. An explain page has no diagnostic, so each placeholder is shown
+//! as a description in the reader's message language (`<the word from another skin>`),
+//! never as the raw `{found}`. `{kw_let}` is the one keyword placeholder; a page shows it in
+//! the reader's own skin spelling.
+
+use kalam_base::Skin;
+use kalam_skins::{Concept, KeywordTable};
+use serde_json::{json, Value};
+
+use crate::catalog::{self, Entry, CATALOG};
+use crate::{Lang, Severity};
+
+/// Placeholder descriptions: `(code, name, [en, ar, franco])`. A row with a code applies to
+/// that code only and wins over the generic row (code `""`).
+const DESCRIPTIONS: &[(&str, &str, [&str; 3])] = &[
+    (
+        "",
+        "cp",
+        [
+            "the code point, such as U+202E",
+            "رمز الحرف، مثل U+202E",
+            "el code point, zay U+202E",
+        ],
+    ),
+    (
+        "",
+        "name",
+        [
+            "the character's Unicode name",
+            "اسم الحرف في يونيكود",
+            "esm el 7arf f Unicode",
+        ],
+    ),
+    (
+        "",
+        "literal",
+        [
+            "the literal as you wrote it",
+            "القيمة الحرفية كما كتبتها",
+            "el literal zay ma katabto",
+        ],
+    ),
+    (
+        "",
+        "fixed",
+        [
+            "the corrected spelling",
+            "الكتابة المصححة",
+            "el ketaba el sa7",
+        ],
+    ),
+    (
+        "",
+        "type",
+        ["the literal's type", "نوع القيمة", "no3 el qeema"],
+    ),
+    (
+        "",
+        "word",
+        [
+            "the word as you wrote it",
+            "الكلمة كما كتبتها",
+            "el kelma zay ma katabtaha",
+        ],
+    ),
+    (
+        "",
+        "escape",
+        [
+            "the escape as you wrote it",
+            "تسلسل الهروب كما كتبته",
+            "el escape zay ma katabto",
+        ],
+    ),
+    ("", "found", ["what I found", "ما وجدته", "elly la2eto"]),
+    (
+        "",
+        "expected",
+        ["what I expected", "ما توقعته", "elly kont mestanneeh"],
+    ),
+    (
+        "K0201",
+        "found",
+        [
+            "the word from another skin",
+            "الكلمة المكتوبة بواجهة أخرى",
+            "el kelma elly men skin tany",
+        ],
+    ),
+    (
+        "K0201",
+        "expected",
+        [
+            "the same word in this file's skin",
+            "الكلمة نفسها بواجهة هذا الملف",
+            "nafs el kelma bel skin bta3 el file da",
+        ],
+    ),
+    (
+        "K0911",
+        "found",
+        [
+            "the symbol you wrote, such as &&",
+            "الرمز الذي كتبته، مثل &&",
+            "el ramz elly katabto, zay &&",
+        ],
+    ),
+    (
+        "K0911",
+        "expected",
+        [
+            "the keyword for it in this file's skin",
+            "الكلمة المحجوزة المقابلة بواجهة هذا الملف",
+            "el keyword elly badalo bel skin bta3 el file da",
+        ],
+    ),
+];
+
+/// Placeholders that stand for a keyword: a page shows the reader's own spelling.
+const KEYWORDS: &[(&str, Concept)] = &[("kw_let", Concept::KwLet)];
+
+/// The description of placeholder `name` in `code`'s message, in `lang`.
+pub fn describe(code: &str, name: &str, lang: Lang) -> Option<String> {
+    if let Some((_, concept)) = KEYWORDS.iter().find(|(n, _)| *n == name) {
+        return Some(KeywordTable::builtin().spelling(*concept, lang).to_string());
+    }
+    DESCRIPTIONS
+        .iter()
+        .find(|(c, n, _)| *c == code && *n == name)
+        .or_else(|| {
+            DESCRIPTIONS
+                .iter()
+                .find(|(c, n, _)| c.is_empty() && *n == name)
+        })
+        .map(|(_, _, texts)| format!("<{}>", texts[lang.index()]))
+}
+
+/// Placeholder names in `template`, in order of first use (the rule `render_template` fills).
+fn placeholder_names(template: &str) -> Vec<&str> {
+    let mut out: Vec<&str> = Vec::new();
+    let mut rest = template;
+    while let Some(open) = rest.find('{') {
+        let after = &rest[open + 1..];
+        match after.find('}') {
+            Some(close)
+                if close > 0
+                    && after[..close]
+                        .bytes()
+                        .all(|b| b.is_ascii_lowercase() || b == b'_') =>
+            {
+                let name = &after[..close];
+                if !out.contains(&name) {
+                    out.push(name);
+                }
+                rest = &after[close + 1..];
+            }
+            _ => rest = after,
+        }
+    }
+    out
+}
+
+/// Every placeholder name across `entry`'s three message templates.
+fn entry_placeholders(entry: &Entry) -> Vec<&'static str> {
+    let mut out: Vec<&'static str> = Vec::new();
+    for template in entry.message {
+        for name in placeholder_names(template) {
+            if !out.contains(&name) {
+                out.push(name);
+            }
+        }
+    }
+    out
+}
+
+/// `entry`'s message in `lang` with every placeholder replaced by its description.
+fn described_message(entry: &Entry, lang: Lang) -> String {
+    let args: Vec<(&'static str, String)> = entry_placeholders(entry)
+        .into_iter()
+        .filter_map(|name| describe(entry.code, name, lang).map(|d| (name, d)))
+        .collect();
+    catalog::render_template(entry.message[lang.index()], &args)
+}
+
+fn docs_url(code: &str) -> String {
+    format!("https://kalam.dev/errors/{code}")
+}
+
+const PROPOSED_NOTE: [&str; 3] = [
+    "(This code is proposed and not yet listed in spec §27.)",
+    "(هذا الرمز مقترح ولم يُدرج بعد في القسم 27 من المواصفة.)",
+    "(El code da mo2tara7 w lessa mesh mawgood f spec §27.)",
+];
+
+fn render_page(entry: &Entry, lang: Lang) -> String {
+    let i = lang.index();
+    let mut out = format!("{}  {}\n\n", entry.code, entry.title[i]);
+    out.push_str(&described_message(entry, lang));
+    out.push('\n');
+    if entry.proposed {
+        out.push('\n');
+        out.push_str(PROPOSED_NOTE[i]);
+        out.push('\n');
+    }
+    out.push_str(&format!(
+        "\n{} {}\n",
+        catalog::ui(lang, catalog::Ui::LearnMore),
+        docs_url(entry.code)
+    ));
+    out
+}
+
+/// The `kalam explain CODE` page in `lang`, or `None` for a code with no catalog entry.
+/// `code` is matched case-insensitively.
+pub fn page(code: &str, lang: Lang) -> Option<String> {
+    let code = code.trim().to_ascii_uppercase();
+    catalog::lookup(&code).map(|entry| render_page(entry, lang))
+}
+
+/// `kalam explain --catalog`: one line per code, `CODE  TITLE`, in `lang`.
+pub fn catalog_list(lang: Lang) -> String {
+    let mut entries: Vec<&Entry> = CATALOG.iter().collect();
+    entries.sort_by_key(|e| e.code);
+    let mut out = String::new();
+    for e in entries {
+        out.push_str(&format!("{:<8} {}\n", e.code, e.title[lang.index()]));
+    }
+    out
+}
+
+fn by_lang(f: impl Fn(Lang) -> Value) -> Value {
+    let mut map = serde_json::Map::new();
+    for lang in Skin::ALL {
+        map.insert(lang.id().to_string(), f(lang));
+    }
+    Value::Object(map)
+}
+
+/// `kalam explain --catalog --json`: every catalog code, sorted, with its title, message
+/// template, placeholder descriptions and explain page in `en`, `ar` and `franco`.
+/// `help` is `null`: the catalog has no help text separate from the message yet.
+pub fn catalog_value() -> Value {
+    let mut entries: Vec<&Entry> = CATALOG.iter().collect();
+    entries.sort_by_key(|e| e.code);
+    let codes: Vec<Value> = entries
+        .into_iter()
+        .map(|e| {
+            let placeholders: Vec<Value> = entry_placeholders(e)
+                .into_iter()
+                .map(|name| {
+                    json!({
+                        "name": name,
+                        "description": by_lang(|lang| match describe(e.code, name, lang) {
+                            Some(d) => Value::String(d),
+                            None => Value::Null,
+                        }),
+                    })
+                })
+                .collect();
+            json!({
+                "code": e.code,
+                "severity": Severity::from_code(e.code).as_str(),
+                "proposed": e.proposed,
+                "title": by_lang(|lang| Value::String(e.title[lang.index()].to_string())),
+                "message": by_lang(|lang| Value::String(e.message[lang.index()].to_string())),
+                "placeholders": placeholders,
+                "help": Value::Null,
+                "explain": by_lang(|lang| Value::String(render_page(e, lang))),
+                "url": docs_url(e.code),
+            })
+        })
+        .collect();
+    json!({
+        "schema": "kalam-explain-catalog/1",
+        "languages": ["en", "ar", "franco"],
+        "codes": codes,
+    })
+}
+
+/// [`catalog_value`] as pretty-printed JSON text.
+pub fn catalog_json() -> String {
+    serde_json::to_string_pretty(&catalog_value()).expect("catalog JSON serializes")
+}

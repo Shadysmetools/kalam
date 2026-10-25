@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0401"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "[M2] Declared with Arabic kaf, used with Persian keheh. Uses are never folded (spec 5.3, FOUNDER-QUEUE Q7): K0401 with a machine fix to the declared spelling. Needs name resolution."
+}

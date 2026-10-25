@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Redundant backticks around a non-reserved name; fmt removes them (spec 5.3 rule 7). Backticks are not part of the name, so KCF is unchanged."
+}

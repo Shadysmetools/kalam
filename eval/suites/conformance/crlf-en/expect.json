@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "CRLF line endings are accepted; fmt rewrites to LF (spec 4.1)."
+}

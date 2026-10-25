@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0129"
+  ],
+  "lines": [
+    10
+  ],
+  "notes": "String not closed before end of line (spec 27 K0129)."
+}

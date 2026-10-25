@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "`1..10` lexes as `1` `..` `10`; after a member `.` a digit run is an index only, so `t.0.1` is `t` `.` `0` `.` `1` (DR-26); `5.to_string()` keeps `.` out of the number because no digit follows it."
+}

@@ -1,0 +1,21 @@
+[package]
+name = "kalam-fuzz"
+description = "Coverage-agnostic mutational fuzzer for the lexer, parser, KCF, fmt and convert (D1.fuzz_crash_free_hours)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+# cargo-fuzz/libFuzzer does not work on the windows-gnu toolchain, so this is an in-house
+# mutational fuzzer with a supervisor process (stack overflows and aborts kill only the worker).
+[dependencies]
+kalam-base.workspace = true
+kalam-skins.workspace = true
+kalam-lexer.workspace = true
+kalam-syntax.workspace = true
+kalam-parser.workspace = true
+kalam-fmt.workspace = true
+kalam-driver.workspace = true
+serde_json.workspace = true
+kalam-props = { path = "../kalam-props" }

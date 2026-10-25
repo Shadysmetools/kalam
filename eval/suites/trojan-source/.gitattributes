@@ -1,0 +1,2 @@
+# Byte-exact test data (CRLF, lone CR, BOM, invalid UTF-8): never rewrite line endings.
+* -text

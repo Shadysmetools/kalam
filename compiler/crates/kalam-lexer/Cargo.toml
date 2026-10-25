@@ -11,3 +11,7 @@ publish = false
 kalam-base.workspace = true
 kalam-skins.workspace = true
 kalam-diagnostics.workspace = true
+
+[dev-dependencies]
+# Integration tests only: reads the shared eval suites' expect.json (tests/suites.rs).
+serde_json.workspace = true

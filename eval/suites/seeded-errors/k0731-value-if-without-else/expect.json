@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0731"
+  ],
+  "lines": [
+    10
+  ],
+  "notes": "`if` in value position without `else` (spec 8.3 rule 1)."
+}

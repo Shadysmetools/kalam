@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0122"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Arabic-Indic literal in an English file: SEC0122 with a machine fix to ASCII (spec 6.2)."
+}

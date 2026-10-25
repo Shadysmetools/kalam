@@ -16,3 +16,7 @@ kalam-lexer.workspace = true
 [dev-dependencies]
 # Integration tests only (tests/*.rs): the parser builds the CSTs that KCF serializes.
 kalam-parser.workspace = true
+# Integration tests only: `kcf(fmt(x)) == kcf(x)` (tests/kcf_fmt.rs). A dev-dependency cycle
+# (kalam-fmt depends on this crate) is fine for integration tests.
+kalam-fmt.workspace = true
+serde_json.workspace = true

@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "Arabic-Indic digits inside a string in an English file are data (spec 6.2), never SEC0122."
+}

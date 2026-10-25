@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0106"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "Tatweel inside `طالما`: SEC0106 with auto-fix."
+}

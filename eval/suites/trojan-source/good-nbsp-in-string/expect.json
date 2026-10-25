@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "NBSP U+00A0 inside a string is text: allowed raw, lint W0114 only (a warning, not an error)."
+}

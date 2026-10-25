@@ -13,7 +13,9 @@ use std::path::{Path, PathBuf};
 use kalam_diagnostics::catalog;
 
 fn rust_files(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(entries) = fs::read_dir(dir) else { return };
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
@@ -31,8 +33,13 @@ fn codes_in(text: &str, out: &mut BTreeSet<String>) {
         let Some(end) = rest.find('"') else { continue };
         let lit = &rest[..end];
         let prefix_len = lit.len().saturating_sub(4);
+        if !lit.is_char_boundary(prefix_len) {
+            continue; // a non-ASCII literal (`"… §27."`) is never a code
+        }
         let (prefix, digits) = lit.split_at(prefix_len);
-        if matches!(prefix, "SEC" | "K" | "W" | "H" | "L") && digits.bytes().all(|b| b.is_ascii_digit()) {
+        if matches!(prefix, "SEC" | "K" | "W" | "H" | "L")
+            && digits.bytes().all(|b| b.is_ascii_digit())
+        {
             out.insert(lit.to_string());
         }
     }
@@ -44,6 +51,9 @@ fn emitted_codes() -> BTreeSet<String> {
     for entry in fs::read_dir(&crates).expect("crates dir").flatten() {
         if entry.file_name() == "kalam-diagnostics" {
             continue; // the catalog itself
+        }
+        if entry.file_name() == "kalam-eval" {
+            continue; // the eval harness names codes (retired ones too) but emits none
         }
         rust_files(&entry.path().join("src"), &mut files);
     }
@@ -63,7 +73,10 @@ fn emitted_codes() -> BTreeSet<String> {
 fn scanner_finds_codes_in_quotes_only() {
     let mut out = BTreeSet::new();
     codes_in(r#"x("K0250"); "SEC0111" "K12" "Kx123" "note""#, &mut out);
-    assert_eq!(out.into_iter().collect::<Vec<_>>(), vec!["K0250", "SEC0111"]);
+    assert_eq!(
+        out.into_iter().collect::<Vec<_>>(),
+        vec!["K0250", "SEC0111"]
+    );
 }
 
 #[test]
@@ -93,19 +106,31 @@ fn every_emitted_code_has_a_catalog_entry_in_three_languages() {
 fn messages_have_no_unfilled_placeholders_for_known_args() {
     // Parser codes: K0250 gets `expected`/`found`, the rest get no args, so a stray `{x}`
     // would be printed raw.
-    let no_args = ["K0251", "K0252", "K0253", "K0254", "K0255", "K0256", "K0259", "K0710", "K0720", "K0731", "K0921"];
+    let no_args = [
+        "K0251", "K0252", "K0253", "K0254", "K0255", "K0256", "K0259", "K0710", "K0720", "K0731",
+        "K0921",
+    ];
     for code in no_args {
         let e = catalog::lookup(code).unwrap_or_else(|| panic!("{code} missing"));
         for msg in e.message {
             let rendered = catalog::render_template(msg, &[]);
-            assert!(!rendered.contains("{expected}") && !rendered.contains("{found}"), "{code}: {msg}");
+            assert!(
+                !rendered.contains("{expected}") && !rendered.contains("{found}"),
+                "{code}: {msg}"
+            );
         }
     }
     let e = catalog::lookup("K0250").expect("K0250");
-    let args = vec![("expected", "`:`".to_string()), ("found", "end of line".to_string())];
+    let args = vec![
+        ("expected", "`:`".to_string()),
+        ("found", "end of line".to_string()),
+    ];
     for msg in e.message {
         let rendered = catalog::render_template(msg, &args);
-        assert!(rendered.contains("`:`") && rendered.contains("end of line"), "{rendered}");
+        assert!(
+            rendered.contains("`:`") && rendered.contains("end of line"),
+            "{rendered}"
+        );
         assert!(!rendered.contains('{'), "{rendered}");
     }
 }

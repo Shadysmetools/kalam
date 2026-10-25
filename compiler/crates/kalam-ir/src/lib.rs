@@ -60,13 +60,30 @@ pub struct Block {
 
 #[derive(Clone, Debug)]
 pub enum Stmt {
-    Let { local: LocalId, ty: Ty, value: Expr },
-    Assign { local: LocalId, value: Expr },
+    Let {
+        local: LocalId,
+        ty: Ty,
+        value: Expr,
+    },
+    Assign {
+        local: LocalId,
+        value: Expr,
+    },
     Expr(Expr),
-    If { cond: Expr, then: Block, otherwise: Block },
+    If {
+        cond: Expr,
+        then: Block,
+        otherwise: Block,
+    },
     /// A decision tree produced from `match` (defensive panicking default included).
-    Switch { scrutinee: Expr, arms: Vec<(SwitchKey, Block)>, default: Block },
-    Loop { body: Block },
+    Switch {
+        scrutinee: Expr,
+        arms: Vec<(SwitchKey, Block)>,
+        default: Block,
+    },
+    Loop {
+        body: Block,
+    },
     Break,
     Continue,
     Return(Expr),
@@ -95,15 +112,43 @@ pub enum ExprKind {
     Str(String),
     Bool(bool),
     Unit,
-    Prim { op: PrimOp, args: Vec<Expr> },
-    Call { callee: Callee, args: Vec<Expr>, suspends: bool },
-    Record { def: DefId, fields: Vec<Expr> },
-    Variant { def: DefId, index: u32, fields: Vec<Expr> },
-    Field { base: Box<Expr>, index: u32 },
-    Lambda { params: Vec<(LocalId, Ty)>, body: Box<Block>, suspends: bool },
-    Coerce { kind: Coerce, value: Box<Expr> },
+    Prim {
+        op: PrimOp,
+        args: Vec<Expr>,
+    },
+    Call {
+        callee: Callee,
+        args: Vec<Expr>,
+        suspends: bool,
+    },
+    Record {
+        def: DefId,
+        fields: Vec<Expr>,
+    },
+    Variant {
+        def: DefId,
+        index: u32,
+        fields: Vec<Expr>,
+    },
+    Field {
+        base: Box<Expr>,
+        index: u32,
+    },
+    Lambda {
+        params: Vec<(LocalId, Ty)>,
+        body: Box<Block>,
+        suspends: bool,
+    },
+    Coerce {
+        kind: Coerce,
+        value: Box<Expr>,
+    },
     /// A tagged literal: the template's literal parts (provenance-checked) plus hole values.
-    Template { tag: String, parts: Vec<String>, holes: Vec<Expr> },
+    Template {
+        tag: String,
+        parts: Vec<String>,
+        holes: Vec<Expr>,
+    },
     Panic(Box<Expr>),
 }
 
@@ -178,5 +223,6 @@ pub enum BackendError {
 pub trait Backend {
     fn name(&self) -> &'static str;
     fn targets(&self) -> &'static [Target];
-    fn emit(&self, program: &Program, options: &EmitOptions) -> Result<Vec<Artifact>, BackendError>;
+    fn emit(&self, program: &Program, options: &EmitOptions)
+        -> Result<Vec<Artifact>, BackendError>;
 }

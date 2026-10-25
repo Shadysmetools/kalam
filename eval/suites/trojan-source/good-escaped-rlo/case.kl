@@ -1,0 +1,3 @@
+fn main():
+    let m = "abc\u{202E}def"
+    print(m)
