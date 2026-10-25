@@ -1,0 +1,10 @@
+-- UNUSED RESULT ------------------------------------------------ main.kl  K1303
+
+This call returns a `Result`, and nothing checks it. An ignored error is a silent failure: the program carries on as if the call had worked.
+
+7│     save(1)
+       ^^^^^^^
+
+Help: Handle it with `match`, pass the error on with `?`, or write `let _ = ...` to drop it on purpose (`kalam audit` counts those).
+
+Learn more: kalam explain K1303

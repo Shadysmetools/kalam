@@ -1,0 +1,3 @@
+dala ra2isi():
+    khali adad = 3
+    ektb("{adad}")

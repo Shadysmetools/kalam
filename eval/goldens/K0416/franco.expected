@@ -1,0 +1,14 @@
+-- EL RECORD 3AYEZ ASAMY EL FIELDS ----------------------- main.franco.kl  K0416
+
+Mesh ha2dar abni el record da men arguments bel tarteeb. El record dayman byetbene b esm kol field, 3ashan mafeesh qeema terou7 lel field el ghalat abadan.
+
+6│     khali p = Point(1, 2)
+                 ^^^^^^^^^^^
+
+Garrab: `x: `
+
+Garrab: `y: `
+
+Mosa3da: Sammy kol field, zay `User(id: 1, esm: "Sara")`. W el fields elly leeha qeema default momken tesebha.
+
+E3raf aktar: kalam explain K0416

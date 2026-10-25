@@ -1,0 +1,10 @@
+-- AMBIGUOUS METHOD --------------------------------------------- main.kl  K1103
+
+More than one method named `label` applies here: the type itself, or several of its traits, define one. I won't pick one for you.
+
+18│     print(item.label())
+              ^^^^^^^^^^^^
+
+Help: Name the trait you mean: write `Trait.label(x)` instead of `x.label()`.
+
+Learn more: kalam explain K1103

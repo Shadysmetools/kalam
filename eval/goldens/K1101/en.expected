@@ -1,0 +1,12 @@
+-- MISSING RETURN ----------------------------------------------- main.kl  K1101
+
+This function promises to return a value, but at least one path through its body reaches the end without `return`.
+
+2│     x * 2
+       ^^^^^
+
+Try: `return `
+
+Help: End every path with `return`, for example add the missing `else` branch, or a `return` after the last block.
+
+Learn more: kalam explain K1101

@@ -1,0 +1,10 @@
+-- TYPES EL LAMBDA MESH MA3ROOFA ------------------------- main.franco.kl  K0801
+
+Mesh 3aref a7added types el parameters bta3et el lambda di. El lambda betakhod types parameters-ha men el makan elly etba3atet leeh, w mafeesh 7aga hena bet2ool homa eh.
+
+2│     khali inc = dala(x) => x + 1
+                   ^^^^^^^^^^^^^^^^
+
+Mosa3da: Ekteb types el parameters, zay `dala(x: adad) => x + 1`, aw ba3at el lambda 3ala tool l dala mestanyaha.
+
+E3raf aktar: kalam explain K0801

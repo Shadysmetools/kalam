@@ -1,0 +1,10 @@
+-- NATIGA MESH MOSTA5DAMA -------------------------------- main.franco.kl  K1303
+
+El call da beyraga3 `natiga`, w mafeesh 7aga bet-check-ha. W el error elly etgahel fashal saket: el program bykammel ka2en el call nege7.
+
+7│     save(1)
+       ^^^^^^^
+
+Mosa3da: 3algha b `hasab`, aw ba3at el error lfo2 b `?`, aw ekteb `khali _ = ...` 3ashan tesebha 3an 2asd (w `kalam audit` bey3ed el 7alat di).
+
+E3raf aktar: kalam explain K1303

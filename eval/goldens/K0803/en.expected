@@ -1,0 +1,10 @@
+-- SHORT MEMBER NEEDS A TYPE ------------------------------------ main.kl  K0803
+
+I can't tell which type `.Red` belongs to. A short member such as `.Red` is looked up in the type expected at this place, and nothing here says which type that is.
+
+7│     let c = .Red
+               ^^^^
+
+Help: Write the type in front, `TypeName.Red`, or add a type annotation so the expected type is known.
+
+Learn more: kalam explain K0803

@@ -1,0 +1,10 @@
+-- EL MEMBER EL MOKHTASAR ME7TAG TYPE -------------------- main.franco.kl  K0803
+
+Mesh 3aref `.Red` tab3a anhy type. El member el mokhtasar zay `.Red` byetdawar 3aleih f el type el mestanny f el makan da, w mafeesh 7aga hena bet2ool howa anhy type.
+
+7│     khali c = .Red
+                 ^^^^
+
+Mosa3da: Ekteb el type 2oddamo, `EsmElType.Red`, aw zawed annotation 3ashan el type el mestanny yeb2a ma3roof.
+
+E3raf aktar: kalam explain K0803

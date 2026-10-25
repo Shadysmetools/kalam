@@ -18,6 +18,22 @@ pub fn verify(program: &Program) -> Vec<String> {
     for f in &program.functions {
         v.function(f);
     }
+    for c in &program.consts {
+        v.fn_name = format!("const {}", c.name);
+        v.locals = 0;
+        v.mutable = Vec::new();
+        v.loops = 0;
+        if !concrete(&c.ty) {
+            v.fail(format!("type {}", c.ty));
+        }
+        v.expr(&c.value);
+    }
+    if let Some(id) = program.entry_error_message {
+        if program.function(id).is_none() {
+            v.errors
+                .push(format!("entry error message fn {id} does not exist"));
+        }
+    }
     if let Some(entry) = program.entry {
         if program.function(entry).is_none() {
             v.errors.push(format!("entry fn {entry} does not exist"));
@@ -177,7 +193,24 @@ impl Verifier<'_> {
             | ExprKind::Template { holes: es, .. } => es.iter().for_each(|a| self.expr(a)),
             ExprKind::Field { base, .. }
             | ExprKind::VariantField { base, .. }
+            | ExprKind::IsVariant { base, .. }
             | ExprKind::TupleField { base, .. } => self.expr(base),
+            ExprKind::Map(entries) => {
+                for (k, v) in entries {
+                    self.expr(k);
+                    self.expr(v);
+                }
+            }
+            ExprKind::FnRef(id) => {
+                if self.program.function(*id).is_none() {
+                    self.fail(format!("reference to missing fn {id}"));
+                }
+            }
+            ExprKind::Const(def) => {
+                if self.program.constant(*def).is_none() {
+                    self.fail(format!("use of missing constant {def:?}"));
+                }
+            }
             ExprKind::If {
                 cond,
                 then,
@@ -191,8 +224,16 @@ impl Verifier<'_> {
                 stmts.iter().for_each(|s| self.stmt(s));
                 self.expr(value);
             }
-            ExprKind::Lambda { params, body, .. } => {
+            ExprKind::Lambda {
+                params,
+                body,
+                self_local,
+                ..
+            } => {
                 params.iter().for_each(|(l, _)| self.local(*l));
+                if let Some(l) = self_local {
+                    self.local(*l);
+                }
                 let saved = self.loops;
                 self.loops = 0;
                 self.block(body);

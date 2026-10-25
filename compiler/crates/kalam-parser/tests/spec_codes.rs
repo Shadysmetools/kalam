@@ -4,7 +4,8 @@
 //!   names, function and lambda parameters, `as` names, list-rest names; §7.2). Core names
 //!   in `let`/`for`/`case` patterns stay a path the resolver reports (they are a `Name`);
 //!   another skin's core name is an ordinary identifier (FOUNDER-QUEUE Q21);
-//! - the §5.4 hint for `و` glued to the next word, as a machine fix (FOUNDER-QUEUE Q22).
+//! - the §5.4 hint for `و` glued to the next word, as a machine fix (FOUNDER-QUEUE Q22);
+//! - K1005 for a `Float` literal pattern (`case 1.5:`, §11 rule 6), not K0250 (M2 iteration 3).
 
 mod common;
 
@@ -303,4 +304,64 @@ fn glued_waw_hint_is_arabic_only_and_needs_a_rest() {
     let ds = diags(src, Skin::En);
     assert_eq!(ds.iter().map(|d| d.code).collect::<Vec<_>>(), vec!["K0250"]);
     assert!(ds[0].fixes.is_empty());
+}
+
+// ---- K1005 ----
+
+#[test]
+fn float_literal_pattern_is_k1005_in_every_skin() {
+    // §11 rule 6: "`Float` patterns are not allowed (K1005)". The literal, a negative one
+    // and a range of them are each one K1005 (never the generic K0250), and the arm's body
+    // still parses.
+    for (src, skin) in [
+        (
+            "fn f(x: Float) -> Int:
+    return match x:
+        case 1.5: 1
+        case _: 0
+",
+            Skin::En,
+        ),
+        (
+            "fn f(x: Float) -> Int:
+    return match x:
+        case -0.5: 1
+        case _: 0
+",
+            Skin::En,
+        ),
+        (
+            "fn f(x: Float) -> Int:
+    return match x:
+        case 0.0..=1.0: 1
+        case _: 0
+",
+            Skin::En,
+        ),
+        (
+            "دالة f(x: كسري) -> عدد:
+    أرجع حسب x:
+        عندما 1.5: 1
+        عندما _: 0
+",
+            Skin::Ar,
+        ),
+        (
+            "dala f(x: kasri) -> adad:
+    rag3 hasab x:
+        lama 1.5: 1
+        lama _: 0
+",
+            Skin::Franco,
+        ),
+    ] {
+        let ds = diags(src, skin);
+        assert_eq!(
+            ds.iter().map(|d| d.code).collect::<Vec<_>>(),
+            vec!["K1005"],
+            "{src}"
+        );
+        let at = text_at(src, ds[0].span);
+        assert!(at.contains('.') && !at.contains(':'), "{at:?}");
+    }
 }

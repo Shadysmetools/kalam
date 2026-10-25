@@ -1,0 +1,4 @@
+use std/math.*
+
+fn main():
+    print("ok")

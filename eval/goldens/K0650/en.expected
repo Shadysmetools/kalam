@@ -1,0 +1,10 @@
+-- STRINGS CAN'T BE INDEXED ------------------------------------- main.kl  K0650
+
+I can't index a string with `[...]`. A position in text is ambiguous: bytes, code points and visible characters all count differently, and in Arabic text the difference shows.
+
+3│     let first = name[0]
+                   ^^^^^^^
+
+Help: Use `.chars()` or `.graphemes()` to go through the characters, or `.slice(from, to)` to take part of the string (positions count visible characters).
+
+Learn more: kalam explain K0650

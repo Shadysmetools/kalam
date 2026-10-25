@@ -1,0 +1,5 @@
+export fn transfer(from: Int, to: Int, amount: Int) -> Int => from + to + amount
+
+fn main():
+    let r = transfer(1, 2, 3)
+    print("{r}")

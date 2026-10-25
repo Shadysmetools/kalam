@@ -1,0 +1,10 @@
+-- ? 3ALA OPTION F DALA BTRAGA3 RESULT ------------------- main.franco.kl  K1302
+
+El `?` di 3ala `ekhtiyari`, bas el dala betraga3 `natiga`. W el qeema el msh mawgooda malhash error yetba3at lfo2, fa lazem t2ool howa anhy error.
+
+2│     khali n = xs.get(0)?
+                 ^^^^^^^^^^
+
+Mosa3da: 7awel el qeema el msh mawgooda l error el awel: `.ok_or(error)?`.
+
+E3raf aktar: kalam explain K1302

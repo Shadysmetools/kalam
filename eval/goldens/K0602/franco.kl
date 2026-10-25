@@ -1,0 +1,11 @@
+haykal Point:
+    x: adad
+
+haykal Size:
+    width: adad
+
+dala ra2isi():
+    khali p = Point(x: 1)
+    khali s = Size(width: 1)
+    khali same = p == s
+    ektb("{same}")

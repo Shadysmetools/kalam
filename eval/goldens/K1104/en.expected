@@ -1,0 +1,14 @@
+-- LABELS NEEDED FOR SAME-TYPE PARAMETERS ----------------------- main.kl  K1104
+
+This exported function has two neighbouring parameters of the same type, so a call by position could swap them without any error. Their arguments need labels.
+
+4│     let r = transfer(1, 2, 3)
+               ^^^^^^^^^^^^^^^^^
+
+Try: `to: `
+
+Try: `amount: `
+
+Help: Label the arguments with the parameter names, for example `transfer(from: a, to: b)`. `kalam fix` inserts the labels.
+
+Learn more: kalam explain K1104

@@ -1,0 +1,10 @@
+-- UNREACHABLE ARM ---------------------------------------------- main.kl  K1002
+
+This `case` can never run: the arms above it already match every value it would match.
+
+11│         case .Red:
+                 ^^^^
+
+Help: Move this arm above the arm that covers it (often a catch-all `_` placed too early), or delete it.
+
+Learn more: kalam explain K1002

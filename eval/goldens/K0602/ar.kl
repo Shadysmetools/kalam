@@ -1,0 +1,11 @@
+هيكل Point:
+    x: عدد
+
+هيكل Size:
+    width: عدد
+
+دالة رئيسي():
+    ليكن p = Point(x: 1)
+    ليكن s = Size(width: 1)
+    ليكن same = p == s
+    اطبع("{same}")

@@ -20,3 +20,6 @@ kalam-typeck.workspace = true
 kalam-effects.workspace = true
 kalam-ir.workspace = true
 kalam-emit-js.workspace = true
+kalam-interp.workspace = true
+# Path dependency, as in kalam-props (the root Cargo.toml does not list it): finding `main`.
+kalam-ast = { path = "../kalam-ast" }

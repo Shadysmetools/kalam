@@ -1,0 +1,10 @@
+-- IMPL F MAKAN GHALAT ----------------------------------- main.franco.kl  K1106
+
+Mesh ha2dar a2bal el `naffez` da: ya ema fe implementation tany l nafs el trait l nafs el type mawgood aslan, ya ema howa bara module el trait w module el type el etnein (orphan rule).
+
+1│ naffez adad ka Show:
+   ^^^^^^^^^^^
+
+Mosa3da: Khalli implementation wa7ed l kol trait w type, f el module elly bet3arraf el trait aw elly bet3arraf el type. W 3ashan tzawed behavior l type men package tanya, laffo f type bta3ak.
+
+E3raf aktar: kalam explain K1106

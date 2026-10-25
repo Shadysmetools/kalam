@@ -1,0 +1,5 @@
+talla3 dala transfer(from: adad, to: adad, amount: adad) -> adad => from + to + amount
+
+dala ra2isi():
+    khali r = transfer(1, 2, 3)
+    ektb("{r}")

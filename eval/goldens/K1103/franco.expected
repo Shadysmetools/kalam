@@ -1,0 +1,10 @@
+-- METHOD MESH WADE7A ------------------------------------ main.franco.kl  K1103
+
+Fe aktar men method esmaha `label` tenfa3 hena: el type nafso aw kaza trait men el traits bta3to bey3arrafoha. W ana mesh ha5tar wa7da badalak.
+
+18│     ektb(item.label())
+             ^^^^^^^^^^^^
+
+Mosa3da: Sammy el trait elly 2asdak 3aleiha: ekteb `Trait.label(x)` badal `x.label()`.
+
+E3raf aktar: kalam explain K1103

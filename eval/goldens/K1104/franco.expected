@@ -1,0 +1,14 @@
+-- LABELS LAZMA L PARAMETERS NAFS EL TYPE ---------------- main.franco.kl  K1104
+
+El dala el exported di leeha parameterein gamb ba3d men nafs el type, fa call bel tarteeb momken ybaddelhom men gher ay error. 3ashan keda arguments-hom me7taga labels.
+
+4│     khali r = transfer(1, 2, 3)
+                 ^^^^^^^^^^^^^^^^^
+
+Garrab: `to: `
+
+Garrab: `amount: `
+
+Mosa3da: Sammy el arguments b asamy el parameters, zay `7awel(men: a, le: b)`. W `kalam fix` byzawed el labels.
+
+E3raf aktar: kalam explain K1104

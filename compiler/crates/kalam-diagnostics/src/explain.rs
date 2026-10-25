@@ -142,6 +142,24 @@ const DESCRIPTIONS: &[(&str, &str, [&str; 3])] = &[
         ["the method's name", "اسم الدالة", "esm el method"],
     ),
     (
+        "K1107",
+        "trait",
+        [
+            "the trait, such as Show or From[ParseError]",
+            "السمة، مثل Show أو From[ParseError]",
+            "el trait, zay Show aw From[ParseError]",
+        ],
+    ),
+    (
+        "K1107",
+        "detail",
+        [
+            "how the implementation differs from the trait",
+            "الفرق بين التنفيذ والسمة",
+            "el far2 ben el implementation wel trait",
+        ],
+    ),
+    (
         "K0418",
         "name",
         [

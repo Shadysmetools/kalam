@@ -1,0 +1,10 @@
+-- MOQARNA BEN TYPES MOKHTALFA --------------------------- main.franco.kl  K0602
+
+Mesh ha2dar a2aren `Point` b `Size` b `==`. El mosawah me7taga qeemtein men nafs el no3, w el no3 da lazem yed3am el mosawah (`Eq`).
+
+10│     khali same = p == s
+                     ^^^^^^
+
+Mosa3da: 7awel taraf 3ashan el etnein yeb2o nafs el no3, aw qaren fields bted3am el mosawah. W qaren el asrar b `crypto.equal(a, b)`.
+
+E3raf aktar: kalam explain K0602

@@ -1,0 +1,4 @@
+fn main():
+    let name = "Sara"
+    let first = name[0]
+    print(first)

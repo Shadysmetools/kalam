@@ -1,0 +1,8 @@
+ta3dad Light:
+    Red
+    Amber
+    Green
+
+dala ra2isi():
+    khali c = .Red
+    ektb("{c}")

@@ -1,0 +1,10 @@
+-- EMPTY COLLECTION NEEDS A TYPE -------------------------------- main.kl  K0802
+
+I can't tell what this empty collection will hold. An empty `[]` or `{}` has no element type of its own, and nothing around it says what it should be.
+
+2│     let xs = []
+                ^^
+
+Help: Add a type, for example `let names: List[String] = []`.
+
+Learn more: kalam explain K0802

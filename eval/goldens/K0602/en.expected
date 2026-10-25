@@ -1,0 +1,10 @@
+-- COMPARING DIFFERENT TYPES ------------------------------------ main.kl  K0602
+
+I can't compare a `Point` with a `Size` using `==`. Equality needs two values of the same type, and that type must support equality (`Eq`).
+
+10│     let same = p == s
+                   ^^^^^^
+
+Help: Convert one side so both have the same type, or compare fields that support equality. Compare secrets with `crypto.equal(a, b)`.
+
+Learn more: kalam explain K0602

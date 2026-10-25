@@ -1,0 +1,10 @@
+-- EXPLICIT TYPE ARGUMENTS -------------------------------------- main.kl  K0922
+
+Kalam doesn't take explicit type arguments in a call such as `f[T](x)`. It infers them from the arguments and from the type you expect back.
+
+5│     let head = first[Int](xs)
+                  ^^^^^^^^^^
+
+Help: Remove `[T]` from the call and annotate the result instead: `let r: T = f(x)`. `kalam fix` does this for you.
+
+Learn more: kalam explain K0922

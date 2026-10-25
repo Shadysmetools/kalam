@@ -12,3 +12,10 @@ kalam-base.workspace = true
 kalam-resolve.workspace = true
 kalam-typeck.workspace = true
 kalam-diagnostics.workspace = true
+# Path dependency so the shared root Cargo.toml needs no edit (see kalam-ast/Cargo.toml).
+# Read for the internal stdlib attributes HIR drops (`@suspends`, `@stores_callbacks`,
+# `@builtin`, `@js(async: true)`).
+kalam-ast = { path = "../kalam-ast" }
+
+[dev-dependencies]
+kalam-parser.workspace = true

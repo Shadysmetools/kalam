@@ -1,0 +1,10 @@
+-- PATTERN CAN FAIL HERE ---------------------------------------- main.kl  K1003
+
+This pattern doesn't match every value, but `let` and `for` have nowhere to go when a pattern fails.
+
+3│     let Some(n) = found
+           ^^^^^^^
+
+Help: Use `match` with a `case` for each possibility.
+
+Learn more: kalam explain K1003

@@ -9,15 +9,19 @@
 //! supplies at least the args listed for it in kalam-diagnostics' `EMITTER_ARGS`):
 //! K0126 `literal`, `type`; K0418 `name`, `module`; K0420 `type`, `name`; K0601/K0602 `left`,
 //! `right`; K0603 `type` (+ `op` or `trait`); K0730 `type`; K0803 `name`; K1001 `missing`;
-//! K1004 `name`; K1103 `name`; K1104 `names`; K1105 `detail`; K1110 `name`; K1301
-//! `found`, `expected`; K1601 `expected`, `found`; K1641 `found`; K0600 `expected`/`found`
-//! or `type`.
+//! K1004 `name`; K1103 `name`; K1104 `names`; K1105 `detail`; K1107 `trait`, `detail`; K1110
+//! `name`; K1301 `found`, `expected`; K1601 `expected`, `found`; K1641 `found`; K0600
+//! `expected`/`found` or `type`.
+//!
+//! Every K0600 also carries a label naming the types involved ("expected `Int`, found
+//! `Float`"), since the K0600 template is type-free; generic parameters are shown by their
+//! declared names ([`TypeError::params`]), never as `T0`.
 
 use kalam_base::{FileId, Span};
-use kalam_diagnostics::{Diagnostic, Fix};
+use kalam_diagnostics::{Diagnostic, Fix, Label};
 use kalam_resolve::DefId;
 
-use crate::ty::{SinkType, Ty};
+use crate::ty::{Capability, SinkType, Ty};
 
 /// Codes this crate emits that spec §27 does not list yet.
 pub const PROVISIONAL_CODES: &[&str] = &["K0600", "K0603", "K1105", "K1106"];
@@ -107,6 +111,13 @@ pub enum TypeErrorKind {
     PathHole { found: Ty },
     /// `f[T](x)`: type arguments written at a call site (K0922, DR-25).
     ExplicitTypeArgs,
+    /// An `impl T as Trait` whose methods do not match the trait (K1107, FOUNDER-QUEUE Q27):
+    /// a missing or extra method, `self` where the trait has none (or the reverse), or a
+    /// parameter, return type, type parameter or bound that differs after substitution.
+    ImplMismatch { trait_name: String, detail: String },
+    /// [kalam-sinks] A finding made by `kalam-sinks` (§16 K15xx, §17 K16xx/W16xx), kept
+    /// as its finished diagnostic.
+    Sink(Diagnostic),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -116,6 +127,11 @@ pub struct TypeError {
     pub span: Span,
     /// Fix-its (machine-applicable or suggestions), in the file's own text.
     pub fixes: Vec<Fix>,
+    /// Secondary spans with a short English explanation (spec §9.9 rule 7).
+    pub labels: Vec<Label>,
+    /// The declared names of the generic parameters in scope where the error is reported:
+    /// `Ty::Param(i)` is shown as `params[i]`.
+    pub params: Vec<String>,
 }
 
 impl TypeError {
@@ -125,7 +141,18 @@ impl TypeError {
             file,
             span,
             fixes: Vec::new(),
+            labels: Vec::new(),
+            params: Vec::new(),
         }
+    }
+
+    /// Adds a label at `span`.
+    pub fn with_label(mut self, span: Span, text: impl Into<String>) -> TypeError {
+        self.labels.push(Label {
+            span,
+            text: text.into(),
+        });
+        self
     }
 
     pub fn code(&self) -> &'static str {
@@ -139,6 +166,12 @@ impl TypeError {
             K::NotCallable { .. } | K::NotIterable { .. } => "K0600",
             K::MixedNumeric { .. } => "K0601",
             K::BadEquality { .. } => "K0602",
+            // [kalam-sinks] §16.1 rule 1: decoding `World` is K1501, not a missing trait.
+            K::MissingTrait {
+                ty: Ty::Capability(Capability::World),
+                trait_name,
+            } if trait_name == "Decode" => "K1501",
+            K::Sink(d) => d.code,
             K::NoOperator { .. } | K::MissingTrait { .. } => "K0603",
             K::LiteralOutOfRange { .. } => "K0126",
             K::StringIndex => "K0650",
@@ -169,14 +202,43 @@ impl TypeError {
             K::TryOptionInResult => "K1302",
             K::PathHole { .. } => "K1641",
             K::ExplicitTypeArgs => "K0922",
+            K::ImplMismatch { .. } => "K1107",
         }
+    }
+
+    /// The type as the message shows it: ADT names from `name`, generic parameters by
+    /// their declared names.
+    pub fn show(&self, t: &Ty, name: &dyn Fn(DefId) -> String) -> String {
+        t.display_with(name, &self.params)
+    }
+
+    /// The label every K0600 gets, naming both types (its template names none).
+    fn type_label(&self, name: &dyn Fn(DefId) -> String) -> Option<String> {
+        use TypeErrorKind as K;
+        let show = |t: &Ty| self.show(t, name);
+        Some(match &self.kind {
+            K::Mismatch { expected, found } if self.code() == "K0600" => {
+                format!("expected `{}`, found `{}`", show(expected), show(found))
+            }
+            K::InfiniteType { ty } => {
+                format!("this would need `{}` to contain itself", show(ty))
+            }
+            K::NotCallable { ty } => format!("`{}` is not a function", show(ty)),
+            K::NotIterable { ty } => format!("a `for` loop can't go over a `{}`", show(ty)),
+            _ => return None,
+        })
     }
 
     /// Converts to a diagnostic. `name` renders ADT names in messages.
     pub fn to_diagnostic(&self, name: &dyn Fn(DefId) -> String) -> Diagnostic {
         use TypeErrorKind as K;
+        if let K::Sink(d) = &self.kind {
+            let mut d = d.clone();
+            d.fixes.extend(self.fixes.iter().cloned());
+            return d;
+        }
         let mut d = Diagnostic::new(self.code(), self.file, self.span);
-        let show = |t: &Ty| t.display(name);
+        let show = |t: &Ty| self.show(t, name);
         d = match &self.kind {
             K::Mismatch { expected, found } => {
                 d.arg("expected", show(expected)).arg("found", show(found))
@@ -211,8 +273,17 @@ impl TypeError {
             K::NeedsLabels { names } => d.arg("names", names.clone()),
             K::NonExhaustive { missing } => d.arg("missing", missing.join(", ")),
             K::BadArguments { detail } => d.arg("detail", detail.clone()),
+            K::ImplMismatch { trait_name, detail } => d
+                .arg("trait", trait_name.clone())
+                .arg("detail", detail.clone()),
             _ => d,
         };
+        if let Some(text) = self.type_label(name) {
+            d = d.label(self.span, text);
+        }
+        for l in &self.labels {
+            d = d.label(l.span, l.text.clone());
+        }
         for fix in &self.fixes {
             d = d.fix(fix.clone());
         }

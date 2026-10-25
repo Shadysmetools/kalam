@@ -1,0 +1,10 @@
+-- FIELD NAMED WITH --------------------------------------------- main.kl  K0417
+
+A record field can't be called `with`: every record already has a `with` method, which returns a copy with some fields changed (`u.with(name: "Omar")`).
+
+2│     with: Int
+       ^^^^
+
+Help: Rename the field, for example to `with_value` or a name that says what it holds.
+
+Learn more: kalam explain K0417

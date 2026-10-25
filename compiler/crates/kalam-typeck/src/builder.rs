@@ -203,6 +203,7 @@ impl Builder {
                 pat,
                 guard: None,
                 body,
+                indent: None,
             })
             .collect();
         self.e(ExprKind::Match {
@@ -239,7 +240,11 @@ impl Builder {
     pub fn stmt(&mut self, kind: StmtKind) -> Stmt {
         let span = self.span();
         self.next_expr += 1;
-        Stmt { kind, span }
+        Stmt {
+            kind,
+            span,
+            indent: None,
+        }
     }
 
     pub fn expr_stmt(&mut self, e: Expr) -> Stmt {

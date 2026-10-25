@@ -1,0 +1,5 @@
+naffez adad ka Show:
+    dala show(nafso) -> nass => "number"
+
+dala ra2isi():
+    ektb("ok")

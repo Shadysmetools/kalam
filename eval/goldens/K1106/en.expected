@@ -1,0 +1,10 @@
+-- IMPLEMENTATION IN THE WRONG PLACE ---------------------------- main.kl  K1106
+
+I can't accept this `impl`: either another implementation of the same trait for the same type already exists, or it lives outside both the trait's module and the type's module (the orphan rule).
+
+1│ impl Int as Show:
+   ^^^^^^^^
+
+Help: Keep one implementation per trait and type, in the module that defines the trait or the one that defines the type. To add behavior to another package's type, wrap it in a type of your own.
+
+Learn more: kalam explain K1106

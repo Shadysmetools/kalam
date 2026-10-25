@@ -585,3 +585,421 @@ fn every_skin_checks_the_same_way() {
         assert_eq!(found, vec![("K0602", 2)], "{path}");
     }
 }
+
+// ---- M2 iteration 3: soundness holes the iteration-2 verifier found ------------------------
+
+/// The fixes of the diagnostics with `code`, from a one-file program.
+fn fixes_of(src: &str, code: &str) -> Vec<kalam_diagnostics::Fix> {
+    let (_, diags) = check_full(&[("main.kl", src)]);
+    diags
+        .into_iter()
+        .filter(|d| d.code == code)
+        .flat_map(|d| d.fixes)
+        .collect()
+}
+
+/// The machine fix of the only diagnostic, applied; the result must check clean.
+fn machine_fix_makes_it_clean(path: &str, src: &str, code: &str) -> String {
+    let (found, diags) = check_full(&[(path, src)]);
+    let codes: Vec<_> = found.iter().map(|f| f.code).collect();
+    assert_eq!(codes, vec![code], "{path}: {diags:#?}");
+    let fix = diags[0]
+        .fixes
+        .iter()
+        .find(|f| f.applicability == kalam_diagnostics::Applicability::Machine)
+        .unwrap_or_else(|| panic!("{path}: no machine fix: {:#?}", diags[0]));
+    let fixed = apply(src, fix);
+    let after: Vec<_> = check(&[(path, &fixed)]).iter().map(|f| f.code).collect();
+    assert!(after.is_empty(), "{path}:\n{fixed}\n{after:?}");
+    fixed
+}
+
+fn label_texts(src: &str, code: &str) -> Vec<String> {
+    let (_, diags) = check_full(&[("main.kl", src)]);
+    diags
+        .into_iter()
+        .filter(|d| d.code == code)
+        .flat_map(|d| d.labels.into_iter().map(|l| l.text))
+        .collect()
+}
+
+const NAMED: &str = "trait Named:\n    fn name(self) -> String\n\ntype Box:\n    v: Int\n\n";
+const SHOW_NAME: &str =
+    "\nfn show_name[T: Named](x: T) -> String => x.name()\n\nfn main():\n    print(show_name(Box(v: 1)))\n";
+
+#[test]
+fn impls_must_match_their_trait_k1107() {
+    // FOUNDER-QUEUE Q27 (spec §27 erratum): an impl writes exactly the trait's methods, with
+    // the trait's signatures after substitution. Each case is reported once, at the impl.
+    let wrong_return =
+        format!("{NAMED}impl Box as Named:\n    fn name(self) -> Int => self.v\n{SHOW_NAME}");
+    assert_eq!(codes(&wrong_return), vec![("K1107", 8)]);
+    let missing_and_extra =
+        format!("{NAMED}impl Box as Named:\n    fn other(self) -> Int => self.v\n{SHOW_NAME}");
+    assert_eq!(codes(&missing_and_extra), vec![("K1107", 7), ("K1107", 8)]);
+    let extra_param = format!(
+        "{NAMED}impl Box as Named:\n    fn name(self, n: Int) -> String => \"x\"\n{SHOW_NAME}"
+    );
+    assert_eq!(codes(&extra_param), vec![("K1107", 8)]);
+    let no_self =
+        format!("{NAMED}impl Box as Named:\n    fn name() -> String => \"x\"\n{SHOW_NAME}");
+    assert_eq!(codes(&no_self), vec![("K1107", 8)]);
+    // `From[E1]` fixes `from`'s parameter to `E1`.
+    let errors = "enum E1:\n    Bad\n\nenum E2:\n    Worse\n\n";
+    let from_wrong_param = format!("{errors}impl E2 as From[E1]:\n    fn from(value: Int) -> E2 => .Worse\n\nfn a() -> Result[Int, E1] => Err(.Bad)\n\nfn b() -> Result[Int, E2]:\n    let v = a()?\n    return Ok(v)\n\nfn main():\n    let _ = b()\n");
+    assert_eq!(codes(&from_wrong_param), vec![("K1107", 8)]);
+    clean(&from_wrong_param.replace("value: Int", "value: E1"));
+    // A static trait method reached through the type: callers see the trait's signature, so
+    // the mismatch is reported at the impl only, not again at `E2.from(…)`.
+    let static_bypass = "enum E2:\n    Worse\n\nimpl E2 as From[String]:\n    fn from(value: String) -> Int => 1\n\nfn main():\n    let e: E2 = E2.from(\"x\")\n    let _ = e\n";
+    assert_eq!(codes(static_bypass), vec![("K1107", 5)]);
+    // Method type parameters: their number, and no bound the trait does not require.
+    let generic_trait = "trait Describe:\n    fn describe[T: Show](self, x: T) -> String\n\ntype Box:\n    v: Int\n\n";
+    clean(&format!("{generic_trait}impl Box as Describe:\n    fn describe[U: Show](self, x: U) -> String => \"{{x}}\"\n\nfn main():\n    print(Box(v: 1).describe(2))\n"));
+    assert_eq!(
+        codes(&format!("{generic_trait}impl Box as Describe:\n    fn describe[U: Show + Eq](self, x: U) -> String => \"{{x}}\"\n\nfn main():\n    print(Box(v: 1).describe(2))\n")),
+        vec![("K1107", 8)]
+    );
+    assert_eq!(
+        codes(&format!("{generic_trait}impl Box as Describe:\n    fn describe(self, x: Int) -> String => \"{{x}}\"\n\nfn main():\n    print(Box(v: 1).describe(2))\n")),
+        vec![("K1107", 8)]
+    );
+    // The trait's own parameters' bounds hold for the impl's trait arguments.
+    let shown = "trait Render[T: Show]:
+    fn render(self, x: T) -> String
+
+type Box:
+    v: Int
+
+";
+    clean(&format!(
+        "{shown}impl Box as Render[Int]:
+    fn render(self, x: Int) -> String => \"{{x}}\"
+
+fn main():
+    print(Box(v: 1).render(2))
+"
+    ));
+    assert_eq!(
+        codes(&format!(
+            "{shown}impl Box as Render[fn() -> Int]:
+    fn render(self, x: fn() -> Int) -> String => \"f\"
+
+fn main():
+    pass
+"
+        )),
+        vec![("K0603", 7)]
+    );
+    // A trait method with a body is a default the impl may leave out.
+    clean("trait Greet:\n    fn name(self) -> String\n    fn greet(self) -> String => \"hi \" + self.name()\n\ntype P:\n    n: String\n\nimpl P as Greet:\n    fn name(self) -> String => self.n\n\nfn main():\n    print(P(n: \"x\").greet())\n");
+    // The message names the trait as written in the impl head, and the difference.
+    let (_, diags) = check_full(&[("main.kl", &from_wrong_param)]);
+    let arg = |k: &str| {
+        diags[0]
+            .args
+            .iter()
+            .find(|(n, _)| *n == k)
+            .map(|(_, v)| v.clone())
+    };
+    assert_eq!(arg("trait").as_deref(), Some("From[E1]"));
+    assert_eq!(
+        arg("detail").as_deref(),
+        Some("parameter `value` of `from` is `Int` here, but `E1` in the trait")
+    );
+}
+
+#[test]
+fn a_rejected_overlapping_impl_causes_no_follow_on_ambiguity() {
+    // The second `impl Box as Named` is K1106; the call then resolves to the first impl
+    // instead of reporting K1103 between the two.
+    let src = format!("{NAMED}impl Box as Named:\n    fn name(self) -> String => \"one\"\n\nimpl Box as Named:\n    fn name(self) -> String => \"two\"\n\nfn main():\n    print(Box(v: 1).name())\n");
+    assert_eq!(codes(&src), vec![("K1106", 10)]);
+}
+
+#[test]
+fn map_keys_and_set_elements_must_be_eq_and_hash() {
+    // §9.3: `Map[K, V]` and `Set[T]` need `K`/`T: Eq + Hash`, wherever the type is formed.
+    // Each root cause is reported once: the value's later uses stay quiet.
+    assert_eq!(
+        codes("fn main():\n    let m: Map[Float, Int] = {1.5: 1}\n    print(m.len())\n"),
+        vec![("K0603", 2)]
+    );
+    assert_eq!(
+        codes("fn main():\n    let m = {1.5: 1}\n    print(m.len())\n"),
+        vec![("K0603", 2)]
+    );
+    assert_eq!(
+        codes("fn main():\n    let s = Set.of([1.5, 2.5])\n    print(s.len())\n"),
+        vec![("K0603", 2)]
+    );
+    assert_eq!(
+        codes("type Point:\n    x: Float\n\nfn main():\n    let m: Map[Point, Int] = {Point(x: 1.0): 1}\n    let _ = m\n"),
+        vec![("K0603", 5)]
+    );
+    // A record field, and a generic parameter that lacks the bounds (reported once, at the
+    // declaration; the body and the callers then assume them).
+    assert_eq!(
+        codes("type Index[T]:\n    entries: Map[T, Int]\n\nfn main():\n    let i = Index(entries: {})\n    let _ = i\n"),
+        vec![("K0603", 2)]
+    );
+    assert_eq!(
+        codes(
+            "fn wrap[T](x: T) -> Set[T] => Set.of([x])\n\nfn main():\n    print(wrap(1).len())\n"
+        ),
+        vec![("K0603", 1)]
+    );
+    clean("fn wrap[T: Eq + Hash](x: T) -> Set[T] => Set.of([x])\n\nfn count[K: Eq + Hash](m: Map[K, Int]) -> Int => m.len()\n\nfn main():\n    let m: Map[String, Int] = {\"a\": 1}\n    print(\"{wrap(1).len()} {count(m)}\")\n");
+    // The bounds of a generic record or enum hold where it is written and where it is built.
+    let boxed = "type Box[T: Eq]:\n    v: T\n\n";
+    clean(&format!(
+        "{boxed}fn main():\n    let b: Box[Int] = Box(v: 1)\n    print(b.v)\n"
+    ));
+    assert_eq!(
+        codes(&format!(
+            "{boxed}fn main():\n    let b = Box(v: 1.5)\n    print(b.v)\n"
+        )),
+        vec![("K0603", 5)]
+    );
+    assert_eq!(
+        codes(&format!(
+            "{boxed}fn f(b: Box[Float]) -> Float => b.v\n\nfn main():\n    pass\n"
+        )),
+        vec![("K0603", 4)]
+    );
+    // The label names the rule.
+    assert_eq!(
+        label_texts(
+            "fn main():\n    let m: Map[Float, Int] = {}\n    let _ = m\n",
+            "K0603"
+        ),
+        vec!["a `Map` key must be `Eq` and `Hash`".to_string()]
+    );
+}
+
+#[test]
+fn main_has_the_signature_of_section_14_3() {
+    // "`main` may return `()` or `Result[(), E]` with `E: Error`"; §16.1: it takes nothing,
+    // or the `World`.
+    clean("fn main() -> Result[(), AnyError]:\n    return Ok(())\n");
+    clean("fn main(world: World):\n    let _ = world\n");
+    assert_eq!(
+        codes("fn main() -> Result[(), String]:\n    return Ok(())\n"),
+        vec![("K0603", 1)]
+    );
+    assert_eq!(
+        codes("fn main() -> Result[Int, AnyError]:\n    return Ok(1)\n"),
+        vec![("K0600", 1)]
+    );
+    assert_eq!(
+        codes("fn main() -> Int:\n    return 1\n"),
+        vec![("K0600", 1)]
+    );
+    assert_eq!(
+        codes("fn main(n: Int):\n    print(n)\n"),
+        vec![("K0600", 1)]
+    );
+    // `main` is a core name: the rule follows it into every skin.
+    let found: Vec<_> = check(&[(
+        "main.ar.kl",
+        "دالة رئيسي() -> نتيجة[()، نص]:\n    أرجع نجاح(())\n",
+    )])
+    .into_iter()
+    .map(|f| (f.code, f.line))
+    .collect();
+    assert_eq!(found, vec![("K0603", 1)]);
+}
+
+#[test]
+fn derives_are_checked_where_they_are_written() {
+    // §9.7: `@derive(Ord)` on a record with a `Float` field is reported at the derive, and
+    // the comparison that uses it is then quiet (one root cause).
+    assert_eq!(
+        codes("@derive(Ord)\ntype Reading:\n    value: Float\n\nfn main():\n    let r = Reading(value: 1.0)\n    print(r < r)\n"),
+        vec![("K0603", 1)]
+    );
+    assert_eq!(
+        codes("@derive(Eq, Hash)\nenum Shape:\n    Circle(r: Float)\n    Empty\n\nfn main():\n    let s: Shape = .Empty\n    print(s == s)\n"),
+        vec![("K0603", 1)]
+    );
+    // A derive is conditional on the type's own parameters.
+    clean("@derive(Eq, Ord)\ntype Box[T]:\n    v: T\n\nfn main():\n    let a = Box(v: 1)\n    print(a < a)\n");
+    // `Encode` with a `Secret` field stays K0612 alone.
+    assert_eq!(
+        codes(
+            "@derive(Encode)\ntype Login:\n    password: Secret[String]\n\nfn main():\n    pass\n"
+        ),
+        vec![("K0612", 2)]
+    );
+    assert_eq!(
+        label_texts(
+            "@derive(Ord)\ntype Reading:\n    value: Float\n\nfn main():\n    pass\n",
+            "K0603"
+        ),
+        vec!["`@derive(Ord)` needs every field to be `Ord`".to_string()]
+    );
+}
+
+#[test]
+fn question_mark_in_a_lambda_returns_from_the_lambda_q28() {
+    // FOUNDER-QUEUE Q28: `?` returns from the lambda, whose return type becomes a `Result`
+    // with the operand's error type (its success type is the body's own) or an `Option`.
+    clean(&format!("{FAILS}fn main():\n    let positive = fn(text: String) => Ok(parse(text)? > 0)\n    match positive(\"1\"):\n        case Ok(b):\n            print(\"{{b}}\")\n        case Err(_):\n            print(\"no\")\n"));
+    clean("fn main():\n    let next = fn(xs: List[Int]) => Some(xs.get(0)? + 1)\n    match next([1]):\n        case Some(n):\n            print(\"{n}\")\n        case None:\n            print(\"none\")\n");
+    // The lambda returns an `Option`, so its body must be one too.
+    assert_eq!(
+        codes("fn f(xs: List[List[Int]]) -> Result[List[Int], String]:\n    let firsts = xs.map(fn(ys: List[Int]) => ys.get(0)?)\n    let _ = firsts\n    return Ok([])\n\nfn main():\n    let _ = f([])\n"),
+        vec![("K0600", 2)]
+    );
+}
+
+#[test]
+fn int_division_where_an_int_is_expected_is_a_mismatch_q31() {
+    // FOUNDER-QUEUE Q31: `Int / Int` is a `Float`; `let x: Int = 7 / 2` is K0600, expected
+    // `Int`, found `Float`, with `//` suggested.
+    let src = "fn main():\n    let half: Int = 7 / 2\n    print(half)\n";
+    assert_eq!(codes(src), vec![("K0600", 2)]);
+    assert_eq!(
+        label_texts(src, "K0600"),
+        vec!["expected `Int`, found `Float`".to_string()]
+    );
+    let fix = &fixes_of(src, "K0600")[0];
+    assert_eq!(
+        fix.applicability,
+        kalam_diagnostics::Applicability::Suggestion
+    );
+    let fixed = apply(src, fix);
+    assert!(fixed.contains("let half: Int = 7 // 2"), "{fixed}");
+    clean(&fixed);
+    // `x /= n` on an `Int` likewise.
+    let src = "fn main():\n    var total = 9\n    total /= 2\n    print(total)\n";
+    assert_eq!(codes(src), vec![("K0600", 3)]);
+    let fixed = apply(src, &fixes_of(src, "K0600")[0]);
+    assert!(fixed.contains("total = total // 2"), "{fixed}");
+    clean(&fixed);
+    // A value of one number type where another is expected is a mismatch too, with the
+    // conversion as a machine fix; mixing two operands stays K0601.
+    machine_fix_makes_it_clean(
+        "main.kl",
+        "fn half(x: Float) -> Float => x / 2.0\n\nfn main():\n    let n = 3\n    print(half(n))\n",
+        "K0600",
+    );
+    assert_eq!(
+        codes("fn main():\n    let count = 1\n    let ratio = 2.5\n    print(count + ratio)\n"),
+        vec![("K0601", 4)]
+    );
+}
+
+#[test]
+fn k1001_fix_adds_the_missing_arms_in_the_files_skin() {
+    // §11 rule 1, FOUNDER-QUEUE Q32: the missing cases as `case` arms with `panic("TODO")`
+    // bodies, at the arms' column.
+    let en = format!("{LIGHT}fn main():\n    let light: Light = .Red\n    match light:\n        case .Red:\n            print(\"stop\")\n        case .Green:\n            print(\"go\")\n");
+    let fixed = machine_fix_makes_it_clean("main.kl", &en, "K1001");
+    assert!(
+        fixed.ends_with("print(\"go\")\n        case .Amber: panic(\"TODO\")\n"),
+        "{fixed}"
+    );
+    // A value-form match, nested patterns and the core constructors.
+    machine_fix_makes_it_clean(
+        "main.kl",
+        "enum E:\n    A\n    B\n\nfn describe(r: Result[E, String]) -> String:\n    return match r:\n        case Ok(.A): \"a\"\n        case Err(_): \"err\"\n\nfn main():\n    print(describe(Ok(.B)))\n",
+        "K1001",
+    );
+    machine_fix_makes_it_clean(
+        "main.kl",
+        "fn f(p: (Bool, Bool)) -> Int:\n    return match p:\n        case (true, _): 1\n        case (false, true): 2\n\nfn main():\n    print(f((true, true)))\n",
+        "K1001",
+    );
+    // The other skins: `case`, `panic`, `Some` and the comma are spelled as the file does.
+    machine_fix_makes_it_clean(
+        "main.ar.kl",
+        "دالة f(x: اختياري[عدد]) -> عدد:\n    أرجع حسب x:\n        عندما لا_شيء: 0\n\nدالة رئيسي():\n    اطبع(f(لا_شيء))\n",
+        "K1001",
+    );
+    machine_fix_makes_it_clean(
+        "main.franco.kl",
+        "dala f(x: ekhtiyari[adad]) -> adad:\n    rag3 hasab x:\n        lama mafeesh: 0\n\ndala ra2isi():\n    ektb(f(mafeesh))\n",
+        "K1001",
+    );
+}
+
+#[test]
+fn k1110_fix_copies_the_var_before_the_closure() {
+    // §12.3: "Capturing a `var` is K1110, with the fix `let snapshot = v` inserted before
+    // the closure." One error per `var` and closure, covering every use.
+    let fixed = machine_fix_makes_it_clean(
+        "main.kl",
+        "fn main():\n    var count = 1\n    count += 1\n    let add = fn(x: Int) => x + count\n    print(\"{add(1)}\")\n",
+        "K1110",
+    );
+    assert!(
+        fixed.contains("    let snapshot = count\n    let add = fn(x: Int) => x + snapshot\n"),
+        "{fixed}"
+    );
+    machine_fix_makes_it_clean(
+        "main.kl",
+        "fn main():\n    var total = 0\n    total += 2\n    fn twice(x: Int) -> Int:\n        return x + total + total\n    print(\"{twice(1)}\")\n",
+        "K1110",
+    );
+}
+
+#[test]
+fn question_mark_fixes_follow_section_14_3() {
+    // K1302: `.ok_or(…)` before the `?` (a `String` error gets a text: a machine fix).
+    machine_fix_makes_it_clean(
+        "main.kl",
+        "fn head(xs: List[Int]) -> Result[Int, String]:\n    let n = xs.get(0)?\n    return Ok(n)\n\nfn main():\n    let _ = head([2])\n",
+        "K1302",
+    );
+    // K1301: `.map_err(…)` (into a `String`: a machine fix) and `impl F as From[E]`.
+    machine_fix_makes_it_clean(
+        "main.kl",
+        &format!("{FAILS}fn load(text: String) -> Result[Int, String]:\n    let n = parse(text)?\n    return Ok(n)\n\nfn main():\n    let _ = load(\"1\")\n"),
+        "K1301",
+    );
+    let src = format!("{FAILS}fn load(text: String) -> Result[Int, LoadFail]:\n    let n = parse(text)?\n    return Ok(n)\n\nfn main():\n    let _ = load(\"1\")\n");
+    let fixes = fixes_of(&src, "K1301");
+    assert_eq!(fixes.len(), 2, "{fixes:#?}");
+    assert!(fixes
+        .iter()
+        .all(|f| f.applicability == kalam_diagnostics::Applicability::Suggestion));
+    let with_impl = apply(&src, &fixes[1]);
+    assert!(
+        with_impl.contains("impl LoadFail as From[ParseFail]:\n    fn from(value: ParseFail) -> LoadFail => panic(\"TODO\")"),
+        "{with_impl}"
+    );
+    clean(&with_impl);
+}
+
+#[test]
+fn diagnostics_name_generics_and_types_and_report_one_root_cause() {
+    // Generic parameters are shown by name, never as `T0`.
+    let (_, diags) = check_full(&[(
+        "main.kl",
+        "fn describe[T](x: T) -> String => \"value {x}\"\n\nfn main():\n    print(describe(1))\n",
+    )]);
+    let ty = diags[0]
+        .args
+        .iter()
+        .find(|(n, _)| *n == "type")
+        .map(|(_, v)| v.clone());
+    assert_eq!(ty.as_deref(), Some("T"));
+    // Every K0600 names both types in a label.
+    assert_eq!(
+        label_texts(
+            "fn main():\n    let n: Int = \"a\"\n    print(n)\n",
+            "K0600"
+        ),
+        vec!["expected `Int`, found `String`".to_string()]
+    );
+    // `?` in a function that returns `()` is not K1302 (whose text is about a `Result`
+    // function): K1301, with a label naming the return type.
+    let src = "fn main():\n    let x = [1].get(0)?\n    print(x)\n";
+    assert_eq!(codes(src), vec![("K1301", 2)]);
+    let labels = label_texts(src, "K1301");
+    assert!(
+        labels[0].contains("this function returns `()`"),
+        "{labels:?}"
+    );
+}

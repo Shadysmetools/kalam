@@ -72,8 +72,38 @@ pub struct Cx<'a> {
 pub struct MatchReport {
     /// Missing cases as source text (`.Amber`, `Some(_)`, `_`), empty when exhaustive.
     pub missing: Vec<String>,
+    /// The missing cases as patterns, in the order of `missing` (K1001's fix renders them
+    /// in the file's skin with [`Cx::show_in`]).
+    pub witnesses: Vec<DPat>,
     /// Indices of unreachable arms.
     pub unreachable: Vec<usize>,
+}
+
+/// How a witness spells the words that differ between skins: the core constructors
+/// (`Some`, `None`, `Ok`, `Err`), `true`/`false` and the comma.
+pub struct Spelling {
+    pub some: String,
+    pub none: String,
+    pub ok: String,
+    pub err: String,
+    pub true_: String,
+    pub false_: String,
+    pub comma: String,
+}
+
+impl Spelling {
+    /// The English skin's spellings.
+    pub fn english() -> Spelling {
+        Spelling {
+            some: "Some".into(),
+            none: "None".into(),
+            ok: "Ok".into(),
+            err: "Err".into(),
+            true_: "true".into(),
+            false_: "false".into(),
+            comma: ",".into(),
+        }
+    }
 }
 
 const MAX_WITNESSES: usize = 16;
@@ -558,15 +588,22 @@ impl Cx<'_> {
 
     /// Source text for a witness of type `ty` (English core-name spellings).
     pub fn show(&self, p: &DPat, ty: &Ty) -> String {
-        kalam_ast::stack::deeper(|| self.show_inner(p, ty))
+        self.show_in(p, ty, &Spelling::english())
     }
 
-    fn show_inner(&self, p: &DPat, ty: &Ty) -> String {
+    /// Source text for a witness of type `ty`, with the words that differ between skins
+    /// spelled by `sp`.
+    pub fn show_in(&self, p: &DPat, ty: &Ty, sp: &Spelling) -> String {
+        kalam_ast::stack::deeper(|| self.show_inner(p, ty, sp))
+    }
+
+    fn show_inner(&self, p: &DPat, ty: &Ty, sp: &Spelling) -> String {
+        let sep = format!("{} ", sp.comma);
         match p {
             DPat::Wild => "_".to_string(),
             DPat::Or(alts) => alts
                 .iter()
-                .map(|a| self.show(a, ty))
+                .map(|a| self.show_in(a, ty, sp))
                 .collect::<Vec<_>>()
                 .join(" | "),
             DPat::List { .. } => "[..]".to_string(),
@@ -575,21 +612,27 @@ impl Cx<'_> {
                 let shown: Vec<String> = args
                     .iter()
                     .enumerate()
-                    .map(|(i, a)| self.show(a, tys.get(i).unwrap_or(&Ty::Error)))
+                    .map(|(i, a)| self.show_in(a, tys.get(i).unwrap_or(&Ty::Error), sp))
                     .collect();
                 let paren = |name: &str| {
                     if shown.is_empty() {
                         name.to_string()
                     } else {
-                        format!("{name}({})", shown.join(", "))
+                        format!("{name}({})", shown.join(&sep))
                     }
                 };
                 match c {
-                    Ctor::Bool(b) => b.to_string(),
-                    Ctor::Some => paren("Some"),
-                    Ctor::None => "None".into(),
-                    Ctor::Ok => paren("Ok"),
-                    Ctor::Err => paren("Err"),
+                    Ctor::Bool(b) => {
+                        if *b {
+                            sp.true_.clone()
+                        } else {
+                            sp.false_.clone()
+                        }
+                    }
+                    Ctor::Some => paren(&sp.some),
+                    Ctor::None => sp.none.clone(),
+                    Ctor::Ok => paren(&sp.ok),
+                    Ctor::Err => paren(&sp.err),
                     Ctor::Variant(i) => {
                         let name = self
                             .enum_of(ty)
@@ -609,17 +652,17 @@ impl Cx<'_> {
                             }
                         }
                         Ty::Unit => "()".into(),
-                        _ => format!("({})", shown.join(", ")),
+                        _ => format!("({})", shown.join(&sep)),
                     },
                     Ctor::Int(v) => v.to_string(),
                     Ctor::Range(a, b) => format!("{a}..={b}"),
                     Ctor::Str(s) => format!("{s:?}"),
                     Ctor::Float(f) => f.clone(),
-                    Ctor::Len(_) => format!("[{}]", shown.join(", ")),
+                    Ctor::Len(_) => format!("[{}]", shown.join(&sep)),
                     Ctor::LenAtLeast(_) => {
                         let mut parts = shown;
                         parts.push("..".into());
-                        format!("[{}]", parts.join(", "))
+                        format!("[{}]", parts.join(&sep))
                     }
                 }
             }
@@ -644,6 +687,7 @@ impl Cx<'_> {
                 let text = self.show(p, scrut);
                 if !report.missing.contains(&text) {
                     report.missing.push(text);
+                    report.witnesses.push(p.clone());
                 }
             }
         }
@@ -684,6 +728,7 @@ mod tests {
                 kind: AdtKind::Enum(vs),
                 opaque: false,
                 derives: Vec::new(),
+                assumed: Vec::new(),
             },
         );
         (adts, Ty::Adt(DefId(1), Vec::new()))

@@ -1,0 +1,10 @@
+-- QEEMA MESH MOSTA5DAMA --------------------------------- main.franco.kl  K0730
+
+El expression da bydy qeema men no3 `Point`, w mafeesh 7aga betesta5demha. W el qeema elly btet7seb w tetrmy ghaleban ghalta, zay ennak tenady `items.append(x)` w testanna `items` tetghayar.
+
+6│     p.with(x: 2)
+       ^^^^^^^^^^^^
+
+Mosa3da: Esta5dem el qeema, masalan e7fazha b `khali` aw raga3ha lel motghayer, aw ekteb `khali _ = ...` 3ashan tesebha 3an 2asd.
+
+E3raf aktar: kalam explain K0730

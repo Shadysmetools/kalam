@@ -1,7 +1,8 @@
 //! `kalam`: the single Kalam binary (D10, spec §21.5, ARCHITECTURE.md §19).
 //!
 //! Exit codes: 0 success; 1 diagnostics, failed tests, or `main` returned `Err`; 2 usage
-//! errors and commands that are not implemented yet; 101 a panic in `kalam run`.
+//! errors, commands that are not implemented yet, and programs `kalam run --interp` cannot
+//! run yet; 101 a panic in `kalam run`; 70 an internal error of the interpreter.
 //! The message language comes from `KALAM_LANG` (`en`, `ar` or `franco`; default `en`).
 //!
 //! Argument parsing is hand-written in the scaffold; `clap` replaces it in Phase 1.
@@ -19,7 +20,6 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 const PLANNED: &[(&str, &str)] = &[
     ("new", "Phase 1"),
     ("build", "Phase 1"),
-    ("run", "Phase 1"),
     ("view", "Phase 0"),
     ("rename", "Phase 1"),
     ("diff", "Phase 1"),
@@ -45,6 +45,8 @@ fn usage() -> &'static str {
      \x20 kalam fmt [--check|--stdout] FILE...  format files in canonical layout (in place)\n\
      \x20 kalam convert --to en|ar|franco [--write] FILE\n\
      \x20                                    print FILE in another skin (--write: rename it)\n\
+     \x20 kalam run --interp FILE             run FILE's `main` on the reference interpreter\n\
+     \x20                                    (prelude only in M2; `kalam run` on JS is Phase 1)\n\
      \x20 kalam explain CODE                  explain a diagnostic code (KALAM_LANG sets the language)\n\
      \x20 kalam explain --catalog [--json]    list every code (--json: all codes, en/ar/franco)\n\
      \x20 kalam test | lsp | mcp              planned (Phase 1)\n\
@@ -81,6 +83,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         "check" => check(rest),
+        "run" => run(rest),
         "fmt" => fmt(rest),
         "convert" => convert(rest),
         "explain" => explain(rest),
@@ -126,6 +129,46 @@ fn read_file(path: &str) -> Result<String, ExitCode> {
         eprintln!("cannot read `{path}`: {e}");
         ExitCode::from(1)
     })
+}
+
+/// `kalam run --interp FILE`: the reference interpreter (ROADMAP M2). Program output goes
+/// to stdout as it is printed; diagnostics, a panic message or an `Err` from `main` go to
+/// stderr. Plain `kalam run` (the JS backend) is not implemented yet.
+fn run(args: &[String]) -> ExitCode {
+    let interp = args.iter().any(|a| a == "--interp");
+    let paths: Vec<&String> = args.iter().filter(|a| !a.starts_with("--")).collect();
+    if !interp {
+        eprintln!("`kalam run` on the JS backend is designed but not implemented yet (Phase 1); use `kalam run --interp FILE`.");
+        return ExitCode::from(2);
+    }
+    let [path] = paths.as_slice() else {
+        eprintln!("usage: kalam run --interp FILE");
+        return ExitCode::from(2);
+    };
+    let bytes = match std::fs::read(path.as_str()) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            eprintln!("cannot read `{path}`: {e}");
+            return ExitCode::from(1);
+        }
+    };
+    // Buffered, and flushed whatever the outcome: output printed before a panic survives.
+    let mut out = std::io::BufWriter::new(std::io::stdout());
+    let outcome = match kalam_driver::run_interp(path, &bytes, &mut out) {
+        Ok(outcome) => outcome,
+        Err(_) => {
+            eprintln!("`{path}` is not a Kalam file (expected .kl, .ar.kl or .franco.kl)");
+            return ExitCode::from(2);
+        }
+    };
+    let _ = std::io::Write::flush(&mut out);
+    match &outcome {
+        kalam_driver::RunOutcome::Rejected(checked) => {
+            eprint!("{}", checked.render_human(message_lang()));
+        }
+        other => eprint!("{}", other.stderr_text(path)),
+    }
+    ExitCode::from(outcome.exit_code())
 }
 
 fn check(args: &[String]) -> ExitCode {

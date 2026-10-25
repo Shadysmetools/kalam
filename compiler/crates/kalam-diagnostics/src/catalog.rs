@@ -2075,6 +2075,28 @@ pub static CATALOG: &[Entry] = &[
         ],
         proposed: true,
     },
+    // K1107: spec §27 erratum 2026-10-25 (FOUNDER-QUEUE Q27). `{detail}` is the type checker's
+    // English description of the first difference. ar/franco: pending native review.
+    Entry {
+        code: "K1107",
+        title: ["IMPLEMENTATION DOESN'T MATCH ITS TRAIT", "التنفيذ لا يطابق سمته", "EL IMPLEMENTATION MESH MTAB2 EL TRAIT"],
+        message: [
+            "This `{kw_impl}` doesn't match the trait `{trait}` it implements: {detail}. Code that relies on the trait calls the trait's version of each method, so the two have to agree exactly.",
+            "هذا الـ `{kw_impl}` لا يطابق السمة `{trait}` التي ينفّذها: {detail}. الكود الذي يعتمد على السمة يستدعي نسختها من كل دالة، فلا بد أن يتطابق الاثنان تمامًا.",
+            "El `{kw_impl}` da mesh mtab2 el trait `{trait}` elly bey3mlo implement: {detail}. El code elly mesh3'al 3ala el trait beyendah nos5et el trait men kol method, fa lazem el etnein yetab2o bel zabt.",
+        ],
+        help: [
+            "Write each method of the trait once, with the trait's name for it, `self` exactly where the trait has it, and the trait's parameter and return types (with its type parameters and `Self` filled in). Put any other method in a plain `{kw_impl}` block.",
+            "اكتب كل دالة من دوال السمة مرة واحدة، باسمها في السمة، ومع `self` حيث تضعه السمة فقط، وبأنواع المعاملات والإرجاع التي في السمة (بعد تعويض معاملات النوع و`Self`). وضع أي دالة أخرى في كتلة `{kw_impl}` عادية.",
+            "Ekteb kol method men el trait marra wa7da, b esmaha f el trait, w b `self` bas f el makan elly el trait 7atetha feeh, w b anwa3 el parameters wel return elly f el trait (ba3d ma t7ot el type parameters w `Self`). W 7ot ay method tanya f block `{kw_impl}` 3ady.",
+        ],
+        explain: [
+            "Why: generic code reaches a method through its trait. A function with a `T: Named` bound calls `x.name()` as the trait declares it, and `?` converts an error with `F.from(e)` as `From[E]` declares it. If an implementation returned another type, took other parameters or left a method out, a value of the wrong type would cross that call unchecked. So an implementation has to match its trait exactly (spec §9.7).\n\nInstead of:\n    trait Named:\n        fn name(self) -> String\n\n    impl Box as Named:\n        fn name(self) -> Int => self.size\n\nwrite:\n    impl Box as Named:\n        fn name(self) -> String => \"box {self.size}\"",
+            "السبب: يصل الكود العام إلى الدالة عبر سمتها. فالدالة التي تشترط `T: Named` تستدعي `x.name()` كما تعلنها السمة، و`؟` يحوّل الخطأ بـ `F.from(e)` كما تعلنها `From[E]`. ولو أرجع التنفيذ نوعًا آخر، أو أخذ معاملات أخرى، أو أغفل دالة، لعبرت قيمة من النوع الخطأ ذلك الاستدعاء دون فحص. لذلك يجب أن يطابق التنفيذ سمته تمامًا (المواصفة §9.7).\n\nبدلًا من:\n    سمة Named:\n        دالة name(ذات) -> نص\n\n    نفذ Box بصفة Named:\n        دالة name(ذات) -> عدد => ذات.size\n\nاكتب:\n    نفذ Box بصفة Named:\n        دالة name(ذات) -> نص => \"box {ذات.size}\"",
+            "Leh: el code el generic beyewsal lel method 3an tare2 el trait bta3etha. El dala elly 3andaha bound `T: Named` betendah `x.name()` zay ma el trait m3lenaha, w `?` bey7awel el error b `F.from(e)` zay ma `From[E]` m3lenaha. Law el implementation ragga3 type tany, aw a5ad parameters tanya, aw nesy method, qeema men el type el ghalat hate3dy el call da men gher fa7s. 3ashan keda lazem el implementation yetabe2 el trait bta3o bel zabt (el spec §9.7).\n\nBadal:\n    sefa Named:\n        dala name(nafso) -> nass\n\n    naffez Box ka Named:\n        dala name(nafso) -> adad => nafso.size\n\nEkteb:\n    naffez Box ka Named:\n        dala name(nafso) -> nass => \"box {nafso.size}\"",
+        ],
+        proposed: false,
+    },
     // ---- Modules and globals (K12xx, spec §13; the parser). ar/franco: pending native review.
     Entry {
         code: "K1202",

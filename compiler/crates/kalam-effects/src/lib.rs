@@ -1,95 +1,75 @@
 //! Effects: suspension inference (no `async`, D12), `@sync` checks, capability sets and
 //! audit counters (spec §15, §16; ARCHITECTURE.md §9).
 //!
-//! **Suspension.** A function suspends if it calls a base suspending function (stdlib I/O
-//! primitives marked `@suspends`, externs with `@js(async: true)`) or calls a function value
-//! whose suspension bit is set. The condition is monotone, so the fixpoint is reverse
-//! reachability from the base set: one worklist pass, and mutual recursion needs no special
-//! handling. Function-typed parameters get effect variables; a polymorphic function has at
-//! most two instances, `f` (sync) and `f$s` (suspending). Function types stored in data are
-//! suspending unless written `@sync fn(…)` (DR-13).
+//! **Suspension** ([`suspension`]). A function suspends if it calls a base suspending
+//! function (stdlib I/O primitives marked `@suspends`, externs with `@js(async: true)`) or
+//! calls a function value whose suspension bit is set. Function-typed parameters are effect
+//! parameters, so a polymorphic function has at most two instances, `f` (sync) and `f$s`
+//! (suspending). Function types stored in data are suspending unless written
+//! `@sync fn(…)` (DR-13). The result is stored in `TypeckResults::suspension`; K1401,
+//! K1402 and W0421 are reported. [`check_resolved`], [`diagnose`] and
+//! [`diagnose_against_std`] are the type checker's entry points with this pass added.
 //!
 //! **Capabilities.** For each exported function, the capability types reachable from its
 //! parameters and captures, plus its package's extern effects, form its capability set
 //! (spec §16.2). It is written to the `.kli` interface and printed by `kalam caps`.
 
-use std::collections::VecDeque;
+pub mod suspension;
 
 use kalam_typeck::Capability;
 
-/// A call graph over the functions of a program (indices are function numbers).
-/// A call through a function value whose bit is set is modelled as an edge to a node
-/// that is in the base set.
-#[derive(Clone, Debug, Default)]
-pub struct CallGraph {
-    /// `base[f]` is true for stdlib primitives and async externs.
-    pub base: Vec<bool>,
-    /// `calls[f]` lists the functions `f` calls directly.
-    pub calls: Vec<Vec<usize>>,
+pub use suspension::{analyze, base_attrs, BaseAttrs};
+
+/// Type-checks a resolved program and infers suspension (`checked.results.suspension`).
+/// Returns the checked program and the effect diagnostics (K1401, K1402, W0421), which
+/// are empty when type checking reported an error.
+pub fn check_resolved(
+    program: &kalam_resolve::Program,
+    sources: &[kalam_resolve::SourceModule<'_>],
+) -> (kalam_typeck::Checked, Vec<kalam_diagnostics::Diagnostic>) {
+    let attrs = base_attrs(program, sources);
+    kalam_typeck::check_resolved_then(program, sources, true, |checked| {
+        let diags = analyze(&checked.hir, &mut checked.results, &attrs);
+        let checked = kalam_typeck::Checked {
+            hir: std::mem::take(&mut checked.hir),
+            results: std::mem::take(&mut checked.results),
+        };
+        (checked, diags)
+    })
 }
 
-impl CallGraph {
-    pub fn add_fn(&mut self, base_suspending: bool) -> usize {
-        self.base.push(base_suspending);
-        self.calls.push(Vec::new());
-        self.base.len() - 1
-    }
-
-    pub fn add_call(&mut self, caller: usize, callee: usize) {
-        self.calls[caller].push(callee);
-    }
+/// Every type and effect diagnostic of a resolved program, in source order per file
+/// (`kalam_typeck::diagnose` plus this crate's pass).
+pub fn diagnose(
+    program: &kalam_resolve::Program,
+    sources: &[kalam_resolve::SourceModule<'_>],
+) -> Vec<kalam_diagnostics::Diagnostic> {
+    diagnose_with(program, sources, true)
 }
 
-/// Returns the suspension bit of every function.
-pub fn infer_suspension(graph: &CallGraph) -> Vec<bool> {
-    let n = graph.calls.len();
-    let mut callers: Vec<Vec<usize>> = vec![Vec::new(); n];
-    for (caller, callees) in graph.calls.iter().enumerate() {
-        for &callee in callees {
-            callers[callee].push(caller);
-        }
-    }
-    let mut suspends = graph.base.clone();
-    let mut work: Vec<usize> = (0..n).filter(|&f| suspends[f]).collect();
-    while let Some(callee) = work.pop() {
-        for &caller in &callers[callee] {
-            if !suspends[caller] {
-                suspends[caller] = true;
-                work.push(caller);
-            }
-        }
-    }
-    suspends
+/// [`diagnose`] without checking the bodies of the stdlib's functions (their signatures and
+/// attributes are still used), like `kalam_typeck::diagnose_against_std`.
+pub fn diagnose_against_std(
+    program: &kalam_resolve::Program,
+    sources: &[kalam_resolve::SourceModule<'_>],
+) -> Vec<kalam_diagnostics::Diagnostic> {
+    diagnose_with(program, sources, false)
 }
 
-/// The shortest call chain from `f` to a base suspending function, for K1401/K1402
-/// messages ("`update` calls `save_score`, which calls `db.exec` (suspends)").
-pub fn suspension_chain(graph: &CallGraph, f: usize) -> Option<Vec<usize>> {
-    let n = graph.calls.len();
-    let mut parent: Vec<Option<usize>> = vec![None; n];
-    let mut seen = vec![false; n];
-    let mut queue = VecDeque::from([f]);
-    seen[f] = true;
-    while let Some(current) = queue.pop_front() {
-        if graph.base[current] {
-            let mut chain = vec![current];
-            let mut at = current;
-            while let Some(p) = parent[at] {
-                chain.push(p);
-                at = p;
-            }
-            chain.reverse();
-            return Some(chain);
-        }
-        for &next in &graph.calls[current] {
-            if !seen[next] {
-                seen[next] = true;
-                parent[next] = Some(current);
-                queue.push_back(next);
-            }
-        }
-    }
-    None
+fn diagnose_with(
+    program: &kalam_resolve::Program,
+    sources: &[kalam_resolve::SourceModule<'_>],
+    std_bodies: bool,
+) -> Vec<kalam_diagnostics::Diagnostic> {
+    let attrs = base_attrs(program, sources);
+    kalam_typeck::check_resolved_then(program, sources, std_bodies, |checked| {
+        let effects = analyze(&checked.hir, &mut checked.results, &attrs);
+        let mut all = checked.diagnostics();
+        all.extend(effects);
+        // Stable: within one place, type errors keep coming first.
+        all.sort_by_key(|d| (d.file, d.span.start, d.span.end));
+        all
+    })
 }
 
 /// The capability types a function can exercise (spec §16.2).
@@ -117,26 +97,4 @@ pub struct AuditCounts {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn suspension_propagates_to_callers_including_recursion() {
-        let mut g = CallGraph::default();
-        let db_exec = g.add_fn(true); // stdlib primitive
-        let save = g.add_fn(false);
-        let update = g.add_fn(false);
-        let pure_a = g.add_fn(false);
-        let pure_b = g.add_fn(false);
-        g.add_call(save, db_exec);
-        g.add_call(update, save);
-        g.add_call(pure_a, pure_b); // mutual recursion without I/O stays sync
-        g.add_call(pure_b, pure_a);
-        assert_eq!(infer_suspension(&g), vec![true, true, true, false, false]);
-        assert_eq!(
-            suspension_chain(&g, update),
-            Some(vec![update, save, db_exec])
-        );
-        assert_eq!(suspension_chain(&g, pure_a), None);
-    }
-}
+mod tests;

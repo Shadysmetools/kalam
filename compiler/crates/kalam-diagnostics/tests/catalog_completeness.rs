@@ -503,6 +503,35 @@ const EMITTER_ARGS: &[(&str, &[&str])] = &[
     ("K1301", &["found", "expected"]),
     ("K1302", &[]),
     ("K1641", &["found"]),
+    // kalam-typeck, M2 iteration 3: an impl that does not match its trait (FOUNDER-QUEUE Q27,
+    // spec §27 erratum): the trait as written in the impl head, and the first difference.
+    ("K1107", &["trait", "detail"]),
+    // kalam-effects: suspension inference (§15). The call chain is a label, not an arg.
+    ("K1401", &[]),
+    ("K1402", &[]),
+    ("W0421", &[]),
+    // kalam-sinks (wired through kalam-typeck): capabilities (K1501 for constructing `World`,
+    // and from typeck's `error.rs` for decoding it; K1503) and the tagged-literal parsers
+    // and hole checks (§17). Their messages use keyword placeholders only.
+    ("K1501", &[]),
+    ("K1503", &[]),
+    ("K1602", &[]),
+    ("K1603", &[]),
+    ("K1604", &[]),
+    ("K1605", &[]),
+    ("W1606", &[]),
+    ("K1610", &[]),
+    ("K1611", &[]),
+    ("K1612", &[]),
+    ("K1613", &[]),
+    ("K1614", &[]),
+    ("K1615", &[]),
+    ("K1616", &[]),
+    ("K1617", &[]),
+    ("K1620", &[]),
+    ("K1621", &[]),
+    ("W1622", &[]),
+    ("K1631", &[]),
 ];
 
 /// Codes nobody emits yet: the args their future emitter must supply. Every other code with

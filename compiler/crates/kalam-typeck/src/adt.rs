@@ -49,6 +49,10 @@ pub struct AdtDef {
     pub opaque: bool,
     /// Explicit `@derive(…)` traits (needed for `Ord`, `Encode`, `Decode`, `Row`, `Message`).
     pub derives: Vec<BuiltinTrait>,
+    /// Derives already reported at the derive site because a field does not implement the
+    /// trait (`@derive(Ord)` on a record with a `Float` field). The type is taken to
+    /// implement them, so each use does not report the same root cause again.
+    pub assumed: Vec<BuiltinTrait>,
 }
 
 impl AdtDef {

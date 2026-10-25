@@ -6346,6 +6346,22 @@
       "doc": "Why a database call failed."
     },
     {
+      "path": "std/sql.LikePattern",
+      "module": "std/sql",
+      "kind": "type",
+      "name": "LikePattern",
+      "owner": null,
+      "receiver": null,
+      "signature": "type LikePattern",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A `LIKE` pattern with `%`, `_` and `\\` escaped, made by `like_contains`, `like_prefix` or `like_suffix`. It is a bound parameter; a raw `String` in a `LIKE` hole is W1606."
+    },
+    {
       "path": "std/sql.ident",
       "module": "std/sql",
       "kind": "fn",
@@ -6368,7 +6384,7 @@
       "name": "like_contains",
       "owner": null,
       "receiver": null,
-      "signature": "fn like_contains(text: String) -> String",
+      "signature": "fn like_contains(text: String) -> LikePattern",
       "capability": [],
       "suspends": "no",
       "attributes": [
@@ -6384,7 +6400,7 @@
       "name": "like_prefix",
       "owner": null,
       "receiver": null,
-      "signature": "fn like_prefix(text: String) -> String",
+      "signature": "fn like_prefix(text: String) -> LikePattern",
       "capability": [],
       "suspends": "no",
       "attributes": [
@@ -6400,7 +6416,7 @@
       "name": "like_suffix",
       "owner": null,
       "receiver": null,
-      "signature": "fn like_suffix(text: String) -> String",
+      "signature": "fn like_suffix(text: String) -> LikePattern",
       "capability": [],
       "suspends": "no",
       "attributes": [

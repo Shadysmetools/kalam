@@ -48,11 +48,13 @@ dependencies = [
 name = "kalam-driver"
 version = "0.1.0"
 dependencies = [
+ "kalam-ast",
  "kalam-base",
  "kalam-diagnostics",
  "kalam-effects",
  "kalam-emit-js",
  "kalam-fmt",
+ "kalam-interp",
  "kalam-ir",
  "kalam-lexer",
  "kalam-parser",
@@ -66,8 +68,10 @@ dependencies = [
 name = "kalam-effects"
 version = "0.1.0"
 dependencies = [
+ "kalam-ast",
  "kalam-base",
  "kalam-diagnostics",
+ "kalam-parser",
  "kalam-resolve",
  "kalam-typeck",
 ]
@@ -121,6 +125,18 @@ dependencies = [
  "kalam-skins",
  "kalam-syntax",
  "serde_json",
+]
+
+[[package]]
+name = "kalam-interp"
+version = "0.1.0"
+dependencies = [
+ "kalam-base",
+ "kalam-driver",
+ "kalam-ir",
+ "kalam-resolve",
+ "kalam-skins",
+ "kalam-typeck",
 ]
 
 [[package]]

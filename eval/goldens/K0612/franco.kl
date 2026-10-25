@@ -1,0 +1,7 @@
+@derive(Encode)
+haykal Login:
+    user: nass
+    password: Secret[nass]
+
+dala ra2isi():
+    ektb("ok")

@@ -1,0 +1,12 @@
+ta3dad Light:
+    Red
+    Amber
+    Green
+
+dala ra2isi():
+    khali light: Light = .Red
+    hasab light:
+        lama _:
+            ektb("any")
+        lama .Red:
+            ektb("stop")

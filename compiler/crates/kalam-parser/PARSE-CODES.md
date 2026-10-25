@@ -35,6 +35,7 @@ uses the constants there) and this table. The test
 | K0413 | `CORE_NAME_DECLARED` | The file's own core name declared where the AST keeps a plain identifier: a `var` name, a function or lambda parameter, a name after `as`, a list-rest name (§7.2). It is recovered as an identifier. Core names in item names and in `let`/`for`/`case` patterns are kept as names, and name resolution reports them. Another skin's core name is an ordinary identifier (FOUNDER-QUEUE Q21). |
 | K1202 | `MODULE_VAR` | A module-level `var` (§13.4). It is parsed as the constant `let`, with a suggested fix to `let`. |
 | K1203 | `GLOB_IMPORT` | A glob import `use a.*` (§13.1). It is parsed as `use a`. No fix. |
+| K1005 | `FLOAT_PATTERN` | A `Float` literal pattern, `case 1.5:` or `case 0.0..=1.0:` (§11 rule 6). The literal (or range) is skipped and recovered as an error pattern, so the arm's body still parses. No fix: the help suggests a guard with `.near(…)` or `Decimal`. |
 
 ## Questions for the spec owner
 

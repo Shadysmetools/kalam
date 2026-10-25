@@ -1,0 +1,10 @@
+-- OR-PATTERN BINDS DIFFERENT NAMES ----------------------------- main.kl  K1004
+
+The alternatives of this `|` pattern don't bind the same names with the same types, so after the match some names would have no value.
+
+9│         case .Card(last4) | .Wallet(id):
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Help: Bind the same names, with the same types, in every alternative, or split the alternatives into separate `case` arms.
+
+Learn more: kalam explain K1004

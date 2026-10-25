@@ -39,6 +39,9 @@ pub const CORE_NAME_DECLARED: &str = "K0413";
 pub const MODULE_VAR: &str = "K1202";
 /// A glob import `use a.*` (spec §13.1): parsed as `use a`.
 pub const GLOB_IMPORT: &str = "K1203";
+/// A `Float` literal pattern (`case 1.5:`, spec §11 rule 6): the literal is skipped and the
+/// pattern recovered as an error pattern, so the rest of the arm parses.
+pub const FLOAT_PATTERN: &str = "K1005";
 
 // Known LLM mistakes (spec §21.3). Each is reported *instead of* a generic K0250/K0255 at
 // its site, with the fix the spec gives, and the parser recovers as if the canonical form
@@ -82,6 +85,7 @@ pub const ALL: &[&str] = &[
     CORE_NAME_DECLARED,
     MODULE_VAR,
     GLOB_IMPORT,
+    FLOAT_PATTERN,
 ];
 
 /// The §21.3 known-mistake codes this crate emits (K0921 is listed in [`ALL`] too). They are

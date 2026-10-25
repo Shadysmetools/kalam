@@ -1,0 +1,66 @@
+استخدم std.{None، Some، adad، dala، ektb, fe، for، hasab، lama، law، lw، mafeesh، match, wala، walla, `اذا`، `فى`، `فی`, `لکل`، `و`}
+
+
+علني دالة `_tmp`(y: ()، items: عشري، count: مجموعة[مجموعە[
+     عدد
+]]):
+    mafeesh.و.wala()
+    إذا .None:
+        تحقق.قيمة(ليس fe، value: ١٠٠٠ <= ١، _tmp: اذا 42: فشل وإلا اذا عدد: x وإلا: عداد)(match, ١٥)
+    وإلا إذا count:
+        انھيار.`name`.`اسم`(
+              count[قيمة]،
+            دالة(_, n1: نص) => 42،
+              "سلام عليكمif"(x: hasab, x: نجاح)
+        )
+        `اذا`.n1[.حالة] /= ليس 1_000
+        ليكن lama = دالة(walla، y) => دالة(user) => user
+        match *= (1000)() و " "
+    والا إذا (داله(_، name) => لا_شىء):
+        طالما خطأ و 1000 أو user.name:
+            لىكن (name, _, adad) = .حالة[user]
+        ليكن total = إذا 0.25: ليس ٧ وإلا اذا خطأ - 7: (٠,) وإلا: (قيمة)
+    وإلا:
+        طالما .Some . `فى` // 65535:
+            استمر
+            `name`أو`قيمة`()
+            أرجع count
+            ليكن x = (.Some،)؟
+        لكل items في [value، None, lw] * ():
+            ليكن Some = []
+            # c1 TODO: law fi lekol
+            متغير `فی` = n1
+        اذا (`lama`).items:
+            اطبع()()
+
+            اطبع(n1: n1.1، lama: match[ektb])
+            items()
+            user.None /= (داله(اسم، _) => فشل) > total
+        وإلا اذا (`لکل`):
+            ليكن y = .Circle
+
+            متغير count = {
+                  1_000: value،
+                 ١: نجاح
+            }[()]
+            n1[(0x1F)؟][خطأ..=(.Empty)] *= (0).match
+            for(2e3، صح, total: (mafeesh))(3.0e-2)
+        وإلا اذا 65535:
+            y = دالة(items) => قيمة
+            لیکن _: نتيجة[(عدد, عدد)، قاموس[
+                  نص,
+                نص,
+            ]] = .Circle / لا_شيء
+        وإلا:
+            لیکن x = (-sql": ١٢٣{صح}")؟
+            None(count: 0.25)
+        متغير count = حسب (1_000)(`None`: ()):
+            عندما Some.حالة:
+                user[(رئىسى،)] = sql"١٢٣if"(law: ()، items: إذا " {1000}": .law وإلا إذا عداد: dala وإلا: "hello١٢٣\t")
+                ليكن user = صح
+                user.x.value /= صح(lama، n1: total, قيمة: .Empty).ektb
+    `items`.عداد(
+         total،
+         None,
+          {},
+    )

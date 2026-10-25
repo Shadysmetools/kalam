@@ -1,0 +1,6 @@
+haykal Query:
+    with: adad
+
+dala ra2isi():
+    khali q = Query(with: 1)
+    ektb("{q.with}")

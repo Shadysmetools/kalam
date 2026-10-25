@@ -83,6 +83,7 @@ pub fn lower_program_with(
             out: &mut out,
             next_synthetic: &mut next_synthetic,
             bodies: std_bodies || !src.std,
+            std: src.std,
         };
         for item in &src.ast.file.items {
             m.item(item);
@@ -242,8 +243,10 @@ fn has_attr(attrs: &[ast::Attribute], name: &str) -> bool {
         .any(|a| a.path.len() == 1 && a.path[0].name == name)
 }
 
-fn derives(attrs: &[ast::Attribute]) -> Vec<BuiltinTrait> {
+/// The traits of every `@derive(…)`, each with where it is written.
+fn derives(attrs: &[ast::Attribute]) -> (Vec<BuiltinTrait>, Vec<Span>) {
     let mut out = Vec::new();
+    let mut spans = Vec::new();
     for a in attrs {
         if a.path.len() != 1 || a.path[0].name != "derive" {
             continue;
@@ -253,12 +256,13 @@ fn derives(attrs: &[ast::Attribute]) -> Vec<BuiltinTrait> {
                 if let Some(t) = derive_trait(n) {
                     if !out.contains(&t) {
                         out.push(t);
+                        spans.push(arg.value.span);
                     }
                 }
             }
         }
     }
-    out
+    (out, spans)
 }
 
 // ---------------------------------------------------------------------------------------
@@ -357,6 +361,8 @@ struct ModuleLower<'a, 'p> {
     next_synthetic: &'a mut u32,
     /// Lower function bodies and tests (see [`lower_program_with`]).
     bodies: bool,
+    /// A stdlib module.
+    std: bool,
 }
 
 impl ModuleLower<'_, '_> {
@@ -396,6 +402,10 @@ impl ModuleLower<'_, '_> {
                 let decl = self.func(def, f, &item.attrs, None, &generics);
                 let name = self.name_text(def);
                 self.add(def, &name, f.sig.name.span, ItemKind::Fn(decl));
+                // `main` is a core name (§7.2), spelled per skin: the entry point (§14.3).
+                if !self.std && matches!(f.sig.name.kind, ast::NameKind::Core(Concept::CoreMain)) {
+                    self.out.mains.push(def);
+                }
             }
             ast::ItemKind::Type(t) => {
                 let Some(def) = self.decl(t.name.span) else {
@@ -416,11 +426,13 @@ impl ModuleLower<'_, '_> {
                             })
                             .collect();
                         body.finish_into(self.out);
+                        let (derives, derive_spans) = derives(&item.attrs);
                         ItemKind::Record(RecordDecl {
                             generics: gdecls,
                             fields,
                             opaque: item.vis == ast::Visibility::ExportOpaque,
-                            derives: derives(&item.attrs),
+                            derives,
+                            derive_spans,
                         })
                     }
                     ast::TypeBody::Alias(target) => {
@@ -462,6 +474,7 @@ impl ModuleLower<'_, '_> {
                     });
                 }
                 let name = self.name_text(def);
+                let (derives, derive_spans) = derives(&item.attrs);
                 self.add(
                     def,
                     &name,
@@ -470,7 +483,8 @@ impl ModuleLower<'_, '_> {
                         generics: gdecls,
                         variants,
                         opaque: item.vis == ast::Visibility::ExportOpaque,
-                        derives: derives(&item.attrs),
+                        derives,
+                        derive_spans,
                     }),
                 );
             }
@@ -634,6 +648,8 @@ impl ModuleLower<'_, '_> {
         let generics = outer.extended(self, &f.sig.generics);
         let own = self.generic_decls(&f.sig.generics, &generics);
         let mut body = BodyLower::new(self.env, self.file, def, &generics, None);
+        // A method is written one level into its `impl` or `trait` (§5.8 rule 1).
+        body.line_depth = u32::from(parent.is_some());
         let mut params = Vec::new();
         let mut has_self = false;
         for p in &f.sig.params {
@@ -743,6 +759,14 @@ struct BodyLower<'a, 'p> {
     self_local: Option<LocalId>,
     raw_strings: Vec<(ExprId, String)>,
     uses: HashMap<LocalId, u32>,
+    /// The block level of the source line being lowered: 0 for an item, 1 for a method or
+    /// a top-level function's statements, and one more per indented block (4 spaces each,
+    /// §5.8 rule 1). It gives the column of statements and `case` arms for fixes that
+    /// insert lines (HIR has no source text).
+    line_depth: u32,
+    /// The statements being lowered are a one-line block (`if c: x = 1`), on the line of
+    /// their header.
+    inline: bool,
 }
 
 impl<'a, 'p> BodyLower<'a, 'p> {
@@ -766,6 +790,8 @@ impl<'a, 'p> BodyLower<'a, 'p> {
             self_local,
             raw_strings: Vec::new(),
             uses: HashMap::new(),
+            line_depth: 0,
+            inline: false,
         }
     }
 
@@ -1147,6 +1173,11 @@ impl<'a, 'p> BodyLower<'a, 'p> {
             },
             ast::ExprKind::Match(mx) => {
                 let scrutinee = Box::new(self.expr(&mx.scrutinee));
+                // The arms are one level deeper than the line of the `match` header.
+                let saved = (self.line_depth, self.inline);
+                self.line_depth += 1;
+                self.inline = false;
+                let indent = self.line_depth * 4;
                 let arms = mx
                     .arms
                     .iter()
@@ -1155,8 +1186,10 @@ impl<'a, 'p> BodyLower<'a, 'p> {
                         guard: a.guard.as_ref().map(|g| self.expr(g)),
                         body: self.block(&a.body),
                         span: a.span,
+                        indent: Some(indent),
                     })
                     .collect();
+                (self.line_depth, self.inline) = saved;
                 ExprKind::Match { scrutinee, arms }
             }
             ast::ExprKind::Error => ExprKind::Error,
@@ -1240,8 +1273,15 @@ impl<'a, 'p> BodyLower<'a, 'p> {
     // -- statements ---------------------------------------------------------------------
 
     fn block(&mut self, b: &ast::Block) -> Block {
+        let saved = (self.line_depth, self.inline);
+        if !b.inline {
+            self.line_depth += 1;
+        }
+        self.inline = b.inline;
+        let stmts = b.stmts.iter().map(|s| self.stmt(s)).collect();
+        (self.line_depth, self.inline) = saved;
         Block {
-            stmts: b.stmts.iter().map(|s| self.stmt(s)).collect(),
+            stmts,
             span: b.span,
         }
     }
@@ -1288,7 +1328,11 @@ impl<'a, 'p> BodyLower<'a, 'p> {
             },
             ast::StmtKind::Fn(f) => self.local_fn(f),
         };
-        Stmt { kind, span: s.span }
+        Stmt {
+            kind,
+            span: s.span,
+            indent: (!self.inline).then_some(self.line_depth * 4),
+        }
     }
 
     fn local_fn(&mut self, f: &ast::FnDecl) -> StmtKind {

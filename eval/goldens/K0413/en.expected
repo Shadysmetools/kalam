@@ -1,0 +1,10 @@
+-- CORE NAME IS RESERVED ---------------------------------------- main.kl  K0413
+
+`Int` is a core name (spec §7.2). Core names are translated between skins, so each one means the same thing in every program and is never declared again.
+
+2│     let Int = 3
+           ^^^
+
+Help: Choose another name for your declaration. The one core name a program declares is `main`, its entry point.
+
+Learn more: kalam explain K0413

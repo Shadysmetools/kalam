@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali found: ekhtiyari[adad] = mawgood(1)
+    khali mawgood(n) = found
+    ektb("{n}")

@@ -10,7 +10,8 @@
 //!
 //! Status: [`check_source`] runs the lexer, the parser, name resolution and the type
 //! checker on one file; [`check_project`] does the same for a whole package, optionally
-//! with a stdlib directory. Each stage runs only when the stages before it found no error
+//! with a stdlib directory; [`run_interp`] runs one file on the reference interpreter
+//! (`kalam run --interp`, module `run`). Each stage runs only when the stages before it found no error
 //! (root cause first, ARCHITECTURE.md §12.4). Each later stage is added as it lands, in the
 //! order of spec §4.2.
 //!
@@ -24,6 +25,9 @@
 
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
+
+mod run;
+pub use run::{run_interp, RunOutcome, MAX_CALL_DEPTH};
 
 use kalam_base::{FileId, LineIndex, Skin};
 use kalam_diagnostics::{render_human, render_json, Diagnostic, Lang, SourceView};
@@ -222,7 +226,8 @@ fn typecheck_single(
     if resolved.iter().any(Diagnostic::is_error) {
         return diagnostics;
     }
-    let typed = kalam_typeck::diagnose_against_std(&program, &sources)
+    // Type checking plus suspension inference (K1401, K1402, W0421; spec §15).
+    let typed = kalam_effects::diagnose_against_std(&program, &sources)
         .into_iter()
         .filter(|d| d.file == FileId(0))
         .collect();
@@ -341,7 +346,8 @@ pub fn check_project(vfs: &dyn Vfs, root: &str, options: &ProjectOptions) -> Vec
     // The type checker runs on the whole program, and only when every file (stdlib
     // included) lexed, parsed and resolved without error.
     if !files.iter().any(CheckedFile::has_errors) {
-        let typed = kalam_typeck::diagnose(&program, &sources);
+        // Type checking plus suspension inference (spec §15).
+        let typed = kalam_effects::diagnose(&program, &sources);
         let mut per_file: Vec<Vec<Diagnostic>> = vec![Vec::new(); files.len()];
         for d in typed {
             if let Some(list) = per_file.get_mut(d.file.0 as usize) {

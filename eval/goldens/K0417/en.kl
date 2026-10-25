@@ -1,0 +1,6 @@
+type Query:
+    with: Int
+
+fn main():
+    let q = Query(with: 1)
+    print("{q.with}")

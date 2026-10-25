@@ -728,6 +728,11 @@ impl<'t> Parser<'t> {
                 let fields = self.pat_fields_opt();
                 PatKind::Path { path, fields }
             }
+            // §11 rule 6: a `Float` literal (or a range of them) is no pattern (K1005).
+            TokenKind::Float => return self.float_pat(start),
+            TokenKind::Op(Op::Minus) if self.nth(1) == TokenKind::Float => {
+                return self.float_pat(start)
+            }
             TokenKind::Op(Op::Minus) | TokenKind::Int => self.int_pat(),
             TokenKind::Str => {
                 let t = self.bump();
@@ -788,6 +793,26 @@ impl<'t> Parser<'t> {
         Pat {
             kind,
             span: self.span_from(start),
+        }
+    }
+
+    /// `case 1.5:` or `case 0.0..=1.0:` (§11 rule 6, K1005): the literals are skipped and
+    /// the pattern becomes an error pattern, so the arm's body still parses.
+    fn float_pat(&mut self, start: u32) -> Pat {
+        self.eat_op(Op::Minus);
+        self.bump();
+        if self.at_op(Op::DotDot) || self.at_op(Op::DotDotEq) {
+            self.bump();
+            self.eat_op(Op::Minus);
+            if matches!(self.peek(), TokenKind::Float | TokenKind::Int) {
+                self.bump();
+            }
+        }
+        let span = self.span_from(start);
+        self.error_at(codes::FLOAT_PATTERN, span);
+        Pat {
+            kind: PatKind::Error,
+            span,
         }
     }
 

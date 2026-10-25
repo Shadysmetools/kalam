@@ -1,0 +1,8 @@
+enum Light:
+    Red
+    Amber
+    Green
+
+fn main():
+    let c = .Red
+    print("{c}")

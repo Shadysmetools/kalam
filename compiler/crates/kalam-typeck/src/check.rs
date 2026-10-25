@@ -67,6 +67,10 @@ use crate::traits::{
 use crate::ty::{Capability, GenericParam, Scheme, SinkType, Suspension, Ty};
 use crate::unify::{InferCtx, SuspFlow, UnifyError};
 
+// Fix-its and recovery helpers (K1001, K1110, K1301, K1302, Q31, well-formed locals).
+mod fixes;
+use fixes::{Capture, StmtCtx};
+
 /// How `e?` turns the error it propagates into the function's error (§14.3), recorded for
 /// lowering.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -88,6 +92,8 @@ pub struct TaggedLiteral {
     pub owner: DefId,
     pub expr: ExprId,
     pub file: FileId,
+    /// [kalam-sinks] The whole literal, where structural sink findings point.
+    pub span: Span,
     pub tag: kalam_sinks::Tag,
     /// The literal text between the holes, escapes decoded (`holes.len() + 1` parts).
     pub parts: Vec<String>,
@@ -122,6 +128,9 @@ pub struct TypeckResults {
     pub tagged: Vec<TaggedLiteral>,
     /// Suspension constraints `from ≤ to` for `kalam-effects`, by owning body.
     pub flows: Vec<(DefId, SuspFlow)>,
+    // [kalam-effects hook, §15] Never written by the checker: `kalam-effects` solves
+    // `flows` over the call graph and stores the per-function and per-call bits here.
+    pub suspension: crate::susp::Suspensions,
     pub errors: Vec<TypeError>,
 }
 
@@ -171,9 +180,12 @@ fn check_program_here(prog: &HirProgram) -> TypeckResults {
         res: TypeckResults::default(),
         trait_ids: HashMap::new(),
         method_impl: HashMap::new(),
+        written: HashMap::new(),
     };
     cx.collect();
     cx.check_bodies();
+    // [kalam-sinks] §17.3–§17.6: template structure and hole contexts of tagged literals.
+    crate::sink_holes::check(&mut cx.res);
     cx.res
 }
 
@@ -199,6 +211,10 @@ struct Collector<'p> {
     trait_ids: HashMap<DefId, TraitId>,
     /// Method → index of its impl in `res.traits.impls`.
     method_impl: HashMap<DefId, usize>,
+    /// Impl methods that do not match their trait (K1107): their written signature, used
+    /// to check their own body, while `res.signatures` holds the trait's (what callers
+    /// see), so the mismatch is reported once, at the impl.
+    written: HashMap<DefId, Scheme>,
 }
 
 /// State for lowering one written type.
@@ -274,6 +290,7 @@ impl Collector<'_> {
                     kind,
                     opaque,
                     derives,
+                    assumed: Vec::new(),
                 },
             );
         }
@@ -312,12 +329,29 @@ impl Collector<'_> {
             let (def, kind) = match err {
                 CoherenceError::Orphan { impl_def } => (impl_def, TypeErrorKind::OrphanImpl),
                 CoherenceError::Overlap { first, second } => {
+                    // The later impl is rejected: the first one alone answers (no K1103
+                    // on every call that both would match).
+                    for imp in self.res.traits.impls.iter_mut() {
+                        if imp.def == second {
+                            imp.rejected = true;
+                        }
+                    }
                     (second, TypeErrorKind::OverlappingImpl { other: first })
                 }
             };
             if let Some(item) = self.prog.item(def) {
                 let (file, span) = (item.file, item.span);
                 self.err(file, span, kind);
+            }
+        }
+        // Well-formed declarations, the entry point and derives (spec §9.3, §9.6, §9.7,
+        // §14.3), then every impl against its trait (K1107).
+        crate::decls::check(self.prog, &mut self.res);
+        let outcome = crate::conform::check(self.prog, &self.res);
+        self.res.errors.extend(outcome.errors);
+        for (m, contract) in outcome.contracts {
+            if let Some(own) = self.res.signatures.insert(m, contract) {
+                self.written.insert(m, own);
             }
         }
     }
@@ -490,6 +524,7 @@ impl Collector<'_> {
                     methods,
                     span: kalam_base::FileSpan::new(file, item.span),
                     privileged: is_std(&item.module),
+                    rejected: false,
                 });
             }
             _ => {}
@@ -661,7 +696,13 @@ impl Collector<'_> {
     fn check_fn(&mut self, id: DefId, item: &hir::Item, f: &FnDecl) {
         let Some(body) = &f.body else { return };
         let file = item.file;
-        let Some(scheme) = self.res.signatures.get(&id).cloned() else {
+        // A method that does not match its trait is checked against what it declares.
+        let Some(scheme) = self
+            .written
+            .get(&id)
+            .or_else(|| self.res.signatures.get(&id))
+            .cloned()
+        else {
             return;
         };
         let Ty::Fn { params, ret, .. } = &scheme.ty else {
@@ -991,9 +1032,16 @@ struct BodyOut {
 #[derive(Clone)]
 enum Origin {
     Show,
-    Eq { left: Ty, right: Ty },
-    Ord { op: &'static str },
+    Eq {
+        left: Ty,
+        right: Ty,
+    },
+    Ord {
+        op: &'static str,
+    },
     Bound,
+    /// The key of a map literal (§9.3: `K: Eq + Hash`).
+    Key,
 }
 
 struct Obligation {
@@ -1028,6 +1076,13 @@ struct BodyCx<'c, 'p> {
     let_inits: HashMap<LocalId, Expr>,
     out: BodyOut,
     obligations: Vec<Obligation>,
+    /// Bound and well-formedness failures already reported in this body: the same type
+    /// missing the same trait is one root cause (`Set.of([1.5])` then `s.len()`).
+    reported: HashSet<(Ty, TraitRef)>,
+    /// The statements being checked, innermost last (K1110's fix inserts before one).
+    stmt_stack: Vec<StmtCtx>,
+    /// `var`s used inside closures, reported at the end of the body (K1110).
+    captures: Vec<Capture>,
 }
 
 impl<'c, 'p> BodyCx<'c, 'p> {
@@ -1054,6 +1109,9 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             let_inits: HashMap::new(),
             out: BodyOut::default(),
             obligations: Vec::new(),
+            reported: HashSet::new(),
+            stmt_stack: Vec::new(),
+            captures: Vec::new(),
         }
     }
 
@@ -1066,13 +1124,13 @@ impl<'c, 'p> BodyCx<'c, 'p> {
     }
 
     fn err(&mut self, span: Span, kind: TypeErrorKind) {
-        self.out.errors.push(TypeError::new(kind, self.file, span));
+        self.push_error(TypeError::new(kind, self.file, span));
     }
 
     fn err_fix(&mut self, span: Span, kind: TypeErrorKind, fixes: Vec<Fix>) {
         let mut e = TypeError::new(kind, self.file, span);
         e.fixes = fixes;
-        self.out.errors.push(e);
+        self.push_error(e);
     }
 
     fn record(&mut self, e: &Expr, ty: Ty) -> Ty {
@@ -1092,6 +1150,7 @@ impl<'c, 'p> BodyCx<'c, 'p> {
     /// constrained become `Error` (they can only come from already-reported errors or from
     /// values that are never used, such as an unused `None`).
     fn finish(mut self) -> BodyOut {
+        self.capture_errors();
         let obligations = std::mem::take(&mut self.obligations);
         for o in obligations {
             let ty = self.resolve(&o.ty);
@@ -1141,15 +1200,26 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             TraitId::Builtin(b) => b.name().to_string(),
             TraitId::User(d) => self.res().name_of(d),
         };
+        // A bound or key requirement that already failed for this type is one root cause.
+        if matches!(origin, Origin::Bound | Origin::Key)
+            && !self.reported.insert((ty.clone(), tr.clone()))
+        {
+            return;
+        }
+        let key = matches!(origin, Origin::Key);
         let kind = match origin {
             Origin::Eq { left, right } => TypeErrorKind::BadEquality { left, right },
             Origin::Ord { op } => TypeErrorKind::NoOperator { op, ty: ty.clone() },
-            Origin::Show | Origin::Bound => TypeErrorKind::MissingTrait {
+            Origin::Show | Origin::Bound | Origin::Key => TypeErrorKind::MissingTrait {
                 ty: ty.clone(),
                 trait_name,
             },
         };
-        self.err(span, kind);
+        let mut e = TypeError::new(kind, self.file, span);
+        if key {
+            e = e.with_label(span, "a `Map` key must be `Eq` and `Hash`");
+        }
+        self.push_error(e);
     }
 
     /// Requires `ty: tr` now, or at the end of the body if `ty` is still unknown.
@@ -1194,19 +1264,18 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             }
             Err(UnifyError::Mismatch { .. }) => {
                 let (found, expected) = (self.resolve(found), self.resolve(expected));
+                // A number of one type where another is expected is a mismatch (K0600, with
+                // the conversion as its fix), not a mix of two operands (K0601); an
+                // `Int / Int` division where an `Int` is expected suggests `//` (Q31).
                 if found.is_numeric() && expected.is_numeric() {
-                    let fixes = e
+                    let mut fixes: Vec<Fix> = e
                         .and_then(|e| numeric_fix(e, &found, &expected))
                         .into_iter()
                         .collect();
-                    self.err_fix(
-                        span,
-                        TypeErrorKind::MixedNumeric {
-                            left: expected,
-                            right: found,
-                        },
-                        fixes,
-                    );
+                    if let Some(e) = e {
+                        fixes.extend(self.int_division_fix(e, &found, &expected));
+                    }
+                    self.err_fix(span, TypeErrorKind::Mismatch { expected, found }, fixes);
                     return;
                 }
                 let mut fixes = Vec::new();
@@ -1622,6 +1691,11 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                         self.check(ke, &k);
                         self.check(ve, &v);
                     }
+                    // §9.3: a map's keys are `Eq + Hash` (an annotated literal was checked
+                    // where the annotation is written).
+                    for tr in crate::wf::key_traits() {
+                        self.require(&k, tr, e.span, Origin::Key);
+                    }
                     Ty::Map(Box::new(k), Box::new(v))
                 }
             },
@@ -1646,8 +1720,9 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         if let Some(decl) = self.decls.get(l.0 as usize) {
             let here = self.closures.last().copied().unwrap_or(0);
             if decl.mutable && decl.closure != here {
-                let name = decl.name.clone();
-                self.err(span, TypeErrorKind::CapturesVar { name });
+                // Reported once per `var` and closure-creating statement, with the fix.
+                let closure = decl.closure;
+                self.note_capture(l, span, closure);
             }
         }
         self.locals.get(&l).cloned().unwrap_or(Ty::Error)
@@ -1848,6 +1923,26 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 let t = self.call(e, base, args, exp.as_ref());
                 self.record(e, t.clone());
                 t
+            }
+            // [kalam-sinks] §16.1: a capability has no constructor; `World()` is K1501.
+            ExprKind::TypeName(hir::Type {
+                kind: TypeKind::Builtin(BuiltinType::Capability(c), _),
+                ..
+            }) => {
+                let kind = match c {
+                    Capability::World => {
+                        TypeErrorKind::Sink(kalam_sinks::caps::construct_world(self.file, e.span))
+                    }
+                    other => TypeErrorKind::NotCallable {
+                        ty: Ty::Capability(*other),
+                    },
+                };
+                self.err(e.span, kind);
+                self.record(callee, Ty::Error);
+                for a in args {
+                    self.synth(&a.value);
+                }
+                Ty::Error
             }
             ExprKind::AssocFn { ty, name } => match self.assoc_fn(callee, ty, name) {
                 Some((method, self_ty)) => {
@@ -2199,6 +2294,8 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             let _ = self.infer.try_unify(&ty, x);
         }
         self.out.insts.push((e.id, targs.clone()));
+        // §9.6: the record's type arguments satisfy its parameters' bounds.
+        self.require_adt_bounds(def, &targs, e.span);
         if args.iter().any(|a| a.label.is_none()) {
             let fixes = record_label_fix(fields, args).into_iter().collect();
             self.err_fix(e.span, TypeErrorKind::RecordNeedsNamedArgs, fixes);
@@ -2324,6 +2421,8 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         self.check_private(adt, e.span, name);
         self.out.variants.push((e.id, variant.def));
         self.out.insts.push((e.id, targs.clone()));
+        // §9.6: the enum's type arguments satisfy its parameters' bounds.
+        self.require_adt_bounds(adt, &targs, e.span);
         let fields = variant.fields.clone();
         let single = fields.len() == 1;
         if args.len() != fields.len() {
@@ -2449,6 +2548,15 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             }
         };
         self.out.methods.push((e.id, method));
+        // [kalam-sinks] §16.1/§20.1: `env.get("API_KEY")` with a secret-looking key (K1503).
+        if name == "get" && rt == Ty::Capability(Capability::Env) {
+            if let Some(ExprKind::Str(key)) = args.first().map(|a| &a.value.kind) {
+                let at = args[0].value.span;
+                if let Some(d) = kalam_sinks::caps::env_get_secret_key(key, self.file, at) {
+                    self.err(at, TypeErrorKind::Sink(d));
+                }
+            }
+        }
         let Some(scheme) = self.res().signatures.get(&method).cloned() else {
             return Ty::Error;
         };
@@ -2621,6 +2729,7 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             owner: self.owner,
             expr: e.id,
             file: self.file,
+            span: e.span,
             tag,
             parts: parts.to_vec(),
             holes: hole_types,
@@ -2951,12 +3060,15 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                     } else if f == Ty::AnyError && self.answer(&err_ty, &error) != Answer::No {
                         TryConversion::BoxAnyError
                     } else {
-                        self.err(
+                        // Rule 4: K1301, with `.map_err(…)` and `impl F as From[E]`.
+                        let fixes = self.convert_error_fixes(inner, &err_ty, &f);
+                        self.err_fix(
                             e.span,
                             TypeErrorKind::TryCannotConvert {
                                 found: err_ty,
                                 expected: f,
                             },
+                            fixes,
                         );
                         return (**ok).clone();
                     }
@@ -2964,13 +3076,16 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 self.out.tries.push((e.id, conv));
                 (**ok).clone()
             }
-            (Ty::Result(ok, _), Ty::Var(_)) => {
-                // A lambda whose return type is not known yet: `?` makes it this `Result`.
-                let _ = self.infer.try_unify(&ret, &t);
+            (Ty::Result(ok, err_ty), Ty::Var(_)) => {
+                // A lambda whose return type is not known yet (FOUNDER-QUEUE Q28): `?`
+                // returns from the lambda, so it returns a `Result` with this error type.
+                // Its success type is the body's, not the operand's.
+                let want = Ty::result(self.infer.fresh(), (**err_ty).clone());
+                let _ = self.infer.try_unify(&ret, &want);
                 self.out.tries.push((e.id, TryConversion::Same));
                 (**ok).clone()
             }
-            (Ty::Result(ok, err_ty), _) => {
+            (Ty::Result(ok, err_ty), Ty::Option(_)) => {
                 self.err(
                     e.span,
                     TypeErrorKind::TryCannotConvert {
@@ -2978,6 +3093,11 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                         expected: ret.clone(),
                     },
                 );
+                (**ok).clone()
+            }
+            (Ty::Result(ok, err_ty), _) => {
+                let found = (**err_ty).clone();
+                self.try_in_plain_fn(e, found, ret.clone(), false);
                 (**ok).clone()
             }
             (Ty::Option(inner_ty), Ty::Option(_)) => {
@@ -2990,8 +3110,15 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 self.out.tries.push((e.id, TryConversion::OptionNone));
                 (**inner_ty).clone()
             }
+            (Ty::Option(inner_ty), Ty::Result(_, f)) => {
+                // K1302, with `.ok_or(…)` before the `?` (§14.3).
+                let fix = self.ok_or_fix(inner, f);
+                self.err_fix(e.span, TypeErrorKind::TryOptionInResult, vec![fix]);
+                (**inner_ty).clone()
+            }
             (Ty::Option(inner_ty), _) => {
-                self.err(e.span, TypeErrorKind::TryOptionInResult);
+                let found = Ty::option(self.infer.fresh());
+                self.try_in_plain_fn(e, found, ret.clone(), true);
                 (**inner_ty).clone()
             }
             (Ty::Var(_), _) => Ty::Error,
@@ -3009,12 +3136,37 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         }
     }
 
+    /// `?` in a function (or lambda) that returns neither `Result` nor `Option`: nothing
+    /// converts what it would return early into the return type (K1301, never K1302, whose
+    /// text is about a `Result` function); the label names the return type.
+    fn try_in_plain_fn(&mut self, e: &Expr, found: Ty, ret: Ty, option: bool) {
+        let (what, kind) = if option {
+            ("`None`", "an `Option`")
+        } else {
+            ("the error", "a `Result`")
+        };
+        let label = format!(
+            "`?` would return {what} from here, but this function returns `{}`: only a function that returns {kind} can use `?` on it",
+            ret.display_with(&|d| self.res().name_of(d), &self.param_names())
+        );
+        let err = TypeError::new(
+            TypeErrorKind::TryCannotConvert {
+                found,
+                expected: ret,
+            },
+            self.file,
+            e.span,
+        )
+        .with_label(e.span, label);
+        self.push_error(err);
+    }
+
     /// The `from` method of the impl `F as From[E]`, if one is written out.
     fn conversion_method(&self, f: &Ty, e: &Ty) -> Option<DefId> {
         let res = self.res();
         res.traits.impls.iter().find_map(|imp| {
             let tr = imp.trait_ref.as_ref()?;
-            if tr.id != TraitId::Builtin(BuiltinTrait::From) || tr.args.len() != 1 {
+            if imp.rejected || tr.id != TraitId::Builtin(BuiltinTrait::From) || tr.args.len() != 1 {
                 return None;
             }
             let mut cx = InferCtx::new();
@@ -3052,11 +3204,11 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         for (i, p) in params.iter().enumerate() {
             let t = match (&p.ty, &exp_params) {
                 (Some(t), Some(ps)) => {
-                    let t = self.lower_local_type(t);
+                    let t = self.local_type(t);
                     self.coerce(&ps[i], &t, e.span);
                     t
                 }
-                (Some(t), None) => self.lower_local_type(t),
+                (Some(t), None) => self.local_type(t),
                 (None, Some(ps)) => ps[i].clone(),
                 (None, None) => {
                     if !reported {
@@ -3069,7 +3221,7 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             self.locals.insert(p.local, t.clone());
             ptys.push(t);
         }
-        let declared_ret = ret.map(|t| self.lower_local_type(t));
+        let declared_ret = ret.map(|t| self.local_type(t));
         let ret_ty = match (&declared_ret, &exp_ret) {
             (Some(r), _) => r.clone(),
             (None, Some(r)) => r.clone(),
@@ -3092,11 +3244,11 @@ impl<'c, 'p> BodyCx<'c, 'p> {
     fn local_fn(&mut self, local: LocalId, closure: u32, decl: &FnDecl) {
         let mut ptys = Vec::new();
         for p in &decl.params {
-            let t = self.lower_local_type(&p.ty);
+            let t = self.local_type(&p.ty);
             ptys.push(t);
         }
         let ret = match &decl.ret {
-            Some(t) => self.lower_local_type(t),
+            Some(t) => self.local_type(t),
             None => Ty::Unit,
         };
         let s = self.infer.fresh_effect();
@@ -3234,11 +3386,17 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             }
         }
         if !report.missing.is_empty() {
-            self.err(
+            // §11 rule 1 (Q32): the missing cases as arms, as a machine fix.
+            let fixes = self
+                .missing_arms_fix(arms, st, &report.witnesses)
+                .into_iter()
+                .collect();
+            self.err_fix(
                 span,
                 TypeErrorKind::NonExhaustive {
                     missing: report.missing,
                 },
+                fixes,
             );
         }
     }
@@ -3532,13 +3690,25 @@ impl<'c, 'p> BodyCx<'c, 'p> {
     }
 
     fn stmt(&mut self, s: &Stmt) {
+        // Where K1110's fix can insert `let snapshot = v` (before this statement).
+        self.stmt_stack.push(StmtCtx {
+            closure: self.closures.last().copied().unwrap_or(0),
+            start: s.span.start,
+            indent: s.indent,
+            while_head: matches!(s.kind, StmtKind::While { .. }),
+        });
+        self.stmt_inner(s);
+        self.stmt_stack.pop();
+    }
+
+    fn stmt_inner(&mut self, s: &Stmt) {
         match &s.kind {
             StmtKind::Pass | StmtKind::Break | StmtKind::Continue => {}
             StmtKind::Expr(e) => self.expr_stmt(e),
             StmtKind::Let { pat, ty, value } => {
                 let t = match ty {
                     Some(t) => {
-                        let t = self.lower_local_type(t);
+                        let t = self.local_type(t);
                         self.check(value, &t);
                         t
                     }
@@ -3558,7 +3728,7 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             StmtKind::Var { local, ty, value } => {
                 let t = match ty {
                     Some(t) => {
-                        let t = self.lower_local_type(t);
+                        let t = self.local_type(t);
                         self.check(value, &t);
                         t
                     }
@@ -3690,7 +3860,19 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             return;
         }
         let result = match (bin, &l) {
-            (BinOp::Div, Ty::Int) => Ty::Float,
+            // `x /= n` on an `Int` would make `x` a `Float` (Q31): K0600, suggesting `//`.
+            (BinOp::Div, Ty::Int) => {
+                let fixes = self.div_assign_fix(place, value).into_iter().collect();
+                self.err_fix(
+                    span,
+                    TypeErrorKind::Mismatch {
+                        expected: Ty::Int,
+                        found: Ty::Float,
+                    },
+                    fixes,
+                );
+                return;
+            }
             (BinOp::Div, Ty::Decimal | Ty::BigInt) => {
                 self.err(
                     span,

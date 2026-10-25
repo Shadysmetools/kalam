@@ -1,0 +1,10 @@
+-- SECRET IN AN ENCODED TYPE ------------------------------------ main.kl  K0612
+
+This type derives `Encode`, but one of its fields is a `Secret`. Encoding it would write the secret into JSON or onto the wire, so I stop here rather than hide it behind a redaction.
+
+2│ type Login:
+        ^^^^^
+
+Help: Remove `Encode` from the `@derive` list, or define a separate output type without the secret field and encode that one.
+
+Learn more: kalam explain K0612

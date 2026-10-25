@@ -1,0 +1,4 @@
+hat std/math.*
+
+dala ra2isi():
+    ektb("ok")

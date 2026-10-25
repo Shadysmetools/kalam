@@ -264,7 +264,8 @@ fn let_is_immutable_and_compound_assignment_keeps_the_type() {
         let one = b.int(1);
         vec![s1, b.assign(tr, AssignOp::Add, one)]
     }));
-    // `total /= 2` would make `total` a Float.
+    // `total /= 2` would make `total` a Float: a mismatch, expected `Int`, found `Float`
+    // (FOUNDER-QUEUE Q31), not a mix of two operands.
     let b = main_with(|b| {
         let zero = b.int(0);
         let (s1, t) = b.var("total", None, zero);
@@ -272,7 +273,7 @@ fn let_is_immutable_and_compound_assignment_keeps_the_type() {
         let two = b.int(2);
         vec![s1, b.assign(tr, AssignOp::Div, two)]
     });
-    assert_eq!(codes(b), vec!["K0601"]);
+    assert_eq!(codes(b), vec!["K0600"]);
 }
 
 #[test]
@@ -459,6 +460,7 @@ fn add_user(b: &mut Builder) -> DefId {
             fields,
             opaque: false,
             derives: vec![],
+            derive_spans: vec![],
         }),
     )
 }
@@ -521,6 +523,7 @@ fn add_role(b: &mut Builder) -> (DefId, DefId, DefId) {
             variants,
             opaque: false,
             derives: vec![],
+            derive_spans: vec![],
         }),
     );
     (d, m, a)
@@ -722,6 +725,7 @@ fn function_types_in_data_are_suspending_unless_sync() {
             fields,
             opaque: false,
             derives: vec![],
+            derive_spans: vec![],
         }),
     );
     let r = ok(b);
@@ -837,6 +841,7 @@ fn deriving_encode_with_a_secret_field_is_k0612() {
             }],
             opaque: false,
             derives: vec![BuiltinTrait::Encode],
+            derive_spans: vec![],
         }),
     );
     assert_eq!(codes(b), vec!["K0612"]);

@@ -213,6 +213,10 @@ pub struct RecordDecl {
     pub fields: Vec<FieldDecl>,
     pub opaque: bool,
     pub derives: Vec<BuiltinTrait>,
+    /// Where each of `derives` is written (`Ord` in `@derive(Eq, Ord)`), in the same
+    /// order; empty when unknown (hand-built HIR). A derive whose fields do not all
+    /// implement the trait is reported there (K0603).
+    pub derive_spans: Vec<Span>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -235,6 +239,8 @@ pub struct EnumDecl {
     pub variants: Vec<VariantDecl>,
     pub opaque: bool,
     pub derives: Vec<BuiltinTrait>,
+    /// As [`RecordDecl::derive_spans`].
+    pub derive_spans: Vec<Span>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -287,6 +293,10 @@ pub struct Block {
 pub struct Stmt {
     pub kind: StmtKind,
     pub span: Span,
+    /// The column the statement starts at when it begins its own line (4 spaces per
+    /// block level, §5.8 rule 1); `None` in a one-line block (`if c: x = 1`) and in
+    /// hand-built HIR. Fixes that insert a statement before this one need it (K1110).
+    pub indent: Option<u32>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -425,6 +435,9 @@ pub struct Arm {
     pub guard: Option<Expr>,
     pub body: Block,
     pub span: Span,
+    /// The column of the arm's `case` (4 spaces per block level, §5.8 rule 1); `None` in
+    /// hand-built HIR. K1001's fix inserts the missing arms there (§11 rule 1).
+    pub indent: Option<u32>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -648,6 +661,9 @@ pub struct HirProgram {
     /// Each file's skin: a fix that inserts a keyword (K1101's `return`) spells it the way
     /// the file does.
     pub skins: HashMap<FileId, Skin>,
+    /// The program's `main` functions (top-level functions declared with the core name
+    /// `main` outside the stdlib): their signature is fixed by §14.3 and §16.1 rule 1.
+    pub mains: Vec<DefId>,
 }
 
 impl HirProgram {

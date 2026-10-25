@@ -1,0 +1,12 @@
+-- MODULE-LEVEL VAR --------------------------------------------- main.kl  K1202
+
+`var` can't be declared at module level. Kalam has no global mutable state: a module-level value is a constant.
+
+1│ var counter = 0
+   ^^^
+
+Try: `let`
+
+Help: Use `let` for a constant. For state that changes, create a `Cell` in `main` and pass it to the functions that need it.
+
+Learn more: kalam explain K1202

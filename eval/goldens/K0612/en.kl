@@ -1,0 +1,7 @@
+@derive(Encode)
+type Login:
+    user: String
+    password: Secret[String]
+
+fn main():
+    print("ok")

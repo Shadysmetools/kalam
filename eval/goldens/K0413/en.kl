@@ -1,0 +1,3 @@
+fn main():
+    let Int = 3
+    print("{Int}")

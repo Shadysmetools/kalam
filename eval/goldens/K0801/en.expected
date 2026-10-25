@@ -1,0 +1,10 @@
+-- LAMBDA PARAMETER TYPES UNKNOWN ------------------------------- main.kl  K0801
+
+I can't tell the types of this lambda's parameters. A lambda takes its parameter types from the place it is passed to, and nothing here says what they are.
+
+2│     let inc = fn(x) => x + 1
+                 ^^^^^^^^^^^^^^
+
+Help: Write the parameter types, for example `fn(x: Int) => x + 1`, or pass the lambda directly to a function that expects one.
+
+Learn more: kalam explain K0801

@@ -35,17 +35,22 @@ export fn postgres(net: Net, url: Secret[String]) -> Result[Db, DbError] => pani
 @builtin
 export fn ident(name: String, allowed: List[String]) -> Result[Sql, DbError] => panic("builtin")
 
+## A `LIKE` pattern with `%`, `_` and `\` escaped, made by `like_contains`, `like_prefix`
+## or `like_suffix`. It is a bound parameter; a raw `String` in a `LIKE` hole is W1606.
+@builtin
+export extern type LikePattern
+
 ## A `LIKE` pattern matching text that contains `text` (`%`, `_` and `\` escaped).
 @builtin
-export fn like_contains(text: String) -> String => panic("builtin")
+export fn like_contains(text: String) -> LikePattern => panic("builtin")
 
 ## A `LIKE` pattern matching text that starts with `text`.
 @builtin
-export fn like_prefix(text: String) -> String => panic("builtin")
+export fn like_prefix(text: String) -> LikePattern => panic("builtin")
 
 ## A `LIKE` pattern matching text that ends with `text`.
 @builtin
-export fn like_suffix(text: String) -> String => panic("builtin")
+export fn like_suffix(text: String) -> LikePattern => panic("builtin")
 
 impl Db:
     ## Every row of `query`, decoded by column name into `T` (from the expected type).

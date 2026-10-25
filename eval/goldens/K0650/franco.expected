@@ -1,0 +1,10 @@
+-- EL STRING MABTET3AMALHASH INDEX ----------------------- main.franco.kl  K0650
+
+Mesh ha2dar a3mel index l string b `[...]`. El makan f el kalam mesh wade7: el bytes wel code points wel 7oroof el bayna kol wa7ed byet3ad b shakl, w f el kalam el 3araby el far2 bayen.
+
+3│     khali first = name[0]
+                     ^^^^^^^
+
+Mosa3da: Esta5dem `.chars()` aw `.graphemes()` 3ashan temshy 3ala el 7oroof, aw `.slice(from, to)` 3ashan takhod 7etta men el string (el amaken bet3ed el 7oroof el bayna).
+
+E3raf aktar: kalam explain K0650

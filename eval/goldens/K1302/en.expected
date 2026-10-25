@@ -1,0 +1,10 @@
+-- ? ON OPTION IN A RESULT FUNCTION ----------------------------- main.kl  K1302
+
+This `?` is applied to an `Option`, but the function returns a `Result`. A missing value has no error to pass up, so you need to say which error it is.
+
+2│     let n = xs.get(0)?
+               ^^^^^^^^^^
+
+Help: Turn the missing value into an error first: `.ok_or(error)?`.
+
+Learn more: kalam explain K1302

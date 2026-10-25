@@ -38,3 +38,10 @@ Minor design forks the loop decided provisionally. Each one is reversible. Confi
 | Q30 | Golden coverage against the 141-code denominator | No exemption: author goldens until coverage reaches ≥ 70% | M2 iter 2 |
 | Q31 | `let x: Int = 7 / 2` (Int / Int is Float) | K0600 "expected Int, found Float", with help suggesting `//` | M2 iter 2 |
 | Q32 | K1001 missing-arms fix (§11 rule 1) | A machine fix in M2 | M2 iter 2 |
+| Q33 | Module constants (§13.4): non-constant initializers, initializers that panic, and Cell or capability values in a constant | New code K1204 (spec §27 erratum). Constants are evaluated eagerly at startup in dependency order, as the spec text says; the interpreter is changed to match | M2 iter 3 verifier |
+| Q34 | Single-file `kalam check` vs project mode | They must agree: single-file mode uses the same full prelude (`Ordering`, `Cell`, …) | M2 iter 3 |
+| Q35 | Calling a function-typed record field with method syntax (`job.run(1)`) | Rejected with an accurate message and a machine fix to `(job.run)(1)` | M2 iter 3 |
+| Q36 | Spec §5 names `Int.pow`, `bit_and` and `shift_left`, which the stdlib stubs lack | The spec wins: add them to the stubs and the interpreter | M2 iter 3 |
+| Q37 | Extra bounds on a trait-impl method | Callers always see the trait's signature (the K1107 erratum); the implementation is fixed to match | M2 iter 3 |
+| Q38 | SEC0104 between all-ASCII lookalikes (`l` vs `1`) cannot "name a code point" | For all-ASCII collisions, quoting both identifiers satisfies the naming rule (harness rule erratum) | M2 iter 3 |
+| Q39 | T14 expected output was written under the old 53-bit `Int` | Regenerate expected.txt from ref.py under D18's 64-bit rules (a spec-driven fix to a protected file, recorded here) | M2 iter 3 |

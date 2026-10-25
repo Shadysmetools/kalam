@@ -1,0 +1,10 @@
+-- TYPE ARGUMENTS SAREE7A -------------------------------- main.franco.kl  K0922
+
+Kalam mabeyqbalsh type arguments saree7a f el call zay `f[T](x)`. Howa beyestantegha men el arguments w men el no3 elly enta mestanneeh.
+
+5│     khali head = first[adad](xs)
+                    ^^^^^^^^^^^
+
+Mosa3da: Emsa7 `[T]` men el call w ekteb no3 el natiga badal keda: `khali r: T = f(x)`. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0922

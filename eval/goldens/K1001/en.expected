@@ -1,0 +1,10 @@
+-- MATCH DOESN'T COVER EVERY CASE ------------------------------- main.kl  K1001
+
+This `match` doesn't handle every possible value. Missing: .Amber.
+
+8│     match light:
+       ^^^^^^^^^^^^
+
+Help: Add a `case` for each missing value. Listing them is better than a catch-all `_`: a variant added later is then reported here instead of slipping into the catch-all.
+
+Learn more: kalam explain K1001

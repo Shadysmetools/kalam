@@ -1,0 +1,19 @@
+[package]
+name = "kalam-interp"
+description = "The reference interpreter over KIR: the target-neutral oracle for differential testing (ROADMAP M2)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+kalam-base.workspace = true
+kalam-skins.workspace = true
+kalam-resolve.workspace = true
+kalam-typeck.workspace = true
+kalam-ir.workspace = true
+
+[dev-dependencies]
+# The acceptance and property tests compile Kalam source through the real pipeline.
+kalam-driver.workspace = true

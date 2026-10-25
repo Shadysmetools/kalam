@@ -1,0 +1,10 @@
+-- ? MESH HA2DAR Y7AWEL EL ERROR ------------------------- main.franco.kl  K1301
+
+`?` kan hayba3at el error da lfo2, bas no3 el error bta3o mesh howa elly el dala di betraga3o, w ana mesh 3aref ay ta7weel ben el etnein.
+
+13│     khali n = parse(text)?
+                  ^^^^^^^^^^^^
+
+Mosa3da: 7awel el error 3and el call, zay `.map_err(dala(e) => ...)?`, aw zawed `naffez F ka From[E]` l no3 el error bta3ak `F`.
+
+E3raf aktar: kalam explain K1301

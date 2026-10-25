@@ -27,6 +27,7 @@ kalam-sinks = { path = "crates/kalam-sinks" }
 kalam-typeck = { path = "crates/kalam-typeck" }
 kalam-effects = { path = "crates/kalam-effects" }
 kalam-ir = { path = "crates/kalam-ir" }
+kalam-interp = { path = "crates/kalam-interp" }
 kalam-emit-js = { path = "crates/kalam-emit-js" }
 kalam-driver = { path = "crates/kalam-driver" }
 kalam-pkg = { path = "crates/kalam-pkg" }

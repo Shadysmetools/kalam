@@ -116,6 +116,10 @@ pub struct ImplDecl {
     /// live"): it implements built-in traits for built-in types, so the orphan rule does
     /// not apply to it.
     pub privileged: bool,
+    /// Rejected by coherence (K1106: it overlaps an earlier impl of the same trait). It
+    /// takes no part in trait solving or method resolution, so the first impl alone
+    /// answers and calls do not report a follow-on K1103.
+    pub rejected: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -366,6 +370,10 @@ impl TraitEnv {
             let Some(adt) = adts.get(def) else {
                 return Answer::No;
             };
+            // A derive already reported at its site holds, so uses stay quiet.
+            if adt.assumed.contains(&b) {
+                return Answer::Yes;
+            }
             if !(b.is_auto() || adt.derives.contains(&b)) {
                 return Answer::No;
             }
@@ -397,7 +405,7 @@ impl TraitEnv {
     ) -> Option<Answer> {
         for imp in &self.impls {
             let Some(itr) = &imp.trait_ref else { continue };
-            if itr.id != tr.id || itr.args.len() != tr.args.len() {
+            if imp.rejected || itr.id != tr.id || itr.args.len() != tr.args.len() {
                 continue;
             }
             let mut cx = InferCtx::new();
@@ -448,7 +456,7 @@ impl TraitEnv {
     /// one candidate.
     pub fn method_candidates(&self, ty: &Ty, name: &str) -> Vec<MethodCandidate> {
         let mut out = Vec::new();
-        for imp in &self.impls {
+        for imp in self.impls.iter().filter(|i| !i.rejected) {
             let Some((_, method)) = imp.methods.iter().find(|(n, _)| n == name) else {
                 continue;
             };
@@ -493,6 +501,7 @@ mod tests {
             ),
             opaque: false,
             derives: Vec::new(),
+            assumed: Vec::new(),
         }
     }
 
@@ -506,6 +515,7 @@ mod tests {
             methods: vec![("show".into(), DefId(def + 1000))],
             span: FileSpan::default(),
             privileged: false,
+            rejected: false,
         }
     }
 
@@ -677,6 +687,7 @@ mod tests {
             methods: vec![("pretty".into(), DefId(21))],
             span: FileSpan::default(),
             privileged: false,
+            rejected: false,
         };
         let int_list = ImplDecl {
             def: DefId(22),

@@ -1,0 +1,10 @@
+-- GLOB IMPORT -------------------------------------------------- main.kl  K1203
+
+I don't accept glob imports (`*`). A glob hides where each name comes from, and a new export upstream could silently change what a name in this file means.
+
+1│ use std/math.*
+               ^^
+
+Help: List the names you use, for example `use std/http.{Request, Response}`.
+
+Learn more: kalam explain K1203

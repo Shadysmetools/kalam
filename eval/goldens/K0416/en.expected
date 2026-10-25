@@ -1,0 +1,14 @@
+-- RECORD NEEDS NAMED FIELDS ------------------------------------ main.kl  K0416
+
+I can't build this record from positional arguments. A record is always built with every field named, so a value can never land in the wrong field.
+
+6│     let p = Point(1, 2)
+               ^^^^^^^^^^^
+
+Try: `x: `
+
+Try: `y: `
+
+Help: Name each field, for example `User(id: 1, name: "Sara")`. Fields with a default value may be left out.
+
+Learn more: kalam explain K0416

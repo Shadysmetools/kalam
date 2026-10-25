@@ -1,0 +1,10 @@
+-- ? CAN'T CONVERT THE ERROR ------------------------------------ main.kl  K1301
+
+`?` would pass this error up, but its error type is not the one this function returns, and I know no conversion between the two.
+
+13│     let n = parse(text)?
+                ^^^^^^^^^^^^
+
+Help: Convert the error at the call, for example `.map_err(fn(e) => ...)?`, or add `impl F as From[E]` for your error type `F`.
+
+Learn more: kalam explain K1301

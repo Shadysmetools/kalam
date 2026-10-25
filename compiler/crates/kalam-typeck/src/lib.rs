@@ -23,22 +23,30 @@
 //! (trait/impl data, coherence, solving), [`adt`] (records and enums), [`hir`] (the
 //! resolved program as HIR), [`lower`] (resolve's `Program` + AST → HIR), [`check`] (the
 //! checker), [`exhaust`] (pattern usefulness), [`error`] (errors and codes), [`builder`]
-//! (hand-built HIR for tests and tools).
+//! (hand-built HIR for tests and tools), [`wf`] (well-formed types: `Map`/`Set` keys,
+//! generic bounds), `conform` (impls against their traits, K1107) and `decls`
+//! (declaration checks: well-formed signatures and fields, the entry point, derives).
 
 pub mod adt;
 pub mod builder;
 pub mod check;
+mod conform;
+mod decls;
 pub mod error;
 pub mod exhaust;
 pub mod hir;
 pub mod lower;
+mod sink_holes;
+pub mod susp;
 pub mod traits;
 pub mod ty;
 pub mod unify;
+pub mod wf;
 
 pub use check::{check_program, TryConversion, TypeckResults};
 pub use error::{TypeError, TypeErrorKind};
 pub use hir::HirProgram;
+pub use susp::{SuspBit, Suspensions};
 pub use traits::{never_implements, BuiltinTrait, TraitId, TraitRef};
 pub use ty::{Capability, GenericParam, Scheme, SinkType, Suspension, Ty};
 
@@ -89,6 +97,26 @@ pub fn diagnose_against_std(
     on_big_stack(|| {
         let hir = lower::lower_program_with(program, sources, false);
         check_program(&hir).diagnostics()
+    })
+}
+
+/// Type-checks like [`check_resolved`] (with the stdlib's function bodies only if
+/// `std_bodies`), then runs `post` on the result. Everything, the drop of the HIR included,
+/// happens on the checker's big stack.
+///
+/// The hook for passes that run after type checking but live in crates that depend on this
+/// one: suspension inference in `kalam-effects` (spec §15) fills
+/// [`TypeckResults::suspension`] here.
+pub fn check_resolved_then<R: Send>(
+    program: &kalam_resolve::Program,
+    sources: &[kalam_resolve::SourceModule<'_>],
+    std_bodies: bool,
+    post: impl FnOnce(&mut Checked) -> R + Send,
+) -> R {
+    on_big_stack(|| {
+        let hir = lower::lower_program_with(program, sources, std_bodies);
+        let results = check_program(&hir);
+        post(&mut Checked { hir, results })
     })
 }
 

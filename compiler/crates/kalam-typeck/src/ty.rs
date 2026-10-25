@@ -246,13 +246,21 @@ impl Ty {
     }
 
     /// Renders the type with English-skin names. `name` gives the declared name of an ADT.
+    /// A generic parameter shows as `T0`, `T1`, …; [`Ty::display_with`] names them.
     pub fn display(&self, name: &dyn Fn(DefId) -> String) -> String {
+        self.display_with(name, &[])
+    }
+
+    /// [`Ty::display`] with the declared names of the generic parameters in scope
+    /// (`Param(i)` shows as `params[i]`, so a message says `T`, not `T0`).
+    pub fn display_with(&self, name: &dyn Fn(DefId) -> String, params: &[String]) -> String {
         let args = |ts: &[Ty]| {
             ts.iter()
-                .map(|t| t.display(name))
+                .map(|t| t.display_with(name, params))
                 .collect::<Vec<_>>()
                 .join(", ")
         };
+        let show = |t: &Ty| t.display_with(name, params);
         match self {
             Ty::Int => "Int".into(),
             Ty::BigInt => "BigInt".into(),
@@ -263,13 +271,13 @@ impl Ty {
             Ty::Bytes => "Bytes".into(),
             Ty::Unit => "()".into(),
             Ty::Never => "Never".into(),
-            Ty::List(t) => format!("List[{}]", t.display(name)),
-            Ty::Set(t) => format!("Set[{}]", t.display(name)),
-            Ty::Option(t) => format!("Option[{}]", t.display(name)),
-            Ty::Range(t) => format!("Range[{}]", t.display(name)),
-            Ty::Secret(t) => format!("Secret[{}]", t.display(name)),
-            Ty::Map(k, v) => format!("Map[{}, {}]", k.display(name), v.display(name)),
-            Ty::Result(t, e) => format!("Result[{}, {}]", t.display(name), e.display(name)),
+            Ty::List(t) => format!("List[{}]", show(t)),
+            Ty::Set(t) => format!("Set[{}]", show(t)),
+            Ty::Option(t) => format!("Option[{}]", show(t)),
+            Ty::Range(t) => format!("Range[{}]", show(t)),
+            Ty::Secret(t) => format!("Secret[{}]", show(t)),
+            Ty::Map(k, v) => format!("Map[{}, {}]", show(k), show(v)),
+            Ty::Result(t, e) => format!("Result[{}, {}]", show(t), show(e)),
             Ty::Tuple(ts) => format!("({})", args(ts)),
             Ty::Fn {
                 params,
@@ -281,7 +289,7 @@ impl Ty {
                 } else {
                     ""
                 };
-                format!("{sync}fn({}) -> {}", args(params), ret.display(name))
+                format!("{sync}fn({}) -> {}", args(params), show(ret))
             }
             Ty::Adt(d, ts) if ts.is_empty() => name(*d),
             Ty::Adt(d, ts) => format!("{}[{}]", name(*d), args(ts)),
@@ -289,7 +297,10 @@ impl Ty {
             Ty::Sink(s) => s.name().into(),
             Ty::AnyError => "AnyError".into(),
             Ty::JsValue => "JsValue".into(),
-            Ty::Param(i) => format!("T{i}"),
+            Ty::Param(i) => match params.get(*i as usize) {
+                Some(n) if !n.is_empty() => n.clone(),
+                _ => format!("T{i}"),
+            },
             Ty::Var(_) => "_".into(),
             Ty::Error => "?".into(),
         }

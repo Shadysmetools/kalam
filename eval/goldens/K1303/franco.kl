@@ -1,0 +1,7 @@
+dala save(n: adad) -> natiga[(), nass]:
+    law n < 0:
+        rag3 fashal("negative")
+    rag3 naga7(())
+
+dala ra2isi():
+    save(1)

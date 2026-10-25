@@ -1,0 +1,10 @@
+-- FIELD ESMO WITH --------------------------------------- main.franco.kl  K0417
+
+Mayenfa3sh field f record yeb2a esmo `with`: kol record 3ando method `with` gahza betraga3 nos5a meno ba3d ma tghayar shwayet fields (`u.with(name: "Omar")`).
+
+2│     with: adad
+       ^^^^
+
+Mosa3da: Ghayar esm el field, masalan `with_value` aw esm beyewa22a7 howa shayel eh.
+
+E3raf aktar: kalam explain K0417

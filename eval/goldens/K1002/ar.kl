@@ -1,0 +1,12 @@
+تعداد Light:
+    Red
+    Amber
+    Green
+
+دالة رئيسي():
+    ليكن light: Light = .Red
+    حسب light:
+        عندما _:
+            اطبع("any")
+        عندما .Red:
+            اطبع("stop")

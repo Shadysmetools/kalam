@@ -1,0 +1,10 @@
+-- UNUSED VALUE ------------------------------------------------- main.kl  K0730
+
+This expression gives a value of type `Point`, and nothing uses it. A value that is computed and dropped is usually a mistake, such as calling `items.append(x)` and expecting `items` to change.
+
+6│     p.with(x: 2)
+       ^^^^^^^^^^^^
+
+Help: Use the value, for example keep it with `let` or assign it back, or write `let _ = ...` to drop it on purpose.
+
+Learn more: kalam explain K0730

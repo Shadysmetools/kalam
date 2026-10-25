@@ -1,0 +1,10 @@
+-- SECRET F TYPE BYET3AMALLO ENCODE ---------------------- main.franco.kl  K0612
+
+El no3 da bey3mel derive l `Encode`, bas field menno `Secret`. W el encode kan hayekteb el secret f JSON aw yeb3ato 3al network, 3ashan keda bawa2af hena badal ma akhabbih b redaction.
+
+2│ haykal Login:
+          ^^^^^
+
+Mosa3da: Shil `Encode` men list el `@derive`, aw 3arraf no3 output monfasel men gher field el secret w e3mel encode leeh howa.
+
+E3raf aktar: kalam explain K0612

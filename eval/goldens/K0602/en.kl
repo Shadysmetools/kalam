@@ -1,0 +1,11 @@
+type Point:
+    x: Int
+
+type Size:
+    width: Int
+
+fn main():
+    let p = Point(x: 1)
+    let s = Size(width: 1)
+    let same = p == s
+    print("{same}")

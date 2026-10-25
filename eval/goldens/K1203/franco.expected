@@ -1,0 +1,10 @@
+-- IMPORT BEL GOMLA -------------------------------------- main.franco.kl  K1203
+
+Mesh ba2bal el import bel gomla (`*`). Howa bykhabby kol esm gay menein, w export gedeed f el module el tanya momken yghayar ma3na esm f el file da men gher ma takhod balak.
+
+1│ hat std/math.*
+               ^^
+
+Mosa3da: Ekteb el asamy elly betesta5demha, zay `hat std/http.{Request, Response}`.
+
+E3raf aktar: kalam explain K1203

@@ -282,7 +282,83 @@ fn run_lexer(
         depth: 0,
         line_has_token: false,
     };
-    lexer.run()
+    let mut out = lexer.run();
+    merge_bidi_per_line(text, &mut out.diagnostics);
+    out
+}
+
+/// FOUNDER-QUEUE Q29: the SEC0110 findings of one line become a single diagnostic. It names
+/// every distinct code point in order of first appearance, its span runs from the line's first
+/// control to its last, and it keeps the escape fixes as one machine fix only when every
+/// control of the line is inside a string (escaping some of them would not clear the line).
+fn merge_bidi_per_line(text: &str, diagnostics: &mut Vec<Diagnostic>) {
+    /// One line's merged SEC0110: where it is in `kept`, the distinct `(cp, name)` pairs,
+    /// and whether every control had an escape fix.
+    struct Merged {
+        line: usize,
+        at: usize,
+        names: Vec<(String, String)>,
+        all_fixed: bool,
+    }
+    let breaks: Vec<usize> = text.match_indices('\n').map(|(i, _)| i).collect();
+    let line_of = |at: u32| breaks.partition_point(|&b| b < at as usize);
+    let mut merged: Vec<Merged> = Vec::new();
+    let mut kept: Vec<Diagnostic> = Vec::with_capacity(diagnostics.len());
+    for d in diagnostics.drain(..) {
+        if d.code != "SEC0110" {
+            kept.push(d);
+            continue;
+        }
+        let arg = |k: &str| {
+            d.args
+                .iter()
+                .find(|(n, _)| *n == k)
+                .map(|(_, v)| v.clone())
+                .unwrap_or_default()
+        };
+        let pair = (arg("cp"), arg("name"));
+        let line = line_of(d.span.start);
+        let Some(m) = merged.iter_mut().find(|m| m.line == line) else {
+            merged.push(Merged {
+                line,
+                at: kept.len(),
+                names: vec![pair],
+                all_fixed: !d.fixes.is_empty(),
+            });
+            kept.push(d);
+            continue;
+        };
+        if !m.names.contains(&pair) {
+            m.names.push(pair);
+        }
+        m.all_fixed &= !d.fixes.is_empty();
+        let into = &mut kept[m.at];
+        into.span = Span::new(into.span.start, d.span.end.max(into.span.end));
+        // Without a fix on the first control, `all_fixed` is already false.
+        if let Some(f) = into.fixes.first_mut() {
+            f.edits.extend(d.fixes.into_iter().flat_map(|f| f.edits));
+        }
+    }
+    for m in merged {
+        let d = &mut kept[m.at];
+        if let [rest @ .., (last_cp, last_name)] = m.names.as_slice() {
+            if !rest.is_empty() {
+                // `I found {cp} {name}.`: every pair but the last goes into `cp`.
+                let mut cp: Vec<String> = rest
+                    .iter()
+                    .map(|(c, n)| format!("{c} {n}").trim_end().to_string())
+                    .collect();
+                cp.push(last_cp.clone());
+                d.args = vec![("cp", cp.join(", ")), ("name", last_name.clone())];
+            }
+        }
+        if !m.all_fixed {
+            d.fixes.clear();
+        } else if let Some(f) = d.fixes.first_mut().filter(|f| f.edits.len() > 1) {
+            f.title = "write them as escapes".into();
+        }
+    }
+    *diagnostics = kept;
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -2204,6 +2280,71 @@ mod tests {
         assert_eq!(codes("x\u{200B}y\n", Skin::En), vec!["SEC0111"]);
         assert_eq!(codes("\u{FEFF}x\n", Skin::En), vec!["SEC0100"]);
         assert_eq!(codes("x\u{00A0}= 1\n", Skin::En), vec!["SEC0103"]);
+    }
+
+    /// FOUNDER-QUEUE Q29: every bidi control of one line is one SEC0110 that names each
+    /// distinct code point (first-appearance order), as corpus T50 expects.
+    #[test]
+    fn bidi_controls_of_one_line_merge_into_one_sec0110() {
+        let text = "x = \"a\u{202E} \u{2066}b\u{2069} \u{2066}\"\n# \u{202E}c\u{2069}\ny = 1\n";
+        let out = lex(text, Skin::En, FileId(0));
+        let bidi: Vec<_> = out
+            .diagnostics
+            .iter()
+            .filter(|d| d.code == "SEC0110")
+            .collect();
+        assert_eq!(bidi.len(), 2, "{:?}", out.diagnostics);
+        let first = bidi[0].message(Skin::En);
+        assert!(
+            first.starts_with(
+                "I found U+202E (RIGHT-TO-LEFT OVERRIDE), U+2066 (LEFT-TO-RIGHT ISOLATE), \
+                 U+2069 (POP DIRECTIONAL ISOLATE). "
+            ),
+            "{first}"
+        );
+        // The span runs from the first control of the line to the last one.
+        let start = text.find('\u{202E}').unwrap() as u32;
+        let end = (text.rfind('\u{2066}').unwrap() + '\u{2066}'.len_utf8()) as u32;
+        assert_eq!(bidi[0].span, Span::new(start, end));
+        // All four controls are inside the string: one machine fix escapes each of them.
+        assert_eq!(bidi[0].fixes.len(), 1);
+        let inserts: Vec<&str> = bidi[0].fixes[0]
+            .edits
+            .iter()
+            .map(|e| e.insert.as_str())
+            .collect();
+        assert_eq!(
+            inserts,
+            vec!["\\u{202E}", "\\u{2066}", "\\u{2069}", "\\u{2066}"]
+        );
+        // Line 2 (a comment): its own diagnostic, naming both, and no fix.
+        let second = bidi[1].message(Skin::En);
+        assert!(
+            second.starts_with(
+                "I found U+202E (RIGHT-TO-LEFT OVERRIDE), U+2069 (POP DIRECTIONAL ISOLATE). "
+            ),
+            "{second}"
+        );
+        assert!(bidi[1].fixes.is_empty());
+        // A single control keeps the one-character message and fix.
+        let one = lex("x = \"a\u{2067}b\"\n", Skin::En, FileId(0));
+        assert_eq!(one.diagnostics.len(), 1);
+        assert_eq!(
+            one.diagnostics[0].message(Skin::En),
+            "I found U+2067 (RIGHT-TO-LEFT ISOLATE). It changes how the line is displayed \
+             without changing how it compiles, which is how Trojan Source attacks work. Arabic \
+             text never needs it raw."
+        );
+        assert_eq!(one.diagnostics[0].fixes.len(), 1);
+        // A control in a string and one in a comment on the same line: one diagnostic, and
+        // no machine fix (escaping the string one alone would not clear the line).
+        let mixed = lex("x = \"\u{202E}\" # \u{2069}\n", Skin::En, FileId(0));
+        assert_eq!(codes_of(&mixed), vec!["SEC0110"]);
+        assert!(mixed.diagnostics[0].fixes.is_empty());
+    }
+
+    fn codes_of(out: &LexOutput) -> Vec<&'static str> {
+        out.diagnostics.iter().map(|d| d.code).collect()
     }
 
     #[test]

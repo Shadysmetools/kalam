@@ -15,8 +15,9 @@
 //!    values to temporaries first.
 //! 4. Every suspension point is marked (`ExprKind::Call::suspends`, `Coerce::SyncToSusp`).
 //!    Until `kalam-effects` runs in the pipeline these are `false`.
-//! 5. No sugar: `match` is a [`Stmt::Switch`] decision tree with a panicking default,
-//!    `and`/`or` are [`ExprKind::If`], interpolation is `*Show` plus `StrConcat`,
+//! 5. No sugar: `match` is a chain of tests ([`ExprKind::IsVariant`], literal comparisons)
+//!    ending in a panicking default, `?` is an `IsVariant` test plus an early
+//!    [`Stmt::Return`], `and`/`or` are [`ExprKind::If`], interpolation is `*Show` plus `StrConcat`,
 //!    compound assignment is a plain rebinding, `while` is a [`Stmt::Loop`] with a
 //!    conditional `break`, and named arguments are positional.
 //! 6. No JavaScript concepts (`undefined`, `Promise`, prototypes).
@@ -41,8 +42,14 @@ pub struct Program {
     pub functions: Vec<Function>,
     pub records: Vec<RecordDecl>,
     pub enums: Vec<EnumDecl>,
+    /// Module constants (`let NAME = …` at module level), read with [`ExprKind::Const`].
+    /// Each initializer is evaluated once, on first use (they are pure, §13.4).
+    pub consts: Vec<ConstDecl>,
     /// The function that `main` lowered to, if this package is an executable.
     pub entry: Option<FnId>,
+    /// When `main` returns `Result[(), E]` and `E` has an `Error` impl with a body: that
+    /// impl's `message` function, used to report `Err` from `main` (§14.3).
+    pub entry_error_message: Option<FnId>,
 }
 
 impl Program {
@@ -57,6 +64,27 @@ impl Program {
     pub fn enum_decl(&self, def: DefId) -> Option<&EnumDecl> {
         self.enums.iter().find(|e| e.def == def)
     }
+
+    /// The enum `name` declared in `module` (the runtime builds stdlib enum values such as
+    /// `std/string.ParseError` and `std/prelude.Ordering`).
+    pub fn enum_named(&self, module: &str, name: &str) -> Option<&EnumDecl> {
+        self.enums
+            .iter()
+            .find(|e| e.module == module && e.name == name)
+    }
+
+    pub fn constant(&self, def: DefId) -> Option<&ConstDecl> {
+        self.consts.iter().find(|c| c.def == def)
+    }
+}
+
+/// A module constant: a pure initializer with no locals.
+#[derive(Clone, Debug)]
+pub struct ConstDecl {
+    pub def: DefId,
+    pub name: String,
+    pub ty: Ty,
+    pub value: Expr,
 }
 
 /// A record type: fields in declaration order (field `i` is `Field { index: i }`).
@@ -64,6 +92,8 @@ impl Program {
 pub struct RecordDecl {
     pub def: DefId,
     pub name: String,
+    /// The defining module path (`main`, `std/prelude`).
+    pub module: String,
     pub generics: u32,
     pub fields: Vec<(String, Ty)>,
 }
@@ -79,6 +109,8 @@ pub struct VariantDecl {
 pub struct EnumDecl {
     pub def: DefId,
     pub name: String,
+    /// The defining module path (`main`, `std/string`).
+    pub module: String,
     pub generics: u32,
     pub variants: Vec<VariantDecl>,
 }
@@ -230,8 +262,13 @@ pub enum ExprKind {
         base: Box<Expr>,
         index: u32,
     },
-    /// Payload field `index` of variant `variant`. Only valid after a `Switch` on that
-    /// variant; backends may assume the tag matches.
+    /// `true` when `base` (an enum, `Option` or `Result` value) is variant `variant`.
+    IsVariant {
+        base: Box<Expr>,
+        variant: u32,
+    },
+    /// Payload field `index` of variant `variant`. Only valid where an `IsVariant` test or
+    /// a `Switch` established the tag; backends may assume the tag matches.
     VariantField {
         base: Box<Expr>,
         variant: u32,
@@ -243,6 +280,13 @@ pub enum ExprKind {
         index: u32,
     },
     List(Vec<Expr>),
+    /// `{k: v, …}`: entries in source order; a repeated key keeps its first position and
+    /// takes the last value (insertion order, §9.3).
+    Map(Vec<(Expr, Expr)>),
+    /// A function with a body used as a value (`xs.map(double)`).
+    FnRef(FnId),
+    /// A module constant (see [`Program::consts`]).
+    Const(DefId),
     /// A conditional expression; also how `and`/`or` short-circuit.
     If {
         cond: Box<Expr>,
@@ -254,10 +298,15 @@ pub enum ExprKind {
         stmts: Vec<Stmt>,
         value: Box<Expr>,
     },
+    /// A closure: a lambda or a local `fn` (§12.3). Its parameters and locals live in the
+    /// enclosing function's local table. It captures the enclosing locals **by value** when
+    /// it is created (K1110 rules out capturing a `var`). A local `fn` names itself with
+    /// `self_local`, which is bound to the closure inside its own body (recursion).
     Lambda {
         params: Vec<(LocalId, Ty)>,
         body: Box<Block>,
         suspends: bool,
+        self_local: Option<LocalId>,
     },
     Coerce {
         kind: Coerce,
@@ -285,7 +334,10 @@ pub enum Callee {
     Value(Box<Expr>),
     /// A core prelude function.
     Prelude(PreludeFn),
-    /// A runtime primitive provided per target (`std/_platform/<target>`).
+    /// A stdlib `@builtin` function, provided by each backend's runtime. The key is
+    /// `Type.method` for a method or associated function of a built-in type
+    /// (`String.to_int`, `Result.map_err`, `Decimal.from`) and `module.name` for a module
+    /// function (`std/math.round`). Arguments are positional, the receiver first.
     Intrinsic(String),
 }
 
@@ -388,6 +440,11 @@ pub enum PrimOp {
     ListGet,
     ListLen,
     ListConcat,
+    /// `xs[from..to]` for list patterns (`[first, ..rest]`): the elements from index
+    /// `from` up to, not including, `to`. Panics when `0 <= from <= to <= len` fails.
+    ListSlice,
+    /// `m[k]`: panics when the key is absent (§10.8).
+    MapGet,
 }
 
 impl PrimOp {
@@ -396,6 +453,7 @@ impl PrimOp {
         match self {
             IntNeg | IntShow | FloatNeg | FloatShow | DecNeg | DecShow | BigNeg | BigShow
             | BoolShow | Not | ListLen => 1,
+            ListSlice => 3,
             _ => 2,
         }
     }
@@ -430,7 +488,8 @@ pub enum BackendError {
 }
 
 /// The seam between the shared frontend and every code generator: the JS emitter today, the
-/// reference interpreter (planned) and the C emitter (future).
+/// reference interpreter (`kalam-interp`, which runs a [`Program`] directly) and the C
+/// emitter (future).
 pub trait Backend {
     fn name(&self) -> &'static str;
     fn targets(&self) -> &'static [Target];

@@ -1,0 +1,5 @@
+impl Int as Show:
+    fn show(self) -> String => "number"
+
+fn main():
+    print("ok")
