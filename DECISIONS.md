@@ -35,3 +35,4 @@ Interview with founder, 2026-10-24.
 - research/01-english-like-languages.md — controlled English, ~25–35 keywords, no synonyms, Elm-grade errors
 - research/03-implementation-strategy.md — JS-first multi-backend, Rust compiler, design int/float split + single null + Result before JS backend
 - research/02, 04, 05, 06 — pending
+| D26 | M1 review (2026-10-25) | Founder approved M1 work, ratified FOUNDER-QUEUE Q1–Q18 (incl. Q15 split_seed `d3abd2d`), signed G-INT on manifest `c98e68cb…`; M1 closes when the 24h fuzz clock completes. Go for M2 |

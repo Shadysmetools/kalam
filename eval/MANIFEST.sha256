@@ -1,6 +1,6 @@
 # kalam-manifest/1 eval-v0.1-draft
 # SHA-256 of every frozen file (eval/FREEZE.json frozen_roots). Written by `kalam-eval freeze`; never edit by hand.
-# append-only eval/history.jsonl bytes=109894 sha256=83cd665f2506d44ee8d9bcc7e12833750c771b5aab8ec908857b4cc891ac06cc
+# append-only eval/history.jsonl bytes=136205 sha256=9358a160fb84d2065e137a89dd5925f10713e4bf4a54ef4134e427cf694b8a3a
 8f919f23780dcf480c60f5302650a1178f2750aea009275b707fefd62200ae0c  compiler/crates/kalam-eval/Cargo.toml
 8d6d5047fa187c5be43d139bc2818a001ae21d5fe8ed4a9b39424f1c31dc2f89  compiler/crates/kalam-eval/build.rs
 c865772d17f29ea8cc0f94a3a342aae5c29b5c2fb894a197f057e9ab9d14ed40  compiler/crates/kalam-eval/src/checks.rs
@@ -20,7 +20,7 @@ bc3a99578131eb8572a969d5afd8ead0bd2b4eab0bf63e16b08f0f858f69780a  compiler/crate
 ff5dc84b8c9b6a655ef96abb1d83149ae324cde5b51cc913cd38c75b32bef2f5  compiler/crates/kalam-eval/src/suites.rs
 4ec820323ea14d89a1c5eea36c5ba0fbc96993a7a8c43503627d7faec498e003  compiler/crates/kalam-eval/src/tiers.rs
 46c224d4594dfa5b7f48966893b185a2e79b86ed9f5de534831eb0f304793219  compiler/crates/kalam-eval/tests/holdout.rs
-dc99cc0eb06514b2dc93c1b985bdc83907a9c0686e1c05f0fbb651d7ea9f7bc2  eval/FREEZE.json
+a272bb3a35d55606c4a9f3df71629ee1c5ff678745a70acbd9c961793def6262  eval/FREEZE.json
 3485da3185de9f06c15ee2332555ca6b213ae336c95b9197107a83dce50e73c1  eval/HISTORY-SCHEMA.md
 189095e25056ab4cf20a7c5b58c9ba8b352a6495fdf0ba02add68ca906df2722  eval/LOOP.md
 584f388f59d35ecd955867eedf7c4ba8e239379f8e416131f67a8a3483ece3b2  eval/SCORECARD.md

@@ -864,7 +864,7 @@
     "manifest_rule": "SHA-256 over the sorted lines `<sha256(file)>  <relative path>` of every file in the store",
     "manifest_sha256": "747fe589a93b74426a79f9a9732e05734bce7058925f747974185626eff45f5a",
     "split_seed": "d3abd2d",
-    "split_seed_note": "provisional, founder may override (FOUNDER-QUEUE Q15)",
+    "split_seed_note": "founder-approved 2026-10-25 (FOUNDER-QUEUE Q15)",
     "store": "eval/holdout"
   },
   "llm_judge": null,
@@ -874,8 +874,7 @@
     "model_panel",
     "llm_judge",
     "api_cost_cap_usd",
-    "wallclock_cap_hours",
-    "holdout.split_seed"
+    "wallclock_cap_hours"
   ],
   "schema": "kalam-freeze/1",
   "spec_llms_txt_sha256": "ac101e367ad23a70bda9a125f6b721fbf83e96634d87b8254eed547dcc433a6e",

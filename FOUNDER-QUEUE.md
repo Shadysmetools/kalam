@@ -1,4 +1,6 @@
-# Founder review queue (for the M1 milestone stop)
+# Founder review queue
+
+**Q1–Q18 APPROVED by founder 2026-10-25 (M1 review).** New items from M2 on start at Q19.
 
 Minor design forks the loop decided provisionally. Each one is reversible. Confirm or override them at the M1 review.
 
