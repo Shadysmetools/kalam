@@ -1,0 +1,9 @@
+fn main():
+    let a: Option[Int] = Some(1)
+    let b: Result[Int, String] = Ok(2)
+    match a:
+        case Some(v): print("{v}")
+        case None: print("none")
+    match b:
+        case Ok(v): print("{v}")
+        case Err(e): print(e)

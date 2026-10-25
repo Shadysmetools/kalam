@@ -1,0 +1,10 @@
+-- SURROGATE LEWA7DO ------------------------------------- main.franco.kl  K0132
+
+`\u{D800}` nos surrogate pair f UTF-16, w da mesh 7arf lewa7do. Strings Kalam feeha 7oroof Unicode kamla.
+
+10│     ektb("total \u{D800} {n}")
+                    ^^^^^^^^
+
+Mosa3da: Ekteb el code point bta3 el 7arf nafso, zay `\u{1F600}` badal `\u{D83D}\u{DE00}`.
+
+E3raf aktar: kalam explain K0132

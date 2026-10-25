@@ -1,0 +1,12 @@
+-- FASEL EL ALAF --------------------------------------- main.franco.kl  SEC0123
+
+El 7arf U+066C (٬) shabah `,` w shabah `٫`, fa el rakam elly feeh momken yet2ery ka list aw ka kasr. 3ashan keda Kalam mabyesta5demhosh.
+
+2│     khali count = 1٬000
+                      ^
+
+Garrab: `_`
+
+Mosa3da: Efsel el arqam b `_` badalo, masalan `1_000_000`. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain SEC0123

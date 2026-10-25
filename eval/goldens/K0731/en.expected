@@ -1,0 +1,10 @@
+-- CONDITION WITHOUT AN ELSE ------------------------------------ main.kl  K0731
+
+This `if` is used as a value, so it needs a `else` branch: without one, there is no value when the condition is false.
+
+10│     let label = if 5 > 0: "positive"
+                    ^^
+
+Help: Add a `else:` branch with the value for the false case, or use the `if` as a statement on its own line.
+
+Learn more: kalam explain K0731

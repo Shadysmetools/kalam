@@ -1,0 +1,10 @@
+-- UNFINISHED STRING -------------------------------------------- main.kl  K0129
+
+This string has no closing `"`. A `"..."` string ends on the same line it starts on.
+
+10│     print("total
+              ^^^^^^
+
+Help: Add the closing `"` before the end of the line. For text that spans several lines, use `"""`.
+
+Learn more: kalam explain K0129

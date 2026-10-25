@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§13.4.2: \"No module-level `var` (K1202). Kalam has no global mutable state.\" (§10.2.2: \"`var` is allowed only inside function bodies.\") Positive twin: a module constant."
+}

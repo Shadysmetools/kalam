@@ -1,0 +1,14 @@
+-- TYPE ARGUMENTS BEN < > -------------------------------- main.franco.kl  K0914
+
+Kalam beyekteb el type arguments ben aqwas morab3a, `qayma[T]`, mesh `List<T>` wala `Vec<T>` wala `Array<T>` wala `T[]`.
+
+1│ dala total(items: qayma<adad>) -> adad:
+                     ^^^^^^
+
+Garrab: `[`
+
+Garrab: `]`
+
+Mosa3da: Ekteb `qayma[T]`, w esta5dem el aqwas el morab3a l kol el type arguments el tanya bardo, zay `qamoos[K, V]`. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0914

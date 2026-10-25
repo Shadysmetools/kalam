@@ -1,0 +1,10 @@
+-- UNKNOWN ESCAPE ----------------------------------------------- main.kl  K0130
+
+I don't know the escape `\q`. The escapes are `\n \t \r \\ \" \{ \} \0` and `\u{...}`.
+
+10│     print("total\q {n}")
+                    ^^
+
+Help: Use one of those escapes. For a literal backslash, write `\\`; for any other character, write `\u{...}` with its hexadecimal code point.
+
+Learn more: kalam explain K0130

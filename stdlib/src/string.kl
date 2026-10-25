@@ -1,0 +1,96 @@
+# std/string (spec §9.2, §20.1): methods of the prelude type `String`. Method resolution
+# never depends on imports (DR-27), so these work without `use std/string`.
+
+## Why `to_int`, `to_float` or `to_decimal` rejected its text.
+export enum ParseError:
+    Empty
+    Invalid(text: String)
+    OutOfRange(text: String)
+
+impl ParseError as Error:
+    @builtin
+    fn message(self) -> String => panic("builtin")
+
+impl String:
+    ## The number of Unicode scalar values.
+    @builtin
+    export fn len_chars(self) -> Int => panic("builtin")
+
+    ## The length of the UTF-8 encoding in bytes.
+    @builtin
+    export fn byte_len(self) -> Int => panic("builtin")
+
+    ## True for the empty string.
+    @builtin
+    export fn is_empty(self) -> Bool => panic("builtin")
+
+    ## Each Unicode scalar value as a one-character string.
+    @builtin
+    export fn chars(self) -> List[String] => panic("builtin")
+
+    ## Each user-perceived character (extended grapheme cluster).
+    @builtin
+    export fn graphemes(self) -> List[String] => panic("builtin")
+
+    ## The graphemes from index `from` up to, not including, `to`.
+    @builtin
+    @positional
+    export fn slice(self, from: Int, to: Int) -> String => panic("builtin")
+
+    ## The pieces between occurrences of `sep`.
+    @builtin
+    export fn split(self, sep: String) -> List[String] => panic("builtin")
+
+    ## The parts with `sep` between each two.
+    @builtin
+    export fn join(parts: List[String], sep: String) -> String => panic("builtin")
+
+    ## Without leading and trailing whitespace.
+    @builtin
+    export fn trim(self) -> String => panic("builtin")
+
+    ## True when the string begins with `prefix`.
+    @builtin
+    export fn starts_with(self, prefix: String) -> Bool => panic("builtin")
+
+    ## True when the string ends with `suffix`.
+    @builtin
+    export fn ends_with(self, suffix: String) -> Bool => panic("builtin")
+
+    ## True when `part` occurs in the string.
+    @builtin
+    export fn contains(self, part: String) -> Bool => panic("builtin")
+
+    ## Every occurrence of `old` replaced by `new`.
+    @builtin
+    @positional
+    export fn replace(self, old: String, new: String) -> String => panic("builtin")
+
+    ## Uppercase (Unicode default case mapping).
+    @builtin
+    export fn to_upper(self) -> String => panic("builtin")
+
+    ## Lowercase (Unicode default case mapping).
+    @builtin
+    export fn to_lower(self) -> String => panic("builtin")
+
+    ## The NFC normal form. Equality is code-point equality, so normalize explicitly.
+    @builtin
+    export fn nfc(self) -> String => panic("builtin")
+
+    ## Arabic letter forms unified (spec §5.3): hamza and alef forms, ى and ي, ة and ه.
+    @builtin
+    export fn arabic_fold(self) -> String => panic("builtin")
+
+    ## The integer written in the text: an optional `-`, then ASCII or Arabic-Indic digits.
+    ## Text outside the `Int` range is an error, never a rounded value.
+    @builtin
+    export fn to_int(self) -> Result[Int, ParseError] => panic("builtin")
+
+    ## The `Float` written in the text.
+    @builtin
+    export fn to_float(self) -> Result[Float, ParseError] => panic("builtin")
+
+    ## The exact `Decimal` written in the text.
+    @builtin
+    export fn to_decimal(self) -> Result[Decimal, ParseError] => panic("builtin")

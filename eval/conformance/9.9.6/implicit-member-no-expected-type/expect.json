@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0803"
+  ],
+  "lines": [
+    6
+  ],
+  "notes": "§9.9.6: \"Implicit members resolve against the expected type (K0803 without one).\""
+}

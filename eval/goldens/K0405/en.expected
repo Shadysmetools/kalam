@@ -1,0 +1,10 @@
+-- NAME ALREADY IN USE ------------------------------------------ main.kl  K0405
+
+`total` is already declared in a scope that is visible here. Kalam does not let a new declaration hide an older one, so a name means one thing at a time.
+
+4│         let total = 2
+               ^^^^^
+
+Help: Give the new declaration a name of its own. For a value of a type with the same name, Arabic code adds the article (`الشكل: شكل`) and Franco code adds `el_` (`el_donya: donya`).
+
+Learn more: kalam explain K0405

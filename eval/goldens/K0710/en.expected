@@ -1,0 +1,10 @@
+-- CAN'T ASSIGN TO THIS ----------------------------------------- main.kl  K0710
+
+The left side of `=` has to be a place: a variable, optionally followed by `.field` or `[index]`, whose root was declared with `var`. This is a computed value, so there is nowhere to store the result.
+
+9│     total(xs) = 3
+       ^^^^^^^^^
+
+Help: Bind the value to a new name with `let` instead, or assign to the variable the value came from.
+
+Learn more: kalam explain K0710

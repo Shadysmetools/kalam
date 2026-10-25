@@ -1,0 +1,14 @@
+-- POWER OPERATOR ----------------------------------------------- main.kl  K0923
+
+Kalam has no `**` operator. Raise a number to a power with the method `.pow()`.
+
+9│     let n = total(xs) ** 2
+                         ^^
+
+Try: `.pow(`
+
+Try: `)`
+
+Help: Write `a.pow(b)` instead of `a ** b`. `kalam fix` does this for you.
+
+Learn more: kalam explain K0923

@@ -47,8 +47,19 @@ pub const FROZEN_ROOTS: &[&str] = &[
     "eval/harness",
     "eval/diagnostics",
     "eval/seccorpus",
+    // M2: the spec clause index and conformance cases, diagnostic goldens, and the pinned
+    // judge rubric and sample (LOOP.md A3: expectations and goldens are reviewer-gated).
+    // The judge's report and the human calibration are run outputs, like eval/fuzz.
+    "eval/conformance",
+    "eval/goldens",
+    "eval/judge/RUBRIC.md",
+    "eval/judge/sample.json",
     "compiler/crates/kalam-eval",
 ];
+
+/// Directories under a frozen root that stay writable: the fixer adds conformance tests
+/// under `pending/` (LOOP.md §1), and they count only after the reviewer promotes them.
+pub const UNFROZEN: &[&str] = &["eval/conformance/pending"];
 
 /// Append-only logs (LOOP.md §1).
 pub const APPEND_ONLY: &[&str] = &[
@@ -72,7 +83,14 @@ pub fn walk(root: &Path, roots: &[&str]) -> Vec<String> {
         for e in rd.flatten() {
             let p = e.path();
             if p.is_dir() {
-                if e.file_name() != "target" && e.file_name() != "__pycache__" {
+                let rel = p
+                    .strip_prefix(base)
+                    .map(|r| r.to_string_lossy().replace('\\', "/"))
+                    .unwrap_or_default();
+                if e.file_name() != "target"
+                    && e.file_name() != "__pycache__"
+                    && !UNFROZEN.contains(&rel.as_str())
+                {
                     rec(base, &p, out);
                 }
             } else if p.extension().is_some_and(|x| x == "pyc") {
@@ -935,5 +953,22 @@ mod tests {
         assert!(Manifest::parse("zz  x\n").is_err());
         assert!(Manifest::parse("nohash\n").is_err());
         assert!(tree_hash(Path::new("/definitely/not/here")).is_none());
+    }
+
+    #[test]
+    fn pending_conformance_tests_are_not_frozen() {
+        let d = temp_dir("unfrozen");
+        for f in [
+            "eval/conformance/13.1.2/a/expect.json",
+            "eval/conformance/pending/13.1.2/b/expect.json",
+        ] {
+            let p = d.join(f);
+            fs::create_dir_all(p.parent().unwrap()).unwrap();
+            fs::write(p, "{}").unwrap();
+        }
+        assert_eq!(
+            walk(&d, &["eval/conformance"]),
+            vec!["eval/conformance/13.1.2/a/expect.json".to_string()]
+        );
     }
 }

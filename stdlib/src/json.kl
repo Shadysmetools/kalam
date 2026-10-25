@@ -1,0 +1,36 @@
+# std/json (spec §18.3, §20.1). Part of the prelude as the module `json`. Decoding is
+# schema-first: it builds exactly the expected type `T` and nothing the payload names.
+
+## Limits for one decode. The defaults are the spec's (1 MiB, depth 32, 10,000 elements
+## per container, 64 KiB per string).
+export type DecodeLimits:
+    max_bytes: Int = 1048576
+    max_depth: Int = 32
+    max_elements: Int = 10000
+    max_string_bytes: Int = 65536
+
+## Why a decode failed. Unknown fields, duplicate keys, fractions or exponents for an `Int`,
+## integers outside the `Int` range, NaN and Infinity are all rejected.
+export enum DecodeError:
+    Syntax(message: String)
+    UnknownField(name: String)
+    DuplicateKey(name: String)
+    MissingField(name: String)
+    WrongType(field: String, expected: String)
+    OutOfRange(field: String)
+    TooLarge(limit: String)
+
+impl DecodeError as Error:
+    @builtin
+    fn message(self) -> String => panic("builtin")
+
+## JSON text for `value`.
+@builtin
+export fn encode[T: Encode](value: T) -> String => panic("builtin")
+
+## The `T` (taken from the expected type) that `input` describes.
+@builtin
+export fn decode[T: Decode](input: String, limits: DecodeLimits = DecodeLimits()) -> Result[
+    T,
+    DecodeError,
+] => panic("builtin")

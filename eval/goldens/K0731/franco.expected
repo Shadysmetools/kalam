@@ -1,0 +1,10 @@
+-- SHART MEN GHER ELSE ----------------------------------- main.franco.kl  K0731
+
+El `law` da mesta5dem ka qeema, fa me7tag far3 `walla`: men gheiro mafeesh qeema lamma el shart yeb2a ghalat.
+
+10│     khali label = law 5 > 0: "positive"
+                      ^^^
+
+Mosa3da: Zawwed far3 `walla:` b el qeema lamma el shart yeb2a ghalat, aw esta5dem el `law` ka statement f satr lewa7do.
+
+E3raf aktar: kalam explain K0731

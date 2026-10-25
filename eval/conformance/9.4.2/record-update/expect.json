@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§9.4.2: \"`u.with(name: \\\"Omar\\\")` returns a copy. `with` is a reserved method name on every record, so a field may not be called `with` (K0417).\" Positive twin."
+}

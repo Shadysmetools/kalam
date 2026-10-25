@@ -1,0 +1,4 @@
+khali counter = 0
+
+dala ra2isi():
+    ektb("{counter}")

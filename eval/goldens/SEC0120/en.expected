@@ -1,0 +1,10 @@
+-- MIXED DIGITS ----------------------------------------------- main.kl  SEC0120
+
+The number `7٧` mixes two digit systems, or uses the other system's decimal separator (it contains U+0667). A reader could misread its value.
+
+2│     let count = 7٧
+                   ^^
+
+Help: Write each number in one system: ASCII digits with `.`, or Arabic-Indic digits with `٫`.
+
+Learn more: kalam explain SEC0120

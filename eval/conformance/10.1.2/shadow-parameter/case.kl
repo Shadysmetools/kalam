@@ -1,0 +1,6 @@
+fn twice(count: Int) -> Int:
+    let count = count * 2
+    return count
+
+fn main():
+    print("{twice(2)}")

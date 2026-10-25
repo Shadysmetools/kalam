@@ -1,0 +1,8 @@
+تعداد Color:
+    Red
+    Green
+
+دالة رئيسي():
+    ليكن c: Color = .Red
+    ليكن d = Color.Green
+    اطبع("x")

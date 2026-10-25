@@ -1,0 +1,9 @@
+ta3dad Shape:
+    Circle(radius: kasri)
+    Empty
+
+dala ra2isi():
+    khali s: Shape = .Circle(radius: 1.0)
+    khali t = Shape.Circle(radius: 2.0)
+    khali u: Shape = .Empty
+    ektb("x")

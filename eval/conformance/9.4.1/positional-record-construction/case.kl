@@ -1,0 +1,7 @@
+type Point:
+    x: Int
+    y: Int
+
+fn main():
+    let p = Point(1, 2)
+    print("{p.x}")

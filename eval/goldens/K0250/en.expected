@@ -1,0 +1,10 @@
+-- UNEXPECTED TOKEN --------------------------------------------- main.kl  K0250
+
+I expected an expression here, but I found `=`. I skipped the rest of this line and carried on from the next one.
+
+2│     let count = = 7
+                   ^
+
+Help: Add an expression here, or remove `=` if it doesn't belong. A missing `:` at the end of a line that opens a block, or a bracket closed too early, is the usual cause.
+
+Learn more: kalam explain K0250

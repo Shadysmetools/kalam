@@ -1,0 +1,10 @@
+-- PERSIAN DIGITS --------------------------------------------- main.kl  SEC0121
+
+`۷` uses Persian digits such as U+06F7 (۰–۹), which look almost the same as the Arabic-Indic digits ٠–٩ but are different characters: ۴ and ٤, ۶ and ٦ are easy to confuse.
+
+2│     let count = ۷
+                   ^
+
+Help: Use ASCII digits, or the Arabic-Indic digits ٠–٩ in an Arabic-skin file.
+
+Learn more: kalam explain SEC0121

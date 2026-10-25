@@ -1,0 +1,12 @@
+-- DIGIT INSIDE A NAME ---------------------------------------- main.kl  SEC0124
+
+The Arabic-Indic digit U+0661 inside a name can look like the letter ا, like `l` or like `1`, so two names could look the same.
+
+2│     let اسم١ = "Sara"
+              ^
+
+Try: `1`
+
+Help: Use an ASCII digit in the name. `kalam fix` does this for you.
+
+Learn more: kalam explain SEC0124

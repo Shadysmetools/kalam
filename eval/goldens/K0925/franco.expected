@@ -1,0 +1,13 @@
+-- SWITCH ------------------------------------------------ main.franco.kl  K0925
+
+`switch` w `case X ->` wel arms `x => …` men loghat tanya. Kalam beyetfarra3 3ala el qeema b `hasab`, w satr `lama pattern:` l kol far3.
+
+2│     switch n {
+       ^^^^^^^^^^
+
+Garrab: `hasab n:
+        lama 0: rag3 "zero"`
+
+Mosa3da: Ekteb `hasab x:` w ta7taha, maza7a, `lama pattern: natiga` l kol far3. W esta5dem `_` ka pattern l "ay 7aga tanya". `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0925

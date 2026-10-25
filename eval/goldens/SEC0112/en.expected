@@ -1,0 +1,12 @@
+-- HIDDEN OR UNASSIGNED CHARACTER ----------------------------- main.kl  SEC0112
+
+I found U+E000, a tag character, private-use character, noncharacter or unassigned code point. It has no visible meaning in source code.
+
+2│     let name = "Sara"
+                     ^
+
+Try: `\u{E000}`
+
+Help: Delete it. If a string really needs it, write it as `\u{...}`.
+
+Learn more: kalam explain SEC0112

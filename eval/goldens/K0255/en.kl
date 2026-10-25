@@ -1,0 +1,5 @@
+let limit = 3
+limit + 1
+
+fn main():
+    print("{limit}")

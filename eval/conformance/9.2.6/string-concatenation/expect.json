@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§9.2.6: \"`String` ... `+` concatenates. Interpolation. No `s[i]` (K0650).\" Positive twin."
+}

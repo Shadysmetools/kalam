@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§13.3.1: \"Each scope has a single namespace. A type `Shape`, a function `shape` and a value `shape` are three different names in English, because Latin case distinguishes them. In Arabic, `شكل` cannot be both a type and a value in one scope.\" (with §10.1.2: a binding may not reuse a module item, K0405) Positive twin: `Shape` and `shape` are different names."
+}

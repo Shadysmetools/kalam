@@ -1,0 +1,4 @@
+fn main():
+    let xs: List[Int] = []
+    let m: Map[String, Int] = {}
+    print("x")

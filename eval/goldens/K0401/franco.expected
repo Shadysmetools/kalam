@@ -1,0 +1,12 @@
+-- ESM MESH MET3ARRAF ------------------------------------ main.franco.kl  K0401
+
+Mal2etsh ta3reef l `nmae` bayen hena. Kalam ma fihoosh asami 3amma wala glob imports, fa kol esm gay men el scope da aw el module da aw men import aw men el prelude.
+
+3│     ektb(nmae)
+            ^^^^
+
+Garrab: `name`
+
+Mosa3da: Rage3 el ketaba (el fix el mo2tara7 beyewarrik a2rab esm bayen), aw 3arrafo 2abl el satr da b `khali` aw `dala`, aw e3melo import b `hat`. W el esm el maktoob b 7oroof shabah ba3d esm tany, fa ekteb el esm zay ma et3arraf bel zabt.
+
+E3raf aktar: kalam explain K0401

@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0801"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "§9.9.3: \"Lambdas take parameter types from the expected function type. Without one, annotations are required (K0801).\""
+}

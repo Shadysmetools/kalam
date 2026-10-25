@@ -1,0 +1,13 @@
+-- SWITCH STATEMENT --------------------------------------------- main.kl  K0925
+
+`switch`, `case X ->` and `x => …` arms come from other languages. Kalam branches on a value with `match` and one `case pattern:` line per arm.
+
+2│     switch n {
+       ^^^^^^^^^^
+
+Try: `match n:
+        case 0: return "zero"`
+
+Help: Write `match x:` and, indented under it, `case pattern: result` for each arm. Use `_` as the pattern for "anything else". `kalam fix` does this for you.
+
+Learn more: kalam explain K0925

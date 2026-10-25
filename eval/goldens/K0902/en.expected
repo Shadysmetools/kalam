@@ -1,0 +1,12 @@
+-- FUNCTION KEYWORD FROM ANOTHER LANGUAGE ----------------------- main.kl  K0902
+
+`def`, `function` and `func` start functions in other languages. Kalam declares a function with `fn`.
+
+1│ def describe(n: Int) -> String:
+   ^^^
+
+Try: `fn`
+
+Help: Write `fn name(param: Type):` and give each parameter a type. `kalam fix` rewrites the keyword and leaves `_` type holes for you to fill in.
+
+Learn more: kalam explain K0902

@@ -1,0 +1,12 @@
+dala total(items: qayma[adad]) -> adad:
+    motghayer sum = 0
+    lekol item fi items:
+        sum += item
+    rag3 sum
+
+dala ra2isi():
+    khali xs = [1, 2, 3]
+    khali double = dala(x: adad):
+        rag3 x * 2
+    khali n = total(xs.map(double))
+    ektb("total {n}")

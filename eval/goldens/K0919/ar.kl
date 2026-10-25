@@ -1,0 +1,9 @@
+هيكل Money:
+    cents: عدد
+
+نفذ Show لكل Money:
+    دالة show(ذات) -> نص => "{ذات.cents} cents"
+
+دالة رئيسي():
+    ليكن m = Money(cents: 250)
+    اطبع("{m}")

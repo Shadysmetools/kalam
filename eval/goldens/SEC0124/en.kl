@@ -1,0 +1,3 @@
+fn main():
+    let اسم١ = "Sara"
+    print(اسم١)

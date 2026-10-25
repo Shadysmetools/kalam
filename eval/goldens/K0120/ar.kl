@@ -1,0 +1,11 @@
+دالة describe(n: عدد) -> نص:
+    إذا n < 0:
+            أرجع "negative"
+    وإلا إذا n == 0:
+        أرجع "zero"
+    وإلا:
+        أرجع "positive"
+
+دالة رئيسي():
+    ليكن label = describe(5)
+    اطبع(label)

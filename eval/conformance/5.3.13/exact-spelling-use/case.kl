@@ -1,0 +1,3 @@
+fn main():
+    let أكتب = "x"
+    print(أكتب)

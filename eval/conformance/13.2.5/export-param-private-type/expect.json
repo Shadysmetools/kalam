@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0303"
+  ],
+  "lines": [
+    4
+  ],
+  "notes": "§13.2.5: \"An `export`ed item may not expose a private type in its signature (K0303).\" A parameter type is part of the signature."
+}

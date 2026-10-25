@@ -1,0 +1,4 @@
+fn main():
+    let item = 0
+    for item in [1, 2, 3]:
+        print("{item}")

@@ -1,0 +1,12 @@
+-- CONTROL CHARACTER ------------------------------------------ main.kl  SEC0102
+
+I found the control character U+0007  here. Control characters are invisible, and terminals and editors each handle them differently.
+
+2│     let name = "Sara"
+                     ^
+
+Try: `\u{7}`
+
+Help: Inside a string, write it as an escape such as `\u{...}`. Anywhere else, delete it.
+
+Learn more: kalam explain SEC0102

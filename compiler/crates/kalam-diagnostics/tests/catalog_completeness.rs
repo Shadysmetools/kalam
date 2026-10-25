@@ -248,7 +248,7 @@ fn p6_code_set_comes_from_spec_section_27() {
     ] {
         assert!(set.contains(code), "P6 set misses {code}");
     }
-    for code in ["SEC0107", "H0202", "W0114", "K0301", "K1601"] {
+    for code in ["SEC0107", "H0202", "W0114", "K1601"] {
         assert!(!set.contains(code), "P6 set must not hold {code}");
     }
     assert!(set.len() >= 67, "P6 set has {} codes: {set:?}", set.len());
@@ -379,6 +379,17 @@ const EMITTER_ARGS: &[(&str, &[&str])] = &[
     ("K0923", &[]),
     ("K0925", &[]),
     ("K0926", &[]),
+    // kalam-resolve (`walk.rs`): names and modules. K0201 and K0917 are also emitted there,
+    // with the same args as the lexer's and the parser's (`found`, `expected`; none).
+    ("SEC0104", &["name", "other"]),
+    ("K0301", &["name"]),
+    ("K0302", &[]),
+    ("K0303", &["name"]),
+    ("K0401", &["name"]),
+    ("K0405", &["name"]),
+    ("K0413", &["name"]),
+    ("K0417", &[]),
+    ("K1201", &["cycle"]),
 ];
 
 /// Codes nobody emits yet: the args their future emitter must supply. Every other code with

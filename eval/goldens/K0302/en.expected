@@ -1,0 +1,10 @@
+-- OPAQUE IS FOR TYPES ------------------------------------------ main.kl  K0302
+
+`opaque` hides the fields, variants and constructor of a `type` or an `enum`. A function, trait, constant or extern declaration has nothing for it to hide.
+
+4│ export opaque fn answer() -> Int => 42
+   ^^^^^^^^^^^^^^^^^^^^^^^
+
+Help: Remove `opaque` and keep `export`.
+
+Learn more: kalam explain K0302

@@ -33,6 +33,18 @@ fn placeholders(template: &str) -> Vec<String> {
 }
 
 #[test]
+fn name_resolution_pages_describe_names_not_characters() {
+    // `{name}` in these codes is an identifier or a module path, never one character.
+    for code in ["K0301", "K0303", "K0401", "K0405", "K0413", "SEC0104"] {
+        for lang in Skin::ALL {
+            let page = explain::page(code, lang).unwrap();
+            let generic = explain::describe("SEC0100", "name", lang).unwrap();
+            assert!(!page.contains(&generic), "{code} ({lang:?}):\n{page}");
+        }
+    }
+}
+
+#[test]
 fn k0201_page_describes_its_placeholders() {
     let page = explain::page("K0201", Skin::En).expect("K0201 has a page");
     assert!(!page.contains("{found}"), "{page}");

@@ -1,0 +1,12 @@
+-- SYMBOLIC LOGIC OPERATOR -------------------------------------- main.kl  K0911
+
+Kalam writes `!` as `not`. Logic is spelled with words so it reads the same as the rest of the line.
+
+2│     if !(n >= 0):
+          ^
+
+Try: `not `
+
+Help: Replace `!` with `not`. In general, `&&` is `and`, `||` is `or` and `!` is `not`. `kalam fix` does this for you.
+
+Learn more: kalam explain K0911

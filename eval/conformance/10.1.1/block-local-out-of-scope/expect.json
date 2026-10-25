@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0401"
+  ],
+  "lines": [
+    5
+  ],
+  "notes": "§10.1.1: \"Scoping is lexical and block-scoped.\" `inner` is not visible after its block ends (K0401: name not defined, spec §27)."
+}

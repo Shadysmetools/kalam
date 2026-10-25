@@ -1,0 +1,10 @@
+-- STRING INSIDE A HOLE ----------------------------------------- main.kl  K0131
+
+A string literal inside an interpolation hole is hard to read: the quotes inside the quotes make it unclear where the outer string ends.
+
+10│     print("total {"n"}")
+                      ^
+
+Help: Bind the value with `let` on the line before, then put the name in the hole.
+
+Learn more: kalam explain K0131

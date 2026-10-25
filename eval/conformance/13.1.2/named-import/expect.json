@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§13.1.2: \"There are no glob imports (`*` is K1203): globs feed hallucination and hide where names come from.\" Positive twin: names are imported explicitly."
+}

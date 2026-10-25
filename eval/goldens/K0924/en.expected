@@ -1,0 +1,12 @@
+-- SINGLE QUOTES ------------------------------------------------ main.kl  K0924
+
+Strings use double quotes in Kalam; single quotes don't start a string.
+
+11│     print('done')
+              ^^^^^^
+
+Try: `"done"`
+
+Help: Change the single quotes to double quotes: `"..."`. `kalam fix` does this for you.
+
+Learn more: kalam explain K0924

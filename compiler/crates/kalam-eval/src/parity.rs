@@ -94,6 +94,40 @@ pub trait ParseHook {
     fn diag_route(&self) -> String {
         format!("ParseHook::parse ({})", self.name())
     }
+    /// `kalam check` on one file's raw bytes, rendered exactly as the CLI prints it with
+    /// `KALAM_LANG=lang` (spec §21.4), plus every diagnostic with its machine-applicable
+    /// fixes. Used by the golden and fix-rate runners. The default has no renderer.
+    fn check_rendered(&self, bytes: &[u8], skin: Skin, lang: Skin) -> Result<Rendered, DiagError> {
+        let _ = (bytes, skin, lang);
+        Err(DiagError::NotMeasurable(format!(
+            "{} has no diagnostic renderer",
+            self.name()
+        )))
+    }
+}
+
+/// One diagnostic as [`ParseHook::check_rendered`] sees it.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct RenderedDiag {
+    pub code: String,
+    /// 1-based line of the primary span's start.
+    pub line: usize,
+    pub error: bool,
+    /// This diagnostic alone, rendered as `kalam check` prints it (no trailing newline).
+    pub rendered: String,
+    /// Each `applicability: machine` fix as its edits `(start, end, insert)`, byte offsets
+    /// into [`Rendered::text`].
+    pub machine_fixes: Vec<Vec<(usize, usize, String)>>,
+}
+
+/// The output of [`ParseHook::check_rendered`].
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Rendered {
+    /// The checked text (U+FFFD in place of invalid UTF-8 runs).
+    pub text: String,
+    /// What `kalam check FILE` prints on stderr (no trailing newline).
+    pub output: String,
+    pub diags: Vec<RenderedDiag>,
 }
 
 /// Why [`ParseHook::diagnose`] has no diagnostics for a file.
@@ -707,6 +741,66 @@ impl ParseHook for KalamParserHook {
             .map_err(DiagError::Crash)?
             .map(|c| reported(text, &c.diagnostics))
             .map_err(|e| DiagError::Crash(format!("not a Kalam path: {}", e.0)))
+    }
+
+    fn check_rendered(&self, bytes: &[u8], skin: Skin, lang: Skin) -> Result<Rendered, DiagError> {
+        if let Err(why) = &self.driver {
+            return Err(DiagError::NotMeasurable(why.clone()));
+        }
+        let path = Self::path(skin);
+        let checked = catch(|| -> Result<kalam_driver::CheckedFile, String> {
+            #[cfg(kalam_check_bytes)]
+            {
+                kalam_driver::check_bytes(&path, bytes).into_checked()
+            }
+            #[cfg(not(kalam_check_bytes))]
+            {
+                let text =
+                    std::str::from_utf8(bytes).map_err(|_| no_bytes_api("check_rendered"))?;
+                kalam_driver::check_source(&path, text)
+                    .map_err(|e| format!("not a Kalam path: {}", e.0))
+            }
+        })
+        .map_err(DiagError::Crash)?
+        .map_err(DiagError::Crash)?;
+        let output = catch(|| checked.render_human(lang)).map_err(DiagError::Crash)?;
+        let view = checked.view();
+        let mut diags = Vec::new();
+        for d in &checked.diagnostics {
+            let rendered = catch(|| kalam_diagnostics::render_human(d, &view, lang, None))
+                .map_err(DiagError::Crash)?;
+            diags.push((d, rendered));
+        }
+        let diags = diags
+            .into_iter()
+            .map(|(d, rendered)| {
+                let (line, _) = locate(&checked.text, d.span.start, d.span.end);
+                RenderedDiag {
+                    code: d.code.to_string(),
+                    line,
+                    error: d.is_error(),
+                    rendered: rendered.trim_end_matches('\n').to_string(),
+                    machine_fixes: d
+                        .fixes
+                        .iter()
+                        .filter(|f| f.applicability == kalam_diagnostics::Applicability::Machine)
+                        .map(|f| {
+                            f.edits
+                                .iter()
+                                .map(|e| {
+                                    (e.span.start as usize, e.span.end as usize, e.insert.clone())
+                                })
+                                .collect()
+                        })
+                        .collect(),
+                }
+            })
+            .collect();
+        Ok(Rendered {
+            text: checked.text.clone(),
+            output,
+            diags,
+        })
     }
 
     fn diag_route(&self) -> String {

@@ -1,0 +1,5 @@
+dala add(a: adad, b: adad) -> adad => a + b
+
+dala ra2isi():
+    khali sum = add(a: 1, 2)
+    ektb("{sum}")

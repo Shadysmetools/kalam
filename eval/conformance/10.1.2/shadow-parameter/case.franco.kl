@@ -1,0 +1,6 @@
+dala twice(count: adad) -> adad:
+    khali count = count * 2
+    rag3 count
+
+dala ra2isi():
+    ektb("{twice(2)}")

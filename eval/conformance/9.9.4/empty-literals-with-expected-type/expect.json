@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§9.9.4: \"Literals follow §5.6. Empty `[]` and `{}` need an expected type (K0802).\" Positive twin."
+}

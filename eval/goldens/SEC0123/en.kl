@@ -1,0 +1,3 @@
+fn main():
+    let count = 1٬000
+    print("{count}")

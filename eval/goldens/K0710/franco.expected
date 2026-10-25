@@ -1,0 +1,10 @@
+-- MAYENFA3SH TEDDILO QEEMA ------------------------------ main.franco.kl  K0710
+
+El naw7eya el shmal men `=` lazem tekoon makan: variable, w momken ba3do `.field` aw `[index]`, w aslo met3arraf b `motghayer`. Da qeema met7asba, fa mafeesh makan net7afaz feeh el natiga.
+
+9│     total(xs) = 3
+       ^^^^^^^^^
+
+Mosa3da: Erbot el qeema b esm gedeed b `khali` badal keda, aw eddi el qeema lel variable elly gat menno.
+
+E3raf aktar: kalam explain K0710

@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali found: ekhtiyari[adad] = mawgood(7)
+    khali count = found.unwrap()
+    ektb("{count}")

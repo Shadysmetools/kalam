@@ -1,0 +1,10 @@
+-- MISSING BLOCK ------------------------------------------------ main.kl  K0252
+
+This line ends with `:`, so I expected an indented block on the next line, one level (4 spaces) deeper, but there isn't one.
+
+3│ fn main():
+   ^^
+
+Help: Indent the lines that belong to it by 4 more spaces. If the block is meant to be empty for now, write `pass` in it.
+
+Learn more: kalam explain K0252

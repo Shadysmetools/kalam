@@ -1,0 +1,12 @@
+-- NEHAYET SATR GHARIBA -------------------------------- main.franco.kl  SEC0113
+
+La2eit U+2028 (LINE SEPARATOR). Satr Kalam beyekhlas b LF, aw b CRLF elly `kalam fmt` beyhawwelo LF.
+
+2│     khali name = "Sa ra"
+                       ^
+
+Garrab: `\u{2028}`
+
+Mosa3da: Ghayaro b satr gedeed 3adi (LF). W gowa el string ekteb `\n` badalo.
+
+E3raf aktar: kalam explain SEC0113

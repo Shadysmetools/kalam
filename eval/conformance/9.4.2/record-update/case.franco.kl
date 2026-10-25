@@ -1,0 +1,8 @@
+haykal Point:
+    x: adad
+    y: adad
+
+dala ra2isi():
+    khali p = Point(x: 1, y: 2)
+    khali q = p.with(x: 3)
+    ektb("{q.x} {p.x}")

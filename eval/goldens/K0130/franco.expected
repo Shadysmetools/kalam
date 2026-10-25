@@ -1,0 +1,10 @@
+-- ESCAPE MESH MA3ROOF ----------------------------------- main.franco.kl  K0130
+
+Mesh 3aref el escape `\q`. El escapes homa `\n \t \r \\ \" \{ \} \0` w `\u{...}`.
+
+10│     ektb("total\q {n}")
+                   ^^
+
+Mosa3da: Esta5dem wa7ed men el escapes di. W law 3ayez backslash 3adi ekteb `\\`, w l ay 7arf tany ekteb `\u{...}` b el code point bta3o bel hex.
+
+E3raf aktar: kalam explain K0130

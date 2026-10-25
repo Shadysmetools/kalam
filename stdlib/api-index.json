@@ -1,0 +1,6555 @@
+{
+  "schema": "kalam-api-index/1",
+  "source": "stdlib/src",
+  "items": [
+    {
+      "path": "Access.LoggedIn",
+      "module": "std/http",
+      "kind": "variant",
+      "name": "LoggedIn",
+      "owner": "Access",
+      "receiver": null,
+      "signature": "LoggedIn",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Access.Public",
+      "module": "std/http",
+      "kind": "variant",
+      "name": "Public",
+      "owner": "Access",
+      "receiver": null,
+      "signature": "Public",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Access.Role",
+      "module": "std/http",
+      "kind": "variant",
+      "name": "Role",
+      "owner": "Access",
+      "receiver": null,
+      "signature": "Role(name: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "AnyError",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "AnyError",
+      "owner": null,
+      "receiver": null,
+      "signature": "type AnyError",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The application-level error box. Any `E: Error` converts into it with `?`."
+    },
+    {
+      "path": "AnyError.chain",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "chain",
+      "owner": "AnyError",
+      "receiver": "impl AnyError",
+      "signature": "fn chain(self) -> List[String]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The messages of this error and the errors it wraps, outermost first."
+    },
+    {
+      "path": "AnyError.downcast",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "downcast",
+      "owner": "AnyError",
+      "receiver": "impl AnyError",
+      "signature": "fn downcast[E: Error](self) -> Option[E]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The boxed error as `E` (taken from the expected type), or `None`."
+    },
+    {
+      "path": "AnyError.message",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "message",
+      "owner": "AnyError",
+      "receiver": "impl AnyError as Error",
+      "signature": "fn message(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "impl:Error"
+      ],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "BigInt",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "BigInt",
+      "owner": null,
+      "receiver": null,
+      "signature": "type BigInt",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "An arbitrary-precision integer."
+    },
+    {
+      "path": "BigInt.from",
+      "module": "std/bigint",
+      "kind": "assoc_fn",
+      "name": "from",
+      "owner": "BigInt",
+      "receiver": "impl BigInt",
+      "signature": "fn from(value: Int) -> BigInt",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The exact value of an `Int`."
+    },
+    {
+      "path": "BigInt.parse",
+      "module": "std/bigint",
+      "kind": "assoc_fn",
+      "name": "parse",
+      "owner": "BigInt",
+      "receiver": "impl BigInt",
+      "signature": "fn parse(text: String) -> Result[BigInt, ParseError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The integer written in the text."
+    },
+    {
+      "path": "BigInt.to_int",
+      "module": "std/bigint",
+      "kind": "method",
+      "name": "to_int",
+      "owner": "BigInt",
+      "receiver": "impl BigInt",
+      "signature": "fn to_int(self) -> Option[Int]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The value as an `Int`, or `None` outside the 64-bit range."
+    },
+    {
+      "path": "Bool",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Bool",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Bool",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": {
+        "en": "Bool",
+        "ar": "منطقي",
+        "franco": "mante2i"
+      },
+      "doc": "`true` or `false`. Conditions must be `Bool`: there is no truthiness."
+    },
+    {
+      "path": "Bytes",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Bytes",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Bytes",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "An immutable byte array."
+    },
+    {
+      "path": "Bytes.len",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "len",
+      "owner": "Bytes",
+      "receiver": "impl Bytes",
+      "signature": "fn len(self) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The number of bytes."
+    },
+    {
+      "path": "Bytes.slice",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "slice",
+      "owner": "Bytes",
+      "receiver": "impl Bytes",
+      "signature": "fn slice(self, from: Int, to: Int) -> Bytes",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "positional"
+      ],
+      "spellings": null,
+      "doc": "The bytes from index `from` up to, not including, `to`."
+    },
+    {
+      "path": "Bytes.to_base64",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "to_base64",
+      "owner": "Bytes",
+      "receiver": "impl Bytes",
+      "signature": "fn to_base64(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Standard base64 text."
+    },
+    {
+      "path": "Bytes.to_hex",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "to_hex",
+      "owner": "Bytes",
+      "receiver": "impl Bytes",
+      "signature": "fn to_hex(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Lowercase hexadecimal text."
+    },
+    {
+      "path": "Cell",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Cell",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Cell[T]",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The only shared mutable state. `update` is atomic because its function cannot suspend."
+    },
+    {
+      "path": "Cell.get",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "get",
+      "owner": "Cell",
+      "receiver": "impl[T] Cell[T]",
+      "signature": "fn get(self) -> T",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The current value."
+    },
+    {
+      "path": "Cell.new",
+      "module": "std/prelude",
+      "kind": "assoc_fn",
+      "name": "new",
+      "owner": "Cell",
+      "receiver": "impl[T] Cell[T]",
+      "signature": "fn new(value: T) -> Cell[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A new cell holding `value`."
+    },
+    {
+      "path": "Cell.set",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "set",
+      "owner": "Cell",
+      "receiver": "impl[T] Cell[T]",
+      "signature": "fn set(self, value: T)",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Replaces the value."
+    },
+    {
+      "path": "Cell.update",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "update",
+      "owner": "Cell",
+      "receiver": "impl[T] Cell[T]",
+      "signature": "fn update(self, f: @sync fn(T) -> T)",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Replaces the value with `f(value)`, atomically."
+    },
+    {
+      "path": "ClientError.Blocked",
+      "module": "std/http",
+      "kind": "variant",
+      "name": "Blocked",
+      "owner": "ClientError",
+      "receiver": null,
+      "signature": "Blocked(host: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "ClientError.Io",
+      "module": "std/http",
+      "kind": "variant",
+      "name": "Io",
+      "owner": "ClientError",
+      "receiver": null,
+      "signature": "Io(message: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "ClientError.Timeout",
+      "module": "std/http",
+      "kind": "variant",
+      "name": "Timeout",
+      "owner": "ClientError",
+      "receiver": null,
+      "signature": "Timeout",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "ClientError.Tls",
+      "module": "std/http",
+      "kind": "variant",
+      "name": "Tls",
+      "owner": "ClientError",
+      "receiver": null,
+      "signature": "Tls(message: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "ClientError.message",
+      "module": "std/http",
+      "kind": "method",
+      "name": "message",
+      "owner": "ClientError",
+      "receiver": "impl ClientError as Error",
+      "signature": "fn message(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "impl:Error"
+      ],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "ClientResponse.body",
+      "module": "std/http",
+      "kind": "field",
+      "name": "body",
+      "owner": "ClientResponse",
+      "receiver": null,
+      "signature": "body: String",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "ClientResponse.status",
+      "module": "std/http",
+      "kind": "field",
+      "name": "status",
+      "owner": "ClientResponse",
+      "receiver": null,
+      "signature": "status: Int",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Clock",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Clock",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Clock",
+      "capability": [
+        "Clock"
+      ],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "capability"
+      ],
+      "spellings": null,
+      "doc": "The current time and timers."
+    },
+    {
+      "path": "Clock.now",
+      "module": "std/time",
+      "kind": "method",
+      "name": "now",
+      "owner": "Clock",
+      "receiver": "impl Clock",
+      "signature": "fn now(self) -> Instant",
+      "capability": [
+        "Clock"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The current instant."
+    },
+    {
+      "path": "Clock.today",
+      "module": "std/time",
+      "kind": "method",
+      "name": "today",
+      "owner": "Clock",
+      "receiver": "impl Clock",
+      "signature": "fn today(self, zone: Zone) -> Date",
+      "capability": [
+        "Clock"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Today's date in `zone`."
+    },
+    {
+      "path": "Command",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Command",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Command",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A program and its argv built by `cmd\"…\"`. There is no raw form."
+    },
+    {
+      "path": "Date.add_days",
+      "module": "std/time",
+      "kind": "method",
+      "name": "add_days",
+      "owner": "Date",
+      "receiver": "impl Date",
+      "signature": "fn add_days(self, days: Int) -> Date",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The date `days` later (earlier when negative)."
+    },
+    {
+      "path": "Date.day",
+      "module": "std/time",
+      "kind": "method",
+      "name": "day",
+      "owner": "Date",
+      "receiver": "impl Date",
+      "signature": "fn day(self) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The day of the month, 1-31."
+    },
+    {
+      "path": "Date.format_hijri",
+      "module": "std/time",
+      "kind": "method",
+      "name": "format_hijri",
+      "owner": "Date",
+      "receiver": "impl Date",
+      "signature": "fn format_hijri(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The Hijri (Umm al-Qura) date as text."
+    },
+    {
+      "path": "Date.month",
+      "module": "std/time",
+      "kind": "method",
+      "name": "month",
+      "owner": "Date",
+      "receiver": "impl Date",
+      "signature": "fn month(self) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The Gregorian month, 1-12."
+    },
+    {
+      "path": "Date.new",
+      "module": "std/time",
+      "kind": "assoc_fn",
+      "name": "new",
+      "owner": "Date",
+      "receiver": "impl Date",
+      "signature": "fn new(year: Int, month: Int, day: Int) -> Result[Date, TimeError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The date with this year, month (1-12) and day, or an error."
+    },
+    {
+      "path": "Date.to_iso",
+      "module": "std/time",
+      "kind": "method",
+      "name": "to_iso",
+      "owner": "Date",
+      "receiver": "impl Date",
+      "signature": "fn to_iso(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "ISO 8601 text, such as `2027-01-31`."
+    },
+    {
+      "path": "Date.year",
+      "module": "std/time",
+      "kind": "method",
+      "name": "year",
+      "owner": "Date",
+      "receiver": "impl Date",
+      "signature": "fn year(self) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The Gregorian year."
+    },
+    {
+      "path": "Db.all",
+      "module": "std/sql",
+      "kind": "method",
+      "name": "all",
+      "owner": "Db",
+      "receiver": "impl Db",
+      "signature": "fn all[T: Row](self, query: Sql) -> Result[List[T], DbError]",
+      "capability": [
+        "Db"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "Every row of `query`, decoded by column name into `T` (from the expected type)."
+    },
+    {
+      "path": "Db.exec",
+      "module": "std/sql",
+      "kind": "method",
+      "name": "exec",
+      "owner": "Db",
+      "receiver": "impl Db",
+      "signature": "fn exec(self, query: Sql) -> Result[Int, DbError]",
+      "capability": [
+        "Db"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "Runs `query` and returns the number of rows affected."
+    },
+    {
+      "path": "Db.one",
+      "module": "std/sql",
+      "kind": "method",
+      "name": "one",
+      "owner": "Db",
+      "receiver": "impl Db",
+      "signature": "fn one[T: Row](self, query: Sql) -> Result[Option[T], DbError]",
+      "capability": [
+        "Db"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "The first row of `query`, or `None`."
+    },
+    {
+      "path": "Db.transaction",
+      "module": "std/sql",
+      "kind": "method",
+      "name": "transaction",
+      "owner": "Db",
+      "receiver": "impl Db",
+      "signature": "fn transaction[T, E: From[DbError]](self, body: fn(Db) -> Result[T, E]) -> Result[T, E]",
+      "capability": [
+        "Db"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "Runs `body` in a transaction: it commits on `Ok` and rolls back on `Err`, on panic and on cancellation."
+    },
+    {
+      "path": "DbError.BadIdentifier",
+      "module": "std/sql",
+      "kind": "variant",
+      "name": "BadIdentifier",
+      "owner": "DbError",
+      "receiver": null,
+      "signature": "BadIdentifier(name: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "DbError.Connect",
+      "module": "std/sql",
+      "kind": "variant",
+      "name": "Connect",
+      "owner": "DbError",
+      "receiver": null,
+      "signature": "Connect(message: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "DbError.Constraint",
+      "module": "std/sql",
+      "kind": "variant",
+      "name": "Constraint",
+      "owner": "DbError",
+      "receiver": null,
+      "signature": "Constraint(message: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "DbError.EmptyList",
+      "module": "std/sql",
+      "kind": "variant",
+      "name": "EmptyList",
+      "owner": "DbError",
+      "receiver": null,
+      "signature": "EmptyList",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "DbError.Query",
+      "module": "std/sql",
+      "kind": "variant",
+      "name": "Query",
+      "owner": "DbError",
+      "receiver": null,
+      "signature": "Query(message: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "DbError.Shape",
+      "module": "std/sql",
+      "kind": "variant",
+      "name": "Shape",
+      "owner": "DbError",
+      "receiver": null,
+      "signature": "Shape(message: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "DbError.message",
+      "module": "std/sql",
+      "kind": "method",
+      "name": "message",
+      "owner": "DbError",
+      "receiver": "impl DbError as Error",
+      "signature": "fn message(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "impl:Error"
+      ],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Decimal",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Decimal",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Decimal",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": {
+        "en": "Decimal",
+        "ar": "عشري",
+        "franco": "ashri"
+      },
+      "doc": "An exact base-10 number with 34 significant digits. There is no `/`: use `div`."
+    },
+    {
+      "path": "Decimal.div",
+      "module": "std/decimal",
+      "kind": "method",
+      "name": "div",
+      "owner": "Decimal",
+      "receiver": "impl Decimal",
+      "signature": "fn div(self, other: Decimal, scale: Int, rounding: Rounding) -> Decimal",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "positional"
+      ],
+      "spellings": null,
+      "doc": "`self / other` rounded to `scale` fraction digits. Panics when `other` is zero."
+    },
+    {
+      "path": "Decimal.from",
+      "module": "std/decimal",
+      "kind": "assoc_fn",
+      "name": "from",
+      "owner": "Decimal",
+      "receiver": "impl Decimal",
+      "signature": "fn from(value: Int) -> Decimal",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The exact value of an `Int`."
+    },
+    {
+      "path": "Decimal.parse",
+      "module": "std/decimal",
+      "kind": "assoc_fn",
+      "name": "parse",
+      "owner": "Decimal",
+      "receiver": "impl Decimal",
+      "signature": "fn parse(text: String) -> Result[Decimal, ParseError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The exact `Decimal` written in the text."
+    },
+    {
+      "path": "Decimal.round",
+      "module": "std/decimal",
+      "kind": "method",
+      "name": "round",
+      "owner": "Decimal",
+      "receiver": "impl Decimal",
+      "signature": "fn round(self, scale: Int, rounding: Rounding = .HalfEven) -> Decimal",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The value rounded to `scale` fraction digits."
+    },
+    {
+      "path": "Decode",
+      "module": "std/prelude",
+      "kind": "trait",
+      "name": "Decode",
+      "owner": null,
+      "receiver": null,
+      "signature": "trait Decode",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "marker"
+      ],
+      "spellings": null,
+      "doc": "Schema-first input (spec §18.3). Explicit `@derive(Decode)`."
+    },
+    {
+      "path": "DecodeError.DuplicateKey",
+      "module": "std/json",
+      "kind": "variant",
+      "name": "DuplicateKey",
+      "owner": "DecodeError",
+      "receiver": null,
+      "signature": "DuplicateKey(name: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "DecodeError.MissingField",
+      "module": "std/json",
+      "kind": "variant",
+      "name": "MissingField",
+      "owner": "DecodeError",
+      "receiver": null,
+      "signature": "MissingField(name: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "DecodeError.OutOfRange",
+      "module": "std/json",
+      "kind": "variant",
+      "name": "OutOfRange",
+      "owner": "DecodeError",
+      "receiver": null,
+      "signature": "OutOfRange(field: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "DecodeError.Syntax",
+      "module": "std/json",
+      "kind": "variant",
+      "name": "Syntax",
+      "owner": "DecodeError",
+      "receiver": null,
+      "signature": "Syntax(message: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "DecodeError.TooLarge",
+      "module": "std/json",
+      "kind": "variant",
+      "name": "TooLarge",
+      "owner": "DecodeError",
+      "receiver": null,
+      "signature": "TooLarge(limit: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "DecodeError.UnknownField",
+      "module": "std/json",
+      "kind": "variant",
+      "name": "UnknownField",
+      "owner": "DecodeError",
+      "receiver": null,
+      "signature": "UnknownField(name: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "DecodeError.WrongType",
+      "module": "std/json",
+      "kind": "variant",
+      "name": "WrongType",
+      "owner": "DecodeError",
+      "receiver": null,
+      "signature": "WrongType(field: String, expected: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "DecodeError.message",
+      "module": "std/json",
+      "kind": "method",
+      "name": "message",
+      "owner": "DecodeError",
+      "receiver": "impl DecodeError as Error",
+      "signature": "fn message(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "impl:Error"
+      ],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "DecodeLimits.max_bytes",
+      "module": "std/json",
+      "kind": "field",
+      "name": "max_bytes",
+      "owner": "DecodeLimits",
+      "receiver": null,
+      "signature": "max_bytes: Int = 1048576",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "DecodeLimits.max_depth",
+      "module": "std/json",
+      "kind": "field",
+      "name": "max_depth",
+      "owner": "DecodeLimits",
+      "receiver": null,
+      "signature": "max_depth: Int = 32",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "DecodeLimits.max_elements",
+      "module": "std/json",
+      "kind": "field",
+      "name": "max_elements",
+      "owner": "DecodeLimits",
+      "receiver": null,
+      "signature": "max_elements: Int = 10000",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "DecodeLimits.max_string_bytes",
+      "module": "std/json",
+      "kind": "field",
+      "name": "max_string_bytes",
+      "owner": "DecodeLimits",
+      "receiver": null,
+      "signature": "max_string_bytes: Int = 65536",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Duration.days",
+      "module": "std/time",
+      "kind": "assoc_fn",
+      "name": "days",
+      "owner": "Duration",
+      "receiver": "impl Duration",
+      "signature": "fn days(count: Int) -> Duration",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`count` days of 24 hours."
+    },
+    {
+      "path": "Duration.hours",
+      "module": "std/time",
+      "kind": "assoc_fn",
+      "name": "hours",
+      "owner": "Duration",
+      "receiver": "impl Duration",
+      "signature": "fn hours(count: Int) -> Duration",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`count` hours."
+    },
+    {
+      "path": "Duration.minutes",
+      "module": "std/time",
+      "kind": "assoc_fn",
+      "name": "minutes",
+      "owner": "Duration",
+      "receiver": "impl Duration",
+      "signature": "fn minutes(count: Int) -> Duration",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`count` minutes."
+    },
+    {
+      "path": "Duration.ms",
+      "module": "std/time",
+      "kind": "assoc_fn",
+      "name": "ms",
+      "owner": "Duration",
+      "receiver": "impl Duration",
+      "signature": "fn ms(count: Int) -> Duration",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`count` milliseconds."
+    },
+    {
+      "path": "Duration.plus",
+      "module": "std/time",
+      "kind": "method",
+      "name": "plus",
+      "owner": "Duration",
+      "receiver": "impl Duration",
+      "signature": "fn plus(self, other: Duration) -> Duration",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The sum of the two durations."
+    },
+    {
+      "path": "Duration.seconds",
+      "module": "std/time",
+      "kind": "assoc_fn",
+      "name": "seconds",
+      "owner": "Duration",
+      "receiver": "impl Duration",
+      "signature": "fn seconds(count: Int) -> Duration",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`count` seconds."
+    },
+    {
+      "path": "Duration.to_ms",
+      "module": "std/time",
+      "kind": "method",
+      "name": "to_ms",
+      "owner": "Duration",
+      "receiver": "impl Duration",
+      "signature": "fn to_ms(self) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The whole milliseconds, truncated toward zero."
+    },
+    {
+      "path": "Encode",
+      "module": "std/prelude",
+      "kind": "trait",
+      "name": "Encode",
+      "owner": null,
+      "receiver": null,
+      "signature": "trait Encode",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "marker"
+      ],
+      "spellings": null,
+      "doc": "JSON and wire output. Explicit `@derive(Encode)`; never for `Secret[T]` (K0612)."
+    },
+    {
+      "path": "Env",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Env",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Env",
+      "capability": [
+        "Env"
+      ],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "capability"
+      ],
+      "spellings": null,
+      "doc": "Environment variables."
+    },
+    {
+      "path": "Env.get",
+      "module": "std/env",
+      "kind": "method",
+      "name": "get",
+      "owner": "Env",
+      "receiver": "impl Env",
+      "signature": "fn get(self, key: String) -> Option[String]",
+      "capability": [
+        "Env"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The variable's value, or `None` when it is unset. A literal key that looks secret (`*_KEY`, `*_SECRET`, `*_TOKEN`, `PASSWORD`) is K1503: use `secret`."
+    },
+    {
+      "path": "Env.only",
+      "module": "std/env",
+      "kind": "method",
+      "name": "only",
+      "owner": "Env",
+      "receiver": "impl Env",
+      "signature": "fn only(self, keys: List[String]) -> Env",
+      "capability": [
+        "Env"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "An `Env` that can read only `keys`."
+    },
+    {
+      "path": "Env.secret",
+      "module": "std/env",
+      "kind": "method",
+      "name": "secret",
+      "owner": "Env",
+      "receiver": "impl Env",
+      "signature": "fn secret(self, key: String) -> Option[Secret[String]]",
+      "capability": [
+        "Env"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The variable's value as a `Secret`, or `None` when it is unset."
+    },
+    {
+      "path": "Eq",
+      "module": "std/prelude",
+      "kind": "trait",
+      "name": "Eq",
+      "owner": null,
+      "receiver": null,
+      "signature": "trait Eq",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "marker"
+      ],
+      "spellings": null,
+      "doc": "`==` and `!=`. Derived automatically when every component is `Eq`."
+    },
+    {
+      "path": "Err",
+      "module": "std/prelude",
+      "kind": "core_ctor",
+      "name": "Err",
+      "owner": null,
+      "receiver": null,
+      "signature": "Err(error: E) -> Result[T, E]",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": {
+        "en": "Err",
+        "ar": "فشل",
+        "franco": "fashal"
+      },
+      "doc": "The failure case of `Result`."
+    },
+    {
+      "path": "Error",
+      "module": "std/prelude",
+      "kind": "trait",
+      "name": "Error",
+      "owner": null,
+      "receiver": null,
+      "signature": "trait Error",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "An error value: `.message()` is used by `AnyError`, `main` and logs."
+    },
+    {
+      "path": "Error.message",
+      "module": "std/prelude",
+      "kind": "trait_method",
+      "name": "message",
+      "owner": "Error",
+      "receiver": null,
+      "signature": "fn message(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Float",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Float",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Float",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": {
+        "en": "Float",
+        "ar": "كسري",
+        "franco": "kasri"
+      },
+      "doc": "An IEEE-754 binary64 number. Not `Eq`, `Ord` or `Hash`: use `total_cmp`, `near` and `is_nan` (DR-23)."
+    },
+    {
+      "path": "Float.abs",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "abs",
+      "owner": "Float",
+      "receiver": "impl Float",
+      "signature": "fn abs(self) -> Float",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The absolute value."
+    },
+    {
+      "path": "Float.is_nan",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "is_nan",
+      "owner": "Float",
+      "receiver": "impl Float",
+      "signature": "fn is_nan(self) -> Bool",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True for NaN."
+    },
+    {
+      "path": "Float.near",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "near",
+      "owner": "Float",
+      "receiver": "impl Float",
+      "signature": "fn near(self, other: Float, tol: Float) -> Bool",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True when `self` and `other` differ by at most `tol`."
+    },
+    {
+      "path": "Float.to_int",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "to_int",
+      "owner": "Float",
+      "receiver": "impl Float",
+      "signature": "fn to_int(self) -> Option[Int]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The integer value, or `None` for NaN, infinities and values outside the `Int` range. The fraction is truncated toward zero."
+    },
+    {
+      "path": "Float.total_cmp",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "total_cmp",
+      "owner": "Float",
+      "receiver": "impl Float",
+      "signature": "fn total_cmp(self, other: Float) -> Ordering",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "IEEE total order: the only total comparison on `Float`."
+    },
+    {
+      "path": "From",
+      "module": "std/prelude",
+      "kind": "trait",
+      "name": "From",
+      "owner": null,
+      "receiver": null,
+      "signature": "trait From[E]",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "The conversion `?` uses when the error types differ (spec §14.3 rule 2)."
+    },
+    {
+      "path": "From.from",
+      "module": "std/prelude",
+      "kind": "trait_method",
+      "name": "from",
+      "owner": "From",
+      "receiver": null,
+      "signature": "fn from(value: E) -> Self",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Fs",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Fs",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Fs",
+      "capability": [
+        "Fs"
+      ],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "capability"
+      ],
+      "spellings": null,
+      "doc": "Files."
+    },
+    {
+      "path": "Fs.dir",
+      "module": "std/fs",
+      "kind": "method",
+      "name": "dir",
+      "owner": "Fs",
+      "receiver": "impl Fs",
+      "signature": "fn dir(self, root: Path) -> Result[Fs, FsError]",
+      "capability": [
+        "Fs"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "An `Fs` rooted at `root`: `..` and symlinks that leave the root are refused."
+    },
+    {
+      "path": "Fs.exists",
+      "module": "std/fs",
+      "kind": "method",
+      "name": "exists",
+      "owner": "Fs",
+      "receiver": "impl Fs",
+      "signature": "fn exists(self, file: Path) -> Bool",
+      "capability": [
+        "Fs"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "True when the path exists."
+    },
+    {
+      "path": "Fs.list",
+      "module": "std/fs",
+      "kind": "method",
+      "name": "list",
+      "owner": "Fs",
+      "receiver": "impl Fs",
+      "signature": "fn list(self, dir: Path) -> Result[List[String], FsError]",
+      "capability": [
+        "Fs"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "The names in a directory, sorted."
+    },
+    {
+      "path": "Fs.read_bytes",
+      "module": "std/fs",
+      "kind": "method",
+      "name": "read_bytes",
+      "owner": "Fs",
+      "receiver": "impl Fs",
+      "signature": "fn read_bytes(self, file: Path) -> Result[Bytes, FsError]",
+      "capability": [
+        "Fs"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "The whole file as bytes."
+    },
+    {
+      "path": "Fs.read_only",
+      "module": "std/fs",
+      "kind": "method",
+      "name": "read_only",
+      "owner": "Fs",
+      "receiver": "impl Fs",
+      "signature": "fn read_only(self) -> Fs",
+      "capability": [
+        "Fs"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "An `Fs` that cannot write."
+    },
+    {
+      "path": "Fs.read_text",
+      "module": "std/fs",
+      "kind": "method",
+      "name": "read_text",
+      "owner": "Fs",
+      "receiver": "impl Fs",
+      "signature": "fn read_text(self, file: Path) -> Result[String, FsError]",
+      "capability": [
+        "Fs"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "The whole file as UTF-8 text."
+    },
+    {
+      "path": "Fs.write_text",
+      "module": "std/fs",
+      "kind": "method",
+      "name": "write_text",
+      "owner": "Fs",
+      "receiver": "impl Fs",
+      "signature": "fn write_text(self, file: Path, text: String) -> Result[(), FsError]",
+      "capability": [
+        "Fs"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "Creates or replaces the file with `text`."
+    },
+    {
+      "path": "FsError.AlreadyExists",
+      "module": "std/fs",
+      "kind": "variant",
+      "name": "AlreadyExists",
+      "owner": "FsError",
+      "receiver": null,
+      "signature": "AlreadyExists(path: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "FsError.Io",
+      "module": "std/fs",
+      "kind": "variant",
+      "name": "Io",
+      "owner": "FsError",
+      "receiver": null,
+      "signature": "Io(message: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "FsError.NotFound",
+      "module": "std/fs",
+      "kind": "variant",
+      "name": "NotFound",
+      "owner": "FsError",
+      "receiver": null,
+      "signature": "NotFound(path: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "FsError.NotUtf8",
+      "module": "std/fs",
+      "kind": "variant",
+      "name": "NotUtf8",
+      "owner": "FsError",
+      "receiver": null,
+      "signature": "NotUtf8(path: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "FsError.OutsideRoot",
+      "module": "std/fs",
+      "kind": "variant",
+      "name": "OutsideRoot",
+      "owner": "FsError",
+      "receiver": null,
+      "signature": "OutsideRoot(path: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "FsError.PermissionDenied",
+      "module": "std/fs",
+      "kind": "variant",
+      "name": "PermissionDenied",
+      "owner": "FsError",
+      "receiver": null,
+      "signature": "PermissionDenied(path: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "FsError.message",
+      "module": "std/fs",
+      "kind": "method",
+      "name": "message",
+      "owner": "FsError",
+      "receiver": "impl FsError as Error",
+      "signature": "fn message(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "impl:Error"
+      ],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Hash",
+      "module": "std/prelude",
+      "kind": "trait",
+      "name": "Hash",
+      "owner": null,
+      "receiver": null,
+      "signature": "trait Hash",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "marker"
+      ],
+      "spellings": null,
+      "doc": "`Map` and `Set` keys. Derived automatically when every component is `Hash`."
+    },
+    {
+      "path": "Html",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Html",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Html",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "HTML built by `html\"…\"` with contextual auto-escaping."
+    },
+    {
+      "path": "Html.join",
+      "module": "std/prelude",
+      "kind": "assoc_fn",
+      "name": "join",
+      "owner": "Html",
+      "receiver": "impl Html",
+      "signature": "fn join(parts: List[Html]) -> Html",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The fragments one after another."
+    },
+    {
+      "path": "Html.render",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "render",
+      "owner": "Html",
+      "receiver": "impl Html",
+      "signature": "fn render(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The HTML text."
+    },
+    {
+      "path": "HttpError.BadRequest",
+      "module": "std/http",
+      "kind": "variant",
+      "name": "BadRequest",
+      "owner": "HttpError",
+      "receiver": null,
+      "signature": "BadRequest(message: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "HttpError.Conflict",
+      "module": "std/http",
+      "kind": "variant",
+      "name": "Conflict",
+      "owner": "HttpError",
+      "receiver": null,
+      "signature": "Conflict(message: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "HttpError.Forbidden",
+      "module": "std/http",
+      "kind": "variant",
+      "name": "Forbidden",
+      "owner": "HttpError",
+      "receiver": null,
+      "signature": "Forbidden",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "HttpError.Internal",
+      "module": "std/http",
+      "kind": "variant",
+      "name": "Internal",
+      "owner": "HttpError",
+      "receiver": null,
+      "signature": "Internal",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "HttpError.NotFound",
+      "module": "std/http",
+      "kind": "variant",
+      "name": "NotFound",
+      "owner": "HttpError",
+      "receiver": null,
+      "signature": "NotFound",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "HttpError.Unauthorized",
+      "module": "std/http",
+      "kind": "variant",
+      "name": "Unauthorized",
+      "owner": "HttpError",
+      "receiver": null,
+      "signature": "Unauthorized",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "HttpError.from@From[AnyError]",
+      "module": "std/http",
+      "kind": "assoc_fn",
+      "name": "from",
+      "owner": "HttpError",
+      "receiver": "impl HttpError as From[AnyError]",
+      "signature": "fn from(value: AnyError) -> HttpError",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "impl:From"
+      ],
+      "spellings": null,
+      "doc": "Any other error is a 500; the details are logged, not shown."
+    },
+    {
+      "path": "HttpError.from@From[DbError]",
+      "module": "std/http",
+      "kind": "assoc_fn",
+      "name": "from",
+      "owner": "HttpError",
+      "receiver": "impl HttpError as From[DbError]",
+      "signature": "fn from(value: DbError) -> HttpError",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "impl:From"
+      ],
+      "spellings": null,
+      "doc": "A database error is a 500; the details are logged, not shown."
+    },
+    {
+      "path": "HttpError.from@From[DecodeError]",
+      "module": "std/http",
+      "kind": "assoc_fn",
+      "name": "from",
+      "owner": "HttpError",
+      "receiver": "impl HttpError as From[DecodeError]",
+      "signature": "fn from(value: DecodeError) -> HttpError",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "impl:From"
+      ],
+      "spellings": null,
+      "doc": "A decoding error is a 400."
+    },
+    {
+      "path": "HttpError.message",
+      "module": "std/http",
+      "kind": "method",
+      "name": "message",
+      "owner": "HttpError",
+      "receiver": "impl HttpError as Error",
+      "signature": "fn message(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "impl:Error"
+      ],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Instant.date",
+      "module": "std/time",
+      "kind": "method",
+      "name": "date",
+      "owner": "Instant",
+      "receiver": "impl Instant",
+      "signature": "fn date(self, zone: Zone) -> Date",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The date of this instant in `zone`."
+    },
+    {
+      "path": "Instant.plus",
+      "module": "std/time",
+      "kind": "method",
+      "name": "plus",
+      "owner": "Instant",
+      "receiver": "impl Instant",
+      "signature": "fn plus(self, amount: Duration) -> Instant",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The instant `amount` later (earlier for a negative duration)."
+    },
+    {
+      "path": "Instant.since",
+      "module": "std/time",
+      "kind": "method",
+      "name": "since",
+      "owner": "Instant",
+      "receiver": "impl Instant",
+      "signature": "fn since(self, earlier: Instant) -> Duration",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The duration from `earlier` to `self`."
+    },
+    {
+      "path": "Instant.to_iso",
+      "module": "std/time",
+      "kind": "method",
+      "name": "to_iso",
+      "owner": "Instant",
+      "receiver": "impl Instant",
+      "signature": "fn to_iso(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "ISO 8601 text in UTC, such as `2027-01-31T09:30:00Z`."
+    },
+    {
+      "path": "Instant.to_unix_ms",
+      "module": "std/time",
+      "kind": "method",
+      "name": "to_unix_ms",
+      "owner": "Instant",
+      "receiver": "impl Instant",
+      "signature": "fn to_unix_ms(self) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Milliseconds since 1970-01-01T00:00:00Z."
+    },
+    {
+      "path": "Int",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Int",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Int",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": {
+        "en": "Int",
+        "ar": "عدد",
+        "franco": "adad"
+      },
+      "doc": "A 64-bit signed integer in [-2^63, 2^63 - 1] on every backend (D18). `+ - *` trap on overflow, `//` floors, `%` takes the sign of the divisor, and `/` returns `Float`."
+    },
+    {
+      "path": "Int.abs",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "abs",
+      "owner": "Int",
+      "receiver": "impl Int",
+      "signature": "fn abs(self) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The absolute value. Panics on the minimum `Int`."
+    },
+    {
+      "path": "Int.checked_add",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "checked_add",
+      "owner": "Int",
+      "receiver": "impl Int",
+      "signature": "fn checked_add(self, other: Int) -> Option[Int]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`self + other`, or `None` on overflow."
+    },
+    {
+      "path": "Int.checked_mul",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "checked_mul",
+      "owner": "Int",
+      "receiver": "impl Int",
+      "signature": "fn checked_mul(self, other: Int) -> Option[Int]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`self * other`, or `None` on overflow."
+    },
+    {
+      "path": "Int.checked_sub",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "checked_sub",
+      "owner": "Int",
+      "receiver": "impl Int",
+      "signature": "fn checked_sub(self, other: Int) -> Option[Int]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`self - other`, or `None` on overflow."
+    },
+    {
+      "path": "Int.saturating_add",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "saturating_add",
+      "owner": "Int",
+      "receiver": "impl Int",
+      "signature": "fn saturating_add(self, other: Int) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`self + other`, clamped to the 64-bit bounds."
+    },
+    {
+      "path": "Int.to_float",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "to_float",
+      "owner": "Int",
+      "receiver": "impl Int",
+      "signature": "fn to_float(self) -> Float",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The same value as a `Float` (exact up to 2^53)."
+    },
+    {
+      "path": "Int.wrapping_add",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "wrapping_add",
+      "owner": "Int",
+      "receiver": "impl Int",
+      "signature": "fn wrapping_add(self, other: Int) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`self + other`, wrapping around at the 64-bit bounds."
+    },
+    {
+      "path": "Iterable",
+      "module": "std/prelude",
+      "kind": "trait",
+      "name": "Iterable",
+      "owner": null,
+      "receiver": null,
+      "signature": "trait Iterable[T]",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "marker"
+      ],
+      "spellings": null,
+      "doc": "What `for` iterates: `List`, `Set`, `Map` (as pairs), ranges."
+    },
+    {
+      "path": "List",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "List",
+      "owner": null,
+      "receiver": null,
+      "signature": "type List[T]",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": {
+        "en": "List",
+        "ar": "قائمة",
+        "franco": "qayma"
+      },
+      "doc": "An ordered, immutable list. `xs[i]` panics when out of bounds; `xs.get(i)` does not."
+    },
+    {
+      "path": "List.all",
+      "module": "std/list",
+      "kind": "method",
+      "name": "all",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn all(self, predicate: fn(T) -> Bool) -> Bool",
+      "capability": [],
+      "suspends": "if_callback",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True when `predicate` is true for every element (and for the empty list)."
+    },
+    {
+      "path": "List.any",
+      "module": "std/list",
+      "kind": "method",
+      "name": "any",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn any(self, predicate: fn(T) -> Bool) -> Bool",
+      "capability": [],
+      "suspends": "if_callback",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True when `predicate` is true for at least one element."
+    },
+    {
+      "path": "List.append",
+      "module": "std/list",
+      "kind": "method",
+      "name": "append",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn append(self, item: T) -> List[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A copy with `item` added at the end."
+    },
+    {
+      "path": "List.contains",
+      "module": "std/list",
+      "kind": "method",
+      "name": "contains",
+      "owner": "List",
+      "receiver": "impl[T: Eq] List[T]",
+      "signature": "fn contains(self, item: T) -> Bool",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True when some element equals `item`."
+    },
+    {
+      "path": "List.enumerate",
+      "module": "std/list",
+      "kind": "method",
+      "name": "enumerate",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn enumerate(self) -> List[(Int, T)]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Each element with its index: `(0, x0), (1, x1), …`."
+    },
+    {
+      "path": "List.filter",
+      "module": "std/list",
+      "kind": "method",
+      "name": "filter",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn filter(self, keep: fn(T) -> Bool) -> List[T]",
+      "capability": [],
+      "suspends": "if_callback",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The elements for which `keep` is true."
+    },
+    {
+      "path": "List.find",
+      "module": "std/list",
+      "kind": "method",
+      "name": "find",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn find(self, predicate: fn(T) -> Bool) -> Option[T]",
+      "capability": [],
+      "suspends": "if_callback",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The first element for which `predicate` is true."
+    },
+    {
+      "path": "List.first",
+      "module": "std/list",
+      "kind": "method",
+      "name": "first",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn first(self) -> Option[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The first element, or `None` for the empty list."
+    },
+    {
+      "path": "List.fold",
+      "module": "std/list",
+      "kind": "method",
+      "name": "fold",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn fold[A](self, init: A, f: fn(A, T) -> A) -> A",
+      "capability": [],
+      "suspends": "if_callback",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`f(…f(f(init, x0), x1)…)` over the elements in order."
+    },
+    {
+      "path": "List.get",
+      "module": "std/list",
+      "kind": "method",
+      "name": "get",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn get(self, index: Int) -> Option[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The element at `index`, or `None` when it is out of bounds."
+    },
+    {
+      "path": "List.group_by",
+      "module": "std/list",
+      "kind": "method",
+      "name": "group_by",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn group_by[K: Eq + Hash](self, key: fn(T) -> K) -> Map[K, List[T]]",
+      "capability": [],
+      "suspends": "if_callback",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The elements grouped by `key`, groups in order of first appearance."
+    },
+    {
+      "path": "List.insert",
+      "module": "std/list",
+      "kind": "method",
+      "name": "insert",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn insert(self, index: Int, item: T) -> List[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "positional"
+      ],
+      "spellings": null,
+      "doc": "A copy with `item` inserted before `index`. Panics when `index > len`."
+    },
+    {
+      "path": "List.is_empty",
+      "module": "std/list",
+      "kind": "method",
+      "name": "is_empty",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn is_empty(self) -> Bool",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True when the list has no elements."
+    },
+    {
+      "path": "List.last",
+      "module": "std/list",
+      "kind": "method",
+      "name": "last",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn last(self) -> Option[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The last element, or `None` for the empty list."
+    },
+    {
+      "path": "List.len",
+      "module": "std/list",
+      "kind": "method",
+      "name": "len",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn len(self) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The number of elements."
+    },
+    {
+      "path": "List.map",
+      "module": "std/list",
+      "kind": "method",
+      "name": "map",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn map[U](self, f: fn(T) -> U) -> List[U]",
+      "capability": [],
+      "suspends": "if_callback",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`f` applied to every element, in order."
+    },
+    {
+      "path": "List.remove",
+      "module": "std/list",
+      "kind": "method",
+      "name": "remove",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn remove(self, index: Int) -> List[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A copy without the element at `index`. Panics when out of bounds."
+    },
+    {
+      "path": "List.set",
+      "module": "std/list",
+      "kind": "method",
+      "name": "set",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn set(self, index: Int, value: T) -> List[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "positional"
+      ],
+      "spellings": null,
+      "doc": "A copy with the element at `index` replaced. Panics when out of bounds."
+    },
+    {
+      "path": "List.skip",
+      "module": "std/list",
+      "kind": "method",
+      "name": "skip",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn skip(self, count: Int) -> List[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The elements after the first `count`."
+    },
+    {
+      "path": "List.sort_by",
+      "module": "std/list",
+      "kind": "method",
+      "name": "sort_by",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn sort_by(self, cmp: @sync fn(T, T) -> Ordering) -> List[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A stable sort by a comparator that cannot suspend."
+    },
+    {
+      "path": "List.sorted",
+      "module": "std/list",
+      "kind": "method",
+      "name": "sorted",
+      "owner": "List",
+      "receiver": "impl[T: Ord] List[T]",
+      "signature": "fn sorted(self) -> List[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A stable sort in ascending `Ord` order."
+    },
+    {
+      "path": "List.sum",
+      "module": "std/list",
+      "kind": "method",
+      "name": "sum",
+      "owner": "List",
+      "receiver": "impl List[Int]",
+      "signature": "fn sum(self) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The sum of the elements. Panics on overflow."
+    },
+    {
+      "path": "List.take",
+      "module": "std/list",
+      "kind": "method",
+      "name": "take",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn take(self, count: Int) -> List[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The first `count` elements (all of them when there are fewer)."
+    },
+    {
+      "path": "List.zip",
+      "module": "std/list",
+      "kind": "method",
+      "name": "zip",
+      "owner": "List",
+      "receiver": "impl[T] List[T]",
+      "signature": "fn zip[U](self, other: List[U]) -> List[(T, U)]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "positional"
+      ],
+      "spellings": null,
+      "doc": "Pairs of elements at the same index; the longer list is cut to the shorter one."
+    },
+    {
+      "path": "Map",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Map",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Map[K, V]",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": {
+        "en": "Map",
+        "ar": "قاموس",
+        "franco": "qamoos"
+      },
+      "doc": "An immutable, insertion-ordered map. Keys are `Eq + Hash`."
+    },
+    {
+      "path": "Map.contains_key",
+      "module": "std/map",
+      "kind": "method",
+      "name": "contains_key",
+      "owner": "Map",
+      "receiver": "impl[K: Eq + Hash, V] Map[K, V]",
+      "signature": "fn contains_key(self, key: K) -> Bool",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True when `key` is present."
+    },
+    {
+      "path": "Map.filter",
+      "module": "std/map",
+      "kind": "method",
+      "name": "filter",
+      "owner": "Map",
+      "receiver": "impl[K: Eq + Hash, V] Map[K, V]",
+      "signature": "fn filter(self, keep: fn(K, V) -> Bool) -> Map[K, V]",
+      "capability": [],
+      "suspends": "if_callback",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The entries for which `keep` is true."
+    },
+    {
+      "path": "Map.get",
+      "module": "std/map",
+      "kind": "method",
+      "name": "get",
+      "owner": "Map",
+      "receiver": "impl[K: Eq + Hash, V] Map[K, V]",
+      "signature": "fn get(self, key: K) -> Option[V]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The value for `key`, or `None` when it is absent. `m[key]` panics instead."
+    },
+    {
+      "path": "Map.insert",
+      "module": "std/map",
+      "kind": "method",
+      "name": "insert",
+      "owner": "Map",
+      "receiver": "impl[K: Eq + Hash, V] Map[K, V]",
+      "signature": "fn insert(self, key: K, value: V) -> Map[K, V]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "positional"
+      ],
+      "spellings": null,
+      "doc": "A copy with `key` set to `value` (a new key goes last; an existing key keeps its place)."
+    },
+    {
+      "path": "Map.is_empty",
+      "module": "std/map",
+      "kind": "method",
+      "name": "is_empty",
+      "owner": "Map",
+      "receiver": "impl[K: Eq + Hash, V] Map[K, V]",
+      "signature": "fn is_empty(self) -> Bool",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True when the map has no entries."
+    },
+    {
+      "path": "Map.keys",
+      "module": "std/map",
+      "kind": "method",
+      "name": "keys",
+      "owner": "Map",
+      "receiver": "impl[K: Eq + Hash, V] Map[K, V]",
+      "signature": "fn keys(self) -> List[K]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The keys in insertion order."
+    },
+    {
+      "path": "Map.len",
+      "module": "std/map",
+      "kind": "method",
+      "name": "len",
+      "owner": "Map",
+      "receiver": "impl[K: Eq + Hash, V] Map[K, V]",
+      "signature": "fn len(self) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The number of entries."
+    },
+    {
+      "path": "Map.map",
+      "module": "std/map",
+      "kind": "method",
+      "name": "map",
+      "owner": "Map",
+      "receiver": "impl[K: Eq + Hash, V] Map[K, V]",
+      "signature": "fn map[U](self, f: fn(V) -> U) -> Map[K, U]",
+      "capability": [],
+      "suspends": "if_callback",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`f` applied to every value; keys and order are kept."
+    },
+    {
+      "path": "Map.remove",
+      "module": "std/map",
+      "kind": "method",
+      "name": "remove",
+      "owner": "Map",
+      "receiver": "impl[K: Eq + Hash, V] Map[K, V]",
+      "signature": "fn remove(self, key: K) -> Map[K, V]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A copy without `key`."
+    },
+    {
+      "path": "Map.values",
+      "module": "std/map",
+      "kind": "method",
+      "name": "values",
+      "owner": "Map",
+      "receiver": "impl[K: Eq + Hash, V] Map[K, V]",
+      "signature": "fn values(self) -> List[V]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The values in insertion order."
+    },
+    {
+      "path": "Message",
+      "module": "std/prelude",
+      "kind": "trait",
+      "name": "Message",
+      "owner": null,
+      "receiver": null,
+      "signature": "trait Message",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "marker"
+      ],
+      "spellings": null,
+      "doc": "Live-component messages (spec §20.3). Explicit `@derive(Message)`, enums only."
+    },
+    {
+      "path": "Net",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Net",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Net",
+      "capability": [
+        "Net"
+      ],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "capability"
+      ],
+      "spellings": null,
+      "doc": "Outbound HTTP and listening sockets. TLS verification is always on."
+    },
+    {
+      "path": "Net.allow_private",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "allow_private",
+      "owner": "Net",
+      "receiver": "impl Net",
+      "signature": "fn allow_private(self) -> Net",
+      "capability": [
+        "Net"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A `Net` that may reach private address ranges (blocked by default, 04 S12)."
+    },
+    {
+      "path": "Net.only",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "only",
+      "owner": "Net",
+      "receiver": "impl Net",
+      "signature": "fn only(self, hosts: List[String]) -> Net",
+      "capability": [
+        "Net"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A `Net` that may reach only `hosts`."
+    },
+    {
+      "path": "Never",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Never",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Never",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The type with no values: the type of `panic(…)`, `return`, `break` and `continue`."
+    },
+    {
+      "path": "None",
+      "module": "std/prelude",
+      "kind": "core_ctor",
+      "name": "None",
+      "owner": null,
+      "receiver": null,
+      "signature": "None -> Option[T]",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": {
+        "en": "None",
+        "ar": "لا_شيء",
+        "franco": "mafeesh"
+      },
+      "doc": "The absent case of `Option`."
+    },
+    {
+      "path": "Ok",
+      "module": "std/prelude",
+      "kind": "core_ctor",
+      "name": "Ok",
+      "owner": null,
+      "receiver": null,
+      "signature": "Ok(value: T) -> Result[T, E]",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": {
+        "en": "Ok",
+        "ar": "نجاح",
+        "franco": "naga7"
+      },
+      "doc": "The success case of `Result`."
+    },
+    {
+      "path": "Option",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Option",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Option[T]",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": {
+        "en": "Option",
+        "ar": "اختياري",
+        "franco": "ekhtiyari"
+      },
+      "doc": "`Some(value)` or `None`: the only absence value. The variants are the core constructors `Some` and `None` (spec §7.2), so they are not declared here."
+    },
+    {
+      "path": "Option.expect",
+      "module": "std/option",
+      "kind": "method",
+      "name": "expect",
+      "owner": "Option",
+      "receiver": "impl[T] Option[T]",
+      "signature": "fn expect(self, reason: String) -> T",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The value. Panics with `reason` for `None`."
+    },
+    {
+      "path": "Option.is_none",
+      "module": "std/option",
+      "kind": "method",
+      "name": "is_none",
+      "owner": "Option",
+      "receiver": "impl[T] Option[T]",
+      "signature": "fn is_none(self) -> Bool",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True for `None`."
+    },
+    {
+      "path": "Option.is_some",
+      "module": "std/option",
+      "kind": "method",
+      "name": "is_some",
+      "owner": "Option",
+      "receiver": "impl[T] Option[T]",
+      "signature": "fn is_some(self) -> Bool",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True for `Some`."
+    },
+    {
+      "path": "Option.map",
+      "module": "std/option",
+      "kind": "method",
+      "name": "map",
+      "owner": "Option",
+      "receiver": "impl[T] Option[T]",
+      "signature": "fn map[U](self, f: fn(T) -> U) -> Option[U]",
+      "capability": [],
+      "suspends": "if_callback",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`Some(f(x))` for `Some(x)`, `None` for `None`."
+    },
+    {
+      "path": "Option.ok_or",
+      "module": "std/option",
+      "kind": "method",
+      "name": "ok_or",
+      "owner": "Option",
+      "receiver": "impl[T] Option[T]",
+      "signature": "fn ok_or[E](self, error: E) -> Result[T, E]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`Ok(x)` for `Some(x)`, `Err(error)` for `None`."
+    },
+    {
+      "path": "Option.or",
+      "module": "std/option",
+      "kind": "method",
+      "name": "or",
+      "owner": "Option",
+      "receiver": "impl[T] Option[T]",
+      "signature": "fn or(self, default: T) -> T",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The value, or `default` for `None`."
+    },
+    {
+      "path": "Ord",
+      "module": "std/prelude",
+      "kind": "trait",
+      "name": "Ord",
+      "owner": null,
+      "receiver": null,
+      "signature": "trait Ord",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "marker"
+      ],
+      "spellings": null,
+      "doc": "`<`, `<=`, `>`, `>=` and `sorted()`. Explicit `@derive(Ord)`: declaration order."
+    },
+    {
+      "path": "Ordering",
+      "module": "std/prelude",
+      "kind": "enum",
+      "name": "Ordering",
+      "owner": null,
+      "receiver": null,
+      "signature": "enum Ordering",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "The result of a three-way comparison (`Float.total_cmp`, `List.sort_by` comparators)."
+    },
+    {
+      "path": "Ordering.Equal",
+      "module": "std/prelude",
+      "kind": "variant",
+      "name": "Equal",
+      "owner": "Ordering",
+      "receiver": null,
+      "signature": "Equal",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Ordering.Greater",
+      "module": "std/prelude",
+      "kind": "variant",
+      "name": "Greater",
+      "owner": "Ordering",
+      "receiver": null,
+      "signature": "Greater",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Ordering.Less",
+      "module": "std/prelude",
+      "kind": "variant",
+      "name": "Less",
+      "owner": "Ordering",
+      "receiver": null,
+      "signature": "Less",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Output.status",
+      "module": "std/proc",
+      "kind": "field",
+      "name": "status",
+      "owner": "Output",
+      "receiver": null,
+      "signature": "status: Int",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Output.stderr",
+      "module": "std/proc",
+      "kind": "field",
+      "name": "stderr",
+      "owner": "Output",
+      "receiver": null,
+      "signature": "stderr: String",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Output.stdout",
+      "module": "std/proc",
+      "kind": "field",
+      "name": "stdout",
+      "owner": "Output",
+      "receiver": null,
+      "signature": "stdout: String",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "ParseError.Empty",
+      "module": "std/string",
+      "kind": "variant",
+      "name": "Empty",
+      "owner": "ParseError",
+      "receiver": null,
+      "signature": "Empty",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "ParseError.Invalid",
+      "module": "std/string",
+      "kind": "variant",
+      "name": "Invalid",
+      "owner": "ParseError",
+      "receiver": null,
+      "signature": "Invalid(text: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "ParseError.OutOfRange",
+      "module": "std/string",
+      "kind": "variant",
+      "name": "OutOfRange",
+      "owner": "ParseError",
+      "receiver": null,
+      "signature": "OutOfRange(text: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "ParseError.message",
+      "module": "std/string",
+      "kind": "method",
+      "name": "message",
+      "owner": "ParseError",
+      "receiver": "impl ParseError as Error",
+      "signature": "fn message(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "impl:Error"
+      ],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Path",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Path",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Path",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A file path built by `path\"…\"`; holes must be `PathSegment`s. See std/path."
+    },
+    {
+      "path": "Path.join",
+      "module": "std/path",
+      "kind": "assoc_fn",
+      "name": "join",
+      "owner": "Path",
+      "receiver": "impl Path",
+      "signature": "fn join(base: Path, rel: Path) -> Result[Path, PathError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`rel` inside `base`. Refuses a result that escapes `base` (04 S13)."
+    },
+    {
+      "path": "Path.to_text",
+      "module": "std/path",
+      "kind": "method",
+      "name": "to_text",
+      "owner": "Path",
+      "receiver": "impl Path",
+      "signature": "fn to_text(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The path as text, with `/` separators."
+    },
+    {
+      "path": "PathError.DotSegment",
+      "module": "std/path",
+      "kind": "variant",
+      "name": "DotSegment",
+      "owner": "PathError",
+      "receiver": null,
+      "signature": "DotSegment",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "PathError.DriveLetter",
+      "module": "std/path",
+      "kind": "variant",
+      "name": "DriveLetter",
+      "owner": "PathError",
+      "receiver": null,
+      "signature": "DriveLetter",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "PathError.Empty",
+      "module": "std/path",
+      "kind": "variant",
+      "name": "Empty",
+      "owner": "PathError",
+      "receiver": null,
+      "signature": "Empty",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "PathError.EscapesBase",
+      "module": "std/path",
+      "kind": "variant",
+      "name": "EscapesBase",
+      "owner": "PathError",
+      "receiver": null,
+      "signature": "EscapesBase",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "PathError.Nul",
+      "module": "std/path",
+      "kind": "variant",
+      "name": "Nul",
+      "owner": "PathError",
+      "receiver": null,
+      "signature": "Nul",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "PathError.ReservedName",
+      "module": "std/path",
+      "kind": "variant",
+      "name": "ReservedName",
+      "owner": "PathError",
+      "receiver": null,
+      "signature": "ReservedName(name: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "PathError.Separator",
+      "module": "std/path",
+      "kind": "variant",
+      "name": "Separator",
+      "owner": "PathError",
+      "receiver": null,
+      "signature": "Separator",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "PathError.message",
+      "module": "std/path",
+      "kind": "method",
+      "name": "message",
+      "owner": "PathError",
+      "receiver": "impl PathError as Error",
+      "signature": "fn message(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "impl:Error"
+      ],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "PathSegment",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "PathSegment",
+      "owner": null,
+      "receiver": null,
+      "signature": "type PathSegment",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "One validated path component (no `/`, `\\`, `.`, `..`, NUL or reserved name)."
+    },
+    {
+      "path": "PathSegment.parse",
+      "module": "std/path",
+      "kind": "assoc_fn",
+      "name": "parse",
+      "owner": "PathSegment",
+      "receiver": "impl PathSegment",
+      "signature": "fn parse(text: String) -> Result[PathSegment, PathError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A single path component. Rejects the empty string, `.`, `..`, `/`, `\\`, NUL, drive letters and Windows reserved names."
+    },
+    {
+      "path": "Proc",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Proc",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Proc",
+      "capability": [
+        "Proc"
+      ],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "capability"
+      ],
+      "spellings": null,
+      "doc": "Running `Command`s (never a shell)."
+    },
+    {
+      "path": "Proc.only",
+      "module": "std/proc",
+      "kind": "method",
+      "name": "only",
+      "owner": "Proc",
+      "receiver": "impl Proc",
+      "signature": "fn only(self, programs: List[Path]) -> Proc",
+      "capability": [
+        "Proc"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A `Proc` that may run only `programs`."
+    },
+    {
+      "path": "Proc.pipe",
+      "module": "std/proc",
+      "kind": "method",
+      "name": "pipe",
+      "owner": "Proc",
+      "receiver": "impl Proc",
+      "signature": "fn pipe(self, commands: List[Command]) -> Result[Output, ProcError]",
+      "capability": [
+        "Proc"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "Runs `commands` as a pipeline, each one's stdout feeding the next one's stdin."
+    },
+    {
+      "path": "Proc.run",
+      "module": "std/proc",
+      "kind": "method",
+      "name": "run",
+      "owner": "Proc",
+      "receiver": "impl Proc",
+      "signature": "fn run(self, command: Command, env: Map[String, String] = {}) -> Result[Output, ProcError]",
+      "capability": [
+        "Proc"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "Runs `command` to completion. The child gets an empty environment unless `env` is given. A whole-word hole value starting with `-` and not after a literal `--` is `Err(.OptionLikeArgument(index))`, and the process is not started."
+    },
+    {
+      "path": "ProcError.Io",
+      "module": "std/proc",
+      "kind": "variant",
+      "name": "Io",
+      "owner": "ProcError",
+      "receiver": null,
+      "signature": "Io(message: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "ProcError.NotAllowed",
+      "module": "std/proc",
+      "kind": "variant",
+      "name": "NotAllowed",
+      "owner": "ProcError",
+      "receiver": null,
+      "signature": "NotAllowed(program: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "ProcError.NotFound",
+      "module": "std/proc",
+      "kind": "variant",
+      "name": "NotFound",
+      "owner": "ProcError",
+      "receiver": null,
+      "signature": "NotFound(program: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "ProcError.OptionLikeArgument",
+      "module": "std/proc",
+      "kind": "variant",
+      "name": "OptionLikeArgument",
+      "owner": "ProcError",
+      "receiver": null,
+      "signature": "OptionLikeArgument(index: Int)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "ProcError.message",
+      "module": "std/proc",
+      "kind": "method",
+      "name": "message",
+      "owner": "ProcError",
+      "receiver": "impl ProcError as Error",
+      "signature": "fn message(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "impl:Error"
+      ],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Rand",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Rand",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Rand",
+      "capability": [
+        "Rand"
+      ],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "capability"
+      ],
+      "spellings": null,
+      "doc": "A cryptographically secure random number generator."
+    },
+    {
+      "path": "Rand.int",
+      "module": "std/random",
+      "kind": "method",
+      "name": "int",
+      "owner": "Rand",
+      "receiver": "impl Rand",
+      "signature": "fn int(self, range: Range[Int]) -> Int",
+      "capability": [
+        "Rand"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A uniformly random integer in `range` (CSPRNG)."
+    },
+    {
+      "path": "Rand.seeded",
+      "module": "std/random",
+      "kind": "assoc_fn",
+      "name": "seeded",
+      "owner": "Rand",
+      "receiver": "impl Rand",
+      "signature": "fn seeded(seed: Int) -> SeededRand",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A deterministic generator started from `seed`. Needs no capability."
+    },
+    {
+      "path": "Rand.token",
+      "module": "std/random",
+      "kind": "method",
+      "name": "token",
+      "owner": "Rand",
+      "receiver": "impl Rand",
+      "signature": "fn token(self, bytes: Int) -> Secret[String]",
+      "capability": [
+        "Rand"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`bytes` random bytes as URL-safe base64 text."
+    },
+    {
+      "path": "Rand.uuid_v4",
+      "module": "std/random",
+      "kind": "method",
+      "name": "uuid_v4",
+      "owner": "Rand",
+      "receiver": "impl Rand",
+      "signature": "fn uuid_v4(self) -> String",
+      "capability": [
+        "Rand"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A random version 4 UUID."
+    },
+    {
+      "path": "Range",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Range",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Range[T]",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`a..b` (end excluded) and `a..=b` (end included)."
+    },
+    {
+      "path": "Regex",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Regex",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Regex",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A linear-time (RE2) pattern built by `regex\"…\"` or `Regex.parse`."
+    },
+    {
+      "path": "Regex.matches",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "matches",
+      "owner": "Regex",
+      "receiver": "impl Regex",
+      "signature": "fn matches(self, text: String) -> Bool",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True when the pattern matches somewhere in `text`."
+    },
+    {
+      "path": "Regex.parse",
+      "module": "std/prelude",
+      "kind": "assoc_fn",
+      "name": "parse",
+      "owner": "Regex",
+      "receiver": "impl Regex",
+      "signature": "fn parse(pattern: String) -> Result[Regex, RegexError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Compiles a runtime pattern with the same engine as `regex\"…\"`."
+    },
+    {
+      "path": "Regex.replace",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "replace",
+      "owner": "Regex",
+      "receiver": "impl Regex",
+      "signature": "fn replace(self, text: String, replacement: String) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`text` with every match replaced by `replacement` (taken literally)."
+    },
+    {
+      "path": "RegexError",
+      "module": "std/prelude",
+      "kind": "enum",
+      "name": "RegexError",
+      "owner": null,
+      "receiver": null,
+      "signature": "enum RegexError",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "Why `Regex.parse` rejected its pattern."
+    },
+    {
+      "path": "RegexError.Syntax",
+      "module": "std/prelude",
+      "kind": "variant",
+      "name": "Syntax",
+      "owner": "RegexError",
+      "receiver": null,
+      "signature": "Syntax(message: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "RegexError.message",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "message",
+      "owner": "RegexError",
+      "receiver": "impl RegexError as Error",
+      "signature": "fn message(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "impl:Error"
+      ],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Request.app",
+      "module": "std/http",
+      "kind": "field",
+      "name": "app",
+      "owner": "Request",
+      "receiver": null,
+      "signature": "app: A",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Request.form",
+      "module": "std/http",
+      "kind": "method",
+      "name": "form",
+      "owner": "Request",
+      "receiver": "impl[A] Request[A]",
+      "signature": "fn form[T: Decode](self) -> Result[T, HttpError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The form body decoded into `T` (schema-first); a bad body is a 400."
+    },
+    {
+      "path": "Request.header",
+      "module": "std/http",
+      "kind": "method",
+      "name": "header",
+      "owner": "Request",
+      "receiver": "impl[A] Request[A]",
+      "signature": "fn header(self, name: String) -> Option[String]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The request header `name`, or `None`."
+    },
+    {
+      "path": "Request.json",
+      "module": "std/http",
+      "kind": "method",
+      "name": "json",
+      "owner": "Request",
+      "receiver": "impl[A] Request[A]",
+      "signature": "fn json[T: Decode](self) -> Result[T, HttpError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The JSON body decoded into `T` (schema-first, default limits); a bad body is a 400."
+    },
+    {
+      "path": "Request.path",
+      "module": "std/http",
+      "kind": "method",
+      "name": "path",
+      "owner": "Request",
+      "receiver": "impl[A] Request[A]",
+      "signature": "fn path(self, name: String) -> Result[String, HttpError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The path parameter `name`."
+    },
+    {
+      "path": "Request.path_int",
+      "module": "std/http",
+      "kind": "method",
+      "name": "path_int",
+      "owner": "Request",
+      "receiver": "impl[A] Request[A]",
+      "signature": "fn path_int(self, name: String) -> Result[Int, HttpError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The path parameter `name` as an `Int`; a bad value is a 400."
+    },
+    {
+      "path": "Request.query",
+      "module": "std/http",
+      "kind": "method",
+      "name": "query",
+      "owner": "Request",
+      "receiver": "impl[A] Request[A]",
+      "signature": "fn query[T: Decode](self) -> Result[T, HttpError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The query string decoded into `T` (schema-first); a bad value is a 400."
+    },
+    {
+      "path": "Request.query_param",
+      "module": "std/http",
+      "kind": "method",
+      "name": "query_param",
+      "owner": "Request",
+      "receiver": "impl[A] Request[A]",
+      "signature": "fn query_param(self, name: String) -> Option[String]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The first query parameter `name`, or `None`."
+    },
+    {
+      "path": "Response.html",
+      "module": "std/http",
+      "kind": "assoc_fn",
+      "name": "html",
+      "owner": "Response",
+      "receiver": "impl Response",
+      "signature": "fn html(page: Html) -> Response",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A 200 response with an HTML page."
+    },
+    {
+      "path": "Response.json",
+      "module": "std/http",
+      "kind": "assoc_fn",
+      "name": "json",
+      "owner": "Response",
+      "receiver": "impl Response",
+      "signature": "fn json[T: Encode](value: T) -> Response",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A 200 response with `value` as JSON."
+    },
+    {
+      "path": "Response.redirect",
+      "module": "std/http",
+      "kind": "assoc_fn",
+      "name": "redirect",
+      "owner": "Response",
+      "receiver": "impl Response",
+      "signature": "fn redirect(to: Url) -> Response",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A 303 redirect. `to` must be relative or on the app's allow-list (04 S17)."
+    },
+    {
+      "path": "Response.status",
+      "module": "std/http",
+      "kind": "method",
+      "name": "status",
+      "owner": "Response",
+      "receiver": "impl Response",
+      "signature": "fn status(self, code: Int) -> Response",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The same response with another status code."
+    },
+    {
+      "path": "Response.text",
+      "module": "std/http",
+      "kind": "assoc_fn",
+      "name": "text",
+      "owner": "Response",
+      "receiver": "impl Response",
+      "signature": "fn text(body: String) -> Response",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A 200 response with plain text."
+    },
+    {
+      "path": "Result",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Result",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Result[T, E]",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": {
+        "en": "Result",
+        "ar": "نتيجة",
+        "franco": "natiga"
+      },
+      "doc": "`Ok(value)` or `Err(error)`. Must-use (K1303). The variants are the core constructors `Ok` and `Err` (spec §7.2)."
+    },
+    {
+      "path": "Result.context",
+      "module": "std/result",
+      "kind": "method",
+      "name": "context",
+      "owner": "Result",
+      "receiver": "impl[T, E: Error] Result[T, E]",
+      "signature": "fn context(self, message: String) -> Result[T, AnyError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The error boxed into `AnyError` with `message` added to its chain."
+    },
+    {
+      "path": "Result.expect",
+      "module": "std/result",
+      "kind": "method",
+      "name": "expect",
+      "owner": "Result",
+      "receiver": "impl[T, E] Result[T, E]",
+      "signature": "fn expect(self, reason: String) -> T",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The value. Panics with `reason` for an `Err`."
+    },
+    {
+      "path": "Result.is_err",
+      "module": "std/result",
+      "kind": "method",
+      "name": "is_err",
+      "owner": "Result",
+      "receiver": "impl[T, E] Result[T, E]",
+      "signature": "fn is_err(self) -> Bool",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True for `Err`."
+    },
+    {
+      "path": "Result.is_ok",
+      "module": "std/result",
+      "kind": "method",
+      "name": "is_ok",
+      "owner": "Result",
+      "receiver": "impl[T, E] Result[T, E]",
+      "signature": "fn is_ok(self) -> Bool",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True for `Ok`."
+    },
+    {
+      "path": "Result.map",
+      "module": "std/result",
+      "kind": "method",
+      "name": "map",
+      "owner": "Result",
+      "receiver": "impl[T, E] Result[T, E]",
+      "signature": "fn map[U](self, f: fn(T) -> U) -> Result[U, E]",
+      "capability": [],
+      "suspends": "if_callback",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`Ok(f(x))` for `Ok(x)`; an `Err` is kept."
+    },
+    {
+      "path": "Result.map_err",
+      "module": "std/result",
+      "kind": "method",
+      "name": "map_err",
+      "owner": "Result",
+      "receiver": "impl[T, E] Result[T, E]",
+      "signature": "fn map_err[F](self, f: fn(E) -> F) -> Result[T, F]",
+      "capability": [],
+      "suspends": "if_callback",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`Err(f(e))` for `Err(e)`; an `Ok` is kept."
+    },
+    {
+      "path": "Result.ok",
+      "module": "std/result",
+      "kind": "method",
+      "name": "ok",
+      "owner": "Result",
+      "receiver": "impl[T, E] Result[T, E]",
+      "signature": "fn ok(self) -> Option[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`Some(x)` for `Ok(x)`, `None` for an `Err`."
+    },
+    {
+      "path": "Rounding.Ceiling",
+      "module": "std/decimal",
+      "kind": "variant",
+      "name": "Ceiling",
+      "owner": "Rounding",
+      "receiver": null,
+      "signature": "Ceiling",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Rounding.Down",
+      "module": "std/decimal",
+      "kind": "variant",
+      "name": "Down",
+      "owner": "Rounding",
+      "receiver": null,
+      "signature": "Down",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Rounding.Floor",
+      "module": "std/decimal",
+      "kind": "variant",
+      "name": "Floor",
+      "owner": "Rounding",
+      "receiver": null,
+      "signature": "Floor",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Rounding.HalfEven",
+      "module": "std/decimal",
+      "kind": "variant",
+      "name": "HalfEven",
+      "owner": "Rounding",
+      "receiver": null,
+      "signature": "HalfEven",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Rounding.HalfUp",
+      "module": "std/decimal",
+      "kind": "variant",
+      "name": "HalfUp",
+      "owner": "Rounding",
+      "receiver": null,
+      "signature": "HalfUp",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Rounding.Up",
+      "module": "std/decimal",
+      "kind": "variant",
+      "name": "Up",
+      "owner": "Rounding",
+      "receiver": null,
+      "signature": "Up",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Router.delete",
+      "module": "std/http",
+      "kind": "method",
+      "name": "delete",
+      "owner": "Router",
+      "receiver": "impl[A] Router[A]",
+      "signature": "fn delete(self, path: String, handler: fn(Request[A]) -> Result[Response, HttpError], access: Access) -> Router[A]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "stores_callbacks"
+      ],
+      "spellings": null,
+      "doc": "Adds a `DELETE` route."
+    },
+    {
+      "path": "Router.get",
+      "module": "std/http",
+      "kind": "method",
+      "name": "get",
+      "owner": "Router",
+      "receiver": "impl[A] Router[A]",
+      "signature": "fn get(self, path: String, handler: fn(Request[A]) -> Result[Response, HttpError], access: Access) -> Router[A]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "stores_callbacks"
+      ],
+      "spellings": null,
+      "doc": "Adds a `GET` route. Escape the braces of path parameters: `\"/notes/\\{id\\}\"`."
+    },
+    {
+      "path": "Router.post",
+      "module": "std/http",
+      "kind": "method",
+      "name": "post",
+      "owner": "Router",
+      "receiver": "impl[A] Router[A]",
+      "signature": "fn post(self, path: String, handler: fn(Request[A]) -> Result[Response, HttpError], access: Access) -> Router[A]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "stores_callbacks"
+      ],
+      "spellings": null,
+      "doc": "Adds a `POST` route."
+    },
+    {
+      "path": "Router.put",
+      "module": "std/http",
+      "kind": "method",
+      "name": "put",
+      "owner": "Router",
+      "receiver": "impl[A] Router[A]",
+      "signature": "fn put(self, path: String, handler: fn(Request[A]) -> Result[Response, HttpError], access: Access) -> Router[A]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "stores_callbacks"
+      ],
+      "spellings": null,
+      "doc": "Adds a `PUT` route."
+    },
+    {
+      "path": "Row",
+      "module": "std/prelude",
+      "kind": "trait",
+      "name": "Row",
+      "owner": null,
+      "receiver": null,
+      "signature": "trait Row",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "marker"
+      ],
+      "spellings": null,
+      "doc": "Decoding SQL rows by column name. Explicit `@derive(Row)`."
+    },
+    {
+      "path": "Screen",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Screen",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Screen",
+      "capability": [
+        "Screen"
+      ],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "capability"
+      ],
+      "spellings": null,
+      "doc": "A canvas and input (`js-browser` only)."
+    },
+    {
+      "path": "Secret",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Secret",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Secret[T]",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A value that shows as `[REDACTED]`, has no `Encode`, and no `Eq`, `Ord` or `Hash`."
+    },
+    {
+      "path": "Secret.expose",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "expose",
+      "owner": "Secret",
+      "receiver": "impl[T] Secret[T]",
+      "signature": "fn expose(self) -> T",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The wrapped value. An escape hatch counted by `kalam audit`."
+    },
+    {
+      "path": "Secret.new",
+      "module": "std/prelude",
+      "kind": "assoc_fn",
+      "name": "new",
+      "owner": "Secret",
+      "receiver": "impl[T] Secret[T]",
+      "signature": "fn new(value: T) -> Secret[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Wraps `value`."
+    },
+    {
+      "path": "SeededRand.float",
+      "module": "std/random",
+      "kind": "method",
+      "name": "float",
+      "owner": "SeededRand",
+      "receiver": "impl SeededRand",
+      "signature": "fn float(self) -> Float",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The next `Float` in [0, 1)."
+    },
+    {
+      "path": "SeededRand.int",
+      "module": "std/random",
+      "kind": "method",
+      "name": "int",
+      "owner": "SeededRand",
+      "receiver": "impl SeededRand",
+      "signature": "fn int(self, range: Range[Int]) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The next integer in `range`."
+    },
+    {
+      "path": "ServeError.AddressInUse",
+      "module": "std/http",
+      "kind": "variant",
+      "name": "AddressInUse",
+      "owner": "ServeError",
+      "receiver": null,
+      "signature": "AddressInUse(port: Int)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "ServeError.Io",
+      "module": "std/http",
+      "kind": "variant",
+      "name": "Io",
+      "owner": "ServeError",
+      "receiver": null,
+      "signature": "Io(message: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "ServeError.message",
+      "module": "std/http",
+      "kind": "method",
+      "name": "message",
+      "owner": "ServeError",
+      "receiver": "impl ServeError as Error",
+      "signature": "fn message(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "impl:Error"
+      ],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Set",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Set",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Set[T]",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": {
+        "en": "Set",
+        "ar": "مجموعة",
+        "franco": "magmoo3a"
+      },
+      "doc": "An immutable, insertion-ordered set. Built with `Set.of([…])`."
+    },
+    {
+      "path": "Set.contains",
+      "module": "std/set",
+      "kind": "method",
+      "name": "contains",
+      "owner": "Set",
+      "receiver": "impl[T: Eq + Hash] Set[T]",
+      "signature": "fn contains(self, item: T) -> Bool",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True when `item` is in the set."
+    },
+    {
+      "path": "Set.insert",
+      "module": "std/set",
+      "kind": "method",
+      "name": "insert",
+      "owner": "Set",
+      "receiver": "impl[T: Eq + Hash] Set[T]",
+      "signature": "fn insert(self, item: T) -> Set[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A copy with `item` added (no change when it is present)."
+    },
+    {
+      "path": "Set.intersection",
+      "module": "std/set",
+      "kind": "method",
+      "name": "intersection",
+      "owner": "Set",
+      "receiver": "impl[T: Eq + Hash] Set[T]",
+      "signature": "fn intersection(self, other: Set[T]) -> Set[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The elements of `self` that are also in `other`."
+    },
+    {
+      "path": "Set.is_empty",
+      "module": "std/set",
+      "kind": "method",
+      "name": "is_empty",
+      "owner": "Set",
+      "receiver": "impl[T: Eq + Hash] Set[T]",
+      "signature": "fn is_empty(self) -> Bool",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True when the set has no elements."
+    },
+    {
+      "path": "Set.len",
+      "module": "std/set",
+      "kind": "method",
+      "name": "len",
+      "owner": "Set",
+      "receiver": "impl[T: Eq + Hash] Set[T]",
+      "signature": "fn len(self) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The number of elements."
+    },
+    {
+      "path": "Set.of",
+      "module": "std/set",
+      "kind": "assoc_fn",
+      "name": "of",
+      "owner": "Set",
+      "receiver": "impl[T: Eq + Hash] Set[T]",
+      "signature": "fn of(items: List[T]) -> Set[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A set of the distinct items, in order of first appearance."
+    },
+    {
+      "path": "Set.remove",
+      "module": "std/set",
+      "kind": "method",
+      "name": "remove",
+      "owner": "Set",
+      "receiver": "impl[T: Eq + Hash] Set[T]",
+      "signature": "fn remove(self, item: T) -> Set[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A copy without `item`."
+    },
+    {
+      "path": "Set.to_list",
+      "module": "std/set",
+      "kind": "method",
+      "name": "to_list",
+      "owner": "Set",
+      "receiver": "impl[T: Eq + Hash] Set[T]",
+      "signature": "fn to_list(self) -> List[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The elements in insertion order."
+    },
+    {
+      "path": "Set.union",
+      "module": "std/set",
+      "kind": "method",
+      "name": "union",
+      "owner": "Set",
+      "receiver": "impl[T: Eq + Hash] Set[T]",
+      "signature": "fn union(self, other: Set[T]) -> Set[T]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The elements of both sets: `self`'s first, then the new ones of `other`."
+    },
+    {
+      "path": "Show",
+      "module": "std/prelude",
+      "kind": "trait",
+      "name": "Show",
+      "owner": null,
+      "receiver": null,
+      "signature": "trait Show",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "Text form used by interpolation, `print` and logs. Derived automatically."
+    },
+    {
+      "path": "Show.show",
+      "module": "std/prelude",
+      "kind": "trait_method",
+      "name": "show",
+      "owner": "Show",
+      "receiver": null,
+      "signature": "fn show(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Some",
+      "module": "std/prelude",
+      "kind": "core_ctor",
+      "name": "Some",
+      "owner": null,
+      "receiver": null,
+      "signature": "Some(value: T) -> Option[T]",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": {
+        "en": "Some",
+        "ar": "موجود",
+        "franco": "mawgood"
+      },
+      "doc": "The present case of `Option`."
+    },
+    {
+      "path": "Sql",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Sql",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Sql",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "One SQL statement built by `sql\"…\"`; holes are bound parameters."
+    },
+    {
+      "path": "Sql.join",
+      "module": "std/prelude",
+      "kind": "assoc_fn",
+      "name": "join",
+      "owner": "Sql",
+      "receiver": "impl Sql",
+      "signature": "fn join(parts: List[Sql], sep: Sql) -> Sql",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The fragments joined by `sep`."
+    },
+    {
+      "path": "SqlParam",
+      "module": "std/prelude",
+      "kind": "trait",
+      "name": "SqlParam",
+      "owner": null,
+      "receiver": null,
+      "signature": "trait SqlParam",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "marker"
+      ],
+      "spellings": null,
+      "doc": "Types accepted in a `sql\"…\"` hole (spec §17.3)."
+    },
+    {
+      "path": "StaticParts",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "StaticParts",
+      "owner": null,
+      "receiver": null,
+      "signature": "type StaticParts",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The literal text of a tagged literal. Only the compiler can create one (spec §17.2)."
+    },
+    {
+      "path": "Stdin",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Stdin",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Stdin",
+      "capability": [
+        "Stdin"
+      ],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "capability"
+      ],
+      "spellings": null,
+      "doc": "Reading standard input."
+    },
+    {
+      "path": "Stdin.read_line",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "read_line",
+      "owner": "Stdin",
+      "receiver": "impl Stdin",
+      "signature": "fn read_line(self) -> Option[String]",
+      "capability": [
+        "Stdin"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "The next line without its terminator, or `None` at the end of input."
+    },
+    {
+      "path": "String",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "String",
+      "owner": null,
+      "receiver": null,
+      "signature": "type String",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": {
+        "en": "String",
+        "ar": "نص",
+        "franco": "nass"
+      },
+      "doc": "An immutable sequence of Unicode scalar values. Strings cannot be indexed (K0650)."
+    },
+    {
+      "path": "String.arabic_fold",
+      "module": "std/string",
+      "kind": "method",
+      "name": "arabic_fold",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn arabic_fold(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Arabic letter forms unified (spec §5.3): hamza and alef forms, ى and ي, ة and ه."
+    },
+    {
+      "path": "String.byte_len",
+      "module": "std/string",
+      "kind": "method",
+      "name": "byte_len",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn byte_len(self) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The length of the UTF-8 encoding in bytes."
+    },
+    {
+      "path": "String.chars",
+      "module": "std/string",
+      "kind": "method",
+      "name": "chars",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn chars(self) -> List[String]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Each Unicode scalar value as a one-character string."
+    },
+    {
+      "path": "String.contains",
+      "module": "std/string",
+      "kind": "method",
+      "name": "contains",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn contains(self, part: String) -> Bool",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True when `part` occurs in the string."
+    },
+    {
+      "path": "String.ends_with",
+      "module": "std/string",
+      "kind": "method",
+      "name": "ends_with",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn ends_with(self, suffix: String) -> Bool",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True when the string ends with `suffix`."
+    },
+    {
+      "path": "String.graphemes",
+      "module": "std/string",
+      "kind": "method",
+      "name": "graphemes",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn graphemes(self) -> List[String]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Each user-perceived character (extended grapheme cluster)."
+    },
+    {
+      "path": "String.is_empty",
+      "module": "std/string",
+      "kind": "method",
+      "name": "is_empty",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn is_empty(self) -> Bool",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True for the empty string."
+    },
+    {
+      "path": "String.join",
+      "module": "std/string",
+      "kind": "assoc_fn",
+      "name": "join",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn join(parts: List[String], sep: String) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The parts with `sep` between each two."
+    },
+    {
+      "path": "String.len_chars",
+      "module": "std/string",
+      "kind": "method",
+      "name": "len_chars",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn len_chars(self) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The number of Unicode scalar values."
+    },
+    {
+      "path": "String.nfc",
+      "module": "std/string",
+      "kind": "method",
+      "name": "nfc",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn nfc(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The NFC normal form. Equality is code-point equality, so normalize explicitly."
+    },
+    {
+      "path": "String.replace",
+      "module": "std/string",
+      "kind": "method",
+      "name": "replace",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn replace(self, old: String, new: String) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "positional"
+      ],
+      "spellings": null,
+      "doc": "Every occurrence of `old` replaced by `new`."
+    },
+    {
+      "path": "String.slice",
+      "module": "std/string",
+      "kind": "method",
+      "name": "slice",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn slice(self, from: Int, to: Int) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "positional"
+      ],
+      "spellings": null,
+      "doc": "The graphemes from index `from` up to, not including, `to`."
+    },
+    {
+      "path": "String.split",
+      "module": "std/string",
+      "kind": "method",
+      "name": "split",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn split(self, sep: String) -> List[String]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The pieces between occurrences of `sep`."
+    },
+    {
+      "path": "String.starts_with",
+      "module": "std/string",
+      "kind": "method",
+      "name": "starts_with",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn starts_with(self, prefix: String) -> Bool",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "True when the string begins with `prefix`."
+    },
+    {
+      "path": "String.to_decimal",
+      "module": "std/string",
+      "kind": "method",
+      "name": "to_decimal",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn to_decimal(self) -> Result[Decimal, ParseError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The exact `Decimal` written in the text."
+    },
+    {
+      "path": "String.to_float",
+      "module": "std/string",
+      "kind": "method",
+      "name": "to_float",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn to_float(self) -> Result[Float, ParseError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The `Float` written in the text."
+    },
+    {
+      "path": "String.to_int",
+      "module": "std/string",
+      "kind": "method",
+      "name": "to_int",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn to_int(self) -> Result[Int, ParseError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The integer written in the text: an optional `-`, then ASCII or Arabic-Indic digits. Text outside the `Int` range is an error, never a rounded value."
+    },
+    {
+      "path": "String.to_lower",
+      "module": "std/string",
+      "kind": "method",
+      "name": "to_lower",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn to_lower(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Lowercase (Unicode default case mapping)."
+    },
+    {
+      "path": "String.to_upper",
+      "module": "std/string",
+      "kind": "method",
+      "name": "to_upper",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn to_upper(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Uppercase (Unicode default case mapping)."
+    },
+    {
+      "path": "String.trim",
+      "module": "std/string",
+      "kind": "method",
+      "name": "trim",
+      "owner": "String",
+      "receiver": "impl String",
+      "signature": "fn trim(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Without leading and trailing whitespace."
+    },
+    {
+      "path": "Template",
+      "module": "std/prelude",
+      "kind": "trait",
+      "name": "Template",
+      "owner": null,
+      "receiver": null,
+      "signature": "trait Template",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "A user-defined tagged literal, registered with `@tag(\"name\")` (spec §17.8)."
+    },
+    {
+      "path": "Template.build",
+      "module": "std/prelude",
+      "kind": "trait_method",
+      "name": "build",
+      "owner": "Template",
+      "receiver": null,
+      "signature": "fn build(parts: StaticParts, holes: List[TemplateHole]) -> Self",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "TemplateHole",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "TemplateHole",
+      "owner": null,
+      "receiver": null,
+      "signature": "type TemplateHole",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "One typed hole of a tagged literal, passed to `Template.build`."
+    },
+    {
+      "path": "TimeError.InvalidDate",
+      "module": "std/time",
+      "kind": "variant",
+      "name": "InvalidDate",
+      "owner": "TimeError",
+      "receiver": null,
+      "signature": "InvalidDate(text: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "TimeError.UnknownZone",
+      "module": "std/time",
+      "kind": "variant",
+      "name": "UnknownZone",
+      "owner": "TimeError",
+      "receiver": null,
+      "signature": "UnknownZone(name: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "TimeError.message",
+      "module": "std/time",
+      "kind": "method",
+      "name": "message",
+      "owner": "TimeError",
+      "receiver": "impl TimeError as Error",
+      "signature": "fn message(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "impl:Error"
+      ],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Url",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "Url",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Url",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A URL built by `url\"…\"` or `Url.parse`. It never holds `javascript:`, `data:` or `vbscript:` unless built with `unsafe.raw_url`."
+    },
+    {
+      "path": "Url.parse",
+      "module": "std/prelude",
+      "kind": "assoc_fn",
+      "name": "parse",
+      "owner": "Url",
+      "receiver": "impl Url",
+      "signature": "fn parse(text: String) -> Result[Url, UrlError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Parses and validates a runtime URL."
+    },
+    {
+      "path": "UrlError",
+      "module": "std/prelude",
+      "kind": "enum",
+      "name": "UrlError",
+      "owner": null,
+      "receiver": null,
+      "signature": "enum UrlError",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "Why `Url.parse` rejected its input."
+    },
+    {
+      "path": "UrlError.ForbiddenScheme",
+      "module": "std/prelude",
+      "kind": "variant",
+      "name": "ForbiddenScheme",
+      "owner": "UrlError",
+      "receiver": null,
+      "signature": "ForbiddenScheme(scheme: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "UrlError.Malformed",
+      "module": "std/prelude",
+      "kind": "variant",
+      "name": "Malformed",
+      "owner": "UrlError",
+      "receiver": null,
+      "signature": "Malformed(text: String)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "UrlError.message",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "message",
+      "owner": "UrlError",
+      "receiver": "impl UrlError as Error",
+      "signature": "fn message(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "impl:Error"
+      ],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "World",
+      "module": "std/prelude",
+      "kind": "type",
+      "name": "World",
+      "owner": null,
+      "receiver": null,
+      "signature": "type World",
+      "capability": [
+        "World"
+      ],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "capability"
+      ],
+      "spellings": {
+        "en": "World",
+        "ar": "عالم",
+        "franco": "donya"
+      },
+      "doc": "The root capability. Only `main` receives it; it cannot be constructed or decoded (K1501)."
+    },
+    {
+      "path": "World.clock",
+      "module": "std/prelude",
+      "kind": "field",
+      "name": "clock",
+      "owner": "World",
+      "receiver": null,
+      "signature": "clock: Clock",
+      "capability": [
+        "World"
+      ],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "World.env",
+      "module": "std/prelude",
+      "kind": "field",
+      "name": "env",
+      "owner": "World",
+      "receiver": null,
+      "signature": "env: Env",
+      "capability": [
+        "World"
+      ],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "World.fs",
+      "module": "std/prelude",
+      "kind": "field",
+      "name": "fs",
+      "owner": "World",
+      "receiver": null,
+      "signature": "fs: Fs",
+      "capability": [
+        "World"
+      ],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "World.net",
+      "module": "std/prelude",
+      "kind": "field",
+      "name": "net",
+      "owner": "World",
+      "receiver": null,
+      "signature": "net: Net",
+      "capability": [
+        "World"
+      ],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "World.proc",
+      "module": "std/prelude",
+      "kind": "field",
+      "name": "proc",
+      "owner": "World",
+      "receiver": null,
+      "signature": "proc: Proc",
+      "capability": [
+        "World"
+      ],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "World.rand",
+      "module": "std/prelude",
+      "kind": "field",
+      "name": "rand",
+      "owner": "World",
+      "receiver": null,
+      "signature": "rand: Rand",
+      "capability": [
+        "World"
+      ],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "World.screen",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "screen",
+      "owner": "World",
+      "receiver": "impl World",
+      "signature": "fn screen(self, width: Int, height: Int) -> Screen",
+      "capability": [
+        "World"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A canvas and input capability (`js-browser` target only, K1502 elsewhere)."
+    },
+    {
+      "path": "World.stdin",
+      "module": "std/prelude",
+      "kind": "field",
+      "name": "stdin",
+      "owner": "World",
+      "receiver": null,
+      "signature": "stdin: Stdin",
+      "capability": [
+        "World"
+      ],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": ""
+    },
+    {
+      "path": "Zone.named",
+      "module": "std/time",
+      "kind": "assoc_fn",
+      "name": "named",
+      "owner": "Zone",
+      "receiver": "impl Zone",
+      "signature": "fn named(name: String) -> Result[Zone, TimeError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The IANA zone with this name, such as `Africa/Cairo`."
+    },
+    {
+      "path": "Zone.utc",
+      "module": "std/time",
+      "kind": "assoc_fn",
+      "name": "utc",
+      "owner": "Zone",
+      "receiver": "impl Zone",
+      "signature": "fn utc() -> Zone",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Coordinated Universal Time."
+    },
+    {
+      "path": "assert",
+      "module": "std/prelude",
+      "kind": "fn",
+      "name": "assert",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn assert(condition: Bool, message: String)",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": {
+        "en": "assert",
+        "ar": "تحقق",
+        "franco": "et2aked"
+      },
+      "doc": "Panics with `message` when `condition` is false."
+    },
+    {
+      "path": "panic",
+      "module": "std/prelude",
+      "kind": "fn",
+      "name": "panic",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn panic(message: String) -> Never",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": {
+        "en": "panic",
+        "ar": "انهيار",
+        "franco": "enhyar"
+      },
+      "doc": "Stops the current task with a defined panic. It cannot be caught."
+    },
+    {
+      "path": "print",
+      "module": "std/prelude",
+      "kind": "fn",
+      "name": "print",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn print[T: Show](value: T)",
+      "capability": [
+        "console"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "console"
+      ],
+      "spellings": {
+        "en": "print",
+        "ar": "اطبع",
+        "franco": "ektb"
+      },
+      "doc": "Writes the value's `Show` text and a newline to standard output."
+    },
+    {
+      "path": "std/bigint",
+      "module": "std/bigint",
+      "kind": "module",
+      "name": "bigint",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/bigint",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/bigint (spec §9.2, §20.1): methods of the prelude type `BigInt`. The arithmetic operators work as for `Int`, without overflow."
+    },
+    {
+      "path": "std/decimal",
+      "module": "std/decimal",
+      "kind": "module",
+      "name": "decimal",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/decimal",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/decimal (spec §9.2, §20.1): methods of the prelude type `Decimal`. `+ - *` are exact and trap on overflow; there is no `/` (04 L14)."
+    },
+    {
+      "path": "std/decimal.Rounding",
+      "module": "std/decimal",
+      "kind": "enum",
+      "name": "Rounding",
+      "owner": null,
+      "receiver": null,
+      "signature": "enum Rounding",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "How `div` and `round` choose between the two nearest results."
+    },
+    {
+      "path": "std/env",
+      "module": "std/env",
+      "kind": "module",
+      "name": "env",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/env",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/env (spec §16.1, §18.1, §20.1): methods of the prelude capability `Env`."
+    },
+    {
+      "path": "std/fs",
+      "module": "std/fs",
+      "kind": "module",
+      "name": "fs",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/fs",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/fs (spec §16.1, §17.6, §20.1): methods of the prelude capability `Fs`. Paths are `Path` values (`path\"…\"`, `Path.join`), never `String`s."
+    },
+    {
+      "path": "std/fs.FsError",
+      "module": "std/fs",
+      "kind": "enum",
+      "name": "FsError",
+      "owner": null,
+      "receiver": null,
+      "signature": "enum FsError",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "Why a file operation failed."
+    },
+    {
+      "path": "std/http",
+      "module": "std/http",
+      "kind": "module",
+      "name": "http",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/http",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/http (spec §14.3, §16.3, §20.1, §20.2): routes, requests, responses, the server and an SSRF-blocking client. Routes are deny-by-default: `access:` has no default."
+    },
+    {
+      "path": "std/http.Access",
+      "module": "std/http",
+      "kind": "enum",
+      "name": "Access",
+      "owner": null,
+      "receiver": null,
+      "signature": "enum Access",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "Who may call a route. `.LoggedIn` and `.Role` use the session middleware of std/auth."
+    },
+    {
+      "path": "std/http.ClientError",
+      "module": "std/http",
+      "kind": "enum",
+      "name": "ClientError",
+      "owner": null,
+      "receiver": null,
+      "signature": "enum ClientError",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "Why an outbound request failed. Private address ranges are blocked unless the `Net` was attenuated with `allow_private` (04 S12)."
+    },
+    {
+      "path": "std/http.ClientResponse",
+      "module": "std/http",
+      "kind": "type",
+      "name": "ClientResponse",
+      "owner": null,
+      "receiver": null,
+      "signature": "type ClientResponse",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "What an outbound request returned."
+    },
+    {
+      "path": "std/http.HttpError",
+      "module": "std/http",
+      "kind": "enum",
+      "name": "HttpError",
+      "owner": null,
+      "receiver": null,
+      "signature": "enum HttpError",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "The error side of a handler. Each variant maps to one HTTP status."
+    },
+    {
+      "path": "std/http.Request",
+      "module": "std/http",
+      "kind": "type",
+      "name": "Request",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Request[A]",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "One incoming request. `app` is the record given to `serve`; it reaches the capabilities. Only the server creates requests."
+    },
+    {
+      "path": "std/http.Response",
+      "module": "std/http",
+      "kind": "type",
+      "name": "Response",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Response",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "An outgoing response."
+    },
+    {
+      "path": "std/http.Router",
+      "module": "std/http",
+      "kind": "type",
+      "name": "Router",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Router[A]",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A set of routes for an app record `A`."
+    },
+    {
+      "path": "std/http.ServeError",
+      "module": "std/http",
+      "kind": "enum",
+      "name": "ServeError",
+      "owner": null,
+      "receiver": null,
+      "signature": "enum ServeError",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "Why the server could not start or stopped."
+    },
+    {
+      "path": "std/http.get",
+      "module": "std/http",
+      "kind": "fn",
+      "name": "get",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn get(net: Net, url: Url) -> Result[ClientResponse, ClientError]",
+      "capability": [
+        "Net"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "Sends a `GET` request."
+    },
+    {
+      "path": "std/http.post",
+      "module": "std/http",
+      "kind": "fn",
+      "name": "post",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn post(net: Net, url: Url, body: String) -> Result[ClientResponse, ClientError]",
+      "capability": [
+        "Net"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "Sends a `POST` request with a text body."
+    },
+    {
+      "path": "std/http.router",
+      "module": "std/http",
+      "kind": "fn",
+      "name": "router",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn router[A]() -> Router[A]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A new router with the session middleware of std/auth installed."
+    },
+    {
+      "path": "std/http.serve",
+      "module": "std/http",
+      "kind": "fn",
+      "name": "serve",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn serve[A](net: Net, port: Int, router: Router[A], app: A) -> Result[(), ServeError]",
+      "capability": [
+        "Net"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "Serves `router` on `port` until the process stops."
+    },
+    {
+      "path": "std/json",
+      "module": "std/json",
+      "kind": "module",
+      "name": "json",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/json",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "prelude"
+      ],
+      "spellings": null,
+      "doc": "std/json (spec §18.3, §20.1). Part of the prelude as the module `json`. Decoding is schema-first: it builds exactly the expected type `T` and nothing the payload names."
+    },
+    {
+      "path": "std/json.DecodeError",
+      "module": "std/json",
+      "kind": "enum",
+      "name": "DecodeError",
+      "owner": null,
+      "receiver": null,
+      "signature": "enum DecodeError",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "Why a decode failed. Unknown fields, duplicate keys, fractions or exponents for an `Int`, integers outside the `Int` range, NaN and Infinity are all rejected."
+    },
+    {
+      "path": "std/json.DecodeLimits",
+      "module": "std/json",
+      "kind": "type",
+      "name": "DecodeLimits",
+      "owner": null,
+      "receiver": null,
+      "signature": "type DecodeLimits",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "Limits for one decode. The defaults are the spec's (1 MiB, depth 32, 10,000 elements per container, 64 KiB per string)."
+    },
+    {
+      "path": "std/json.decode",
+      "module": "std/json",
+      "kind": "fn",
+      "name": "decode",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn decode[T: Decode](input: String, limits: DecodeLimits = DecodeLimits()) -> Result[T, DecodeError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The `T` (taken from the expected type) that `input` describes."
+    },
+    {
+      "path": "std/json.encode",
+      "module": "std/json",
+      "kind": "fn",
+      "name": "encode",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn encode[T: Encode](value: T) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "JSON text for `value`."
+    },
+    {
+      "path": "std/list",
+      "module": "std/list",
+      "kind": "module",
+      "name": "list",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/list",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/list (spec §9.3, §10.8, §20.1): methods of the prelude type `List[T]`. Lists are immutable: every \"change\" returns a new list (`items = items.append(x)`)."
+    },
+    {
+      "path": "std/log",
+      "module": "std/log",
+      "kind": "module",
+      "name": "log",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/log",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "prelude"
+      ],
+      "spellings": null,
+      "doc": "std/log (spec §16.4, §20.1). Part of the prelude as the module `log`. Ambient console output (D20): structured lines on stderr, `Secret` values redacted, CR/LF and ANSI sequences escaped. A library that calls these must declare `console = true`."
+    },
+    {
+      "path": "std/log.debug",
+      "module": "std/log",
+      "kind": "fn",
+      "name": "debug",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn debug(message: String, fields: Map[String, String] = {})",
+      "capability": [
+        "console"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "console"
+      ],
+      "spellings": null,
+      "doc": "A debugging detail."
+    },
+    {
+      "path": "std/log.error",
+      "module": "std/log",
+      "kind": "fn",
+      "name": "error",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn error(message: String, fields: Map[String, String] = {})",
+      "capability": [
+        "console"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "console"
+      ],
+      "spellings": null,
+      "doc": "A failure."
+    },
+    {
+      "path": "std/log.info",
+      "module": "std/log",
+      "kind": "fn",
+      "name": "info",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn info(message: String, fields: Map[String, String] = {})",
+      "capability": [
+        "console"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "console"
+      ],
+      "spellings": null,
+      "doc": "A normal event."
+    },
+    {
+      "path": "std/log.warn",
+      "module": "std/log",
+      "kind": "fn",
+      "name": "warn",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn warn(message: String, fields: Map[String, String] = {})",
+      "capability": [
+        "console"
+      ],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "console"
+      ],
+      "spellings": null,
+      "doc": "Something unexpected that the program handled."
+    },
+    {
+      "path": "std/map",
+      "module": "std/map",
+      "kind": "module",
+      "name": "map",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/map",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/map (spec §9.3, §10.4, §10.8, §20.1): methods of the prelude type `Map[K, V]`. Maps are immutable and insertion-ordered; `m[k] = v` on a `var` means `m = m.insert(k, v)`. Iterating yields `(key, value)` pairs in insertion order."
+    },
+    {
+      "path": "std/math",
+      "module": "std/math",
+      "kind": "module",
+      "name": "math",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/math",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/math (spec §20.1). There is no overloading, so each function has one type."
+    },
+    {
+      "path": "std/math.PI",
+      "module": "std/math",
+      "kind": "const",
+      "name": "PI",
+      "owner": null,
+      "receiver": null,
+      "signature": "let PI: Float",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "The ratio of a circle's circumference to its diameter."
+    },
+    {
+      "path": "std/math.abs",
+      "module": "std/math",
+      "kind": "fn",
+      "name": "abs",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn abs(x: Int) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The absolute value of an `Int`. Panics on the minimum `Int`."
+    },
+    {
+      "path": "std/math.clamp",
+      "module": "std/math",
+      "kind": "fn",
+      "name": "clamp",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn clamp[T: Ord](x: T, low: T, high: T) -> T",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "positional"
+      ],
+      "spellings": null,
+      "doc": "`x` limited to the range `low..=high`."
+    },
+    {
+      "path": "std/math.floor",
+      "module": "std/math",
+      "kind": "fn",
+      "name": "floor",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn floor(x: Float) -> Float",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The largest integral value not greater than `x`."
+    },
+    {
+      "path": "std/math.max",
+      "module": "std/math",
+      "kind": "fn",
+      "name": "max",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn max[T: Ord](a: T, b: T) -> T",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "positional"
+      ],
+      "spellings": null,
+      "doc": "The larger of `a` and `b` (`a` when they are equal)."
+    },
+    {
+      "path": "std/math.min",
+      "module": "std/math",
+      "kind": "fn",
+      "name": "min",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn min[T: Ord](a: T, b: T) -> T",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin",
+        "positional"
+      ],
+      "spellings": null,
+      "doc": "The smaller of `a` and `b` (`a` when they are equal)."
+    },
+    {
+      "path": "std/math.pow",
+      "module": "std/math",
+      "kind": "fn",
+      "name": "pow",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn pow(base: Float, exponent: Float) -> Float",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`base` raised to the power `exponent`."
+    },
+    {
+      "path": "std/math.round",
+      "module": "std/math",
+      "kind": "fn",
+      "name": "round",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn round(x: Float) -> Float",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The nearest integral value; halves round away from zero."
+    },
+    {
+      "path": "std/math.sqrt",
+      "module": "std/math",
+      "kind": "fn",
+      "name": "sqrt",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn sqrt(x: Float) -> Float",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The square root (NaN for negative input)."
+    },
+    {
+      "path": "std/option",
+      "module": "std/option",
+      "kind": "module",
+      "name": "option",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/option",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/option (spec §9.3, §11 rule 12, §14.4, §20.1): methods of the prelude type `Option[T]`. There is no bare `unwrap()`: `expect` requires a reason (K0915)."
+    },
+    {
+      "path": "std/path",
+      "module": "std/path",
+      "kind": "module",
+      "name": "path",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/path",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/path (spec §17.6, §20.1): methods of the prelude types `Path` and `PathSegment`."
+    },
+    {
+      "path": "std/path.PathError",
+      "module": "std/path",
+      "kind": "enum",
+      "name": "PathError",
+      "owner": null,
+      "receiver": null,
+      "signature": "enum PathError",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "Why a path or path segment was rejected."
+    },
+    {
+      "path": "std/prelude",
+      "module": "std/prelude",
+      "kind": "module",
+      "name": "prelude",
+      "owner": null,
+      "receiver": null,
+      "signature": "(imported implicitly)",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "prelude"
+      ],
+      "spellings": null,
+      "doc": "The prelude (spec §13.1, §7.2, §9, §16, §17). Every module imports it implicitly. M2 signature stubs: `@builtin` items are provided by the compiler and the runtime, and the `panic(\"builtin\")` bodies are placeholders. See stdlib/README.md for the conventions."
+    },
+    {
+      "path": "std/proc",
+      "module": "std/proc",
+      "kind": "module",
+      "name": "proc",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/proc",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/proc (spec §17.5, §20.1): methods of the prelude capability `Proc`. Kalam never runs a shell: a `Command` is a program plus argv, built by `cmd\"…\"`."
+    },
+    {
+      "path": "std/proc.Output",
+      "module": "std/proc",
+      "kind": "type",
+      "name": "Output",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Output",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "What a finished process produced."
+    },
+    {
+      "path": "std/proc.ProcError",
+      "module": "std/proc",
+      "kind": "enum",
+      "name": "ProcError",
+      "owner": null,
+      "receiver": null,
+      "signature": "enum ProcError",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "Why a process did not run or did not finish."
+    },
+    {
+      "path": "std/random",
+      "module": "std/random",
+      "kind": "module",
+      "name": "random",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/random",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/random (spec §16.1, §18.2): methods of the prelude capability `Rand`, plus the deterministic `SeededRand`. `SeededRand` needs no capability and has no `token` or `uuid_v4`, so using it for secrets is a type error by omission (04 S7)."
+    },
+    {
+      "path": "std/random.SeededRand",
+      "module": "std/random",
+      "kind": "type",
+      "name": "SeededRand",
+      "owner": null,
+      "receiver": null,
+      "signature": "type SeededRand",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A deterministic pseudo-random generator for games, simulations and tests. Each draw advances its internal state; the same seed gives the same sequence."
+    },
+    {
+      "path": "std/result",
+      "module": "std/result",
+      "kind": "module",
+      "name": "result",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/result",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/result (spec §9.3, §14, §20.1): methods of the prelude type `Result[T, E]`. A `Result` is must-use (K1303); `let _ = r` discards one deliberately."
+    },
+    {
+      "path": "std/set",
+      "module": "std/set",
+      "kind": "module",
+      "name": "set",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/set",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/set (spec §9.3, §20.1): methods of the prelude type `Set[T]`. Sets are immutable and insertion-ordered."
+    },
+    {
+      "path": "std/sql",
+      "module": "std/sql",
+      "kind": "module",
+      "name": "sql",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/sql",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/sql (spec §16.1, §17.3, §20.1): databases. Every query is a `Sql` value from `sql\"…\"` (holes are bound parameters) or `sql.ident`; a `String` is never a query (K1601). The module `sql` and the tag `sql` live in different namespaces (spec §17.1)."
+    },
+    {
+      "path": "std/sql.Db",
+      "module": "std/sql",
+      "kind": "type",
+      "name": "Db",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Db",
+      "capability": [
+        "Db"
+      ],
+      "suspends": null,
+      "attributes": [
+        "builtin",
+        "handle"
+      ],
+      "spellings": null,
+      "doc": "A database connection or open transaction. Built from a capability by `sqlite` or `postgres`; a library that needs a database takes a `Db`."
+    },
+    {
+      "path": "std/sql.DbError",
+      "module": "std/sql",
+      "kind": "enum",
+      "name": "DbError",
+      "owner": null,
+      "receiver": null,
+      "signature": "enum DbError",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "Why a database call failed."
+    },
+    {
+      "path": "std/sql.ident",
+      "module": "std/sql",
+      "kind": "fn",
+      "name": "ident",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn ident(name: String, allowed: List[String]) -> Result[Sql, DbError]",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`name` as an SQL identifier, only when it is one of `allowed`."
+    },
+    {
+      "path": "std/sql.like_contains",
+      "module": "std/sql",
+      "kind": "fn",
+      "name": "like_contains",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn like_contains(text: String) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A `LIKE` pattern matching text that contains `text` (`%`, `_` and `\\` escaped)."
+    },
+    {
+      "path": "std/sql.like_prefix",
+      "module": "std/sql",
+      "kind": "fn",
+      "name": "like_prefix",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn like_prefix(text: String) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A `LIKE` pattern matching text that starts with `text`."
+    },
+    {
+      "path": "std/sql.like_suffix",
+      "module": "std/sql",
+      "kind": "fn",
+      "name": "like_suffix",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn like_suffix(text: String) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A `LIKE` pattern matching text that ends with `text`."
+    },
+    {
+      "path": "std/sql.postgres",
+      "module": "std/sql",
+      "kind": "fn",
+      "name": "postgres",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn postgres(net: Net, url: Secret[String]) -> Result[Db, DbError]",
+      "capability": [
+        "Net"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "Connects to Postgres. TLS verification is always on."
+    },
+    {
+      "path": "std/sql.sqlite",
+      "module": "std/sql",
+      "kind": "fn",
+      "name": "sqlite",
+      "owner": null,
+      "receiver": null,
+      "signature": "fn sqlite(fs: Fs, file: String) -> Result[Db, DbError]",
+      "capability": [
+        "Fs"
+      ],
+      "suspends": "yes",
+      "attributes": [
+        "builtin",
+        "suspends"
+      ],
+      "spellings": null,
+      "doc": "Opens (or creates) the SQLite database file `file` under `fs`."
+    },
+    {
+      "path": "std/string",
+      "module": "std/string",
+      "kind": "module",
+      "name": "string",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/string",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/string (spec §9.2, §20.1): methods of the prelude type `String`. Method resolution never depends on imports (DR-27), so these work without `use std/string`."
+    },
+    {
+      "path": "std/string.ParseError",
+      "module": "std/string",
+      "kind": "enum",
+      "name": "ParseError",
+      "owner": null,
+      "receiver": null,
+      "signature": "enum ParseError",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "Why `to_int`, `to_float` or `to_decimal` rejected its text."
+    },
+    {
+      "path": "std/time",
+      "module": "std/time",
+      "kind": "module",
+      "name": "time",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/time",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/time (spec §16.1, §20.1). Reading the time needs the `Clock` capability; `Duration` arithmetic, dates and formatting are ambient."
+    },
+    {
+      "path": "std/time.Date",
+      "module": "std/time",
+      "kind": "type",
+      "name": "Date",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Date",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A calendar date (proleptic Gregorian) with no time of day."
+    },
+    {
+      "path": "std/time.Duration",
+      "module": "std/time",
+      "kind": "type",
+      "name": "Duration",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Duration",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A length of time, possibly negative."
+    },
+    {
+      "path": "std/time.Instant",
+      "module": "std/time",
+      "kind": "type",
+      "name": "Instant",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Instant",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A point in time (UTC, nanosecond precision)."
+    },
+    {
+      "path": "std/time.TimeError",
+      "module": "std/time",
+      "kind": "enum",
+      "name": "TimeError",
+      "owner": null,
+      "receiver": null,
+      "signature": "enum TimeError",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "Why a time zone or date could not be read."
+    },
+    {
+      "path": "std/time.Zone",
+      "module": "std/time",
+      "kind": "type",
+      "name": "Zone",
+      "owner": null,
+      "receiver": null,
+      "signature": "type Zone",
+      "capability": [],
+      "suspends": null,
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "A time zone from the IANA database."
+    }
+  ]
+}

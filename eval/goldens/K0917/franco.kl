@@ -1,0 +1,7 @@
+ta3dad Shape:
+    Circle(radius: kasri)
+    Empty
+
+dala ra2isi():
+    khali s: Shape = Circle(radius: 1.0)
+    ektb("x")

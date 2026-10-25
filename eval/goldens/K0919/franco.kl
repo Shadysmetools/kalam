@@ -1,0 +1,9 @@
+haykal Money:
+    cents: adad
+
+naffez Show lekol Money:
+    dala show(nafso) -> nass => "{nafso.cents} cents"
+
+dala ra2isi():
+    khali m = Money(cents: 250)
+    ektb("{m}")

@@ -1,0 +1,12 @@
+-- LOOP ZAY C -------------------------------------------- main.franco.kl  K0926
+
+`for (let i = 0; i < n; i++)` w `for i in range(n)` men loghat tanya. Kalam bey3mel loop 3ala range maktoob `0..n`.
+
+3│     lekol (motghayer i = 0; i < items.len(); i += 1):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Garrab: ` i fi 0..items.len()`
+
+Mosa3da: Ekteb `lekol i fi 0..n:`. W esta5dem `0..=n` law 3ayez `n` nafsaha teb2a gowa. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0926

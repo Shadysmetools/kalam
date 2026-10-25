@@ -1,0 +1,9 @@
+type Shape:
+    sides: Int
+
+fn shape() -> Int => 3
+
+fn main():
+    let shape_count = shape()
+    let s = Shape(sides: shape_count)
+    print("{s.sides}")

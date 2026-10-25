@@ -1,0 +1,10 @@
+-- 7ARF ETEGAH MESTAKHABI ------------------------------ main.franco.kl  SEC0110
+
+La2eit U+202E (RIGHT-TO-LEFT OVERRIDE). Da beyghayar shakl el satr men gher ma yghayar el code nafso, w di fekret hagamat Trojan Source. El kalam el 3arabi mesh me7tago khales.
+
+8│     khali xs = [1, 2, 3]  # ‮reversed
+                               ^
+
+Mosa3da: Emsa7o. W law string me7tago bgad, ektebo escape `\u{...}` 3ashan elly beye2ra yshofo.
+
+E3raf aktar: kalam explain SEC0110

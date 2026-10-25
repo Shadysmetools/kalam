@@ -1,0 +1,12 @@
+-- KELMA MEN SKIN TANY ----------------------------------- main.franco.kl  K0201
+
+`print` men skin tany. F el file da ekteb `ektb`.
+
+10│     print("total {n}")
+        ^^^^^
+
+Garrab: `ektb`
+
+Mosa3da: Ghayar `print` b `ektb`, aw shaghal `kalam convert` 3ashan yekteb el block el mansookh tany. W law te2sod esm men 3andak, 3arrafo el awel aw ektebo bein backticks.
+
+E3raf aktar: kalam explain K0201

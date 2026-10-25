@@ -201,8 +201,11 @@ dependencies = [
 name = "kalam-resolve"
 version = "0.1.0"
 dependencies = [
+ "kalam-ast",
  "kalam-base",
  "kalam-diagnostics",
+ "kalam-parser",
+ "kalam-skins",
  "kalam-syntax",
 ]
 
@@ -219,6 +222,20 @@ name = "kalam-skins"
 version = "0.1.0"
 dependencies = [
  "kalam-base",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "kalam-stdlib-index"
+version = "0.1.0"
+dependencies = [
+ "kalam-ast",
+ "kalam-base",
+ "kalam-diagnostics",
+ "kalam-fmt",
+ "kalam-parser",
+ "kalam-skins",
  "serde",
  "serde_json",
 ]

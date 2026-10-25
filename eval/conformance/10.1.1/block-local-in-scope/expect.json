@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§10.1.1: \"Scoping is lexical and block-scoped.\" Positive twin: the use is inside the block."
+}

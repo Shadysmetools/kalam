@@ -1,0 +1,12 @@
+-- WORD FROM ANOTHER SKIN --------------------------------------- main.kl  K0201
+
+`اطبع` belongs to another skin. In this file, write `print`.
+
+10│     اطبع("total {n}")
+        ^^^^
+
+Try: `print`
+
+Help: Replace `اطبع` with `print`, or run `kalam convert` to rewrite a pasted block. If you meant a name of your own, declare it first or write it in backticks.
+
+Learn more: kalam explain K0201

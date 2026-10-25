@@ -1,0 +1,11 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0917"
+  ],
+  "lines": [
+    6
+  ],
+  "stage": "parse",
+  "notes": "§9.5.1: \"Variants are constructed with a leading dot when the expected type is known (`.Circle(radius: 2.0)`), or qualified (`Shape.Circle(radius: 2.0)`). A bare `Circle` is never a variant (DR-05).\" (§21.3 K0917) Detected in the obvious syntactic position."
+}

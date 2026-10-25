@@ -1,0 +1,12 @@
+-- TARTEEB EL IMPL --------------------------------------- main.franco.kl  K0919
+
+`impl Trait for Type` da tarteeb Rust. Kalam beyekteb el no3 el awel: `naffez Money ka Show:`.
+
+4│ naffez Show lekol Money:
+   ^^^^^^^^^^^^^^^^^^^^^^^
+
+Garrab: `Money ka Show`
+
+Mosa3da: Badel el esmein w esta5dem `ka`: `naffez Type ka Trait:`. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0919

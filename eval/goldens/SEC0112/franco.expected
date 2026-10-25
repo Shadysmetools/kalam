@@ -1,0 +1,12 @@
+-- 7ARF MESTAKHABI ------------------------------------- main.franco.kl  SEC0112
+
+La2eit U+E000, w da tag character aw private use aw noncharacter aw code point mesh ma3roof. Malhosh ma3na bayen f el code.
+
+2│     khali name = "Sara"
+                       ^
+
+Garrab: `\u{E000}`
+
+Mosa3da: Emsa7o. W law string me7tago bgad, ektebo `\u{...}`.
+
+E3raf aktar: kalam explain SEC0112

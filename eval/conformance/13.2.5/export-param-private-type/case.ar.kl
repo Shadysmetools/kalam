@@ -1,0 +1,4 @@
+هيكل Ticket:
+    id: عدد
+
+علني دالة ticket_id(t: Ticket) -> عدد => t.id

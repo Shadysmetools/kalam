@@ -1,0 +1,10 @@
+-- EXCEPTIONS MEN LOGHA TANYA ---------------------------- main.franco.kl  K0908
+
+`try` w `catch` w `throw` w `raise` mesh keywords f Kalam. El errors el metwa22a3a qeyam men no3 `natiga`, fa kol dala momken tefshal bet2ool keda f no3ha.
+
+10│     try:
+        ^^^
+
+Mosa3da: 3ashan tefshal ekteb `rag3 fashal(…)`. W 3ashan tewassal error el call lel elly nadak 7ot `?` ba3d el call. W 3ashan tet3amel ma3ah esta5dem `hasab` 3ala el natiga.
+
+E3raf aktar: kalam explain K0908

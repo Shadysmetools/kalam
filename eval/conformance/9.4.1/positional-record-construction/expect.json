@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0416"
+  ],
+  "lines": [
+    6
+  ],
+  "notes": "§9.4.1: \"Construction uses named arguments only: `User(id: 1, name: \\\"Sara\\\", email: e)` (K0416).\""
+}

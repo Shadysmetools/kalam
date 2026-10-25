@@ -1,0 +1,5 @@
+dala ra2isi():
+    law sa7:
+        khali inner = 1
+        khali copy = inner + 1
+        ektb("{copy}")

@@ -1,0 +1,4 @@
+fn main():
+    let b = 2
+    let a = b + 1
+    print("{a} {b}")

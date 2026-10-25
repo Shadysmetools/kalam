@@ -1,0 +1,32 @@
+# std/decimal (spec §9.2, §20.1): methods of the prelude type `Decimal`. `+ - *` are exact
+# and trap on overflow; there is no `/` (04 L14).
+use std/string.{ParseError}
+
+## How `div` and `round` choose between the two nearest results.
+export enum Rounding:
+    HalfEven
+    HalfUp
+    Down
+    Up
+    Floor
+    Ceiling
+
+impl Decimal:
+    ## The exact value of an `Int`.
+    @builtin
+    export fn from(value: Int) -> Decimal => panic("builtin")
+
+    ## The exact `Decimal` written in the text.
+    @builtin
+    export fn parse(text: String) -> Result[Decimal, ParseError] => panic("builtin")
+
+    ## `self / other` rounded to `scale` fraction digits. Panics when `other` is zero.
+    @builtin
+    @positional
+    export fn div(self, other: Decimal, scale: Int, rounding: Rounding) -> Decimal => panic(
+        "builtin",
+    )
+
+    ## The value rounded to `scale` fraction digits.
+    @builtin
+    export fn round(self, scale: Int, rounding: Rounding = .HalfEven) -> Decimal => panic("builtin")

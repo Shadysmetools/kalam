@@ -1,0 +1,4 @@
+dala apply(f: dala(adad) -> adad, v: adad) -> adad => f(v)
+
+dala ra2isi():
+    ektb("{apply(dala(x) => x + 1, 1)}")

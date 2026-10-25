@@ -1,0 +1,16 @@
+# std/bigint (spec §9.2, §20.1): methods of the prelude type `BigInt`. The arithmetic
+# operators work as for `Int`, without overflow.
+use std/string.{ParseError}
+
+impl BigInt:
+    ## The exact value of an `Int`.
+    @builtin
+    export fn from(value: Int) -> BigInt => panic("builtin")
+
+    ## The integer written in the text.
+    @builtin
+    export fn parse(text: String) -> Result[BigInt, ParseError] => panic("builtin")
+
+    ## The value as an `Int`, or `None` outside the 64-bit range.
+    @builtin
+    export fn to_int(self) -> Option[Int] => panic("builtin")

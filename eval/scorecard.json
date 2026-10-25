@@ -283,7 +283,7 @@
       "stretch": null,
       "job": "fast",
       "stage": "S2",
-      "compute": "kalam-eval conformance --coverage: clauses = every numbered ### subsection of KALAM-SPEC.md sections 4-22; a clause is covered when >=1 positive and >=1 negative test under conformance/** carries `clause: <section>` front-matter. value = covered / clauses * 100.",
+      "compute": "kalam-eval (src/clauses.rs, src/conformance.rs): units = every numbered ### subsection of KALAM-SPEC.md sections 4-22, plus §N.0 for normative text directly under a section heading before its first ### (eval/conformance/CLAUSES.json, written by `kalam-eval clauses --write` and re-derived from the spec on every run; a stale index makes the metric unavailable). A unit is covered when the cases filed under it or its clauses (eval/conformance/<clause-id>/<case>/, clause id §N.M or §N.M.k with or without the §; pending/ excluded) include >=1 must_reject:true and >=1 must_reject:false case. value = covered units / units * 100.",
       "noise": "exact",
       "gate": null
     },
@@ -302,7 +302,7 @@
       "stretch": 100,
       "job": "fast",
       "stage": "S2",
-      "compute": "kalam-eval conformance --run --skins en,ar,franco: passed / total test-skin pairs * 100. A test that cannot run because a stage is missing counts as failed.",
+      "compute": "kalam-eval (src/conformance.rs): every case under eval/conformance/<clause-id>/<case>/ (shared suite format: the same program once per skin + expect.json {must_reject, codes, lines, stdout?, stage?}; pending/ excluded) is judged per skin through `kalam check`, and through `kalam run --interp` when `stdout` is set. value = passed / total case-skin pairs * 100 (3 pairs per case, a missing skin file fails its pair), i.e. the pass rate over the clauses that have >=1 case. A test that cannot run because a stage is missing counts as failed: stage presence is probed through the same route (resolver: K0401 for an undefined name; type checker: K0602 for `1 == 1.0`; interpreter: a prelude-only program prints its line). A defective case makes the metric unavailable.",
       "noise": "exact",
       "gate": null
     },
@@ -935,7 +935,7 @@
       "stretch": null,
       "job": "fast",
       "stage": "S3",
-      "compute": "kalam-eval diag --goldens: codes with >=1 .en/.ar/.franco .stderr golden / catalog codes.",
+      "compute": "kalam-eval (src/goldens.rs): eval/goldens/<CODE>/{en,ar,franco}.kl + {en,ar,franco}.expected. A golden matches when the file's first error is <CODE> and that diagnostic, rendered as `kalam check` prints it (message language = the file's skin; file checked as main.kl / main.ar.kl / main.franco.kl), equals the .expected text byte for byte (plus one final newline). There is no bless mode. value = catalog codes (`kalam explain --catalog --json`) whose three goldens match / catalog codes * 100.",
       "noise": "exact",
       "gate": null
     },
@@ -954,7 +954,7 @@
       "stretch": null,
       "job": "fast",
       "stage": "S3",
-      "compute": "kalam-eval diag --fixes: over all golden cases, apply every applicability=machine fix with `kalam fix`, re-run `kalam check`; value = cases whose fix exists and yields no error / cases.",
+      "compute": "kalam-eval (src/goldens.rs): over every distinct file of eval/goldens and eval/suites/seeded-errors, each error diagnostic `kalam check` emits is one unit. It counts when it carries an applicability=machine fix and applying that fix alone, then re-running `kalam check`, gives fewer errors and no error code the file did not have before. value = verified / emitted error diagnostics * 100 (the share that merely carries a machine fix is reported as evidence). A file that cannot be checked makes the metric unavailable.",
       "noise": "exact",
       "gate": null
     },
@@ -973,7 +973,7 @@
       "stretch": 5.0,
       "job": "deep",
       "stage": "S3",
-      "compute": "kalam-eval diag --judge: pinned judge model and rubric (eval/FREEZE.json) grade each golden diagnostic 0-5 on the Becker et al. checklist; unavailable unless the milestone calibration on 50 human-graded diagnostics has mean absolute error <= 0.5.",
+      "compute": "kalam-eval judge-sample writes the pinned sample eval/judge/sample.json (one rendered golden per code; skin = sha256(seed + code) mod 3). The orchestrator's judge agent (FOUNDER-QUEUE Q20) grades every item 0-5 with eval/judge/RUBRIC.md (Becker et al.); kalam-eval judge-ingest validates the scores (model named, pinned rubric version, every item exactly once, 0-5, mean recomputed) and writes eval/judge/report.json. value = the report mean; unavailable unless the report scores the current sample and rubric and eval/judge/calibration.json holds >= 50 human grades of sample items with mean absolute error <= 0.5 against the judge.",
       "noise": "ci95",
       "gate": null
     },

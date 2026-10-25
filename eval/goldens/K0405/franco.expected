@@ -1,0 +1,10 @@
+-- ESM MESTA5DEM ABLAN ----------------------------------- main.franco.kl  K0405
+
+`total` met3arraf ablan f scope bayen hena. Kalam mesh beysma7 l ta3reef gedeed yekhabbi ta3reef a2dam, fa el esm leeh ma3na wa7ed f kol wa2t.
+
+4│         khali total = 2
+                 ^^^^^
+
+Mosa3da: Edy el ta3reef el gedeed esm khas beeh. W l 2eema men no3 b nafs el esm, el code el 3araby beyzawwed "ال" (`الشكل: شكل`) w code el Franco beyzawwed `el_` (`el_donya: donya`).
+
+E3raf aktar: kalam explain K0405

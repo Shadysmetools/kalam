@@ -1,0 +1,12 @@
+-- IMPL WORD ORDER ---------------------------------------------- main.kl  K0919
+
+`impl Trait for Type` is Rust's word order. Kalam names the type first: `impl Money as Show:`.
+
+4│ impl Show for Money:
+   ^^^^^^^^^^^^^^^^^^^
+
+Try: `Money as Show`
+
+Help: Swap the two names and use `as`: `impl Type as Trait:`. `kalam fix` does this for you.
+
+Learn more: kalam explain K0919

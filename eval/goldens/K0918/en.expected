@@ -1,0 +1,12 @@
+-- BUILT-IN FUNCTION FROM ANOTHER LANGUAGE ---------------------- main.kl  K0918
+
+`len(xs)`, `str(x)` and `int(s)` are built-in functions in other languages. In Kalam these are methods or string holes, so they appear in autocomplete after the `.`.
+
+3│     let n = len(xs)
+               ^^^^^^^
+
+Try: `xs.len()`
+
+Help: Write `xs.len()` for `len(xs)`, `"{ x }"` for `str(x)`, and `s.to_int()?` for `int(s)`. `kalam fix` does this for you.
+
+Learn more: kalam explain K0918

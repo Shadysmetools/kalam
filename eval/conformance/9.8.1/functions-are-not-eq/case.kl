@@ -1,0 +1,7 @@
+fn one() -> Int => 1
+
+fn two() -> Int => 2
+
+fn main():
+    let same = one == two
+    print("{same}")

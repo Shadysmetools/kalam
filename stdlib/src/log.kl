@@ -1,0 +1,23 @@
+# std/log (spec §16.4, §20.1). Part of the prelude as the module `log`. Ambient console
+# output (D20): structured lines on stderr, `Secret` values redacted, CR/LF and ANSI
+# sequences escaped. A library that calls these must declare `console = true`.
+
+## A debugging detail.
+@builtin
+@console
+export fn debug(message: String, fields: Map[String, String] = {}) => panic("builtin")
+
+## A normal event.
+@builtin
+@console
+export fn info(message: String, fields: Map[String, String] = {}) => panic("builtin")
+
+## Something unexpected that the program handled.
+@builtin
+@console
+export fn warn(message: String, fields: Map[String, String] = {}) => panic("builtin")
+
+## A failure.
+@builtin
+@console
+export fn error(message: String, fields: Map[String, String] = {}) => panic("builtin")

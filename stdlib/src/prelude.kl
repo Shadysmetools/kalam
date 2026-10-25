@@ -1,0 +1,412 @@
+# The prelude (spec §13.1, §7.2, §9, §16, §17). Every module imports it implicitly.
+# M2 signature stubs: `@builtin` items are provided by the compiler and the runtime, and the
+# `panic("builtin")` bodies are placeholders. See stdlib/README.md for the conventions.
+
+export use std/json
+export use std/log
+
+# ---------------------------------------------------------------------------------------
+# Core types (spec §7.2 core names, §9.2 primitives, §9.3 composites)
+# ---------------------------------------------------------------------------------------
+
+## A 64-bit signed integer in [-2^63, 2^63 - 1] on every backend (D18). `+ - *` trap on
+## overflow, `//` floors, `%` takes the sign of the divisor, and `/` returns `Float`.
+@builtin
+export extern type Int
+
+## An IEEE-754 binary64 number. Not `Eq`, `Ord` or `Hash`: use `total_cmp`, `near` and
+## `is_nan` (DR-23).
+@builtin
+export extern type Float
+
+## An exact base-10 number with 34 significant digits. There is no `/`: use `div`.
+@builtin
+export extern type Decimal
+
+## An arbitrary-precision integer.
+@builtin
+export extern type BigInt
+
+## `true` or `false`. Conditions must be `Bool`: there is no truthiness.
+@builtin
+export extern type Bool
+
+## An immutable sequence of Unicode scalar values. Strings cannot be indexed (K0650).
+@builtin
+export extern type String
+
+## An immutable byte array.
+@builtin
+export extern type Bytes
+
+## The type with no values: the type of `panic(…)`, `return`, `break` and `continue`.
+@builtin
+export extern type Never
+
+## An ordered, immutable list. `xs[i]` panics when out of bounds; `xs.get(i)` does not.
+@builtin
+export extern type List[T]
+
+## An immutable, insertion-ordered map. Keys are `Eq + Hash`.
+@builtin
+export extern type Map[K, V]
+
+## An immutable, insertion-ordered set. Built with `Set.of([…])`.
+@builtin
+export extern type Set[T]
+
+## `Some(value)` or `None`: the only absence value. The variants are the core constructors
+## `Some` and `None` (spec §7.2), so they are not declared here.
+@builtin
+export extern type Option[T]
+
+## `Ok(value)` or `Err(error)`. Must-use (K1303). The variants are the core constructors
+## `Ok` and `Err` (spec §7.2).
+@builtin
+export extern type Result[T, E]
+
+## `a..b` (end excluded) and `a..=b` (end included).
+@builtin
+export extern type Range[T]
+
+## The result of a three-way comparison (`Float.total_cmp`, `List.sort_by` comparators).
+export enum Ordering:
+    Less
+    Equal
+    Greater
+
+# ---------------------------------------------------------------------------------------
+# Built-in traits (spec §9.7). `Eq`, `Hash`, `Ord`, `Encode`, `Decode`, `Row`, `Message`,
+# `SqlParam` and `Iterable` are compiler-known marker traits with no methods; the grammar
+# has no member-less trait, so they are listed in api-index.json by the generator.
+# ---------------------------------------------------------------------------------------
+
+## Text form used by interpolation, `print` and logs. Derived automatically.
+export trait Show:
+    fn show(self) -> String
+
+## An error value: `.message()` is used by `AnyError`, `main` and logs.
+export trait Error:
+    fn message(self) -> String
+
+## The conversion `?` uses when the error types differ (spec §14.3 rule 2).
+export trait From[E]:
+    fn from(value: E) -> Self
+
+## A user-defined tagged literal, registered with `@tag("name")` (spec §17.8).
+export trait Template:
+    fn build(parts: StaticParts, holes: List[TemplateHole]) -> Self
+
+# ---------------------------------------------------------------------------------------
+# Core functions (spec §7.2, §14.4). `print` is ambient console output (D20).
+# ---------------------------------------------------------------------------------------
+
+## Writes the value's `Show` text and a newline to standard output.
+@builtin
+@console
+export fn print[T: Show](value: T) => panic("builtin")
+
+## Stops the current task with a defined panic. It cannot be caught.
+@builtin
+export fn panic(message: String) -> Never => panic("builtin")
+
+## Panics with `message` when `condition` is false.
+@builtin
+export fn assert(condition: Bool, message: String) => panic("builtin")
+
+# ---------------------------------------------------------------------------------------
+# Numbers (spec §9.2). `Decimal` and `BigInt` methods are in std/decimal and std/bigint.
+# ---------------------------------------------------------------------------------------
+
+impl Int:
+    ## The same value as a `Float` (exact up to 2^53).
+    @builtin
+    export fn to_float(self) -> Float => panic("builtin")
+
+    ## The absolute value. Panics on the minimum `Int`.
+    @builtin
+    export fn abs(self) -> Int => panic("builtin")
+
+    ## `self + other`, or `None` on overflow.
+    @builtin
+    export fn checked_add(self, other: Int) -> Option[Int] => panic("builtin")
+
+    ## `self - other`, or `None` on overflow.
+    @builtin
+    export fn checked_sub(self, other: Int) -> Option[Int] => panic("builtin")
+
+    ## `self * other`, or `None` on overflow.
+    @builtin
+    export fn checked_mul(self, other: Int) -> Option[Int] => panic("builtin")
+
+    ## `self + other`, wrapping around at the 64-bit bounds.
+    @builtin
+    export fn wrapping_add(self, other: Int) -> Int => panic("builtin")
+
+    ## `self + other`, clamped to the 64-bit bounds.
+    @builtin
+    export fn saturating_add(self, other: Int) -> Int => panic("builtin")
+
+impl Float:
+    ## The integer value, or `None` for NaN, infinities and values outside the `Int` range.
+    ## The fraction is truncated toward zero.
+    @builtin
+    export fn to_int(self) -> Option[Int] => panic("builtin")
+
+    ## IEEE total order: the only total comparison on `Float`.
+    @builtin
+    export fn total_cmp(self, other: Float) -> Ordering => panic("builtin")
+
+    ## True when `self` and `other` differ by at most `tol`.
+    @builtin
+    export fn near(self, other: Float, tol: Float) -> Bool => panic("builtin")
+
+    ## True for NaN.
+    @builtin
+    export fn is_nan(self) -> Bool => panic("builtin")
+
+    ## The absolute value.
+    @builtin
+    export fn abs(self) -> Float => panic("builtin")
+
+impl Bytes:
+    ## The number of bytes.
+    @builtin
+    export fn len(self) -> Int => panic("builtin")
+
+    ## The bytes from index `from` up to, not including, `to`.
+    @builtin
+    @positional
+    export fn slice(self, from: Int, to: Int) -> Bytes => panic("builtin")
+
+    ## Standard base64 text.
+    @builtin
+    export fn to_base64(self) -> String => panic("builtin")
+
+    ## Lowercase hexadecimal text.
+    @builtin
+    export fn to_hex(self) -> String => panic("builtin")
+
+# ---------------------------------------------------------------------------------------
+# Capabilities (spec §16.1). No public constructor, no `Decode`, `Eq` or `Hash`.
+# Methods of `Fs`, `Env`, `Clock`, `Rand` and `Proc` are in std/fs, std/env, std/time,
+# std/random and std/proc.
+# ---------------------------------------------------------------------------------------
+
+## The root capability. Only `main` receives it; it cannot be constructed or decoded (K1501).
+@builtin
+@capability
+export type World:
+    net: Net
+    fs: Fs
+    env: Env
+    clock: Clock
+    rand: Rand
+    proc: Proc
+    stdin: Stdin
+
+impl World:
+    ## A canvas and input capability (`js-browser` target only, K1502 elsewhere).
+    @builtin
+    export fn screen(self, width: Int, height: Int) -> Screen => panic("builtin")
+
+## Outbound HTTP and listening sockets. TLS verification is always on.
+@builtin
+@capability
+export extern type Net
+
+## Files.
+@builtin
+@capability
+export extern type Fs
+
+## Environment variables.
+@builtin
+@capability
+export extern type Env
+
+## The current time and timers.
+@builtin
+@capability
+export extern type Clock
+
+## A cryptographically secure random number generator.
+@builtin
+@capability
+export extern type Rand
+
+## Running `Command`s (never a shell).
+@builtin
+@capability
+export extern type Proc
+
+## Reading standard input.
+@builtin
+@capability
+export extern type Stdin
+
+## A canvas and input (`js-browser` only).
+@builtin
+@capability
+export extern type Screen
+
+impl Net:
+    ## A `Net` that may reach only `hosts`.
+    @builtin
+    export fn only(self, hosts: List[String]) -> Net => panic("builtin")
+
+    ## A `Net` that may reach private address ranges (blocked by default, 04 S12).
+    @builtin
+    export fn allow_private(self) -> Net => panic("builtin")
+
+impl Stdin:
+    ## The next line without its terminator, or `None` at the end of input.
+    @builtin
+    @suspends
+    export fn read_line(self) -> Option[String] => panic("builtin")
+
+# ---------------------------------------------------------------------------------------
+# Shared state, secrets and errors (spec §15.6, §18.1, §14.3)
+# ---------------------------------------------------------------------------------------
+
+## The only shared mutable state. `update` is atomic because its function cannot suspend.
+@builtin
+export extern type Cell[T]
+
+impl[T] Cell[T]:
+    ## A new cell holding `value`.
+    @builtin
+    export fn new(value: T) -> Cell[T] => panic("builtin")
+
+    ## The current value.
+    @builtin
+    export fn get(self) -> T => panic("builtin")
+
+    ## Replaces the value.
+    @builtin
+    export fn set(self, value: T) => panic("builtin")
+
+    ## Replaces the value with `f(value)`, atomically.
+    @builtin
+    export fn update(self, f: @sync fn(T) -> T) => panic("builtin")
+
+## A value that shows as `[REDACTED]`, has no `Encode`, and no `Eq`, `Ord` or `Hash`.
+@builtin
+export extern type Secret[T]
+
+impl[T] Secret[T]:
+    ## Wraps `value`.
+    @builtin
+    export fn new(value: T) -> Secret[T] => panic("builtin")
+
+    ## The wrapped value. An escape hatch counted by `kalam audit`.
+    @builtin
+    export fn expose(self) -> T => panic("builtin")
+
+## The application-level error box. Any `E: Error` converts into it with `?`.
+@builtin
+export extern type AnyError
+
+impl AnyError:
+    ## The messages of this error and the errors it wraps, outermost first.
+    @builtin
+    export fn chain(self) -> List[String] => panic("builtin")
+
+    ## The boxed error as `E` (taken from the expected type), or `None`.
+    @builtin
+    export fn downcast[E: Error](self) -> Option[E] => panic("builtin")
+
+impl AnyError as Error:
+    @builtin
+    fn message(self) -> String => panic("builtin")
+
+# ---------------------------------------------------------------------------------------
+# Safe string kinds (spec §17). Values come from tagged literals, validating parsers or
+# `unsafe.*`; a sink never accepts `String`.
+# ---------------------------------------------------------------------------------------
+
+## HTML built by `html"…"` with contextual auto-escaping.
+@builtin
+export extern type Html
+
+impl Html:
+    ## The HTML text.
+    @builtin
+    export fn render(self) -> String => panic("builtin")
+
+    ## The fragments one after another.
+    @builtin
+    export fn join(parts: List[Html]) -> Html => panic("builtin")
+
+## One SQL statement built by `sql"…"`; holes are bound parameters.
+@builtin
+export extern type Sql
+
+impl Sql:
+    ## The fragments joined by `sep`.
+    @builtin
+    export fn join(parts: List[Sql], sep: Sql) -> Sql => panic("builtin")
+
+## A program and its argv built by `cmd"…"`. There is no raw form.
+@builtin
+export extern type Command
+
+## A URL built by `url"…"` or `Url.parse`. It never holds `javascript:`, `data:` or
+## `vbscript:` unless built with `unsafe.raw_url`.
+@builtin
+export extern type Url
+
+impl Url:
+    ## Parses and validates a runtime URL.
+    @builtin
+    export fn parse(text: String) -> Result[Url, UrlError] => panic("builtin")
+
+## Why `Url.parse` rejected its input.
+export enum UrlError:
+    Malformed(text: String)
+    ForbiddenScheme(scheme: String)
+
+impl UrlError as Error:
+    @builtin
+    fn message(self) -> String => panic("builtin")
+
+## A file path built by `path"…"`; holes must be `PathSegment`s. See std/path.
+@builtin
+export extern type Path
+
+## One validated path component (no `/`, `\`, `.`, `..`, NUL or reserved name).
+@builtin
+export extern type PathSegment
+
+## A linear-time (RE2) pattern built by `regex"…"` or `Regex.parse`.
+@builtin
+export extern type Regex
+
+impl Regex:
+    ## Compiles a runtime pattern with the same engine as `regex"…"`.
+    @builtin
+    export fn parse(pattern: String) -> Result[Regex, RegexError] => panic("builtin")
+
+    ## True when the pattern matches somewhere in `text`.
+    @builtin
+    export fn matches(self, text: String) -> Bool => panic("builtin")
+
+    ## `text` with every match replaced by `replacement` (taken literally).
+    @builtin
+    export fn replace(self, text: String, replacement: String) -> String => panic("builtin")
+
+## Why `Regex.parse` rejected its pattern.
+export enum RegexError:
+    Syntax(message: String)
+
+impl RegexError as Error:
+    @builtin
+    fn message(self) -> String => panic("builtin")
+
+## The literal text of a tagged literal. Only the compiler can create one (spec §17.2).
+@builtin
+export extern type StaticParts
+
+## One typed hole of a tagged literal, passed to `Template.build`.
+@builtin
+export extern type TemplateHole

@@ -1,0 +1,12 @@
+-- NULL FROM ANOTHER LANGUAGE ----------------------------------- main.kl  K0906
+
+`null`, `nil` and `undefined` don't exist in Kalam. A value that may be missing has the type `Option[T]`, and the missing case is written `None`.
+
+2│     let count = null
+                   ^^^^
+
+Try: `None`
+
+Help: Write `None`, and give the variable the type `Option[T]`, so the compiler checks every place that reads it.
+
+Learn more: kalam explain K0906

@@ -1,0 +1,8 @@
+ta3dad Color:
+    Red
+    Green
+
+dala ra2isi():
+    khali c: Color = .Red
+    khali d = Color.Green
+    ektb("x")

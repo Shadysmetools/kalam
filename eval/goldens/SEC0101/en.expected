@@ -1,0 +1,12 @@
+-- TEXT NOT IN NFC -------------------------------------------- main.kl  SEC0101
+
+I found U+0301 (COMBINING ACUTE ACCENT) in text that is not in Unicode normalization form NFC. The same letter can be stored as one code point or as a base letter plus combining marks; the two look identical but compare as different text.
+
+2│     let name = "Zoé"
+                     ^^
+
+Try: `é`
+
+Help: Run `kalam fmt` or `kalam fix`, which rewrite the text in NFC and change nothing else.
+
+Learn more: kalam explain SEC0101

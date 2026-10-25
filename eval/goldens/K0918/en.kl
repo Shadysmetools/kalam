@@ -1,0 +1,4 @@
+fn main():
+    let xs = [1, 2, 3]
+    let n = len(xs)
+    print("{n}")

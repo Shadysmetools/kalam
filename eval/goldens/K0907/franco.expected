@@ -1,0 +1,10 @@
+-- ASYNC AW AWAIT ---------------------------------------- main.franco.kl  K0907
+
+Kalam mafeehosh `async` wala `await`. El compiler beyefham lewa7do anhy dawal bteestanna input aw output, w beyestanna badalak (qarar D12).
+
+1│ async dala describe(n: adad) -> nass:
+   ^^^^^
+
+Mosa3da: Emsa7 `async` w `await` w ekteb call 3adi. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0907

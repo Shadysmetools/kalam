@@ -1,0 +1,30 @@
+# std/path (spec §17.6, §20.1): methods of the prelude types `Path` and `PathSegment`.
+
+## Why a path or path segment was rejected.
+export enum PathError:
+    Empty
+    DotSegment
+    Separator
+    Nul
+    DriveLetter
+    ReservedName(name: String)
+    EscapesBase
+
+impl PathError as Error:
+    @builtin
+    fn message(self) -> String => panic("builtin")
+
+impl Path:
+    ## `rel` inside `base`. Refuses a result that escapes `base` (04 S13).
+    @builtin
+    export fn join(base: Path, rel: Path) -> Result[Path, PathError] => panic("builtin")
+
+    ## The path as text, with `/` separators.
+    @builtin
+    export fn to_text(self) -> String => panic("builtin")
+
+impl PathSegment:
+    ## A single path component. Rejects the empty string, `.`, `..`, `/`, `\`, NUL, drive
+    ## letters and Windows reserved names.
+    @builtin
+    export fn parse(text: String) -> Result[PathSegment, PathError] => panic("builtin")

@@ -1,0 +1,12 @@
+-- BRACES AS A BLOCK -------------------------------------------- main.kl  K0905
+
+Kalam blocks don't use `{ … }`. A block starts with `:` at the end of a line and continues on the lines indented one level deeper.
+
+2│     if n < 0 { return "negative" }
+                ^
+
+Try: `: `
+
+Help: Replace `{` with `:` at the end of the line, indent the body by 4 spaces, and delete the closing `}`. `kalam fix` does this for you.
+
+Learn more: kalam explain K0905

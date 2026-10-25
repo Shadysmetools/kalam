@@ -19,6 +19,9 @@ kalam-eval [--root DIR] [--target M1..M10|beta|1.0|mvp] [--cargo-test] [--run-pr
 kalam-eval freeze    [--root DIR] [--target TIER] [--timestamp TS] [--holdout DIR]
 kalam-eval integrity [--root DIR] [--holdout DIR]
 kalam-eval holdout   --root DIR --store DIR          # the sealed child; started by the scorecard run
+kalam-eval clauses   [--root DIR] [--write | --check]  # the spec clause index, eval/conformance/CLAUSES.json
+kalam-eval judge-sample [--root DIR] [--check]        # writes the pinned judge sample, eval/judge/sample.json
+kalam-eval judge-ingest [--root DIR] --in FILE        # validates judge scores, writes eval/judge/report.json
 ```
 
 Run it from `compiler/`: `cargo run -p kalam-eval -- ...`. The repository root is found by walking up to `eval/scorecard.json`.
@@ -31,6 +34,7 @@ Run it from `compiler/`: `cargo run -p kalam-eval -- ...`. The repository root i
 | `--holdout` | The held-out store (default `eval/holdout`). The scorecard run starts `kalam-eval holdout` on it as a child process and keeps only the aggregate. `--no-holdout` skips it (every held-out-split check is then `not_measurable`). |
 | `--run-props` | Runs `cargo test -p kalam-props --release` with `KALAM_PROPS_REPORT` set to the harness's own path (`compiler/target/kalam-eval-props/report.json`, deleted first) and reads that report: it describes this tree by construction. Without it, `eval/props/report.json` is read and must carry the evaluated commit. |
 | `--history` | Optional. Overrides the default path `eval/history.jsonl`. |
+| `--kalam` | The `kalam` binary (else `KALAM_BIN`) for the M2 checkpoints and for conformance cases that run the interpreter. The harness never builds it; without one, those parts are `not_measurable`. Never point it at `compiler/target/release` while a fuzz run uses that directory. |
 
 ## One line (`kalam-history/1` subset)
 
@@ -148,6 +152,57 @@ All compiler access goes through one hook (`src/parity.rs`), the same entry poin
 
 `ratchet_only` metrics (`D4.keywords_per_skin`, `D4.grammar_productions`, `D4.synonym_count`) are measured from `spec/keywords.json` and the spec §8.2 EBNF block (or `compiler/grammar/kalam.ebnf`).
 
+## How each M2 tier check and checkpoint is measured
+
+M2 (`--target M2`) lists its 8 checks, then every M1 check again under tier `M1` (`ratchet_from: M1`); the M1 runners above are unchanged. Four M2 checks repeat an M1 id with a wider scope; the harness judges those with the M2 runner (src/m2.rs) and the M1 entry with the M1 runner, so the two can differ. The scorecard JSON (stdout and `--out`) also carries `checkpoints` (below) and `checks.m2` (stage probes, per-case conformance results, golden failures, fix-rate detail, judge state). Checkpoints are never tier checks: they are not in `tier_score`, `milestone_met` or G-RATCHET, and history lines do not copy them.
+
+**Honesty rule for stages.** `kalam check` grows one stage at a time, and a file it accepts proves nothing about a stage it does not run. Every M2 runner therefore probes the stages through the same route first: name resolution must report K0401 for `print(kalam_probe_undefined_name)`, the type checker K0602 for `1 == 1.0` (spec §9.8), and `kalam run --interp` must print the line of a prelude-only program. A conformance case whose stage is missing **fails**; a checkpoint that needs a missing stage is `not_measurable`.
+
+| Check | Runner and rule |
+|---|---|
+| `D1.conformance_pass_rate` (≥ 95 %) | src/conformance.rs over `eval/conformance/<clause-id>/<case>/` (`pending/` excluded). Each case is the shared suite format plus optional `stdout` and `stage`; 3 case-skin pairs per case. A pair passes when its stage is present and the file meets the suite pass rule (and prints `stdout` on the interpreter). value = passed / pairs. Any defect (bad `expect.json`, unknown clause id, retired code, no source file) makes it `not_measurable` |
+| `D1.fuzz_crash_free_hours` (adds the type-checker target) | the M1 observation, only when `eval/fuzz/status.json` `targets` (or `fuzz_targets/*.rs`) names a type-checker target (`typeck`/`type`); otherwise `not_measurable` |
+| `G-PAR.P8` (K0201 and K0301) | a K0201 failure is a `fail`; otherwise `not_measurable`, because a K0301 case (two skin files of one module, spec §4.1) needs both files checked as one package and neither the suite format nor `kalam check FILE` supports that yet |
+| `D2.lexing_hazard_suite` (adds SEC0104) | `eval/suites/lexing-hazards` with its `[M2]` cases judged and SEC0104 in scope (`RejectRules.include_m2`); same pass rule as M1 |
+| `D5.diag_completeness` (no scope limit) | `diagcat::measure_in(.., None)`: every spec §27 code of every family (retired dropped) plus every catalog code; same per-code rule as M1; spec codes with no catalog entry count as incomplete |
+| `D5.golden_coverage` (≥ 70 %) | src/goldens.rs over `eval/goldens/<CODE>/{en,ar,franco}.kl` + `.expected` (format below). value = catalog codes whose three goldens match / catalog codes (`kalam explain --catalog --json`, read in process) |
+| `D5.machine_fix_rate` (≥ 20 %) | src/goldens.rs over every distinct file (skin + bytes) of `eval/goldens` and `eval/suites/seeded-errors`: each emitted error is a unit; it is verified when its first `applicability: machine` fix, applied alone, gives fewer errors on re-check and no error code the file did not have. value = verified / errors. A file that cannot be checked makes it `not_measurable` |
+| `D5.judge_score` (≥ 3.0) | src/judge.rs: the mean of `eval/judge/report.json`, only when that report scores the current pinned sample and rubric and `eval/judge/calibration.json` gives ≥ 50 human grades of sample items with MAE ≤ 0.5 against the judge (scorecard.json). Otherwise `not_measurable`, with the mean in the evidence when a report exists |
+
+| Checkpoint | Runner and rule (src/checkpoints.rs, src/m2.rs) |
+|---|---|
+| `D1.spec_clause_coverage` (≥ 40 %) | the metric value (src/conformance.rs `coverage`): units of `eval/conformance/CLAUSES.json` with ≥ 1 must-reject and ≥ 1 accepted case. The committed index must equal the one derived from the spec, else `not_measurable` |
+| `roadmap.M2.typecheck` | `kalam check --json` (the binary) on every `run` case of dev tasks T01–T15, all skins, staged as `main.kl` / `main.ar.kl` / `main.franco.kl`: no error and exit 0. `not_measurable` while the type-checker probe fails. T05, T10 and T13 are held out and never read, so the best status is `not_measurable` (dev only); a dev failure is `fail` |
+| `roadmap.M2.interpreter` | `kalam run --interp` on the `run` cases of T01, T02, T11, T12, T14 (dev; T05 and T13 held out): exit and stdout equal `expected.txt` (`--- stdout`, `stdin: file X`, `exit:`). T08 is reported separately as conditional. `not_measurable` while the interpreter probe fails |
+| `roadmap.M2.negative` | `kalam check --json` on every `compile-error` case of T48–T50, all skins: every expected `diagnostic:` code on one of its lines, and with `others: none` no other error |
+
+### Conformance cases (`eval/conformance/`)
+
+```text
+eval/conformance/CLAUSES.json                     the clause index (kalam-eval clauses --write)
+eval/conformance/<clause-id>/<case>/case.kl       the same program once per skin
+                                    case.ar.kl
+                                    case.franco.kl
+                                    expect.json   {"must_reject", "codes", "lines", "notes", "stdout"?, "stage"?}
+eval/conformance/pending/...                      fixer additions; never counted, never frozen
+```
+
+`<clause-id>` is `13.1.2` or `§13.1.2` (a clause) or `13.1` (a unit). `stage` is `lex`, `parse`, `resolve`, `typeck` or `interp`; the default is `interp` when `stdout` is set, else `parse` for §4–§8, `resolve` for §10.1 and §13, and `typeck` for every other section. Clause ids are positional: `CLAUSES.json` stores a 16-hex SHA-256 prefix of each clause's text, and a spec edit that moves a clause makes the index stale (coverage `not_measurable`) until it is regenerated and the cases filed under moved clauses are re-checked.
+
+### Goldens (`eval/goldens/`)
+
+```text
+eval/goldens/<CODE>/en.kl      en.expected       rendered with KALAM_LANG=en
+                    ar.kl      ar.expected       rendered with KALAM_LANG=ar
+                    franco.kl  franco.expected   rendered with KALAM_LANG=franco
+```
+
+The source is checked as `main.kl`, `main.ar.kl` or `main.franco.kl` (the stem names the skin, like the corpus `*.kalam` files). The `.expected` file is the first error's rendering, which must be `<CODE>`, byte for byte as `kalam check` prints it, plus one final newline. Only that diagnostic is compared, so a later stage adding findings elsewhere in the file does not break a golden. There is no bless mode: goldens are written and reviewed by hand (LOOP.md A3), and a changed rendering is a failure until the reviewer accepts a new golden.
+
+### Judge files (`eval/judge/`)
+
+`RUBRIC.md` (pinned by `rubric_version` and SHA-256), `sample.json` (`kalam-judge-sample/1`: `seed`, `rubric_version`, `rubric_sha256`, `n`, `sample_sha256`, `items: [{id, code, skin, message_language, source, rendered}]`), `report.json` (`kalam-judge-report/1`: `model`, `rubric_version`, `rubric_sha256`, `sample_sha256`, `n`, `mean`, `scores: [{id, score, rationale?}]`, written only by `judge-ingest`) and `calibration.json` (`kalam-judge-calibration/1`: `grader`, `scores: [{id, score}]`, human grades).
+
 ## The shared suite format
 
 `eval/suites/<suite>/<case>/` holds one or more source files named with the spec skin extensions (`.kl`, `.ar.kl`, `.franco.kl`) and an `expect.json`:
@@ -199,7 +254,7 @@ What `kalam-props` (`cargo test -p kalam-props --release`, 10 000 cases per prop
 - **`eval/FREEZE.json`** (`kalam-freeze/1`): `eval_version` (copied from scorecard.json), `target_milestone`, `frozen_at` (`--timestamp` or `null`), `frozen_roots`, `frozen_files` (every frozen file except FREEZE.json and the manifest), `append_only`, `holdout` (`store`, `manifest_sha256`, `manifest_rule`, `split_seed`, `split_seed_note`; seed and note are carried over from the existing FREEZE.json), `spec_llms_txt_sha256`, the founder fields `model_panel`, `llm_judge`, `api_cost_cap_usd`, `wallclock_cap_hours` (carried over from an existing FREEZE.json, `null` until the founder sets them) and `pending_founder` (the founder fields still `null`, plus `holdout.split_seed` while it is `null` or its `split_seed_note` starts with "provisional"; today it is the provisional `d3abd2d`, FOUNDER-QUEUE Q15). The held-out store is pinned by its manifest hash only: SHA-256 over the sorted lines `<sha256(file)>  <relative path>` of every file in the store.
 - **`eval/MANIFEST.sha256`**: `# kalam-manifest/1 <eval_version>`, then `# append-only <path> bytes=<n> sha256=<hex>` for each existing append-only log, then `<sha256>  <path>` for every frozen file (FREEZE.json included, the manifest itself excluded).
 
-Frozen roots: `eval/SCORECARD.md`, `eval/scorecard.json`, `eval/LOOP.md`, `eval/HISTORY-SCHEMA.md`, `eval/FREEZE.json`, `eval/corpus/`, `eval/suites/`, `eval/harness/`, `eval/diagnostics/`, `eval/seccorpus/` and the harness crate `compiler/crates/kalam-eval/` (LOOP.md A3: harness code changes need the reviewer). `target/` directories are skipped. The freeze is deterministic: it never reads the clock.
+Frozen roots: `eval/SCORECARD.md`, `eval/scorecard.json`, `eval/LOOP.md`, `eval/HISTORY-SCHEMA.md`, `eval/FREEZE.json`, `eval/corpus/`, `eval/suites/`, `eval/harness/`, `eval/diagnostics/`, `eval/seccorpus/`, `eval/conformance/` (except `eval/conformance/pending/`), `eval/goldens/`, `eval/judge/RUBRIC.md`, `eval/judge/sample.json` and the harness crate `compiler/crates/kalam-eval/` (LOOP.md A3: harness code changes need the reviewer). `target/` directories are skipped. The freeze is deterministic: it never reads the clock.
 
 `kalam-eval integrity` (and every scorecard run) checks:
 

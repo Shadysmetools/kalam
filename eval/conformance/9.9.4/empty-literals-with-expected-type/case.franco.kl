@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali xs: qayma[adad] = []
+    khali m: qamoos[nass, adad] = {}
+    ektb("x")

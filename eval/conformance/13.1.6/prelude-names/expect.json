@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§13.1.6: \"The prelude is imported implicitly: the core names (§7.2), ... `AnyError`, `Cell`, ... and the modules `log` and `json`.\" Prelude names need no `use`."
+}

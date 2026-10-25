@@ -1,0 +1,10 @@
+-- STATEMENT OUTSIDE A FUNCTION --------------------------------- main.kl  K0255
+
+I found a statement at the top level of the file. The top level holds declarations only: functions, types, traits, constants and imports.
+
+2│ limit + 1
+   ^^^^^
+
+Help: Move this line into a function, such as `main`.
+
+Learn more: kalam explain K0255

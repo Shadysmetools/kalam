@@ -1,0 +1,5 @@
+type Box:
+    with: Int
+
+fn main():
+    print("x")

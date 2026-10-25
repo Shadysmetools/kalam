@@ -1,0 +1,5 @@
+fn main():
+    let a = 1 == 2
+    let b = "x" != "y"
+    let c = 1.5 == 2.5
+    print("{a} {b} {c}")

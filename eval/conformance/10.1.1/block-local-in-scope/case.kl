@@ -1,0 +1,5 @@
+fn main():
+    if true:
+        let inner = 1
+        let copy = inner + 1
+        print("{copy}")

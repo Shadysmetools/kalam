@@ -231,9 +231,9 @@ pub static CATALOG: &[Entry] = &[
         code: "SEC0104",
         title: ["NAMES THAT LOOK THE SAME", "اسمان متطابقان في الشكل", "ESMEEN SHABAH BA3D"],
         message: [
-            "Two different names in this scope look the same once lookalike letters are folded together, for example `ي` and `ى`, `ك` and `ک`, or a Latin letter and its Cyrillic twin. A reader can't tell which of the two a line uses.",
-            "في هذا النطاق اسمان مختلفان يتطابقان في الشكل بعد توحيد الحروف المتشابهة، مثل `ي` و`ى`، أو `ك` و`ک`، أو حرف لاتيني وشبيهه السيريلي. لا يستطيع القارئ أن يعرف أي الاسمين يستخدمه السطر.",
-            "F el scope da fe esmeen mokhtalfeen bas shabah ba3d ba3d ma el 7oroof el shabah ba3d tetwa7ad, zay `ي` w `ى`, aw `ك` w `ک`, aw 7arf latini w el 7arf el cyrillic elly shabaho. Elly beye2ra mesh hay3raf el satr beyesta5dem anhy esm.",
+            "{name} and {other} are two different names in this scope that look the same once lookalike letters are folded together (for example `ي` and `ى`, `ك` and `ک`, or a Latin letter and its Cyrillic twin). A reader can't tell which of the two a line uses.",
+            "{name} و{other} اسمان مختلفان في هذا النطاق يتطابقان في الشكل بعد توحيد الحروف المتشابهة (مثل `ي` و`ى`، أو `ك` و`ک`، أو حرف لاتيني وشبيهه السيريلي). لا يستطيع القارئ أن يعرف أي الاسمين يستخدمه السطر.",
+            "{name} w {other} esmeen mokhtalfeen f el scope da bas shabah ba3d ba3d ma el 7oroof el shabah ba3d tetwa7ad (zay `ي` w `ى`, aw `ك` w `ک`, aw 7arf latini w el 7arf el cyrillic elly shabaho). Elly beye2ra mesh hay3raf el satr beyesta5dem anhy esm.",
         ],
         help: [
             "Rename one of the two names so they differ in a way a reader can see, and update its uses.",
@@ -746,6 +746,148 @@ pub static CATALOG: &[Entry] = &[
             "Why: each file is written in one skin (decision D6), so a reader only needs one vocabulary. Mixing skins usually happens when code is pasted from another file; `kalam convert` translates a whole file losslessly. Words from other skins are still fine as your own names, as long as they are declared.\n\nInstead of (in an English file):\n    إذا ready:\n        start()\n\nwrite:\n    if ready:\n        start()",
             "السبب: كل ملف مكتوب بواجهة واحدة (القرار D6)، فلا يحتاج القارئ إلا إلى مفردات واحدة. ويحدث الخلط بين الواجهات غالبًا عند لصق كود من ملف آخر، والأمر `kalam convert` يترجم الملف كله دون فقد. وكلمات الواجهات الأخرى تبقى مقبولة أسماءً من عندك ما دامت معرّفة.\n\nبدلًا من (في ملف عربي):\n    if جاهز:\n        ابدأ()\n\nاكتب:\n    إذا جاهز:\n        ابدأ()",
             "Leh: kol file maktoob b skin wa7ed (qarar D6), fa elly beye2ra me7tag mofradat wa7da bas. W el khalt ben el skins ghaleban beyeegi men code mansookh men file tany, w `kalam convert` beyetargem el file kollo men gher ma ydayya3 7aga. W kelmat el skins el tanya maashya ka asami men 3andak tool ma heya met3arrafa.\n\nBadal (f file Franco):\n    if gahez:\n        ebda2()\n\nEkteb:\n    law gahez:\n        ebda2()",
+        ],
+        proposed: false,
+    },
+    // ---- Modules and names (K03xx, K04xx, spec §13, §10.1, §5.3; kalam-resolve).
+    // ar/franco: pending native review.
+    Entry {
+        code: "K0301",
+        title: ["ONE MODULE IN TWO FILES", "وحدة واحدة في ملفين", "MODULE WA7ED F FILEIN"],
+        message: [
+            "The module {name} has more than one file, one per skin. The skin suffix is not part of a module's name, so `users.kl` and `users.ar.kl` are the same module.",
+            "للوحدة {name} أكثر من ملف، ملف لكل واجهة. لاحقة الواجهة ليست جزءًا من اسم الوحدة، فالملفان `users.kl` و`users.ar.kl` وحدة واحدة.",
+            "El module {name} leeh aktar men file, file l kol skin. El suffix bta3 el skin mesh gez2 men esm el module, fa `users.kl` w `users.ar.kl` homa nafs el module.",
+        ],
+        help: [
+            "Keep one file per module. To change a file's skin, run `kalam convert`: it renames the file and every `{kw_use}` line stays as it is.",
+            "أبقِ ملفًا واحدًا لكل وحدة. ولتغيير واجهة ملف شغّل `kalam convert`، فهو يعيد تسمية الملف وتبقى كل أسطر `{kw_use}` كما هي.",
+            "Khalli file wa7ed l kol module. W 3ashan teghayar el skin bta3 file shaghal `kalam convert`: beyghayar esm el file w kol satr `{kw_use}` beyfdal zay ma howa.",
+        ],
+        explain: [
+            "Why: a module's path never includes its skin (spec §4.1), so converting a file never changes an import anywhere. Two files for one path would make every `use` of it ambiguous.\n\nInstead of:\n    src/users.kl\n    src/users.ar.kl\n\nkeep one of them:\n    src/users.ar.kl",
+            "السبب: مسار الوحدة لا يتضمن واجهتها أبدًا (المواصفة §4.1)، فتحويل ملف لا يغيّر أي استيراد في أي مكان. ولو وُجد ملفان لمسار واحد لصار كل `استخدم` يشير إليه ملتبسًا.\n\nبدلًا من:\n    src/users.kl\n    src/users.ar.kl\n\nأبقِ أحدهما:\n    src/users.ar.kl",
+            "Leh: el path bta3 el module 3omro ma beykoon feeh el skin (el spec §4.1), fa ta7weel file 3omro ma beyghayar ay import f ay makan. W law fe filein l nafs el path, kol `hat` leeh hayeb2a mesh wade7.\n\nBadal:\n    src/users.kl\n    src/users.ar.kl\n\nKhalli wa7ed bas:\n    src/users.ar.kl",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K0302",
+        title: ["OPAQUE IS FOR TYPES", "الإغلاق للأنواع فقط", "MA2FOOL LEL ANWA3 BAS"],
+        message: [
+            "`{kw_opaque}` hides the fields, variants and constructor of a `{kw_type}` or an `{kw_enum}`. A function, trait, constant or extern declaration has nothing for it to hide.",
+            "الكلمة `{kw_opaque}` تخفي حقول `{kw_type}` أو حالات `{kw_enum}` ومُنشئه. أما الدالة أو السمة أو الثابت أو التعريف الخارجي فليس فيها ما تخفيه.",
+            "`{kw_opaque}` betkhabbi el fields wel variants wel constructor bta3 `{kw_type}` aw `{kw_enum}`. El dala aw el trait aw el constant aw el extern ma fihomsh 7aga tetkhebbi.",
+        ],
+        help: [
+            "Remove `{kw_opaque}` and keep `{kw_export}`.",
+            "احذف `{kw_opaque}` وأبقِ `{kw_export}`.",
+            "Shil `{kw_opaque}` w khalli `{kw_export}`.",
+        ],
+        explain: [
+            "Why: `export opaque` exports a type's name while keeping its insides private, so a validated type such as `Email` can only be built by its own module (spec §13.2). Other declarations are either exported or not.\n\nInstead of:\n    export opaque fn answer() -> Int => 42\n\nwrite:\n    export fn answer() -> Int => 42",
+            "السبب: `علني مغلق` يصدّر اسم النوع ويُبقي داخله خاصًا، فلا يبني نوعًا مُتحقَّقًا منه مثل `بريد` إلا وحدته (المواصفة §13.2). أما بقية التعريفات فإما مُصدَّرة وإما لا.\n\nبدلًا من:\n    علني مغلق دالة الجواب() -> عدد => 42\n\nاكتب:\n    علني دالة الجواب() -> عدد => 42",
+            "Leh: `talla3 ma2fool` beysaddar esm el no3 w beykhalli el gowa bta3o khas, fa no3 et2akkedna meno zay `email` mayetbenish gher f el module bta3o (el spec §13.2). Ba2y el ta3reefat ya mosaddara ya la2.\n\nBadal:\n    talla3 ma2fool dala answer() -> adad => 42\n\nEkteb:\n    talla3 dala answer() -> adad => 42",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K0303",
+        title: ["PRIVATE TYPE IN AN EXPORTED SIGNATURE", "نوع خاص في توقيع مُصدَّر", "NO3 KHAS F SIGNATURE MOSADDAR"],
+        message: [
+            "This exported declaration uses {name}, which is private to this module. Other modules could call it, but they could not write the type it takes or returns.",
+            "هذا التعريف المُصدَّر يستخدم {name}، وهو خاص بهذه الوحدة. تستطيع الوحدات الأخرى استدعاءه، لكنها لا تستطيع كتابة النوع الذي يأخذه أو يرجعه.",
+            "El ta3reef el mosaddar da beyesta5dem {name}, w da khas bel module da. El modules el tanya te2dar tenadeeh, bas mesh hate2dar tekteb el no3 elly beyakhdo aw beyrag3o.",
+        ],
+        help: [
+            "Add `{kw_export}` to the private type (or `{kw_export} {kw_opaque}` to keep its fields hidden), or stop exporting this declaration.",
+            "أضف `{kw_export}` إلى النوع الخاص (أو `{kw_export} {kw_opaque}` لتبقى حقوله مخفية)، أو توقّف عن تصدير هذا التعريف.",
+            "Zawwed `{kw_export}` lel no3 el khas (aw `{kw_export} {kw_opaque}` 3ashan el fields bta3to tefdal mestakhabeya), aw ma tsaddarsh el ta3reef da.",
+        ],
+        explain: [
+            "Why: a package's public API is every exported item (spec §13.2). If an exported function returns a private type, callers get a value whose type they cannot name, and `kalam pkg diff` cannot classify changes to it.\n\nInstead of:\n    type Token:\n        value: String\n\n    export fn issue() -> Token => Token(value: \"x\")\n\nwrite:\n    export opaque type Token:\n        value: String\n\n    export fn issue() -> Token => Token(value: \"x\")",
+            "السبب: الواجهة العامة للحزمة هي كل عنصر مُصدَّر (المواصفة §13.2). فإن أرجعت دالة مُصدَّرة نوعًا خاصًا، حصل مستدعوها على قيمة لا يستطيعون تسمية نوعها، ولا يستطيع `kalam pkg diff` تصنيف التغييرات عليه.\n\nبدلًا من:\n    هيكل رمز:\n        قيمة: نص\n\n    علني دالة أصدر() -> رمز => رمز(قيمة: \"x\")\n\nاكتب:\n    علني مغلق هيكل رمز:\n        قيمة: نص\n\n    علني دالة أصدر() -> رمز => رمز(قيمة: \"x\")",
+            "Leh: el API el 3omoomy bta3 el package howa kol 7aga mosaddara (el spec §13.2). Law dala mosaddara betraga3 no3 khas, elly beynadeeha hayakhod 2eema mayeb2ash 3aref yesamy no3ha, w `kalam pkg diff` mesh hayeb2a 3aref yesannef el taghyeerat 3aleeh.\n\nBadal:\n    haykal token:\n        value: nass\n\n    talla3 dala issue() -> token => token(value: \"x\")\n\nEkteb:\n    talla3 ma2fool haykal token:\n        value: nass\n\n    talla3 dala issue() -> token => token(value: \"x\")",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K0401",
+        title: ["NAME NOT FOUND", "اسم غير معرّف", "ESM MESH MET3ARRAF"],
+        message: [
+            "I can't find a declaration of {name} that is visible here. Kalam has no global names and no glob imports, so every name comes from this scope, this module, an import or the prelude.",
+            "لم أجد تعريفًا لـ {name} يمكن رؤيته هنا. ليس في كلام أسماء عامة ولا استيراد بالجملة، فكل اسم يأتي من هذا النطاق أو هذه الوحدة أو من استيراد أو من التمهيد.",
+            "Mal2etsh ta3reef l {name} bayen hena. Kalam ma fihoosh asami 3amma wala glob imports, fa kol esm gay men el scope da aw el module da aw men import aw men el prelude.",
+        ],
+        help: [
+            "Check the spelling (the suggested fix shows the closest visible name), declare it before this line with `{kw_let}` or `{kw_fn}`, or import it with `{kw_use}`. A name written with lookalike letters is a different name: use the declared spelling exactly.",
+            "راجع الكتابة (الإصلاح المقترح يعرض أقرب اسم مرئي)، أو عرّفه قبل هذا السطر بـ `{kw_let}` أو `{kw_fn}`، أو استورده بـ `{kw_use}`. والاسم المكتوب بحروف متشابهة اسم مختلف، فاكتبه كما عُرِّف بالضبط.",
+            "Rage3 el ketaba (el fix el mo2tara7 beyewarrik a2rab esm bayen), aw 3arrafo 2abl el satr da b `{kw_let}` aw `{kw_fn}`, aw e3melo import b `{kw_use}`. W el esm el maktoob b 7oroof shabah ba3d esm tany, fa ekteb el esm zay ma et3arraf bel zabt.",
+        ],
+        explain: [
+            "Why: every name in Kalam comes from a visible declaration: a local, a parameter, an item of this module, an import or the prelude. Uses are never matched loosely. A name spelled with lookalike letters (Persian `ک` for Arabic `ك`, Cyrillic `а` for Latin `a`) is a different name, and the fix offers the declared spelling (spec §5.3).\n\nInstead of:\n    let total = 1\n    print(totl)\n\nwrite:\n    let total = 1\n    print(total)",
+            "السبب: كل اسم في كلام يأتي من تعريف مرئي: متغير محلي أو معامل أو عنصر في هذه الوحدة أو استيراد أو التمهيد. ولا يُطابَق أي استخدام تقريبيًا. فالاسم المكتوب بحروف متشابهة (`ک` الفارسية بدل `ك` العربية، أو `а` السيريلية بدل `a` اللاتينية) اسم مختلف، والإصلاح يقترح الكتابة المعرَّفة (المواصفة §5.3).\n\nبدلًا من:\n    ليكن كتاب = 1\n    اطبع(کتاب)\n\nاكتب:\n    ليكن كتاب = 1\n    اطبع(كتاب)",
+            "Leh: kol esm f Kalam gay men ta3reef bayen: variable local aw parameter aw 7aga f el module da aw import aw el prelude. W mafeesh ay estekhdam beyet2arenn ta2reeban. El esm el maktoob b 7oroof shabah ba3d (`ک` el farsy badal `ك` el 3araby, aw `а` el cyrillic badal `a` el latini) esm tany, wel fix beye2tere7 el ketaba el met3arrafa (el spec §5.3).\n\nBadal:\n    khali total = 1\n    ektb(totl)\n\nEkteb:\n    khali total = 1\n    ektb(total)",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K0405",
+        title: ["NAME ALREADY IN USE", "اسم مستخدم بالفعل", "ESM MESTA5DEM ABLAN"],
+        message: [
+            "{name} is already declared in a scope that is visible here. Kalam does not let a new declaration hide an older one, so a name means one thing at a time.",
+            "{name} معرَّف بالفعل في نطاق مرئي هنا. لا يسمح كلام لتعريف جديد بأن يخفي تعريفًا أقدم، فيبقى للاسم معنى واحد في كل وقت.",
+            "{name} met3arraf ablan f scope bayen hena. Kalam mesh beysma7 l ta3reef gedeed yekhabbi ta3reef a2dam, fa el esm leeh ma3na wa7ed f kol wa2t.",
+        ],
+        help: [
+            "Give the new declaration a name of its own. For a value of a type with the same name, Arabic code adds the article (`الشكل: شكل`) and Franco code adds `el_` (`el_donya: donya`).",
+            "أعطِ التعريف الجديد اسمًا خاصًا به. ولقيمة من نوع بالاسم نفسه يضيف الكود العربي أداة التعريف (`الشكل: شكل`) ويضيف كود الفرانكو `el_` (`el_donya: donya`).",
+            "Edy el ta3reef el gedeed esm khas beeh. W l 2eema men no3 b nafs el esm, el code el 3araby beyzawwed \"ال\" (`الشكل: شكل`) w code el Franco beyzawwed `el_` (`el_donya: donya`).",
+        ],
+        explain: [
+            "Why: shadowing lets one name mean two things in nearby lines, which hides bugs in review (DR-28). Types, functions, values and module names share one namespace per scope (DR-11), and so do imports and the prelude.\n\nInstead of:\n    fn area(width: Int) -> Int:\n        let width = width * 2\n        return width\n\nwrite:\n    fn area(width: Int) -> Int:\n        let doubled = width * 2\n        return doubled",
+            "السبب: الإخفاء يجعل الاسم الواحد يعني شيئين في أسطر متقاربة، فتختفي الأخطاء عند المراجعة (DR-28). والأنواع والدوال والقيم وأسماء الوحدات تشترك في فضاء أسماء واحد لكل نطاق (DR-11)، ومعها الاستيرادات والتمهيد.\n\nبدلًا من:\n    دالة مساحة(عرض: عدد) -> عدد:\n        ليكن عرض = عرض * 2\n        أرجع عرض\n\nاكتب:\n    دالة مساحة(عرض: عدد) -> عدد:\n        ليكن الضعف = عرض * 2\n        أرجع الضعف",
+            "Leh: el shadowing beykhalli el esm el wa7ed ye3ni 7agtein f stoor 2orayeba, fa el aghlat betestakhabba f el review (DR-28). El anwa3 wel dawal wel 2eyam w asami el modules leehom namespace wa7ed l kol scope (DR-11), w ma3ahom el imports wel prelude.\n\nBadal:\n    dala masa7a(3ard: adad) -> adad:\n        khali 3ard = 3ard * 2\n        rag3 3ard\n\nEkteb:\n    dala masa7a(3ard: adad) -> adad:\n        khali el_de3f = 3ard * 2\n        rag3 el_de3f",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K0413",
+        title: ["CORE NAME IS RESERVED", "اسم أساسي محجوز", "ESM ASASY MA7GOOZ"],
+        message: [
+            "{name} is a core name (spec §7.2). Core names are translated between skins, so each one means the same thing in every program and is never declared again.",
+            "{name} اسم أساسي (المواصفة §7.2). الأسماء الأساسية تُترجم بين الواجهات، فلكل منها المعنى نفسه في كل برنامج ولا يُعرَّف من جديد.",
+            "{name} esm asasy (el spec §7.2). El asami el asaseya betetargem ben el skins, fa kol wa7ed leeh nafs el ma3na f kol program w mabyet3arrafsh tany.",
+        ],
+        help: [
+            "Choose another name for your declaration. The one core name a program declares is `{core_main}`, its entry point.",
+            "اختر اسمًا آخر لتعريفك. والاسم الأساسي الوحيد الذي يعرّفه البرنامج هو `{core_main}`، نقطة البداية.",
+            "Ekhtar esm tany lel ta3reef bta3ak. W el esm el asasy el wa7eed elly el program beye3arrafo howa `{core_main}`, no2tet el bedaya.",
+        ],
+        explain: [
+            "Why: core names such as `Int`, `print` and `Some` are spelled differently in each skin (`عدد`, `اطبع`, `موجود`). If a program could redefine one, converting the file to another skin would change what it means. The one core name you declare is `main`, the entry point.\n\nInstead of:\n    fn print(x: Int):\n        pass\n\nwrite:\n    fn show_number(x: Int):\n        pass",
+            "السبب: الأسماء الأساسية مثل `عدد` و`اطبع` و`موجود` تُكتب بشكل مختلف في كل واجهة (`Int` و`print` و`Some`). ولو استطاع برنامج أن يعيد تعريف أحدها لغيّر تحويل الملف إلى واجهة أخرى معناه. والاسم الأساسي الوحيد الذي تعرّفه هو `رئيسي`، نقطة البداية.\n\nبدلًا من:\n    دالة اطبع(س: عدد):\n        تخطى\n\nاكتب:\n    دالة اعرض_العدد(س: عدد):\n        تخطى",
+            "Leh: el asami el asaseya zay `adad` w `ektb` w `mawgood` betetketeb b shakl mokhtalef f kol skin (`Int` w `print` w `Some`). W law program 2eder ye3arraf wa7ed menhom tany, ta7weel el file l skin tany hayghayar ma3nah. W el esm el asasy el wa7eed elly enta bet3arrafo howa `ra2isi`, no2tet el bedaya.\n\nBadal:\n    dala ektb(x: adad):\n        fot\n\nEkteb:\n    dala e3red_el_rakam(x: adad):\n        fot",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K0417",
+        title: ["FIELD NAMED WITH", "حقل اسمه with", "FIELD ESMO WITH"],
+        message: [
+            "A record field can't be called `with`: every record already has a `with` method, which returns a copy with some fields changed (`u.with(name: \"Omar\")`).",
+            "لا يمكن أن يُسمّى حقل في سجل `with`: لكل سجل دالة `with` جاهزة ترجع نسخة منه بعد تغيير بعض الحقول (`u.with(name: \"Omar\")`).",
+            "Mayenfa3sh field f record yeb2a esmo `with`: kol record 3ando method `with` gahza betraga3 nos5a meno ba3d ma tghayar shwayet fields (`u.with(name: \"Omar\")`).",
+        ],
+        help: [
+            "Rename the field, for example to `with_value` or a name that says what it holds.",
+            "غيّر اسم الحقل، مثلًا إلى `with_value` أو اسم يصف ما يحمله.",
+            "Ghayar esm el field, masalan `with_value` aw esm beyewa22a7 howa shayel eh.",
+        ],
+        explain: [
+            "Why: `x.with(…)` is how records are updated, since values are immutable (spec §9.4). A field named `with` would make `x.with` mean two things.\n\nInstead of:\n    type Box:\n        with: Int\n\nwrite:\n    type Box:\n        extra: Int",
+            "السبب: `س.with(…)` هي طريقة تحديث السجلات، لأن القيم لا تتغير (المواصفة §9.4). ولو سُمّي حقل `with` لصار لـ `س.with` معنيان.\n\nبدلًا من:\n    هيكل صندوق:\n        with: عدد\n\nاكتب:\n    هيكل صندوق:\n        إضافي: عدد",
+            "Leh: `x.with(…)` heya tare2t ta7dees el records, 3ashan el 2eyam mabtetghayarsh (el spec §9.4). W law fe field esmo `with`, `x.with` hayeb2a leeha ma3nein.\n\nBadal:\n    haykal box:\n        with: adad\n\nEkteb:\n    haykal box:\n        extra: adad",
         ],
         proposed: false,
     },
@@ -1496,6 +1638,28 @@ pub static CATALOG: &[Entry] = &[
             "Why: a range shows both bounds at a glance, with no counter to update by hand and no `<` versus `<=` mistake. To loop over a list, loop over the list itself.\n\nInstead of:\n    for i in range(10):\n        print(\"{ i }\")\n\nwrite:\n    for i in 0..10:\n        print(\"{ i }\")",
             "السبب: المدى يُظهر الحدين بنظرة واحدة، دون عدّاد تحدّثه بيدك ودون خطأ الخلط بين `<` و`<=`. وللتكرار على قائمة كرّر على القائمة نفسها.\n\nبدلًا من:\n    لكل i في range(10):\n        اطبع(\"{ i }\")\n\nاكتب:\n    لكل i في 0..10:\n        اطبع(\"{ i }\")",
             "Leh: el range beyewarrik el 7addein f nazra wa7da, men gher 3addad te7addeso b eedak w men gher ghaltet `<` w `<=`. W law 3ayez loop 3ala list, e3mel loop 3ala el list nafsaha.\n\nBadal:\n    lekol i fi range(10):\n        ektb(\"{ i }\")\n\nEkteb:\n    lekol i fi 0..10:\n        ektb(\"{ i }\")",
+        ],
+        proposed: false,
+    },
+    // ---- Modules and globals (K12xx, spec §13.1; kalam-resolve). ar/franco: pending
+    // native review.
+    Entry {
+        code: "K1201",
+        title: ["IMPORT CYCLE", "استيراد دائري", "IMPORT DAYRI"],
+        message: [
+            "These modules import each other in a cycle: {cycle}. Module constants are evaluated once, in dependency order, so imports must not loop back.",
+            "هذه الوحدات يستورد بعضها بعضًا في دائرة: {cycle}. تُحسب ثوابت الوحدات مرة واحدة بترتيب الاعتماد، فلا يجوز أن تعود الاستيرادات إلى نقطة بدايتها.",
+            "El modules di bet3mel import l ba3d f dayra: {cycle}. El constants bta3et el modules betet7seb marra wa7da b tarteeb el e3temad, fa el imports mayenfa3sh terga3 l ba3d.",
+        ],
+        help: [
+            "Move what both modules need into a third module that both import, or pass it in as a parameter.",
+            "انقل ما تحتاجه الوحدتان إلى وحدة ثالثة تستوردها كلتاهما، أو مرّره إليهما كمعامل.",
+            "Na2el elly el modulein me7tageeno l module talet el etnein ye3melo leeh import, aw ba3ato ka parameter.",
+        ],
+        explain: [
+            "Why: with a cycle there is no order in which every module's constants are ready before they are used, and neither module can be read without the other (spec §13.1).\n\nInstead of:\n    # app/orders.kl\n    use app/users\n    # app/users.kl\n    use app/orders\n\nwrite (app/model.kl holds what both need):\n    # app/orders.kl\n    use app/model\n    # app/users.kl\n    use app/model",
+            "السبب: مع الدائرة لا يوجد ترتيب تكون فيه ثوابت كل وحدة جاهزة قبل استخدامها، ولا يمكن قراءة أي من الوحدتين دون الأخرى (المواصفة §13.1).\n\nبدلًا من:\n    # app/orders.ar.kl\n    استخدم app/users\n    # app/users.ar.kl\n    استخدم app/orders\n\nاكتب (والوحدة app/model.ar.kl فيها ما تحتاجه الوحدتان):\n    # app/orders.ar.kl\n    استخدم app/model\n    # app/users.ar.kl\n    استخدم app/model",
+            "Leh: ma3 el dayra mafeesh tarteeb tekoon feeh el constants bta3et kol module gahza 2abl ma testa5demha, w mafeesh module yet2ere men gher el tany (el spec §13.1).\n\nBadal:\n    # app/orders.franco.kl\n    hat app/users\n    # app/users.franco.kl\n    hat app/orders\n\nEkteb (w app/model.franco.kl feeh elly el etnein me7tageeno):\n    # app/orders.franco.kl\n    hat app/model\n    # app/users.franco.kl\n    hat app/model",
         ],
         proposed: false,
     },

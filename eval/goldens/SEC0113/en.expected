@@ -1,0 +1,12 @@
+-- UNUSUAL LINE BREAK ----------------------------------------- main.kl  SEC0113
+
+I found U+2028 (LINE SEPARATOR). Kalam lines end with LF, or with CRLF, which `kalam fmt` rewrites as LF.
+
+2│     let name = "Sa ra"
+                     ^
+
+Try: `\u{2028}`
+
+Help: Replace it with an ordinary line break (LF). Inside a string, write `\n` instead.
+
+Learn more: kalam explain SEC0113

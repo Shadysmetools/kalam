@@ -1,0 +1,5 @@
+fn limit() -> Int => 10
+
+fn main():
+    let limit = 3
+    print("{limit}")

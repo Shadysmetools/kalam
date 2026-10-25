@@ -1,0 +1,3 @@
+fn main():
+    let كتاب = "x"
+    print(کتاب)

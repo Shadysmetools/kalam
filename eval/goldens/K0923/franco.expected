@@ -1,0 +1,14 @@
+-- OPERATOR EL OS ---------------------------------------- main.franco.kl  K0923
+
+Kalam mafeehosh `**`. Erfa3 el rakam l os b el method `.pow()`.
+
+9│     khali n = total(xs) ** 2
+                           ^^
+
+Garrab: `.pow(`
+
+Garrab: `)`
+
+Mosa3da: Ekteb `a.pow(b)` badal `a ** b`. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0923

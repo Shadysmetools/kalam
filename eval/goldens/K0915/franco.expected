@@ -1,0 +1,12 @@
+-- UNWRAP ------------------------------------------------ main.franco.kl  K0915
+
+`.unwrap()` beyewa22af el program men gher ma y2ool leh. 3ashan keda Kalam beytlob menak t2ool kont mestanni eh, b `.expect("…")`.
+
+3│     khali count = found.unwrap()
+                           ^^^^^^^^
+
+Garrab: `expect("…")`
+
+Mosa3da: Ghayar `.unwrap()` b `.expect("leh mayenfa3sh yefshal")`, aw et3amel ma3 7alet el gheyab b `hasab` aw `?`.
+
+E3raf aktar: kalam explain K0915

@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§9.2.1: \"`Int`: 64-bit signed integers, [−2⁶³, 2⁶³−1], on every backend (DR-02, D18)\"; §27 K0126: \"literal out of range for its type (`Int`: [−2⁶³, 2⁶³−1], D18; reported by the type checker)\" Positive twin: 2⁶³−1 fits."
+}

@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali s = "abc"
+    khali first = s[0]
+    ektb("x")

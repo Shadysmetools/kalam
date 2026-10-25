@@ -1,0 +1,2 @@
+export opaque type Email:
+    value: String

@@ -1,0 +1,12 @@
+-- LAMBDA 3ALA KAZA SATR --------------------------------- main.franco.kl  K0921
+
+Gesm el lambda f Kalam expression wa7ed bas, w da mamdood 3ala kaza satr.
+
+9│     khali double = dala(x: adad):
+                                   ^
+
+Garrab: `dala double`
+
+Mosa3da: 3arraf dala local b `dala` w leeha esm 2abl el call da 3ala tool, w ba3at el esm.
+
+E3raf aktar: kalam explain K0921

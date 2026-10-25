@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§10.1.2: \"No shadowing (DR-28). A binding may not reuse any name visible at that point: enclosing locals, parameters, module items, imports or core names (K0405, with a rename fix-it).\" Positive twin: the loop binding has a fresh name."
+}

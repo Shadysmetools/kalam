@@ -1,0 +1,12 @@
+-- INVISIBLE CHARACTER ---------------------------------------- main.kl  SEC0111
+
+I found the invisible character U+200B (ZERO WIDTH SPACE). It can make two different names look the same.
+
+2│     let name = "Sa​ra"
+                     ^
+
+Try: `\u{200B}`
+
+Help: In code or a name, delete it (`kalam fix` does this). Inside a string, write it as `\u{...}` so readers can see it.
+
+Learn more: kalam explain SEC0111

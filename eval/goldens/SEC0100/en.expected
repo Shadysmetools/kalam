@@ -1,0 +1,10 @@
+-- FILE ENCODING ---------------------------------------------- main.kl  SEC0100
+
+I found U+FEFF (ZERO WIDTH NO-BREAK SPACE (BOM)) here: a byte order mark (U+FEFF), or bytes that are not UTF-8. Kalam reads source files only as plain UTF-8, so every editor, reviewer and compiler sees exactly the same characters.
+
+3│ ﻿    print(name)
+   ^
+
+Help: Run `kalam fmt` to remove a byte order mark. For other bytes, save the file again from your editor as "UTF-8" (not "UTF-8 with BOM").
+
+Learn more: kalam explain SEC0100

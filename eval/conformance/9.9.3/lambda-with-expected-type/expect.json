@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§9.9.3: \"Lambdas take parameter types from the expected function type. Without one, annotations are required (K0801).\" The parameter type comes from the expected type `fn(Int) -> Int`."
+}

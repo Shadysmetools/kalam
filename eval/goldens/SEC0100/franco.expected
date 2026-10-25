@@ -1,0 +1,10 @@
+-- ENCODING EL FILE ------------------------------------ main.franco.kl  SEC0100
+
+La2eit U+FEFF (ZERO WIDTH NO-BREAK SPACE (BOM)) hena: byte order mark (U+FEFF), aw bytes mesh UTF-8. Kalam beye2ra malafat el code UTF-8 3adi bas, 3ashan kol editor w reviewer w compiler yshoofo nafs el 7oroof bel zabt.
+
+3│ ﻿    ektb(name)
+   ^
+
+Mosa3da: Shaghal `kalam fmt` 3ashan yshil el byte order mark. Law fe bytes tanya, e7faz el file tany men el editor b "UTF-8" (mesh "UTF-8 with BOM").
+
+E3raf aktar: kalam explain SEC0100

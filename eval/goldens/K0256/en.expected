@@ -1,0 +1,10 @@
+-- IMPORT AFTER A DECLARATION ----------------------------------- main.kl  K0256
+
+This import comes after a declaration. Imports go at the top of the file, before everything else, so readers see a file's dependencies first.
+
+4│ use std/http
+   ^^^^^^^^^^^^
+
+Help: Move this `use` line up with the other imports. `kalam fmt` does this for you.
+
+Learn more: kalam explain K0256

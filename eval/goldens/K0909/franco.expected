@@ -1,0 +1,12 @@
+-- OPERATOR EL ZYADA ------------------------------------- main.franco.kl  K0909
+
+Kalam mafeehosh `++` wala `--`. El ta7dees yetketeb assignment, fa kol taghyeer f el variable yeb2a bayen.
+
+4│         sum++
+              ^^
+
+Garrab: ` += 1`
+
+Mosa3da: Ekteb `x += 1` badal `x++`, w `x -= 1` badal `x--`, w lazem el variable yeb2a met3arraf b `motghayer`. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0909

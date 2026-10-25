@@ -1,0 +1,10 @@
+-- PRIVATE TYPE IN AN EXPORTED SIGNATURE ------------------------ main.kl  K0303
+
+This exported declaration uses `Ticket`, which is private to this module. Other modules could call it, but they could not write the type it takes or returns.
+
+4│ export fn make_ticket() -> Ticket => Ticket(id: 1)
+                              ^^^^^^
+
+Help: Add `export` to the private type (or `export opaque` to keep its fields hidden), or stop exporting this declaration.
+
+Learn more: kalam explain K0303

@@ -1,0 +1,12 @@
+-- INVISIBLE SPACE -------------------------------------------- main.kl  SEC0103
+
+I found U+00A0 (NO-BREAK SPACE), a space that is not the ordinary space U+0020. Kalam code uses only the ordinary space, so an invisible character can never split or join words.
+
+9│     let n = total(xs)
+              ^
+
+Try: ` `
+
+Help: Replace it with an ordinary space. `kalam fix` does this for you.
+
+Learn more: kalam explain SEC0103

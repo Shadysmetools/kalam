@@ -1,0 +1,10 @@
+-- HOLE EL STRING ---------------------------------------- main.franco.kl  K0253
+
+Kol hole `{...}` gowa el string feeha expression wa7ed bel zabt, w di la2: ya fadya ya feeha 7aga mesh 3aref a2raha ka qeema wa7da.
+
+3│     ektb("{}")
+             ^
+
+Mosa3da: 7ot qeema wa7da f el hole, aw ekteb `\{` w `\}` law 3ayez aqwas 3adeya.
+
+E3raf aktar: kalam explain K0253

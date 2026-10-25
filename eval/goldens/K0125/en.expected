@@ -1,0 +1,12 @@
+-- LEADING ZERO ------------------------------------------------- main.kl  K0125
+
+`007` starts with a zero. Kalam numbers don't start with zeros, so `007` can never be mistaken for an octal number.
+
+9│     let n = total(xs) + 007
+                           ^^^
+
+Try: `7`
+
+Help: Write `7`. For an octal number, write it with `0o`. `kalam fix` does this for you.
+
+Learn more: kalam explain K0125

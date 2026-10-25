@@ -1,0 +1,12 @@
+-- KELMET DALA MEN LOGHA TANYA --------------------------- main.franco.kl  K0902
+
+`def` w `function` w `func` bey2ebdo el dawal f loghat tanya. Kalam bey3arraf el dala b `dala`.
+
+1│ def describe(n: adad) -> nass:
+   ^^^
+
+Garrab: `dala`
+
+Mosa3da: Ekteb `dala esm(param: Type):` w edy kol parameter no3o. `kalam fix` beyghayar el kelma w beysib makan el no3 `_` 3ashan temlah.
+
+E3raf aktar: kalam explain K0902

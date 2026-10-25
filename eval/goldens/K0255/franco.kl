@@ -1,0 +1,5 @@
+khali limit = 3
+limit + 1
+
+dala ra2isi():
+    ektb("{limit}")

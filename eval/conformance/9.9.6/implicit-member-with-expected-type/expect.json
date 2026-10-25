@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§9.9.6: \"Implicit members resolve against the expected type (K0803 without one).\" Positive twin (and the qualified form of §9.5.1)."
+}

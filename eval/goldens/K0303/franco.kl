@@ -1,0 +1,4 @@
+haykal Ticket:
+    id: adad
+
+talla3 dala make_ticket() -> Ticket => Ticket(id: 1)

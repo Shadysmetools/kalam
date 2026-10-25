@@ -252,6 +252,8 @@ pub struct RejectRules {
     pub name_codepoints: bool,
     /// Cases expecting one of these codes are out of scope at this tier (counted, skipped).
     pub out_of_scope: Vec<&'static str>,
+    /// Judge `[M2]` cases too (tier M2 and later) instead of counting them as deferred.
+    pub include_m2: bool,
 }
 
 /// Judges one file against a case expectation. `Err(reason)` on failure.
@@ -359,7 +361,7 @@ pub fn run_reject(hook: &dyn ParseHook, cases: &[SuiteCase], rules: &RejectRules
             ));
             continue;
         }
-        if expect.is_m2() {
+        if expect.is_m2() && !rules.include_m2 {
             r.deferred_m2 += 1;
             continue;
         }
@@ -754,6 +756,7 @@ pub(crate) mod tests {
         let rules = RejectRules {
             name_codepoints: true,
             out_of_scope: vec![],
+            include_m2: false,
         };
         let r = run_reject(hook.as_ref(), &cases, &rules);
         assert_eq!((r.bad_passed, r.bad_total), (1, 2), "{r:?}");
@@ -784,6 +787,7 @@ pub(crate) mod tests {
         let rules = RejectRules {
             name_codepoints: false,
             out_of_scope: vec!["SEC0104"],
+            include_m2: false,
         };
         let r = run_reject(default_hook().as_ref(), &cases, &rules);
         assert_eq!(r.defects.len(), 3, "{r:?}");

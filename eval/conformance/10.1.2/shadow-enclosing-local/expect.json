@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0405"
+  ],
+  "lines": [
+    4
+  ],
+  "notes": "§10.1.2: \"No shadowing (DR-28). A binding may not reuse any name visible at that point: enclosing locals, parameters, module items, imports or core names (K0405, with a rename fix-it).\" The inner `let total` reuses an enclosing local."
+}

@@ -1,0 +1,124 @@
+# std/time (spec §16.1, §20.1). Reading the time needs the `Clock` capability; `Duration`
+# arithmetic, dates and formatting are ambient.
+
+## A point in time (UTC, nanosecond precision).
+@builtin
+export extern type Instant
+
+## A calendar date (proleptic Gregorian) with no time of day.
+@builtin
+export extern type Date
+
+## A length of time, possibly negative.
+@builtin
+export extern type Duration
+
+## A time zone from the IANA database.
+@builtin
+export extern type Zone
+
+## Why a time zone or date could not be read.
+export enum TimeError:
+    UnknownZone(name: String)
+    InvalidDate(text: String)
+
+impl TimeError as Error:
+    @builtin
+    fn message(self) -> String => panic("builtin")
+
+impl Clock:
+    ## The current instant.
+    @builtin
+    export fn now(self) -> Instant => panic("builtin")
+
+    ## Today's date in `zone`.
+    @builtin
+    export fn today(self, zone: Zone) -> Date => panic("builtin")
+
+impl Instant:
+    ## Milliseconds since 1970-01-01T00:00:00Z.
+    @builtin
+    export fn to_unix_ms(self) -> Int => panic("builtin")
+
+    ## The instant `amount` later (earlier for a negative duration).
+    @builtin
+    export fn plus(self, amount: Duration) -> Instant => panic("builtin")
+
+    ## The duration from `earlier` to `self`.
+    @builtin
+    export fn since(self, earlier: Instant) -> Duration => panic("builtin")
+
+    ## The date of this instant in `zone`.
+    @builtin
+    export fn date(self, zone: Zone) -> Date => panic("builtin")
+
+    ## ISO 8601 text in UTC, such as `2027-01-31T09:30:00Z`.
+    @builtin
+    export fn to_iso(self) -> String => panic("builtin")
+
+impl Date:
+    ## The date with this year, month (1-12) and day, or an error.
+    @builtin
+    export fn new(year: Int, month: Int, day: Int) -> Result[Date, TimeError] => panic("builtin")
+
+    ## The Gregorian year.
+    @builtin
+    export fn year(self) -> Int => panic("builtin")
+
+    ## The Gregorian month, 1-12.
+    @builtin
+    export fn month(self) -> Int => panic("builtin")
+
+    ## The day of the month, 1-31.
+    @builtin
+    export fn day(self) -> Int => panic("builtin")
+
+    ## The date `days` later (earlier when negative).
+    @builtin
+    export fn add_days(self, days: Int) -> Date => panic("builtin")
+
+    ## ISO 8601 text, such as `2027-01-31`.
+    @builtin
+    export fn to_iso(self) -> String => panic("builtin")
+
+    ## The Hijri (Umm al-Qura) date as text.
+    @builtin
+    export fn format_hijri(self) -> String => panic("builtin")
+
+impl Duration:
+    ## `count` milliseconds.
+    @builtin
+    export fn ms(count: Int) -> Duration => panic("builtin")
+
+    ## `count` seconds.
+    @builtin
+    export fn seconds(count: Int) -> Duration => panic("builtin")
+
+    ## `count` minutes.
+    @builtin
+    export fn minutes(count: Int) -> Duration => panic("builtin")
+
+    ## `count` hours.
+    @builtin
+    export fn hours(count: Int) -> Duration => panic("builtin")
+
+    ## `count` days of 24 hours.
+    @builtin
+    export fn days(count: Int) -> Duration => panic("builtin")
+
+    ## The sum of the two durations.
+    @builtin
+    export fn plus(self, other: Duration) -> Duration => panic("builtin")
+
+    ## The whole milliseconds, truncated toward zero.
+    @builtin
+    export fn to_ms(self) -> Int => panic("builtin")
+
+impl Zone:
+    ## Coordinated Universal Time.
+    @builtin
+    export fn utc() -> Zone => panic("builtin")
+
+    ## The IANA zone with this name, such as `Africa/Cairo`.
+    @builtin
+    export fn named(name: String) -> Result[Zone, TimeError] => panic("builtin")

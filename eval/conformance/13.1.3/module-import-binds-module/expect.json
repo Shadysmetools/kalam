@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§13.1.3: \"`use std/http` binds `http`. `use std/http.{Router, Response}` binds names directly. `as` renames. `use std/http.{self, Router}` binds both.\" Positive twin (`http.router()` is listed in spec §20.1)."
+}

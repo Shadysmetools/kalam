@@ -1,0 +1,5 @@
+dala ra2isi():
+    khali كتاب = "a"
+    khali دفتر = "b"
+    ektb(كتاب)
+    ektb(دفتر)

@@ -1,0 +1,10 @@
+-- INTERPOLATION HOLE ------------------------------------------- main.kl  K0253
+
+Each `{...}` hole in a string holds exactly one expression, and this one doesn't: it is empty or holds something I can't read as one value.
+
+3│     print("{}")
+              ^
+
+Help: Put one value in the hole, or write `\{` and `\}` for literal braces.
+
+Learn more: kalam explain K0253

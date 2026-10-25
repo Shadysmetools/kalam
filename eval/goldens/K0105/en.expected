@@ -1,0 +1,10 @@
+-- UNEXPECTED CHARACTER ----------------------------------------- main.kl  K0105
+
+I don't know what to do with U+0024  here. Outside strings and comments, Kalam code uses letters, digits, spaces and the ASCII operators.
+
+8│     let xs = [1, 2, 3] $
+                          ^
+
+Help: Delete the character, or move it into a string or a comment, where any visible character is welcome.
+
+Learn more: kalam explain K0105

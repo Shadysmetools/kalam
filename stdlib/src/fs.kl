@@ -1,0 +1,50 @@
+# std/fs (spec §16.1, §17.6, §20.1): methods of the prelude capability `Fs`. Paths are
+# `Path` values (`path"…"`, `Path.join`), never `String`s.
+
+## Why a file operation failed.
+export enum FsError:
+    NotFound(path: String)
+    PermissionDenied(path: String)
+    AlreadyExists(path: String)
+    OutsideRoot(path: String)
+    NotUtf8(path: String)
+    Io(message: String)
+
+impl FsError as Error:
+    @builtin
+    fn message(self) -> String => panic("builtin")
+
+impl Fs:
+    ## The whole file as UTF-8 text.
+    @builtin
+    @suspends
+    export fn read_text(self, file: Path) -> Result[String, FsError] => panic("builtin")
+
+    ## The whole file as bytes.
+    @builtin
+    @suspends
+    export fn read_bytes(self, file: Path) -> Result[Bytes, FsError] => panic("builtin")
+
+    ## Creates or replaces the file with `text`.
+    @builtin
+    @suspends
+    export fn write_text(self, file: Path, text: String) -> Result[(), FsError] => panic("builtin")
+
+    ## The names in a directory, sorted.
+    @builtin
+    @suspends
+    export fn list(self, dir: Path) -> Result[List[String], FsError] => panic("builtin")
+
+    ## True when the path exists.
+    @builtin
+    @suspends
+    export fn exists(self, file: Path) -> Bool => panic("builtin")
+
+    ## An `Fs` rooted at `root`: `..` and symlinks that leave the root are refused.
+    @builtin
+    @suspends
+    export fn dir(self, root: Path) -> Result[Fs, FsError] => panic("builtin")
+
+    ## An `Fs` that cannot write.
+    @builtin
+    export fn read_only(self) -> Fs => panic("builtin")

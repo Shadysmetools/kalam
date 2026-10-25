@@ -1,0 +1,4 @@
+fn main():
+    let s = "abc"
+    let first = s[0]
+    print("x")

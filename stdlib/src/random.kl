@@ -1,0 +1,34 @@
+# std/random (spec §16.1, §18.2): methods of the prelude capability `Rand`, plus the
+# deterministic `SeededRand`. `SeededRand` needs no capability and has no `token` or
+# `uuid_v4`, so using it for secrets is a type error by omission (04 S7).
+
+## A deterministic pseudo-random generator for games, simulations and tests. Each draw
+## advances its internal state; the same seed gives the same sequence.
+@builtin
+export extern type SeededRand
+
+impl Rand:
+    ## A deterministic generator started from `seed`. Needs no capability.
+    @builtin
+    export fn seeded(seed: Int) -> SeededRand => panic("builtin")
+
+    ## A uniformly random integer in `range` (CSPRNG).
+    @builtin
+    export fn int(self, range: Range[Int]) -> Int => panic("builtin")
+
+    ## `bytes` random bytes as URL-safe base64 text.
+    @builtin
+    export fn token(self, bytes: Int) -> Secret[String] => panic("builtin")
+
+    ## A random version 4 UUID.
+    @builtin
+    export fn uuid_v4(self) -> String => panic("builtin")
+
+impl SeededRand:
+    ## The next integer in `range`.
+    @builtin
+    export fn int(self, range: Range[Int]) -> Int => panic("builtin")
+
+    ## The next `Float` in [0, 1).
+    @builtin
+    export fn float(self) -> Float => panic("builtin")

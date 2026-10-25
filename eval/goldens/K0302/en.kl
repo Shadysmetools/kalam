@@ -1,0 +1,4 @@
+export opaque type Email:
+    value: String
+
+export opaque fn answer() -> Int => 42

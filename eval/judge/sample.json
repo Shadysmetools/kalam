@@ -1,0 +1,532 @@
+{
+  "items": [
+    {
+      "code": "K0103",
+      "id": "K0103/franco",
+      "message_language": "franco",
+      "rendered": "-- TAB --------------------------------------------------- main.franco.kl  K0103\n\nLa2eit tab. Kalam beyesta5dem 4 masafat l kol mostawa, 3ashan el code yban zay ba3do f kol editor.\n\n2│ \tmotghayer sum = 0\n   ^\n\nGarrab: `    `\n\nMosa3da: Ghayar el tab b masafat (4 l kol mostawa). `kalam fmt` bey3mel keda lak, w gowa el string ekteb `\\t`.\n\nE3raf aktar: kalam explain K0103",
+      "skin": "franco",
+      "source": "dala total(items: qayma[adad]) -> adad:\n\tmotghayer sum = 0\n    lekol item fi items:\n        sum += item\n    rag3 sum\n\ndala ra2isi():\n    khali xs = [1, 2, 3]\n    khali n = total(xs)\n    ektb(\"total {n}\")\n"
+    },
+    {
+      "code": "K0105",
+      "id": "K0105/ar",
+      "message_language": "ar",
+      "rendered": "-- حرف غير متوقع --------------------------------------------- main.ar.kl  K0105\n\nلا أعرف ماذا أفعل بـ U+0024  هنا. خارج النصوص والتعليقات، يستخدم كود كلام الحروف والأرقام والمسافات ورموز ASCII.\n\n8│     ليكن xs = [1، 2، 3] $\n                           ^\n\nمساعدة: احذف الحرف، أو انقله إلى داخل نص أو تعليق، فهناك يُقبل أي حرف ظاهر.\n\nلمعرفة المزيد: kalam explain K0105",
+      "skin": "ar",
+      "source": "دالة total(items: قائمة[عدد]) -> عدد:\n    متغير sum = 0\n    لكل item في items:\n        sum += item\n    أرجع sum\n\nدالة رئيسي():\n    ليكن xs = [1، 2، 3] $\n    ليكن n = total(xs)\n    اطبع(\"total {n}\")\n"
+    },
+    {
+      "code": "K0120",
+      "id": "K0120/franco",
+      "message_language": "franco",
+      "rendered": "-- EL ZA7A ----------------------------------------------- main.franco.kl  K0120\n\nZa7et el satr da mesh mazboota. Kol block beykoon mostawa wa7ed bel zabt (4 masafat) agwa men el satr elly beyfta7o b `:`.\n\n3│             rag3 \"negative\"\n   ^^^^^^^^^^^^\n\nMosa3da: Zo77 el satr da b mada3afat 4 masafat, mostawa wa7ed agwa men el satr elly bey5las b `:` fo2o, aw zabato ma3 el sotoor elly gambo. `kalam fmt` beysalla7 el za7a elly ye2dar yefhamha.\n\nE3raf aktar: kalam explain K0120",
+      "skin": "franco",
+      "source": "dala describe(n: adad) -> nass:\n    law n < 0:\n            rag3 \"negative\"\n    walla law n == 0:\n        rag3 \"zero\"\n    walla:\n        rag3 \"positive\"\n\ndala ra2isi():\n    khali label = describe(5)\n    ektb(label)\n"
+    },
+    {
+      "code": "K0122",
+      "id": "K0122/ar",
+      "message_language": "ar",
+      "rendered": "-- رجوع الإزاحة ---------------------------------------------- main.ar.kl  K0122\n\nهذا السطر يرجع إلى عمود لا تستخدمه أي كتلة محيطة، فلا أعرف أي كتلة يكمل.\n\n5│    أرجع sum\n   ^^^\n\nمساعدة: اجعله على محاذاة إحدى الكتل التي فوقه بالضبط.\n\nلمعرفة المزيد: kalam explain K0122",
+      "skin": "ar",
+      "source": "دالة total(items: قائمة[عدد]) -> عدد:\n    متغير sum = 0\n    لكل item في items:\n        sum += item\n   أرجع sum\n\nدالة رئيسي():\n    ليكن xs = [1، 2، 3]\n    ليكن n = total(xs)\n    اطبع(\"total {n}\")\n"
+    },
+    {
+      "code": "K0125",
+      "id": "K0125/franco",
+      "message_language": "franco",
+      "rendered": "-- SEFR F EL AWEL ---------------------------------------- main.franco.kl  K0125\n\n`007` beyebda2 b sefr. Arqam Kalam mabtebda2sh b asfar, 3ashan `007` mayet2resh octal.\n\n9│     khali n = total(xs) + 007\n                             ^^^\n\nGarrab: `7`\n\nMosa3da: Ekteb `7`. W law 3ayez octal ektebo b `0o`. `kalam fix` bey3mel keda lak.\n\nE3raf aktar: kalam explain K0125",
+      "skin": "franco",
+      "source": "dala total(items: qayma[adad]) -> adad:\n    motghayer sum = 0\n    lekol item fi items:\n        sum += item\n    rag3 sum\n\ndala ra2isi():\n    khali xs = [1, 2, 3]\n    khali n = total(xs) + 007\n    ektb(\"total {n}\")\n"
+    },
+    {
+      "code": "K0127",
+      "id": "K0127/franco",
+      "message_language": "franco",
+      "rendered": "-- RAKAM LAZE2 F 7OROOF ---------------------------------- main.franco.kl  K0127\n\n`3ala` beyebda2 b rakam, fa 2areito rakam, bas feeh 7oroof. Mafeesh esm yebda2 b rakam f ay skin.\n\n9│     khali n = 3ala\n                 ^^^^\n\nMosa3da: Ebda2 el esm b 7arf, aw 7ot masafa ben el rakam wel kelma. W law el kelma keyword maktoob ghalat, w da beye7sal keteer f el Franco, ha2tera7 3aleek el ketaba el sa7.\n\nE3raf aktar: kalam explain K0127",
+      "skin": "franco",
+      "source": "dala total(items: qayma[adad]) -> adad:\n    motghayer sum = 0\n    lekol item fi items:\n        sum += item\n    rag3 sum\n\ndala ra2isi():\n    khali xs = [1, 2, 3]\n    khali n = 3ala\n    ektb(\"total {n}\")\n"
+    },
+    {
+      "code": "K0129",
+      "id": "K0129/ar",
+      "message_language": "ar",
+      "rendered": "-- نص غير مكتمل ---------------------------------------------- main.ar.kl  K0129\n\nهذا النص لا ينتهي بـ `\"`. النص `\"...\"` ينتهي في السطر نفسه الذي يبدأ فيه.\n\n10│     اطبع(\"total\n             ^^^^^^\n\nمساعدة: أضف `\"` الختامية قبل نهاية السطر. وللنصوص متعددة الأسطر استخدم `\"\"\"`.\n\nلمعرفة المزيد: kalam explain K0129",
+      "skin": "ar",
+      "source": "دالة total(items: قائمة[عدد]) -> عدد:\n    متغير sum = 0\n    لكل item في items:\n        sum += item\n    أرجع sum\n\nدالة رئيسي():\n    ليكن xs = [1، 2، 3]\n    ليكن n = total(xs)\n    اطبع(\"total\n"
+    },
+    {
+      "code": "K0130",
+      "id": "K0130/en",
+      "message_language": "en",
+      "rendered": "-- UNKNOWN ESCAPE ----------------------------------------------- main.kl  K0130\n\nI don't know the escape `\\q`. The escapes are `\\n \\t \\r \\\\ \\\" \\{ \\} \\0` and `\\u{...}`.\n\n10│     print(\"total\\q {n}\")\n                    ^^\n\nHelp: Use one of those escapes. For a literal backslash, write `\\\\`; for any other character, write `\\u{...}` with its hexadecimal code point.\n\nLearn more: kalam explain K0130",
+      "skin": "en",
+      "source": "fn total(items: List[Int]) -> Int:\n    var sum = 0\n    for item in items:\n        sum += item\n    return sum\n\nfn main():\n    let xs = [1, 2, 3]\n    let n = total(xs)\n    print(\"total\\q {n}\")\n"
+    },
+    {
+      "code": "K0131",
+      "id": "K0131/en",
+      "message_language": "en",
+      "rendered": "-- STRING INSIDE A HOLE ----------------------------------------- main.kl  K0131\n\nA string literal inside an interpolation hole is hard to read: the quotes inside the quotes make it unclear where the outer string ends.\n\n10│     print(\"total {\"n\"}\")\n                      ^\n\nHelp: Bind the value with `let` on the line before, then put the name in the hole.\n\nLearn more: kalam explain K0131",
+      "skin": "en",
+      "source": "fn total(items: List[Int]) -> Int:\n    var sum = 0\n    for item in items:\n        sum += item\n    return sum\n\nfn main():\n    let xs = [1, 2, 3]\n    let n = total(xs)\n    print(\"total {\"n\"}\")\n"
+    },
+    {
+      "code": "K0132",
+      "id": "K0132/franco",
+      "message_language": "franco",
+      "rendered": "-- SURROGATE LEWA7DO ------------------------------------- main.franco.kl  K0132\n\n`\\u{D800}` nos surrogate pair f UTF-16, w da mesh 7arf lewa7do. Strings Kalam feeha 7oroof Unicode kamla.\n\n10│     ektb(\"total \\u{D800} {n}\")\n                    ^^^^^^^^\n\nMosa3da: Ekteb el code point bta3 el 7arf nafso, zay `\\u{1F600}` badal `\\u{D83D}\\u{DE00}`.\n\nE3raf aktar: kalam explain K0132",
+      "skin": "franco",
+      "source": "dala total(items: qayma[adad]) -> adad:\n    motghayer sum = 0\n    lekol item fi items:\n        sum += item\n    rag3 sum\n\ndala ra2isi():\n    khali xs = [1, 2, 3]\n    khali n = total(xs)\n    ektb(\"total \\u{D800} {n}\")\n"
+    },
+    {
+      "code": "K0201",
+      "id": "K0201/en",
+      "message_language": "en",
+      "rendered": "-- WORD FROM ANOTHER SKIN --------------------------------------- main.kl  K0201\n\n`اطبع` belongs to another skin. In this file, write `print`.\n\n10│     اطبع(\"total {n}\")\n        ^^^^\n\nTry: `print`\n\nHelp: Replace `اطبع` with `print`, or run `kalam convert` to rewrite a pasted block. If you meant a name of your own, declare it first or write it in backticks.\n\nLearn more: kalam explain K0201",
+      "skin": "en",
+      "source": "fn total(items: List[Int]) -> Int:\n    var sum = 0\n    for item in items:\n        sum += item\n    return sum\n\nfn main():\n    let xs = [1, 2, 3]\n    let n = total(xs)\n    اطبع(\"total {n}\")\n"
+    },
+    {
+      "code": "K0250",
+      "id": "K0250/franco",
+      "message_language": "franco",
+      "rendered": "-- 7AGA MESH MATWAQA3A ----------------------------------- main.franco.kl  K0250\n\nKont mestanni an expression hena, bas la2eit `=`. Fawett ba2eit el satr da w kammelt men elly ba3do.\n\n2│     khali count = = 7\n                     ^\n\nMosa3da: Zawwed an expression hena, aw emsa7 `=` law mesh makano. W ghaleban el sabab `:` na2sa f akher satr beyefta7 block, aw qaws et2afal badry.\n\nE3raf aktar: kalam explain K0250",
+      "skin": "franco",
+      "source": "dala ra2isi():\n    khali count = = 7\n    ektb(\"{count}\")\n"
+    },
+    {
+      "code": "K0251",
+      "id": "K0251/franco",
+      "message_language": "franco",
+      "rendered": "-- QAWS MESH MA2FOOL ------------------------------------- main.franco.kl  K0251\n\nEl qaws da lessa maftoo7 lamma el satr aw el file khelso, fa mesh 3aref el expression elly gowah bte5las fein.\n\n3│     ektb(\"{count}\"\n           ^\n\nMosa3da: Zawwed el qaws elly ye2felo `)` aw `]` aw `}` fein ma el expression bte5las.\n\nE3raf aktar: kalam explain K0251",
+      "skin": "franco",
+      "source": "dala ra2isi():\n    khali count = 7\n    ektb(\"{count}\"\n"
+    },
+    {
+      "code": "K0252",
+      "id": "K0252/franco",
+      "message_language": "franco",
+      "rendered": "-- BLOCK NA2ES ------------------------------------------- main.franco.kl  K0252\n\nEl satr da beyekhlas b `:`, fa kont mestanni block maza7 f el satr elly ba3do, mostawa wa7ed agwa (4 masafat), bas mafeesh.\n\n3│ dala ra2isi():\n   ^^^^\n\nMosa3da: Zo77 el sotoor elly tab3a lo 4 masafat zyada. W law 3ayez el block fady delwa2ty, ekteb feeh `fot`.\n\nE3raf aktar: kalam explain K0252",
+      "skin": "franco",
+      "source": "dala helper():\n\ndala ra2isi():\n    helper()\n"
+    },
+    {
+      "code": "K0253",
+      "id": "K0253/ar",
+      "message_language": "ar",
+      "rendered": "-- فجوة الإدراج ---------------------------------------------- main.ar.kl  K0253\n\nكل فجوة `{...}` داخل النص تحتوي على تعبير واحد بالضبط، وهذه لا تحتوي عليه: إما فارغة وإما فيها ما لا أستطيع قراءته كقيمة واحدة.\n\n3│     اطبع(\"{}\")\n             ^\n\nمساعدة: ضع في الفجوة قيمة واحدة، أو اكتب `\\{` و`\\}` إذا أردت أقواسًا عادية.\n\nلمعرفة المزيد: kalam explain K0253",
+      "skin": "ar",
+      "source": "دالة رئيسي():\n    ليكن count = 7\n    اطبع(\"{}\")\n"
+    },
+    {
+      "code": "K0254",
+      "id": "K0254/en",
+      "message_language": "en",
+      "rendered": "-- ARGUMENT ORDER ----------------------------------------------- main.kl  K0254\n\nThis argument has no name, but it comes after a named one, so I can't tell which parameter it is for.\n\n4│     let sum = add(a: 1, 2)\n                           ^\n\nHelp: Put the positional arguments first, then the named ones: `f(a, b, size: 2)`. Or give this argument its name too.\n\nLearn more: kalam explain K0254",
+      "skin": "en",
+      "source": "fn add(a: Int, b: Int) -> Int => a + b\n\nfn main():\n    let sum = add(a: 1, 2)\n    print(\"{sum}\")\n"
+    },
+    {
+      "code": "K0255",
+      "id": "K0255/en",
+      "message_language": "en",
+      "rendered": "-- STATEMENT OUTSIDE A FUNCTION --------------------------------- main.kl  K0255\n\nI found a statement at the top level of the file. The top level holds declarations only: functions, types, traits, constants and imports.\n\n2│ limit + 1\n   ^^^^^\n\nHelp: Move this line into a function, such as `main`.\n\nLearn more: kalam explain K0255",
+      "skin": "en",
+      "source": "let limit = 3\nlimit + 1\n\nfn main():\n    print(\"{limit}\")\n"
+    },
+    {
+      "code": "K0256",
+      "id": "K0256/franco",
+      "message_language": "franco",
+      "rendered": "-- IMPORT BA3D TA3REEF ----------------------------------- main.franco.kl  K0256\n\nEl import da gai ba3d ta3reef. El imports bteegi f awel el file 2abl ay 7aga, 3ashan elly beye2ra yshoof el dependencies el awel.\n\n4│ hat std/http\n   ^^^^^^^^^^^^\n\nMosa3da: Ensel satr el `hat` da fo2 ma3 el imports el tanya. `kalam fmt` bey3mel keda lak.\n\nE3raf aktar: kalam explain K0256",
+      "skin": "franco",
+      "source": "dala ra2isi():\n    ektb(\"x\")\n\nhat std/http\n"
+    },
+    {
+      "code": "K0259",
+      "id": "K0259/en",
+      "message_language": "en",
+      "rendered": "-- NESTED TOO DEEPLY -------------------------------------------- main.kl  K0259\n\nThis code is nested more deeply than I can read safely, so I stopped descending here.\n\n2│     let count = ((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((7))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))\n                                                                                  ^\n\nHelp: Split the expression or block into smaller pieces, each with its own name (`let`) or function (`fn`).\n\nLearn more: kalam explain K0259",
+      "skin": "en",
+      "source": "fn main():\n    let count = ((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((7))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))\n    print(\"{count}\")\n"
+    },
+    {
+      "code": "K0302",
+      "id": "K0302/ar",
+      "message_language": "ar",
+      "rendered": "-- الإغلاق للأنواع فقط --------------------------------------- main.ar.kl  K0302\n\nالكلمة `مغلق` تخفي حقول `هيكل` أو حالات `تعداد` ومُنشئه. أما الدالة أو السمة أو الثابت أو التعريف الخارجي فليس فيها ما تخفيه.\n\n4│ علني مغلق دالة answer() -> عدد => 42\n   ^^^^^^^^^^^^^^^^^^^^^\n\nمساعدة: احذف `مغلق` وأبقِ `علني`.\n\nلمعرفة المزيد: kalam explain K0302",
+      "skin": "ar",
+      "source": "علني مغلق هيكل Email:\n    value: نص\n\nعلني مغلق دالة answer() -> عدد => 42\n"
+    },
+    {
+      "code": "K0303",
+      "id": "K0303/en",
+      "message_language": "en",
+      "rendered": "-- PRIVATE TYPE IN AN EXPORTED SIGNATURE ------------------------ main.kl  K0303\n\nThis exported declaration uses `Ticket`, which is private to this module. Other modules could call it, but they could not write the type it takes or returns.\n\n4│ export fn make_ticket() -> Ticket => Ticket(id: 1)\n                              ^^^^^^\n\nHelp: Add `export` to the private type (or `export opaque` to keep its fields hidden), or stop exporting this declaration.\n\nLearn more: kalam explain K0303",
+      "skin": "en",
+      "source": "type Ticket:\n    id: Int\n\nexport fn make_ticket() -> Ticket => Ticket(id: 1)\n"
+    },
+    {
+      "code": "K0401",
+      "id": "K0401/ar",
+      "message_language": "ar",
+      "rendered": "-- اسم غير معرّف --------------------------------------------- main.ar.kl  K0401\n\nلم أجد تعريفًا لـ `nmae` يمكن رؤيته هنا. ليس في كلام أسماء عامة ولا استيراد بالجملة، فكل اسم يأتي من هذا النطاق أو هذه الوحدة أو من استيراد أو من التمهيد.\n\n3│     اطبع(nmae)\n            ^^^^\n\nجرّب: `name`\n\nمساعدة: راجع الكتابة (الإصلاح المقترح يعرض أقرب اسم مرئي)، أو عرّفه قبل هذا السطر بـ `ليكن` أو `دالة`، أو استورده بـ `استخدم`. والاسم المكتوب بحروف متشابهة اسم مختلف، فاكتبه كما عُرِّف بالضبط.\n\nلمعرفة المزيد: kalam explain K0401",
+      "skin": "ar",
+      "source": "دالة رئيسي():\n    ليكن name = \"Sara\"\n    اطبع(nmae)\n"
+    },
+    {
+      "code": "K0405",
+      "id": "K0405/franco",
+      "message_language": "franco",
+      "rendered": "-- ESM MESTA5DEM ABLAN ----------------------------------- main.franco.kl  K0405\n\n`total` met3arraf ablan f scope bayen hena. Kalam mesh beysma7 l ta3reef gedeed yekhabbi ta3reef a2dam, fa el esm leeh ma3na wa7ed f kol wa2t.\n\n4│         khali total = 2\n                 ^^^^^\n\nMosa3da: Edy el ta3reef el gedeed esm khas beeh. W l 2eema men no3 b nafs el esm, el code el 3araby beyzawwed \"ال\" (`الشكل: شكل`) w code el Franco beyzawwed `el_` (`el_donya: donya`).\n\nE3raf aktar: kalam explain K0405",
+      "skin": "franco",
+      "source": "dala ra2isi():\n    khali total = 1\n    law total > 0:\n        khali total = 2\n        ektb(\"{total}\")\n"
+    },
+    {
+      "code": "K0710",
+      "id": "K0710/franco",
+      "message_language": "franco",
+      "rendered": "-- MAYENFA3SH TEDDILO QEEMA ------------------------------ main.franco.kl  K0710\n\nEl naw7eya el shmal men `=` lazem tekoon makan: variable, w momken ba3do `.field` aw `[index]`, w aslo met3arraf b `motghayer`. Da qeema met7asba, fa mafeesh makan net7afaz feeh el natiga.\n\n9│     total(xs) = 3\n       ^^^^^^^^^\n\nMosa3da: Erbot el qeema b esm gedeed b `khali` badal keda, aw eddi el qeema lel variable elly gat menno.\n\nE3raf aktar: kalam explain K0710",
+      "skin": "franco",
+      "source": "dala total(items: qayma[adad]) -> adad:\n    motghayer sum = 0\n    lekol item fi items:\n        sum += item\n    rag3 sum\n\ndala ra2isi():\n    khali xs = [1, 2, 3]\n    total(xs) = 3\n    ektb(\"done\")\n"
+    },
+    {
+      "code": "K0720",
+      "id": "K0720/franco",
+      "message_language": "franco",
+      "rendered": "-- MO2ARNA METSALSELA ------------------------------------ main.franco.kl  K0720\n\nEl mo2aranat f Kalam mabtetsalselsh, fa `a < b < c` mesh ma3naha zay el riyadeyat.\n\n2│     law -10 < n < 0:\n                   ^\n\nMosa3da: Ekteb mo2arnteen w erbothom b `we`: `a < b we b < c`.\n\nE3raf aktar: kalam explain K0720",
+      "skin": "franco",
+      "source": "dala describe(n: adad) -> nass:\n    law -10 < n < 0:\n        rag3 \"negative\"\n    walla law n == 0:\n        rag3 \"zero\"\n    walla:\n        rag3 \"positive\"\n\ndala ra2isi():\n    khali label = describe(5)\n    ektb(label)\n"
+    },
+    {
+      "code": "K0731",
+      "id": "K0731/en",
+      "message_language": "en",
+      "rendered": "-- CONDITION WITHOUT AN ELSE ------------------------------------ main.kl  K0731\n\nThis `if` is used as a value, so it needs a `else` branch: without one, there is no value when the condition is false.\n\n10│     let label = if 5 > 0: \"positive\"\n                    ^^\n\nHelp: Add a `else:` branch with the value for the false case, or use the `if` as a statement on its own line.\n\nLearn more: kalam explain K0731",
+      "skin": "en",
+      "source": "fn describe(n: Int) -> String:\n    if n < 0:\n        return \"negative\"\n    else if n == 0:\n        return \"zero\"\n    else:\n        return \"positive\"\n\nfn main():\n    let label = if 5 > 0: \"positive\"\n    print(label)\n"
+    },
+    {
+      "code": "K0901",
+      "id": "K0901/en",
+      "message_language": "en",
+      "rendered": "-- STRICT EQUALITY OPERATOR ------------------------------------- main.kl  K0901\n\nKalam has no `===` or `!==`. Its `==` and `!=` are already strict: values of different types are never silently converted before comparing.\n\n4│     else if n === 0:\n                 ^^^\n\nTry: `==`\n\nHelp: Write `==` instead of `===`, and `!=` instead of `!==`. `kalam fix` does this for you.\n\nLearn more: kalam explain K0901",
+      "skin": "en",
+      "source": "fn describe(n: Int) -> String:\n    if n < 0:\n        return \"negative\"\n    else if n === 0:\n        return \"zero\"\n    else:\n        return \"positive\"\n\nfn main():\n    let label = describe(5)\n    print(label)\n"
+    },
+    {
+      "code": "K0902",
+      "id": "K0902/ar",
+      "message_language": "ar",
+      "rendered": "-- كلمة دالة من لغة أخرى ------------------------------------- main.ar.kl  K0902\n\nالكلمات `def` و`function` و`func` تبدأ الدوال في لغات أخرى. أما كلام فيعرّف الدالة بـ `دالة`.\n\n1│ def describe(n: عدد) -> نص:\n   ^^^\n\nجرّب: `دالة`\n\nمساعدة: اكتب `دالة الاسم(المعامل: النوع):` وأعطِ كل معامل نوعه. الأمر `kalam fix` يغيّر الكلمة ويترك مكان النوع `_` لتملأه.\n\nلمعرفة المزيد: kalam explain K0902",
+      "skin": "ar",
+      "source": "def describe(n: عدد) -> نص:\n    إذا n < 0:\n        أرجع \"negative\"\n    وإلا إذا n == 0:\n        أرجع \"zero\"\n    وإلا:\n        أرجع \"positive\"\n\nدالة رئيسي():\n    ليكن label = describe(5)\n    اطبع(label)\n"
+    },
+    {
+      "code": "K0903",
+      "id": "K0903/franco",
+      "message_language": "franco",
+      "rendered": "-- KETABET ELSE IF --------------------------------------- main.franco.kl  K0903\n\n`elif` w `else if (…) {` men loghat tanya. F Kalam el far3 elly ba3do yetketeb `walla law shart:`.\n\n4│     elif n == 0:\n       ^^^^\n\nGarrab: `walla law`\n\nMosa3da: Ekteb `walla law` w ba3daha el shart w `:`, men gher aqwas. `kalam fix` bey3mel keda lak.\n\nE3raf aktar: kalam explain K0903",
+      "skin": "franco",
+      "source": "dala describe(n: adad) -> nass:\n    law n < 0:\n        rag3 \"negative\"\n    elif n == 0:\n        rag3 \"zero\"\n    walla:\n        rag3 \"positive\"\n\ndala ra2isi():\n    khali label = describe(5)\n    ektb(label)\n"
+    },
+    {
+      "code": "K0904",
+      "id": "K0904/ar",
+      "message_language": "ar",
+      "rendered": "-- فاصلة منقوطة ---------------------------------------------- main.ar.kl  K0904\n\nكلام لا يستخدم الفاصلة المنقوطة: الجملة تنتهي بنهاية سطرها.\n\n2│     متغير sum = 0;\n                    ^\n\nمساعدة: احذف `;` (أو `؛`). وإذا اجتمعت جملتان في سطر واحد فضع الثانية في سطر مستقل. الأمر `kalam fix` يفعل الأمرين.\n\nلمعرفة المزيد: kalam explain K0904",
+      "skin": "ar",
+      "source": "دالة total(items: قائمة[عدد]) -> عدد:\n    متغير sum = 0;\n    لكل item في items:\n        sum += item\n    أرجع sum\n\nدالة رئيسي():\n    ليكن xs = [1، 2، 3]\n    ليكن n = total(xs)\n    اطبع(\"total {n}\")\n"
+    },
+    {
+      "code": "K0905",
+      "id": "K0905/franco",
+      "message_language": "franco",
+      "rendered": "-- AQWAS KA BLOCK ---------------------------------------- main.franco.kl  K0905\n\nEl blocks f Kalam mabtesta5demsh `{ … }`. El block beyebda2 b `:` f akher el satr w beykammel f el sotoor el maza7a mostawa wa7ed agwa.\n\n2│     law n < 0 { rag3 \"negative\" }\n                 ^\n\nGarrab: `: `\n\nMosa3da: Ghayar el `{` b `:` f akher el satr, w zo77 el gesm 4 masafat, w emsa7 el `}` elly f el akher. `kalam fix` bey3mel keda lak.\n\nE3raf aktar: kalam explain K0905",
+      "skin": "franco",
+      "source": "dala describe(n: adad) -> nass:\n    law n < 0 { rag3 \"negative\" }\n    law n == 0:\n        rag3 \"zero\"\n    walla:\n        rag3 \"positive\"\n\ndala ra2isi():\n    khali label = describe(5)\n    ektb(label)\n"
+    },
+    {
+      "code": "K0906",
+      "id": "K0906/franco",
+      "message_language": "franco",
+      "rendered": "-- NULL MEN LOGHA TANYA ---------------------------------- main.franco.kl  K0906\n\nMafeesh f Kalam `null` wala `nil` wala `undefined`. El qeema elly momken tekoon mesh mawgooda no3ha `ekhtiyari[T]`, w 7alet el gheyab tetketeb `mafeesh`.\n\n2│     khali count = null\n                     ^^^^\n\nGarrab: `mafeesh`\n\nMosa3da: Ekteb `mafeesh`, w ekhali no3 el variable `ekhtiyari[T]`, 3ashan el compiler yeraga3 kol makan beye2rah.\n\nE3raf aktar: kalam explain K0906",
+      "skin": "franco",
+      "source": "dala ra2isi():\n    khali count = null\n    ektb(\"{count}\")\n"
+    },
+    {
+      "code": "K0907",
+      "id": "K0907/ar",
+      "message_language": "ar",
+      "rendered": "-- async أو await -------------------------------------------- main.ar.kl  K0907\n\nليس في كلام `async` ولا `await`. المترجم يعرف بنفسه أي الدوال تنتظر إدخالًا أو إخراجًا، ويتولى الانتظار عنك (القرار D12).\n\n1│ async دالة describe(n: عدد) -> نص:\n   ^^^^^\n\nمساعدة: احذف `async` و`await` واكتب استدعاءً عاديًا. الأمر `kalam fix` يفعل ذلك لك.\n\nلمعرفة المزيد: kalam explain K0907",
+      "skin": "ar",
+      "source": "async دالة describe(n: عدد) -> نص:\n    إذا n < 0:\n        أرجع \"negative\"\n    وإلا إذا n == 0:\n        أرجع \"zero\"\n    وإلا:\n        أرجع \"positive\"\n\nدالة رئيسي():\n    ليكن label = describe(5)\n    اطبع(label)\n"
+    },
+    {
+      "code": "K0908",
+      "id": "K0908/en",
+      "message_language": "en",
+      "rendered": "-- EXCEPTIONS FROM ANOTHER LANGUAGE ----------------------------- main.kl  K0908\n\n`try`, `catch`, `throw` and `raise` aren't Kalam keywords. Expected errors are values of type `Result`, so every function that can fail says so in its type.\n\n10│     try:\n        ^^^\n\nHelp: To fail, write `return Err(…)`. To pass a call's error up to your caller, put `?` after the call. To handle it, use `match` on the result.\n\nLearn more: kalam explain K0908",
+      "skin": "en",
+      "source": "fn describe(n: Int) -> String:\n    if n < 0:\n        return \"negative\"\n    else if n == 0:\n        return \"zero\"\n    else:\n        return \"positive\"\n\nfn main():\n    try:\n        print(describe(5))\n"
+    },
+    {
+      "code": "K0909",
+      "id": "K0909/ar",
+      "message_language": "ar",
+      "rendered": "-- عامل الزيادة ---------------------------------------------- main.ar.kl  K0909\n\nليس في كلام `++` ولا `--`. التحديث يُكتب كإسناد، فيظهر كل تغيير في المتغير.\n\n4│         sum++\n              ^^\n\nجرّب: ` += 1`\n\nمساعدة: اكتب `x += 1` بدلًا من `x++`، و`x -= 1` بدلًا من `x--`، ويجب أن يكون المتغير مُعرَّفًا بـ `متغير`. الأمر `kalam fix` يفعل ذلك لك.\n\nلمعرفة المزيد: kalam explain K0909",
+      "skin": "ar",
+      "source": "دالة total(items: قائمة[عدد]) -> عدد:\n    متغير sum = 0\n    لكل item في items:\n        sum++\n    أرجع sum\n\nدالة رئيسي():\n    ليكن xs = [1، 2، 3]\n    ليكن n = total(xs)\n    اطبع(\"total {n}\")\n"
+    },
+    {
+      "code": "K0910",
+      "id": "K0910/ar",
+      "message_language": "ar",
+      "rendered": "-- العامل الثلاثي -------------------------------------------- main.ar.kl  K0910\n\nليس في كلام `c ? a : b`. فالشرط `إذا` تعبير، ويمكنك استخدامه في أي مكان تُوضع فيه قيمة.\n\n10│     ليكن label = 5 > 0 ? \"positive\" : \"negative\"\n                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nجرّب: `إذا `\n\nجرّب: `: `\n\nجرّب: ` وإلا: `\n\nمساعدة: اكتب `إذا c: a وإلا: b`. الأمر `kalam fix` يفعل ذلك لك.\n\nلمعرفة المزيد: kalam explain K0910",
+      "skin": "ar",
+      "source": "دالة describe(n: عدد) -> نص:\n    إذا n < 0:\n        أرجع \"negative\"\n    وإلا إذا n == 0:\n        أرجع \"zero\"\n    وإلا:\n        أرجع \"positive\"\n\nدالة رئيسي():\n    ليكن label = 5 > 0 ? \"positive\" : \"negative\"\n    اطبع(label)\n"
+    },
+    {
+      "code": "K0911",
+      "id": "K0911/en",
+      "message_language": "en",
+      "rendered": "-- SYMBOLIC LOGIC OPERATOR -------------------------------------- main.kl  K0911\n\nKalam writes `!` as `not`. Logic is spelled with words so it reads the same as the rest of the line.\n\n2│     if !(n >= 0):\n          ^\n\nTry: `not `\n\nHelp: Replace `!` with `not`. In general, `&&` is `and`, `||` is `or` and `!` is `not`. `kalam fix` does this for you.\n\nLearn more: kalam explain K0911",
+      "skin": "en",
+      "source": "fn describe(n: Int) -> String:\n    if !(n >= 0):\n        return \"negative\"\n    else if n == 0:\n        return \"zero\"\n    else:\n        return \"positive\"\n\nfn main():\n    let label = describe(5)\n    print(label)\n"
+    },
+    {
+      "code": "K0912",
+      "id": "K0912/franco",
+      "message_language": "franco",
+      "rendered": "-- KELMAT EL TAGHYEER MEN LOGHA TANYA -------------------- main.franco.kl  K0912\n\n`let mut` w `const` men loghat tanya. F Kalam `khali` bet3arraf esm mayetghayarsh, w `motghayer` bet3arraf esm yenfa3 yetghayar.\n\n8│     const xs = [1, 2, 3]\n       ^^^^^\n\nGarrab: `khali`\n\nMosa3da: Ekteb `motghayer x` badal `let mut x`, w `khali x` badal `const x`. `kalam fix` bey3mel keda lak.\n\nE3raf aktar: kalam explain K0912",
+      "skin": "franco",
+      "source": "dala total(items: qayma[adad]) -> adad:\n    motghayer sum = 0\n    lekol item fi items:\n        sum += item\n    rag3 sum\n\ndala ra2isi():\n    const xs = [1, 2, 3]\n    khali n = total(xs)\n    ektb(\"total {n}\")\n"
+    },
+    {
+      "code": "K0913",
+      "id": "K0913/en",
+      "message_language": "en",
+      "rendered": "-- STRING PREFIX OR TEMPLATE ------------------------------------ main.kl  K0913\n\nKalam strings need no `f` prefix, and no backticks with `${…}`. Every `\"…\"` string already fills holes written as `{…}`.\n\n10│     print(f\"total {n}\")\n              ^\n\nHelp: Delete the `f` prefix, or change the backticks to `\"` and each `${` to `{`. `kalam fix` does this for you.\n\nLearn more: kalam explain K0913",
+      "skin": "en",
+      "source": "fn total(items: List[Int]) -> Int:\n    var sum = 0\n    for item in items:\n        sum += item\n    return sum\n\nfn main():\n    let xs = [1, 2, 3]\n    let n = total(xs)\n    print(f\"total {n}\")\n"
+    },
+    {
+      "code": "K0914",
+      "id": "K0914/franco",
+      "message_language": "franco",
+      "rendered": "-- TYPE ARGUMENTS BEN < > -------------------------------- main.franco.kl  K0914\n\nKalam beyekteb el type arguments ben aqwas morab3a, `qayma[T]`, mesh `List<T>` wala `Vec<T>` wala `Array<T>` wala `T[]`.\n\n1│ dala total(items: qayma<adad>) -> adad:\n                     ^^^^^^\n\nGarrab: `[`\n\nGarrab: `]`\n\nMosa3da: Ekteb `qayma[T]`, w esta5dem el aqwas el morab3a l kol el type arguments el tanya bardo, zay `qamoos[K, V]`. `kalam fix` bey3mel keda lak.\n\nE3raf aktar: kalam explain K0914",
+      "skin": "franco",
+      "source": "dala total(items: qayma<adad>) -> adad:\n    motghayer sum = 0\n    lekol item fi items:\n        sum += item\n    rag3 sum\n\ndala ra2isi():\n    khali xs = [1, 2, 3]\n    khali n = total(xs)\n    ektb(\"total {n}\")\n"
+    },
+    {
+      "code": "K0915",
+      "id": "K0915/en",
+      "message_language": "en",
+      "rendered": "-- UNWRAP ------------------------------------------------------- main.kl  K0915\n\n`.unwrap()` stops the program without saying why. Kalam asks you to state what you expected, with `.expect(\"…\")`.\n\n3│     let count = found.unwrap()\n                         ^^^^^^^^\n\nTry: `expect(\"…\")`\n\nHelp: Replace `.unwrap()` with `.expect(\"why this can't fail\")`, or handle the missing case with `match` or `?`.\n\nLearn more: kalam explain K0915",
+      "skin": "en",
+      "source": "fn main():\n    let found: Option[Int] = Some(7)\n    let count = found.unwrap()\n    print(\"{count}\")\n"
+    },
+    {
+      "code": "K0917",
+      "id": "K0917/franco",
+      "message_language": "franco",
+      "rendered": "-- VARIANT MEN GHER NO2TA -------------------------------- main.franco.kl  K0917\n\nEl variant bta3 el enum yetketeb b no2ta f awelo: `.Circle(r)` mesh `Circle(r)`. W el no2ta ma3naha \"variant men el no3 el metwa22a3 hena\".\n\n6│     khali s: Shape = Circle(radius: 1.0)\n                        ^^^^^^\n\nGarrab: `.`\n\nMosa3da: Zawwed `.` 2abl esm el variant. `kalam fix` bey3mel keda lak.\n\nE3raf aktar: kalam explain K0917",
+      "skin": "franco",
+      "source": "ta3dad Shape:\n    Circle(radius: kasri)\n    Empty\n\ndala ra2isi():\n    khali s: Shape = Circle(radius: 1.0)\n    ektb(\"x\")\n"
+    },
+    {
+      "code": "K0918",
+      "id": "K0918/franco",
+      "message_language": "franco",
+      "rendered": "-- DALA GAHZA MEN LOGHA TANYA ---------------------------- main.franco.kl  K0918\n\n`len(xs)` w `str(x)` w `int(s)` dawal gahza f loghat tanya. F Kalam homa methods aw holes f string, fa betban f el autocomplete ba3d el `.`.\n\n3│     khali n = len(xs)\n                 ^^^^^^^\n\nGarrab: `xs.len()`\n\nMosa3da: Ekteb `xs.len()` badal `len(xs)`, w `\"{ x }\"` badal `str(x)`, w `s.to_int()?` badal `int(s)`. `kalam fix` bey3mel keda lak.\n\nE3raf aktar: kalam explain K0918",
+      "skin": "franco",
+      "source": "dala ra2isi():\n    khali xs = [1, 2, 3]\n    khali n = len(xs)\n    ektb(\"{n}\")\n"
+    },
+    {
+      "code": "K0919",
+      "id": "K0919/en",
+      "message_language": "en",
+      "rendered": "-- IMPL WORD ORDER ---------------------------------------------- main.kl  K0919\n\n`impl Trait for Type` is Rust's word order. Kalam names the type first: `impl Money as Show:`.\n\n4│ impl Show for Money:\n   ^^^^^^^^^^^^^^^^^^^\n\nTry: `Money as Show`\n\nHelp: Swap the two names and use `as`: `impl Type as Trait:`. `kalam fix` does this for you.\n\nLearn more: kalam explain K0919",
+      "skin": "en",
+      "source": "type Money:\n    cents: Int\n\nimpl Show for Money:\n    fn show(self) -> String => \"{self.cents} cents\"\n\nfn main():\n    let m = Money(cents: 250)\n    print(\"{m}\")\n"
+    },
+    {
+      "code": "K0920",
+      "id": "K0920/ar",
+      "message_language": "ar",
+      "rendered": "-- كلمة class أو struct -------------------------------------- main.ar.kl  K0920\n\n`class` و`struct` و`record` و`interface` من لغات أخرى. أما كلام فيعرّف نوع السجل بـ `هيكل`، والواجهة البرمجية بـ `سمة`.\n\n1│ class Point:\n   ^^^^^\n\nجرّب: `هيكل`\n\nمساعدة: اكتب `هيكل الاسم:` مع `الحقل: النوع` في كل سطر مُزاح، أو `سمة الاسم:` للواجهة البرمجية. الأمر `kalam fix` يغيّر الكلمة.\n\nلمعرفة المزيد: kalam explain K0920",
+      "skin": "ar",
+      "source": "class Point:\n    x: عدد\n    y: عدد\n\nدالة رئيسي():\n    ليكن p = Point(x: 1، y: 2)\n    اطبع(\"{p.x} {p.y}\")\n"
+    },
+    {
+      "code": "K0921",
+      "id": "K0921/franco",
+      "message_language": "franco",
+      "rendered": "-- LAMBDA 3ALA KAZA SATR --------------------------------- main.franco.kl  K0921\n\nGesm el lambda f Kalam expression wa7ed bas, w da mamdood 3ala kaza satr.\n\n9│     khali double = dala(x: adad):\n                                   ^\n\nGarrab: `dala double`\n\nMosa3da: 3arraf dala local b `dala` w leeha esm 2abl el call da 3ala tool, w ba3at el esm.\n\nE3raf aktar: kalam explain K0921",
+      "skin": "franco",
+      "source": "dala total(items: qayma[adad]) -> adad:\n    motghayer sum = 0\n    lekol item fi items:\n        sum += item\n    rag3 sum\n\ndala ra2isi():\n    khali xs = [1, 2, 3]\n    khali double = dala(x: adad):\n        rag3 x * 2\n    khali n = total(xs.map(double))\n    ektb(\"total {n}\")\n"
+    },
+    {
+      "code": "K0923",
+      "id": "K0923/ar",
+      "message_language": "ar",
+      "rendered": "-- عامل الأس ------------------------------------------------- main.ar.kl  K0923\n\nليس في كلام العامل `**`. ارفع العدد إلى قوة بالدالة العضو `.pow()`.\n\n9│     ليكن n = total(xs) ** 2\n                          ^^\n\nجرّب: `.pow(`\n\nجرّب: `)`\n\nمساعدة: اكتب `a.pow(b)` بدلًا من `a ** b`. الأمر `kalam fix` يفعل ذلك لك.\n\nلمعرفة المزيد: kalam explain K0923",
+      "skin": "ar",
+      "source": "دالة total(items: قائمة[عدد]) -> عدد:\n    متغير sum = 0\n    لكل item في items:\n        sum += item\n    أرجع sum\n\nدالة رئيسي():\n    ليكن xs = [1، 2، 3]\n    ليكن n = total(xs) ** 2\n    اطبع(\"total {n}\")\n"
+    },
+    {
+      "code": "K0924",
+      "id": "K0924/en",
+      "message_language": "en",
+      "rendered": "-- SINGLE QUOTES ------------------------------------------------ main.kl  K0924\n\nStrings use double quotes in Kalam; single quotes don't start a string.\n\n11│     print('done')\n              ^^^^^^\n\nTry: `\"done\"`\n\nHelp: Change the single quotes to double quotes: `\"...\"`. `kalam fix` does this for you.\n\nLearn more: kalam explain K0924",
+      "skin": "en",
+      "source": "fn describe(n: Int) -> String:\n    if n < 0:\n        return \"negative\"\n    else if n == 0:\n        return \"zero\"\n    else:\n        return \"positive\"\n\nfn main():\n    let label = describe(5)\n    print('done')\n"
+    },
+    {
+      "code": "K0925",
+      "id": "K0925/ar",
+      "message_language": "ar",
+      "rendered": "-- جملة switch ----------------------------------------------- main.ar.kl  K0925\n\n`switch` و`case X ->` والفروع `x => …` من لغات أخرى. أما كلام فيتفرع على القيمة بـ `حسب`، مع سطر `عندما النمط:` لكل فرع.\n\n2│     switch n {\n       ^^^^^^^^^^\n\nجرّب: `حسب n:\n        عندما 0: أرجع \"zero\"`\n\nمساعدة: اكتب `حسب x:` وتحتها، بإزاحة، `عندما النمط: النتيجة` لكل فرع. واستخدم `_` نمطًا لـ \"أي شيء آخر\". الأمر `kalam fix` يفعل ذلك لك.\n\nلمعرفة المزيد: kalam explain K0925",
+      "skin": "ar",
+      "source": "دالة describe(n: عدد) -> نص:\n    switch n {\n        عندما 0 -> أرجع \"zero\"\n    }\n    أرجع \"other\"\n\nدالة رئيسي():\n    ليكن label = describe(5)\n    اطبع(label)\n"
+    },
+    {
+      "code": "K0926",
+      "id": "K0926/franco",
+      "message_language": "franco",
+      "rendered": "-- LOOP ZAY C -------------------------------------------- main.franco.kl  K0926\n\n`for (let i = 0; i < n; i++)` w `for i in range(n)` men loghat tanya. Kalam bey3mel loop 3ala range maktoob `0..n`.\n\n3│     lekol (motghayer i = 0; i < items.len(); i += 1):\n       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nGarrab: ` i fi 0..items.len()`\n\nMosa3da: Ekteb `lekol i fi 0..n:`. W esta5dem `0..=n` law 3ayez `n` nafsaha teb2a gowa. `kalam fix` bey3mel keda lak.\n\nE3raf aktar: kalam explain K0926",
+      "skin": "franco",
+      "source": "dala total(items: qayma[adad]) -> adad:\n    motghayer sum = 0\n    lekol (motghayer i = 0; i < items.len(); i += 1):\n        sum += items[i]\n    rag3 sum\n\ndala ra2isi():\n    khali xs = [1, 2, 3]\n    khali n = total(xs)\n    ektb(\"total {n}\")\n"
+    },
+    {
+      "code": "SEC0100",
+      "id": "SEC0100/en",
+      "message_language": "en",
+      "rendered": "-- FILE ENCODING ---------------------------------------------- main.kl  SEC0100\n\nI found U+FEFF (ZERO WIDTH NO-BREAK SPACE (BOM)) here: a byte order mark (U+FEFF), or bytes that are not UTF-8. Kalam reads source files only as plain UTF-8, so every editor, reviewer and compiler sees exactly the same characters.\n\n3│ ﻿    print(name)\n   ^\n\nHelp: Run `kalam fmt` to remove a byte order mark. For other bytes, save the file again from your editor as \"UTF-8\" (not \"UTF-8 with BOM\").\n\nLearn more: kalam explain SEC0100",
+      "skin": "en",
+      "source": "fn main():\n    let name = \"Sara\"\n﻿    print(name)\n"
+    },
+    {
+      "code": "SEC0101",
+      "id": "SEC0101/franco",
+      "message_language": "franco",
+      "rendered": "-- EL NASS MESH NFC ------------------------------------ main.franco.kl  SEC0101\n\nLa2eit U+0301 (COMBINING ACUTE ACCENT) f kalam mesh b sheklo el NFC f Unicode. Nafs el 7arf momken yetkhezen code point wa7ed, aw 7arf asasi w ba3do 3alamat murakkaba; el etnein shabah ba3d bel zabt, bas lamma tqarenhom yetle3o mokhtalfeen.\n\n2│     khali name = \"Zoé\"\n                       ^^\n\nGarrab: `é`\n\nMosa3da: Shaghal `kalam fmt` aw `kalam fix`, hayekteb el kalam b NFC w mesh hayghayar ay 7aga tanya.\n\nE3raf aktar: kalam explain SEC0101",
+      "skin": "franco",
+      "source": "dala ra2isi():\n    khali name = \"Zoé\"\n    ektb(name)\n"
+    },
+    {
+      "code": "SEC0102",
+      "id": "SEC0102/en",
+      "message_language": "en",
+      "rendered": "-- CONTROL CHARACTER ------------------------------------------ main.kl  SEC0102\n\nI found the control character U+0007  here. Control characters are invisible, and terminals and editors each handle them differently.\n\n2│     let name = \"Sa\u0007ra\"\n                     ^\n\nTry: `\\u{7}`\n\nHelp: Inside a string, write it as an escape such as `\\u{...}`. Anywhere else, delete it.\n\nLearn more: kalam explain SEC0102",
+      "skin": "en",
+      "source": "fn main():\n    let name = \"Sa\u0007ra\"\n    print(name)\n"
+    },
+    {
+      "code": "SEC0103",
+      "id": "SEC0103/en",
+      "message_language": "en",
+      "rendered": "-- INVISIBLE SPACE -------------------------------------------- main.kl  SEC0103\n\nI found U+00A0 (NO-BREAK SPACE), a space that is not the ordinary space U+0020. Kalam code uses only the ordinary space, so an invisible character can never split or join words.\n\n9│     let n = total(xs)\n              ^\n\nTry: ` `\n\nHelp: Replace it with an ordinary space. `kalam fix` does this for you.\n\nLearn more: kalam explain SEC0103",
+      "skin": "en",
+      "source": "fn total(items: List[Int]) -> Int:\n    var sum = 0\n    for item in items:\n        sum += item\n    return sum\n\nfn main():\n    let xs = [1, 2, 3]\n    let n = total(xs)\n    print(\"total {n}\")\n"
+    },
+    {
+      "code": "SEC0104",
+      "id": "SEC0104/en",
+      "message_language": "en",
+      "rendered": "-- NAMES THAT LOOK THE SAME ----------------------------------- main.kl  SEC0104\n\n`کتاب` (U+06A9 U+062A U+0627 U+0628) and `كتاب` (U+0643 U+062A U+0627 U+0628) are two different names in this scope that look the same once lookalike letters are folded together (for example `ي` and `ى`, `ك` and `ک`, or a Latin letter and its Cyrillic twin). A reader can't tell which of the two a line uses.\n\n3│     let کتاب = \"b\"\n           ^^^^\n\nHelp: Rename one of the two names so they differ in a way a reader can see, and update its uses.\n\nLearn more: kalam explain SEC0104",
+      "skin": "en",
+      "source": "fn main():\n    let كتاب = \"a\"\n    let کتاب = \"b\"\n    print(كتاب)\n    print(کتاب)\n"
+    },
+    {
+      "code": "SEC0105",
+      "id": "SEC0105/ar",
+      "message_language": "ar",
+      "rendered": "-- اسم بأكثر من نظام كتابة --------------------------------- main.ar.kl  SEC0105\n\nالاسم `nаme` يخلط حروفًا من أكثر من نظام كتابة: U+0430  من نظام كتابة غير نظام الحروف التي قبله. وخلط أنظمة الكتابة هو الطريقة المعتادة لصنع اسم يشبه اسمًا آخر.\n\n2│     ليكن nаme = \"Sara\"\n             ^\n\nمساعدة: اكتب الاسم بنظام كتابة واحد. الأرقام و`_` تصلح مع أي نظام. ولعرض أسماء عربية في مشروع بالواجهة الإنجليزية استخدم مسرد العرض (`names.toml`) بدلًا من ذلك.\n\nلمعرفة المزيد: kalam explain SEC0105",
+      "skin": "ar",
+      "source": "دالة رئيسي():\n    ليكن nаme = \"Sara\"\n    اطبع(nаme)\n"
+    },
+    {
+      "code": "SEC0106",
+      "id": "SEC0106/ar",
+      "message_language": "ar",
+      "rendered": "-- علامة داخل اسم ------------------------------------------ main.ar.kl  SEC0106\n\nلا يمكن أن يظهر U+064F  داخل كلمة محجوزة أو اسم، لأنه يغيّر شكل الكلمة دون أن يغيّر ما هي.\n\n2│     ليكن اسمُ = \"Sara\"\n               ^\n\nمساعدة: احذف العلامة، أو استبدل بالحرف المعروض شكلًا الحرفَ العادي. الأمر `kalam fix` يفعل ذلك لك.\n\nلمعرفة المزيد: kalam explain SEC0106",
+      "skin": "ar",
+      "source": "دالة رئيسي():\n    ليكن اسمُ = \"Sara\"\n    اطبع(اسمُ)\n"
+    },
+    {
+      "code": "SEC0110",
+      "id": "SEC0110/en",
+      "message_language": "en",
+      "rendered": "-- HIDDEN TEXT-DIRECTION CHARACTER ---------------------------- main.kl  SEC0110\n\nI found U+202E (RIGHT-TO-LEFT OVERRIDE). It changes how the line is displayed without changing how it compiles, which is how Trojan Source attacks work. Arabic text never needs it raw.\n\n8│     let xs = [1, 2, 3]  # ‮reversed\n                             ^\n\nHelp: Delete it. If a string really needs it, write it as an escape, `\\u{...}`, so readers can see it.\n\nLearn more: kalam explain SEC0110",
+      "skin": "en",
+      "source": "fn total(items: List[Int]) -> Int:\n    var sum = 0\n    for item in items:\n        sum += item\n    return sum\n\nfn main():\n    let xs = [1, 2, 3]  # ‮reversed\n    let n = total(xs)\n    print(\"total {n}\")\n"
+    },
+    {
+      "code": "SEC0111",
+      "id": "SEC0111/en",
+      "message_language": "en",
+      "rendered": "-- INVISIBLE CHARACTER ---------------------------------------- main.kl  SEC0111\n\nI found the invisible character U+200B (ZERO WIDTH SPACE). It can make two different names look the same.\n\n2│     let name = \"Sa​ra\"\n                     ^\n\nTry: `\\u{200B}`\n\nHelp: In code or a name, delete it (`kalam fix` does this). Inside a string, write it as `\\u{...}` so readers can see it.\n\nLearn more: kalam explain SEC0111",
+      "skin": "en",
+      "source": "fn main():\n    let name = \"Sa​ra\"\n    print(name)\n"
+    },
+    {
+      "code": "SEC0112",
+      "id": "SEC0112/en",
+      "message_language": "en",
+      "rendered": "-- HIDDEN OR UNASSIGNED CHARACTER ----------------------------- main.kl  SEC0112\n\nI found U+E000, a tag character, private-use character, noncharacter or unassigned code point. It has no visible meaning in source code.\n\n2│     let name = \"Sara\"\n                     ^\n\nTry: `\\u{E000}`\n\nHelp: Delete it. If a string really needs it, write it as `\\u{...}`.\n\nLearn more: kalam explain SEC0112",
+      "skin": "en",
+      "source": "fn main():\n    let name = \"Sara\"\n    print(name)\n"
+    },
+    {
+      "code": "SEC0113",
+      "id": "SEC0113/ar",
+      "message_language": "ar",
+      "rendered": "-- فاصل أسطر غير معتاد ------------------------------------- main.ar.kl  SEC0113\n\nوجدت U+2028 (LINE SEPARATOR). أسطر كلام تنتهي بـ LF، أو بـ CRLF الذي يحوّله `kalam fmt` إلى LF.\n\n2│     ليكن name = \"Sa ra\"\n                      ^\n\nجرّب: `\\u{2028}`\n\nمساعدة: استبدل به فاصل أسطر عاديًا (LF). وداخل النص اكتب `\\n` بدلًا منه.\n\nلمعرفة المزيد: kalam explain SEC0113",
+      "skin": "ar",
+      "source": "دالة رئيسي():\n    ليكن name = \"Sa ra\"\n    اطبع(name)\n"
+    },
+    {
+      "code": "SEC0120",
+      "id": "SEC0120/en",
+      "message_language": "en",
+      "rendered": "-- MIXED DIGITS ----------------------------------------------- main.kl  SEC0120\n\nThe number `7٧` mixes two digit systems, or uses the other system's decimal separator (it contains U+0667). A reader could misread its value.\n\n2│     let count = 7٧\n                   ^^\n\nHelp: Write each number in one system: ASCII digits with `.`, or Arabic-Indic digits with `٫`.\n\nLearn more: kalam explain SEC0120",
+      "skin": "en",
+      "source": "fn main():\n    let count = 7٧\n    print(\"{count}\")\n"
+    },
+    {
+      "code": "SEC0121",
+      "id": "SEC0121/en",
+      "message_language": "en",
+      "rendered": "-- PERSIAN DIGITS --------------------------------------------- main.kl  SEC0121\n\n`۷` uses Persian digits such as U+06F7 (۰–۹), which look almost the same as the Arabic-Indic digits ٠–٩ but are different characters: ۴ and ٤, ۶ and ٦ are easy to confuse.\n\n2│     let count = ۷\n                   ^\n\nHelp: Use ASCII digits, or the Arabic-Indic digits ٠–٩ in an Arabic-skin file.\n\nLearn more: kalam explain SEC0121",
+      "skin": "en",
+      "source": "fn main():\n    let count = ۷\n    print(\"{count}\")\n"
+    },
+    {
+      "code": "SEC0123",
+      "id": "SEC0123/ar",
+      "message_language": "ar",
+      "rendered": "-- فاصل الآلاف العربي -------------------------------------- main.ar.kl  SEC0123\n\nالحرف U+066C (٬) يشبه `,` ويشبه `٫`، فقد يُقرأ الرقم الذي يحتويه كقائمة أو ككسر. لذلك لا يستخدمه كلام.\n\n2│     ليكن count = 1٬000\n                     ^\n\nجرّب: `_`\n\nمساعدة: افصل مجموعات الأرقام بـ `_` بدلًا منه، مثل `1_000_000`. الأمر `kalam fix` يفعل ذلك لك.\n\nلمعرفة المزيد: kalam explain SEC0123",
+      "skin": "ar",
+      "source": "دالة رئيسي():\n    ليكن count = 1٬000\n    اطبع(\"{count}\")\n"
+    },
+    {
+      "code": "SEC0124",
+      "id": "SEC0124/en",
+      "message_language": "en",
+      "rendered": "-- DIGIT INSIDE A NAME ---------------------------------------- main.kl  SEC0124\n\nThe Arabic-Indic digit U+0661 inside a name can look like the letter ا, like `l` or like `1`, so two names could look the same.\n\n2│     let اسم١ = \"Sara\"\n              ^\n\nTry: `1`\n\nHelp: Use an ASCII digit in the name. `kalam fix` does this for you.\n\nLearn more: kalam explain SEC0124",
+      "skin": "en",
+      "source": "fn main():\n    let اسم١ = \"Sara\"\n    print(اسم١)\n"
+    }
+  ],
+  "n": 65,
+  "rubric": "eval/judge/RUBRIC.md",
+  "rubric_sha256": "f0cba998336a5b48e4f2ff88719bff0282cd7b4a490970e607adc66cfe4829c4",
+  "rubric_version": "becker-2026.1",
+  "rule": "one item per eval/goldens code; skin = Skin::ALL[sha256(seed + code)[0] % 3]; rendered = the committed .expected text",
+  "sample_sha256": "f577458e9720687c27d3b4d34efb880542c636021e81ab0ffa9d1ebd909c47fe",
+  "schema": "kalam-judge-sample/1",
+  "seed": "kalam-judge-sample/1"
+}

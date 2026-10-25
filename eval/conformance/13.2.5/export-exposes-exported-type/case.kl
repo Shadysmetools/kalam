@@ -1,0 +1,4 @@
+export type Ticket:
+    id: Int
+
+export fn make_ticket() -> Ticket => Ticket(id: 1)

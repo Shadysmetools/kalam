@@ -1,0 +1,11 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0401"
+  ],
+  "lines": [
+    3
+  ],
+  "stage": "resolve",
+  "notes": "§5.3.13: \"Uses are never folded. If a use matches no visible declaration exactly but has the same skeleton as exactly one, the error is K0401 (\\\"`اكتب` is not defined\\\"), with a machine fix to the declared spelling.\""
+}

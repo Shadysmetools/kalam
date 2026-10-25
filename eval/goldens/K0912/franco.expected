@@ -1,0 +1,12 @@
+-- KELMAT EL TAGHYEER MEN LOGHA TANYA -------------------- main.franco.kl  K0912
+
+`let mut` w `const` men loghat tanya. F Kalam `khali` bet3arraf esm mayetghayarsh, w `motghayer` bet3arraf esm yenfa3 yetghayar.
+
+8│     const xs = [1, 2, 3]
+       ^^^^^
+
+Garrab: `khali`
+
+Mosa3da: Ekteb `motghayer x` badal `let mut x`, w `khali x` badal `const x`. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0912

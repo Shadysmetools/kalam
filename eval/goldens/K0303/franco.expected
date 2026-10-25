@@ -1,0 +1,10 @@
+-- NO3 KHAS F SIGNATURE MOSADDAR ------------------------- main.franco.kl  K0303
+
+El ta3reef el mosaddar da beyesta5dem `Ticket`, w da khas bel module da. El modules el tanya te2dar tenadeeh, bas mesh hate2dar tekteb el no3 elly beyakhdo aw beyrag3o.
+
+4│ talla3 dala make_ticket() -> Ticket => Ticket(id: 1)
+                                ^^^^^^
+
+Mosa3da: Zawwed `talla3` lel no3 el khas (aw `talla3 ma2fool` 3ashan el fields bta3to tefdal mestakhabeya), aw ma tsaddarsh el ta3reef da.
+
+E3raf aktar: kalam explain K0303

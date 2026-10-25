@@ -1,0 +1,12 @@
+-- INCREMENT OPERATOR ------------------------------------------- main.kl  K0909
+
+Kalam has no `++` or `--`. An update is written as an assignment, so every change to a variable is visible.
+
+4│         sum++
+              ^^
+
+Try: ` += 1`
+
+Help: Write `x += 1` instead of `x++`, and `x -= 1` instead of `x--`; the variable must be declared with `var`. `kalam fix` does this for you.
+
+Learn more: kalam explain K0909

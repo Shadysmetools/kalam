@@ -1,0 +1,4 @@
+haykal Ticket:
+    id: adad
+
+talla3 dala ticket_id(t: Ticket) -> adad => t.id

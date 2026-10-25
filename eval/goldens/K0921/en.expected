@@ -1,0 +1,12 @@
+-- MULTI-LINE LAMBDA -------------------------------------------- main.kl  K0921
+
+A lambda body is a single expression in Kalam, and this one spans several lines.
+
+9│     let double = fn(x: Int):
+                              ^
+
+Try: `fn double`
+
+Help: Declare a local `fn` with a name just before this call, and pass the name.
+
+Learn more: kalam explain K0921

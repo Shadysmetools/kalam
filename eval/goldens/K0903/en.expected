@@ -1,0 +1,12 @@
+-- ELSE-IF SPELLING --------------------------------------------- main.kl  K0903
+
+`elif` and `else if (…) {` come from other languages. In Kalam, the next branch is `else if condition:`.
+
+4│     elif n == 0:
+       ^^^^
+
+Try: `else if`
+
+Help: Write `else if`, then the condition and `:`, with no parentheses or braces. `kalam fix` does this for you.
+
+Learn more: kalam explain K0903

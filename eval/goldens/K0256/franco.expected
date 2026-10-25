@@ -1,0 +1,10 @@
+-- IMPORT BA3D TA3REEF ----------------------------------- main.franco.kl  K0256
+
+El import da gai ba3d ta3reef. El imports bteegi f awel el file 2abl ay 7aga, 3ashan elly beye2ra yshoof el dependencies el awel.
+
+4│ hat std/http
+   ^^^^^^^^^^^^
+
+Mosa3da: Ensel satr el `hat` da fo2 ma3 el imports el tanya. `kalam fmt` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0256

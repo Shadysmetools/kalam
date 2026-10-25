@@ -1,0 +1,193 @@
+# std/http (spec §14.3, §16.3, §20.1, §20.2): routes, requests, responses, the server and
+# an SSRF-blocking client. Routes are deny-by-default: `access:` has no default.
+use std/json.{DecodeError}
+use std/sql.{DbError}
+
+## Who may call a route. `.LoggedIn` and `.Role` use the session middleware of std/auth.
+export enum Access:
+    Public
+    LoggedIn
+    Role(name: String)
+
+## The error side of a handler. Each variant maps to one HTTP status.
+export enum HttpError:
+    BadRequest(message: String)
+    Unauthorized
+    Forbidden
+    NotFound
+    Conflict(message: String)
+    Internal
+
+impl HttpError as Error:
+    @builtin
+    fn message(self) -> String => panic("builtin")
+
+## A database error is a 500; the details are logged, not shown.
+impl HttpError as From[DbError]:
+    @builtin
+    fn from(value: DbError) -> HttpError => panic("builtin")
+
+## A decoding error is a 400.
+impl HttpError as From[DecodeError]:
+    @builtin
+    fn from(value: DecodeError) -> HttpError => panic("builtin")
+
+## Any other error is a 500; the details are logged, not shown.
+impl HttpError as From[AnyError]:
+    @builtin
+    fn from(value: AnyError) -> HttpError => panic("builtin")
+
+## Why the server could not start or stopped.
+export enum ServeError:
+    AddressInUse(port: Int)
+    Io(message: String)
+
+impl ServeError as Error:
+    @builtin
+    fn message(self) -> String => panic("builtin")
+
+## A set of routes for an app record `A`.
+@builtin
+export extern type Router[A]
+
+## One incoming request. `app` is the record given to `serve`; it reaches the capabilities.
+## Only the server creates requests.
+@builtin
+export type Request[A]:
+    app: A
+
+## An outgoing response.
+@builtin
+export extern type Response
+
+## A new router with the session middleware of std/auth installed.
+@builtin
+export fn router[A]() -> Router[A] => panic("builtin")
+
+## Serves `router` on `port` until the process stops.
+@builtin
+@suspends
+export fn serve[A](net: Net, port: Int, router: Router[A], app: A) -> Result[
+    (),
+    ServeError,
+] => panic("builtin")
+
+impl[A] Router[A]:
+    ## Adds a `GET` route. Escape the braces of path parameters: `"/notes/\{id\}"`.
+    @builtin
+    @stores_callbacks
+    export fn get(
+        self,
+        path: String,
+        handler: fn(Request[A]) -> Result[Response, HttpError],
+        access: Access,
+    ) -> Router[A] => panic("builtin")
+
+    ## Adds a `POST` route.
+    @builtin
+    @stores_callbacks
+    export fn post(
+        self,
+        path: String,
+        handler: fn(Request[A]) -> Result[Response, HttpError],
+        access: Access,
+    ) -> Router[A] => panic("builtin")
+
+    ## Adds a `PUT` route.
+    @builtin
+    @stores_callbacks
+    export fn put(
+        self,
+        path: String,
+        handler: fn(Request[A]) -> Result[Response, HttpError],
+        access: Access,
+    ) -> Router[A] => panic("builtin")
+
+    ## Adds a `DELETE` route.
+    @builtin
+    @stores_callbacks
+    export fn delete(
+        self,
+        path: String,
+        handler: fn(Request[A]) -> Result[Response, HttpError],
+        access: Access,
+    ) -> Router[A] => panic("builtin")
+
+impl[A] Request[A]:
+    ## The path parameter `name` as an `Int`; a bad value is a 400.
+    @builtin
+    export fn path_int(self, name: String) -> Result[Int, HttpError] => panic("builtin")
+
+    ## The path parameter `name`.
+    @builtin
+    export fn path(self, name: String) -> Result[String, HttpError] => panic("builtin")
+
+    ## The first query parameter `name`, or `None`.
+    @builtin
+    export fn query_param(self, name: String) -> Option[String] => panic("builtin")
+
+    ## The query string decoded into `T` (schema-first); a bad value is a 400.
+    @builtin
+    export fn query[T: Decode](self) -> Result[T, HttpError] => panic("builtin")
+
+    ## The JSON body decoded into `T` (schema-first, default limits); a bad body is a 400.
+    @builtin
+    export fn json[T: Decode](self) -> Result[T, HttpError] => panic("builtin")
+
+    ## The form body decoded into `T` (schema-first); a bad body is a 400.
+    @builtin
+    export fn form[T: Decode](self) -> Result[T, HttpError] => panic("builtin")
+
+    ## The request header `name`, or `None`.
+    @builtin
+    export fn header(self, name: String) -> Option[String] => panic("builtin")
+
+impl Response:
+    ## A 200 response with `value` as JSON.
+    @builtin
+    export fn json[T: Encode](value: T) -> Response => panic("builtin")
+
+    ## A 200 response with an HTML page.
+    @builtin
+    export fn html(page: Html) -> Response => panic("builtin")
+
+    ## A 200 response with plain text.
+    @builtin
+    export fn text(body: String) -> Response => panic("builtin")
+
+    ## A 303 redirect. `to` must be relative or on the app's allow-list (04 S17).
+    @builtin
+    export fn redirect(to: Url) -> Response => panic("builtin")
+
+    ## The same response with another status code.
+    @builtin
+    export fn status(self, code: Int) -> Response => panic("builtin")
+
+## What an outbound request returned.
+export type ClientResponse:
+    status: Int
+    body: String
+
+## Why an outbound request failed. Private address ranges are blocked unless the `Net` was
+## attenuated with `allow_private` (04 S12).
+export enum ClientError:
+    Blocked(host: String)
+    Timeout
+    Tls(message: String)
+    Io(message: String)
+
+impl ClientError as Error:
+    @builtin
+    fn message(self) -> String => panic("builtin")
+
+## Sends a `GET` request.
+@builtin
+@suspends
+export fn get(net: Net, url: Url) -> Result[ClientResponse, ClientError] => panic("builtin")
+
+## Sends a `POST` request with a text body.
+@builtin
+@suspends
+export fn post(net: Net, url: Url, body: String) -> Result[ClientResponse, ClientError] => panic(
+    "builtin",
+)

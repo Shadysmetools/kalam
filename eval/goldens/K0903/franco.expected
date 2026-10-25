@@ -1,0 +1,12 @@
+-- KETABET ELSE IF --------------------------------------- main.franco.kl  K0903
+
+`elif` w `else if (…) {` men loghat tanya. F Kalam el far3 elly ba3do yetketeb `walla law shart:`.
+
+4│     elif n == 0:
+       ^^^^
+
+Garrab: `walla law`
+
+Mosa3da: Ekteb `walla law` w ba3daha el shart w `:`, men gher aqwas. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0903

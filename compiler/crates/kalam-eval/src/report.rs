@@ -15,6 +15,7 @@ use crate::diagcat::{self, CatalogReport};
 use crate::external;
 use crate::holdout::{self, Held};
 use crate::integrity::{self, IntegrityReport, State};
+use crate::m2;
 use crate::parity::{self, Outcome, ParseHook, SyntaxOutcome};
 use crate::ratchet::{self, Ratchet};
 use crate::scorecard::{inclusion, normalize, Inclusion, MetricDef, MetricValue, Scorecard};
@@ -44,6 +45,9 @@ pub struct Options {
     /// Run `cargo test -p kalam-props --release` and read the report it writes, instead of
     /// reading `eval/props/report.json` (which must then carry the evaluated commit).
     pub run_props: bool,
+    /// The `kalam` binary for the M2 checkpoints and interpreter cases (`--kalam`, else
+    /// `KALAM_BIN`); never built by the harness.
+    pub kalam: Option<PathBuf>,
 }
 
 /// One metric's outcome before normalization.
@@ -639,6 +643,7 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
     let trojan_rules = RejectRules {
         name_codepoints: true,
         out_of_scope: vec![],
+        include_m2: false,
     };
     let reject = |name: &str, rules: &RejectRules| -> Result<Option<RejectResult>, String> {
         Ok(load_suite(root, name)?.map(|c| suites::run_reject(hook, &c, rules)))
@@ -661,6 +666,7 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
             &RejectRules {
                 name_codepoints: false,
                 out_of_scope: vec!["SEC0104"],
+                include_m2: false,
             },
         )?,
         mixed: reject(
@@ -668,6 +674,7 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
             &RejectRules {
                 name_codepoints: false,
                 out_of_scope: vec!["K0301"],
+                include_m2: false,
             },
         )?,
         recovery: load_suite(root, suites::SEEDED)?.map(|c| suites::run_recovery(hook, &c)),
@@ -700,6 +707,35 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
         .and_then(|a| a["leak"]["hits"].as_u64())
         .unwrap_or(0);
 
+    // --- M2 runners (conformance, goldens, fix rate, judge, wider scopes, checkpoints)
+    let raw_scorecard: Value = serde_json::from_str(&read("eval/scorecard.json")?)
+        .map_err(|e| format!("eval/scorecard.json: {e}"))?;
+    let checkpoint_defs: Vec<Value> = raw_scorecard["milestone_tiers"]["tiers"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|t| t["id"] == json!(tier))
+        .and_then(|t| t["checkpoints"].as_array().cloned())
+        .unwrap_or_default();
+    let checkpoint_ids: Vec<String> = checkpoint_defs
+        .iter()
+        .filter_map(|c| c["id"].as_str().map(str::to_string))
+        .collect();
+    let seeded = load_suite(root, suites::SEEDED)?.unwrap_or_default();
+    let m2 = m2::compute(
+        root,
+        hook,
+        &spec_text,
+        opts.kalam.as_deref(),
+        &seeded,
+        &checkpoint_ids,
+    );
+    let m2_def = |id: &str| {
+        sc.tiers
+            .get("M2")
+            .and_then(|t| t.checks.iter().find(|c| c.id == id))
+    };
+
     // --- M1 check observations
     let m1 = sc.tiers.get("M1");
     let m1_def = |id: &str| m1.and_then(|t| t.checks.iter().find(|c| c.id == id));
@@ -717,6 +753,20 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
             measures.insert(id, obs_to_measure(o));
         }
     }
+    // From tier M2 on (M2 itself or any tier that ratchets from it), the metric rows of the
+    // checks M2 widens are reported at the M2 scope, so a row never claims the narrower M1
+    // value for the metric's full definition. An M1-target run is unchanged.
+    if sc.tiers.chain(&tier).iter().any(|t| t.id == "M2") {
+        for id in ["D5.diag_completeness", "D2.lexing_hazard_suite"] {
+            let o = m2.observe_wider(id, obs.get(id), root);
+            measures.insert(id, obs_to_measure(&o));
+        }
+    }
+    measures.insert("D1.spec_clause_coverage", m2.spec_clause_coverage());
+    measures.insert("D1.conformance_pass_rate", m2.conformance_pass_rate());
+    measures.insert("D5.golden_coverage", m2.golden_coverage());
+    measures.insert("D5.machine_fix_rate", m2.machine_fix_rate());
+    measures.insert("D5.judge_score", m2.judge_score());
     measures.insert(
         "D4.keywords_per_skin",
         Measure::Measured {
@@ -982,6 +1032,7 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
             "evidence": inputs.catalog.evidence(),
         },
         "p7_conflicts": inputs.p7.1,
+        "m2": m2.checks_json(),
         "props": match &inputs.props { Ok(p) => json!({"source": p.source, "provenance": format!("{:?}", p.provenance), "properties": p.properties.len()}), Err(e) => json!({"status": "not_measurable", "reason": e}) },
         "cases": c.records,
     });
@@ -1001,6 +1052,12 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
     };
     let observe = |c: &TierCheck| -> Observation {
         let id = c.id.as_str();
+        // a check M2 repeats with a wider scope than M1 (src/m2.rs)
+        if let (Some(d2), Some(d1)) = (m2_def(id), m1_def(id)) {
+            if d2.scope == c.scope && d1.scope != c.scope {
+                return m2.observe_wider(id, obs.get(id), root);
+            }
+        }
         if let (Some(o), Some(d)) = (obs.get(id), m1_def(id)) {
             return if d.scope == c.scope {
                 o.clone()
@@ -1092,6 +1149,7 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
         "gates": gates,
         "metrics": metric_rows,
         "holdout": inputs.held.to_json(),
+        "checkpoints": m2.checkpoints_json(&checkpoint_defs),
         "checks": checks_json,
     });
     let mut json = json;
@@ -1319,6 +1377,7 @@ mod tests {
                 git_sha: None,
                 holdout: None,
                 run_props: false,
+                kalam: None,
             },
         )
         .unwrap()
@@ -1443,6 +1502,65 @@ mod tests {
             .find(|m| m["metric"] == "D1.corpus_syntax_pass")
             .unwrap();
         assert!(syn["value"].is_number(), "{syn}");
+        assert_eq!(v["milestone_met"], false);
+    }
+
+    /// An "accept everything" compiler (no resolver, no type checker, no renderer, no
+    /// binary) must not pass any M2 check or checkpoint, and the M1 checks M2 ratchets from
+    /// must still be listed and judged.
+    #[test]
+    fn an_accept_everything_compiler_passes_no_m2_check_and_m1_checks_still_run() {
+        let v = run_with("M2", Box::new(PerfectFake));
+        let checks = v["tier_checks"].as_array().unwrap();
+        let m2: Vec<&Value> = checks.iter().filter(|c| c["tier"] == "M2").collect();
+        assert_eq!(m2.len(), 8, "{m2:?}");
+        for c in &m2 {
+            assert_ne!(c["status"], "pass", "{c}");
+        }
+        let root = repo_root();
+        let sc = Scorecard::parse(&fs::read_to_string(root.join("eval/scorecard.json")).unwrap())
+            .unwrap();
+        for c in &sc.tiers.get("M1").unwrap().checks {
+            let r = tier_check(&v, &c.id, "M1");
+            assert!(r["status"].is_string(), "{r}");
+        }
+        // the wider-scope M2 checks are judged by the M2 runners, not the M1 ones
+        let lex = tier_check(&v, "D2.lexing_hazard_suite", "M2");
+        assert!(
+            lex["evidence"].as_str().unwrap().contains("M2 scope"),
+            "{lex}"
+        );
+        // the metric rows of widened checks carry the M2-scope value, not the M1 one
+        let row = |id: &str| -> Value {
+            v["metrics"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .find(|m| m["metric"] == id)
+                .unwrap()
+                .clone()
+        };
+        let dc = row("D5.diag_completeness");
+        assert!(
+            dc["note"].as_str().unwrap().contains("Full code set"),
+            "{dc}"
+        );
+        let lx = row("D2.lexing_hazard_suite");
+        assert!(lx["note"].as_str().unwrap().contains("M2 scope"), "{lx}");
+        let conf = &v["checks"]["m2"]["conformance"]["run"];
+        assert!(
+            conf["stage_missing"]["resolve"].as_u64().unwrap() > 0,
+            "{conf}"
+        );
+        assert!(
+            conf["stage_missing"]["typeck"].as_u64().unwrap() > 0,
+            "{conf}"
+        );
+        let cps = v["checkpoints"].as_array().unwrap();
+        assert_eq!(cps.len(), 4, "{cps:?}");
+        for c in cps {
+            assert_ne!(c["status"], "pass", "{c}");
+        }
         assert_eq!(v["milestone_met"], false);
     }
 

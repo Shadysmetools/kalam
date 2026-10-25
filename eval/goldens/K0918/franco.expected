@@ -1,0 +1,12 @@
+-- DALA GAHZA MEN LOGHA TANYA ---------------------------- main.franco.kl  K0918
+
+`len(xs)` w `str(x)` w `int(s)` dawal gahza f loghat tanya. F Kalam homa methods aw holes f string, fa betban f el autocomplete ba3d el `.`.
+
+3│     khali n = len(xs)
+                 ^^^^^^^
+
+Garrab: `xs.len()`
+
+Mosa3da: Ekteb `xs.len()` badal `len(xs)`, w `"{ x }"` badal `str(x)`, w `s.to_int()?` badal `int(s)`. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0918

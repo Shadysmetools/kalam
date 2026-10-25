@@ -1,0 +1,39 @@
+# std/math (spec §20.1). There is no overloading, so each function has one type.
+
+## The ratio of a circle's circumference to its diameter.
+export let PI: Float = 3.141592653589793
+
+## The absolute value of an `Int`. Panics on the minimum `Int`.
+@builtin
+export fn abs(x: Int) -> Int => panic("builtin")
+
+## The smaller of `a` and `b` (`a` when they are equal).
+@builtin
+@positional
+export fn min[T: Ord](a: T, b: T) -> T => panic("builtin")
+
+## The larger of `a` and `b` (`a` when they are equal).
+@builtin
+@positional
+export fn max[T: Ord](a: T, b: T) -> T => panic("builtin")
+
+## `x` limited to the range `low..=high`.
+@builtin
+@positional
+export fn clamp[T: Ord](x: T, low: T, high: T) -> T => panic("builtin")
+
+## The square root (NaN for negative input).
+@builtin
+export fn sqrt(x: Float) -> Float => panic("builtin")
+
+## The largest integral value not greater than `x`.
+@builtin
+export fn floor(x: Float) -> Float => panic("builtin")
+
+## The nearest integral value; halves round away from zero.
+@builtin
+export fn round(x: Float) -> Float => panic("builtin")
+
+## `base` raised to the power `exponent`.
+@builtin
+export fn pow(base: Float, exponent: Float) -> Float => panic("builtin")

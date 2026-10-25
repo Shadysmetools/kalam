@@ -1,0 +1,4 @@
+fn apply(f: fn(Int) -> Int, v: Int) -> Int => f(v)
+
+fn main():
+    print("{apply(fn(x) => x + 1, 1)}")

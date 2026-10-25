@@ -1,0 +1,7 @@
+تعداد Shape:
+    Circle(radius: كسري)
+    Empty
+
+دالة رئيسي():
+    ليكن s: Shape = Circle(radius: 1.0)
+    اطبع("x")

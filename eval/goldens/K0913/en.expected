@@ -1,0 +1,10 @@
+-- STRING PREFIX OR TEMPLATE ------------------------------------ main.kl  K0913
+
+Kalam strings need no `f` prefix, and no backticks with `${…}`. Every `"…"` string already fills holes written as `{…}`.
+
+10│     print(f"total {n}")
+              ^
+
+Help: Delete the `f` prefix, or change the backticks to `"` and each `${` to `{`. `kalam fix` does this for you.
+
+Learn more: kalam explain K0913

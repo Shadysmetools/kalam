@@ -118,6 +118,7 @@ pub fn aggregate(store: &Path, root: &Path, hook: &dyn ParseHook, m1_scope: &[u3
         let rules = RejectRules {
             name_codepoints: true,
             out_of_scope: vec![],
+            include_m2: false,
         };
         let r = suites::run_reject(hook, &cases, &rules);
         json!({

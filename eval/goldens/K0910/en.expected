@@ -1,0 +1,16 @@
+-- TERNARY OPERATOR --------------------------------------------- main.kl  K0910
+
+Kalam has no `c ? a : b`. `if` is an expression, so you can use it anywhere a value goes.
+
+10│     let label = 5 > 0 ? "positive" : "negative"
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Try: `if `
+
+Try: `: `
+
+Try: ` else: `
+
+Help: Write `if c: a else: b`. `kalam fix` does this for you.
+
+Learn more: kalam explain K0910

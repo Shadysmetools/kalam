@@ -87,6 +87,8 @@ pub struct CodeStatus {
 pub struct CatalogReport {
     pub codes: BTreeMap<String, CodeStatus>,
     pub retired_dropped: Vec<String>,
+    /// The spec §27 families in the denominator; `None` = every family (the M2 scope).
+    pub families: Option<Vec<String>>,
 }
 
 impl CatalogReport {
@@ -130,14 +132,21 @@ impl CatalogReport {
             .map(|(c, _)| c.as_str())
             .collect();
         format!(
-            "M1 code set = {} codes ({} from spec §27 families {:?}, {} catalog-only; retired dropped: {:?}). \
+            "{} = {} codes ({} from spec §27 families {}, {} catalog-only; retired dropped: {:?}). \
              message x3: {}; explain page x3 (`kalam explain`): {}; help text x3: {} \
              (source: kalam_diagnostics::explain::catalog_value, i.e. `kalam explain --catalog --json`). \
              Strict (message + help + explain): {:.2}%. \
              Alternative reading without separate help text: {:.2}%. Codes without a catalog entry ({}): {:?}",
+            if self.families.is_some() {
+                "M1 code set"
+            } else {
+                "Full code set (every spec §27 family)"
+            },
             self.total(),
             self.count(|s| s.in_spec),
-            M1_FAMILIES,
+            self.families
+                .as_ref()
+                .map_or_else(|| "all".to_string(), |f| format!("{f:?}")),
             self.count(|s| !s.in_spec),
             self.retired_dropped,
             self.count(|s| s.message),
@@ -194,7 +203,14 @@ pub fn builtin_entries() -> Vec<EntryView> {
 }
 
 pub fn measure(spec: &str, entries: &[EntryView]) -> CatalogReport {
-    let in_family = |c: &str| M1_FAMILIES.iter().any(|f| c.starts_with(f));
+    measure_in(spec, entries, Some(M1_FAMILIES))
+}
+
+/// [`measure`] over the spec §27 codes of `families` (`None` = every family: the M2 scope of
+/// `D5.diag_completeness`, "union of codes in spec section 27 and `kalam explain --catalog
+/// --json`"; spec codes not yet implemented count as incomplete).
+pub fn measure_in(spec: &str, entries: &[EntryView], families: Option<&[&str]>) -> CatalogReport {
+    let in_family = |c: &str| families.map_or(true, |fs| fs.iter().any(|f| c.starts_with(f)));
     let mut codes: BTreeMap<String, CodeStatus> = BTreeMap::new();
     let mut retired = BTreeSet::new();
     for (code, is_retired) in spec_codes(spec) {
@@ -221,6 +237,7 @@ pub fn measure(spec: &str, entries: &[EntryView]) -> CatalogReport {
     CatalogReport {
         codes,
         retired_dropped: retired.into_iter().collect(),
+        families: families.map(|f| f.iter().map(|s| s.to_string()).collect()),
     }
 }
 

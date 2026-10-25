@@ -1,0 +1,12 @@
+-- TAB CHARACTER ------------------------------------------------ main.kl  K0103
+
+I found a tab. Kalam code is indented with 4 spaces per level, so it looks the same in every editor.
+
+2│ 	var sum = 0
+   ^
+
+Try: `    `
+
+Help: Replace the tab with spaces (4 per level). `kalam fmt` does this for you; inside a string, write `\t`.
+
+Learn more: kalam explain K0103

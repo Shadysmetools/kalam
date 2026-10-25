@@ -1,0 +1,9 @@
+هيكل Shape:
+    sides: عدد
+
+دالة shape() -> عدد => 3
+
+دالة رئيسي():
+    ليكن shape_count = shape()
+    ليكن s = Shape(sides: shape_count)
+    اطبع("{s.sides}")

@@ -1,0 +1,4 @@
+fn main():
+    let كتاب = "a"
+    let کتاب = "b"
+    print(كتاب)

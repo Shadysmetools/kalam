@@ -1,0 +1,6 @@
+type شكل:
+    sides: Int
+
+fn main():
+    let الشكل = شكل(sides: 3)
+    print("{الشكل.sides}")

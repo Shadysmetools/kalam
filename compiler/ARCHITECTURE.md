@@ -275,6 +275,94 @@ The scaffold lexer (`crates/kalam-lexer`) implements source-character checks, wo
 - **`?`:** the four rules of §14.3. The chosen conversion (`Same`, `From(impl)`, `BoxAnyError`) is recorded in `TypeckResults` for lowering.
 - **Sinks:** for every tagged literal, typeck calls `kalam-sinks` with the literal's `StaticParts` and hole spans. The sink parser classifies each hole's context and returns the required hole type for each. Typeck then checks the hole expressions against them (K1601, K1613, K1616, K1641, …).
 
+### 8.1 The M2 typing pipeline (implemented 2026-10-25)
+
+```
+kalam-resolve output ──adapter──► kalam_typeck::hir (ResolvedProgram)
+        ▼  check_program: pass 1 collect (ADTs, aliases, traits, impls, every signature → Scheme; coherence/orphan)
+        ▼                 pass 2 bodies (one InferCtx per body; bidirectional + union-find)
+TypeckResults ──► kalam-effects (solves SuspFlow constraints, call graph) ──► kalam_ir::lower ──► KIR ──► verify ──► interpreter / emit-js
+```
+
+**The resolved-program contract (`kalam_typeck::hir`).** Typeck consumes a small skin-free HIR in which every name is already resolved: `ExprKind::Local(LocalId)`, `Def(DefId)`, `Lang(LangItem)` for the core values (`print`, `panic`, `assert`, `Some`, `None`, `Ok`, `Err`), and `ImplicitMember` for `.V` (typeck resolves it against the expected type). Types are already lowered to `hir::Type` (`BuiltinType`, `Def`, `Param(i)`, `SelfType`, `Fn { sync }`). Every expression has an `ExprId` unique within its body; every local and parameter a `LocalId`. The trait is `ResolvedProgram { item_ids(), item(def) -> Option<&Item> }` (a `DefId` that is not an item yields `None`, which the checker treats as an already-reported error, never a panic: typeck is a fuzz target), and `HirProgram` is an in-memory implementation.
+- **Dependency direction.** `kalam-typeck` depends on `kalam-resolve`, so resolve cannot implement a trait defined in typeck without a cycle. The adapter (`impl ResolvedProgram for …`, or a function that builds a `HirProgram`) lives **in `kalam-typeck` or `kalam-driver`**, never in resolve. It walks `kalam_ast` together with resolve's `Program` (its `uses`/`decls` tables keyed by name spans) and emits HIR. Resolve keeps owning `DefId` and `ModulePath`, which HIR reuses unchanged.
+- **Obligations on resolve** (listed in `hir.rs`): DefIds for every item, method, variant and record; one-namespace, no-shadowing, visibility and `break`-outside-loop checked before typeck; an impl's generics numbered before its method's; constants listed in dependency order; unresolved names lowered to `ExprKind::Error` after K0401.
+- `kalam_typeck::builder` builds HIR by hand, and `builder::fixtures::{hello_world, fizzbuzz}` are the spec §28.1–§28.2 programs as HIR (named after the spec, not the corpus, so compiler sources stay clear of the A5 corpus-leak scan). Later passes (lowering, the reference interpreter) test against them until resolve produces HIR from source.
+
+**Types (`kalam_typeck::ty`).** `Ty` has the §9.2/§9.3 primitives (`Int` is the D18 64-bit checked integer), `Range`, `Fn { params, ret, suspension }`, `Adt(DefId, args)` (aliases are expanded during lowering), `Capability`, `Sink`, `Secret`, `AnyError`, `JsValue`, rigid `Param(i)`, inference `Var(i)` and the poison `Error`. A `Scheme` is a declared signature: its generics with trait bounds plus `effect_params`. **There is no let-generalization** (§9.9 rule 2), so schemes come only from annotated signatures, and pass 1 collects them all before any body is checked (mutual recursion needs no ordering).
+
+**Suspension bits (§15.3).** A written `fn(…)` type gets its bit from its position:
+- directly a declaration parameter: an effect parameter `Suspension::Param(k)`, which makes the declaration effect-polymorphic;
+- inside data (fields, payloads, collection elements, nested types): `Suspending`;
+- directly a local annotation: a fresh effect variable;
+- `@sync fn(…)`: `Sync`.
+
+A declaration's own bit is one more effect parameter, or `Sync` under `@sync`. Unification never equates bits, because sync-where-suspending-is-expected is a direction and the bits depend on the call graph. Unifying two fn types records `SuspFlow { from, to, span }` (from ≤ to) in `TypeckResults::flows`, and `kalam-effects` solves those together with the call graph. The same spans are where lowering inserts `Coerce::SyncToSusp`.
+
+**The inference core (`kalam_typeck::unify`).**
+- Union-find over type variables (union by rank, path compression), with values at the roots and an occurs check.
+- `Ty::Error` unifies with everything. `Never` is not unified: `Never <: T` is applied as a coercion wherever a value is checked against an expected type (`if c: panic(…) else: 3`).
+- Literals follow §5.6 exactly. An integer literal is `Int` unless the expected type is `Float`, `Decimal` or `BigInt`. K0126 is checked against the i64 range, and the direct operand of unary `-` admits −2⁶³.
+- In a binary operator, a literal operand takes its type from the other operand, whichever side it is on. So `2 * price` types like `price * 2`, and `x + 1.5` with `x: Int` is K0601, not a plain mismatch.
+- Trait requirements whose type is still a variable are deferred to the end of the body.
+
+**Traits (`kalam_typeck::traits`).** `TraitId` is a built-in trait of the §9.7 table (`From` and `Template` included) or a user trait `DefId`. An `ImplDecl` records its module, generics, self type and trait reference.
+- **Orphan rule:** the impl's module must equal the trait's module or the self type's head module. Built-in traits and built-in types are defined by the core (`None`), so `impl Int as Show` is always an orphan.
+- **Overlap:** two impls of one trait overlap when their heads unify after their generics are made fresh. Bounds are ignored, so this is conservative.
+- **Solving:** user impls first (a custom `Show` overrides the derived one), then explicit `@derive`s, then structural derivation for `Eq`/`Hash`/`Show`, then the §9.7 facts for built-in types, then the bounds of the generic parameters in scope. It is coinductive for recursive ADTs. `==` on two `Float`s skips `Eq` (IEEE).
+
+**`TypeckResults`.**
+
+| Field | Contents |
+|---|---|
+| `adts` | Lowered records and enums |
+| `signatures` | Every function and method scheme, signature stubs included |
+| `consts` | Constant types |
+| `traits` | The `TraitEnv` |
+| `expr_types`, `local_types` | Keyed by `(owning body DefId, ExprId/LocalId)`, fully zonked. A variable nothing constrained becomes `Error` |
+| `instantiations` | Type arguments at each generic use |
+| `method_picks` | DR-27 method resolutions |
+| `variant_picks` | Variants chosen for implicit members |
+| `flows` | Suspension flows (`SuspFlow` constraints) |
+| `errors` | Typed `TypeError`s; `code()` maps each to §27 and `to_diagnostic()` renders it |
+
+**What the checker covers now:**
+- Literals and K0126; `let`/`var` and assignment (K0710).
+- Functions, generic calls, named and defaulted arguments.
+- Record construction (K0416) and fields; variants and implicit members (K0803).
+- `if`/`match` in statement and value form (K0731).
+- A shallow exhaustiveness check (K1001) for `Bool`, `Option`, `Result`, enums, and the "final `_`" rule for `Int`/`String`/`Decimal`.
+- `for` over ranges and collections, `while`.
+- Operators, with K0601/K0602 and `Int / Int → Float`. `Decimal` has no `/`.
+- Interpolation needs `Show`. `print[T: Show](value: T)` (provisional, pending a founder fork) and K0916.
+- Tagged literals typed as sink types; K1601 for `String` where a sink is expected.
+- K0612; K0730/K1303; K1101; DR-27 method calls (K0420/K1103); coherence/orphan.
+
+**Not yet:**
+- Maranget usefulness: nested exhaustiveness and K1002.
+- `?` (§14.3).
+- Hole requirements (waits for `kalam-sinks::check_template`).
+- `.with`, K1110, local `fn` items, K1004 or-pattern bindings, and the entry-point signature.
+
+**Provisional codes** (no §27 code exists; `error::PROVISIONAL_CODES`, pending the founder):
+- `K0600`: type mismatch, not callable, not iterable, infinite type.
+- `K0603`: operator or trait requirement not satisfied.
+- `K1105`: argument count or labels.
+- `K1106`: orphan or overlapping impl.
+
+`K0420` (§27: unknown method) is also used for unknown fields. Every code typeck emits needs a `kalam-diagnostics` catalog entry and an `EMITTER_ARGS` row (`catalog_completeness.rs`); those are owned by the diagnostics crate and still to be added.
+
+**KIR for the interpreter (`kalam-ir`).**
+- **Program:** `Program` now carries `records` and `enums`, and `Function` carries `locals` (every local with its type) and `generics`.
+- **Calls:** `Call` carries `type_args`. `Callee::Prelude(Print | Assert)`; `panic` is `ExprKind::Panic`.
+- **Expressions:** `If` and `Block` are expressions (value-form `if`/`match`; `and`/`or` short-circuit as `If`).
+- **Loops:** `Stmt::ForRange` iterates `Int` ranges without overflow at `i64::MAX`. `Stmt::ForEach` iterates collections.
+- **Values:** `Variant` covers user enums and the built-in `Option` (`None` = 0, `Some` = 1) and `Result` (`Ok` = 0, `Err` = 1).
+- **Primitives:** `PrimOp` gained the full comparison set per type, `Decimal`, `BigInt` and `Show` primitives, and `ListGet`/`ListLen`/`ListConcat`, each with its spec semantics documented.
+- **Verifier:** `kalam_ir::verify::verify` checks the invariants: no `Var`/`Error` types, declared locals, existing callees, primitive arity, `break` only inside loops, assignment only to mutable locals.
+- **Lowering:** `kalam_ir::lower::lower_program` lowers the checker's subset. Named arguments are evaluated in source order into temporaries, interpolation becomes `*Show` + `StrConcat`, and literal `match` becomes an `if` chain ending in a defensive panic. Anything else is `LowerError::Unsupported`, never a silent miscompile.
+- **End-to-end tests:** a test-only evaluator runs the lowered §28.1 and §28.2 programs and matches their expected stdout byte for byte (the same output corpus tasks T01 and T02 expect).
+
 ---
 
 ## 9. Effects: suspension and capabilities

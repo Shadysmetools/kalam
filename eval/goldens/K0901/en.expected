@@ -1,0 +1,12 @@
+-- STRICT EQUALITY OPERATOR ------------------------------------- main.kl  K0901
+
+Kalam has no `===` or `!==`. Its `==` and `!=` are already strict: values of different types are never silently converted before comparing.
+
+4│     else if n === 0:
+                 ^^^
+
+Try: `==`
+
+Help: Write `==` instead of `===`, and `!=` instead of `!==`. `kalam fix` does this for you.
+
+Learn more: kalam explain K0901

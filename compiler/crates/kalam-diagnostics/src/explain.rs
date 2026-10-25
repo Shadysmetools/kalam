@@ -103,6 +103,75 @@ const DESCRIPTIONS: &[(&str, &str, [&str; 3])] = &[
             "nafs el kelma bel skin bta3 el file da",
         ],
     ),
+    // Name resolution (kalam-resolve): `{name}` is an identifier or a module path.
+    (
+        "K0301",
+        "name",
+        ["the module's path", "مسار الوحدة", "el path bta3 el module"],
+    ),
+    (
+        "K0303",
+        "name",
+        [
+            "the private type's name",
+            "اسم النوع الخاص",
+            "esm el type el private",
+        ],
+    ),
+    (
+        "K0401",
+        "name",
+        [
+            "the name as you wrote it",
+            "الاسم كما كتبته",
+            "el esm zay ma katabto",
+        ],
+    ),
+    (
+        "K0405",
+        "name",
+        [
+            "the name as you wrote it",
+            "الاسم كما كتبته",
+            "el esm zay ma katabto",
+        ],
+    ),
+    (
+        "K0413",
+        "name",
+        [
+            "the core name as you wrote it",
+            "الاسم الأساسي كما كتبته",
+            "el core name zay ma katabto",
+        ],
+    ),
+    (
+        "SEC0104",
+        "name",
+        [
+            "one name with its code points",
+            "أحد الاسمين برموز حروفه",
+            "esm menhom b el code points bta3to",
+        ],
+    ),
+    (
+        "SEC0104",
+        "other",
+        [
+            "the other name with its code points",
+            "الاسم الآخر برموز حروفه",
+            "el esm el tany b el code points bta3to",
+        ],
+    ),
+    (
+        "K1201",
+        "cycle",
+        [
+            "the modules of the cycle, in import order",
+            "وحدات الدائرة بترتيب الاستيراد",
+            "el modules elly f el dayra b tarteeb el import",
+        ],
+    ),
     (
         "K0911",
         "found",

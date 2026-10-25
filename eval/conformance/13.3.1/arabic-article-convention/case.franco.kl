@@ -1,0 +1,6 @@
+haykal شكل:
+    sides: adad
+
+dala ra2isi():
+    khali الشكل = شكل(sides: 3)
+    ektb("{الشكل.sides}")

@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali item = 0
+    lekol item fi [1, 2, 3]:
+        ektb("{item}")

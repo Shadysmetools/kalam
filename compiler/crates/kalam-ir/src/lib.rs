@@ -1,18 +1,32 @@
 //! KIR: Kalam's typed, target-neutral intermediate representation, the lowering from
 //! typed HIR, the IR passes, and the [`Backend`] trait that every code generator implements.
 //!
-//! KIR invariants (ARCHITECTURE.md §10.2), which are the contract that keeps a future C
-//! backend possible:
-//! 1. Every expression has an explicit type. Generics are kept; C runs `monomorphize`.
-//! 2. Every operation has spec semantics (`IntAdd` traps outside [−2^63, 2^63 − 1], `IntFloorDiv`
-//!    floors and panics on zero, …), never "whatever the host does".
-//! 3. Evaluation order is explicit (temporaries where a backend could reorder).
-//! 4. Every suspension point is marked (`Call::suspends`, `Coerce::SyncToSusp`).
-//! 5. No sugar: `?`, `match`, value-semantic assignment, interpolation, tagged literals,
-//!    defaults and named arguments are all desugared.
+//! KIR is what the **reference interpreter** runs (ROADMAP M2) and what the JS and C
+//! emitters consume. Its invariants (ARCHITECTURE.md §10.2) are the contract that keeps a
+//! future C backend possible and keeps JS semantics out of the language:
+//! 1. Every expression has an explicit, fully inferred type: no `Ty::Var`, no `Ty::Error`
+//!    ([`verify::verify`] checks this). Generics are kept (`Call::type_args`); C runs
+//!    `monomorphize`.
+//! 2. Every operation has spec semantics ([`PrimOp`] documents each), never "whatever the
+//!    host does". `IntAdd` traps outside [−2⁶³, 2⁶³−1] (D18), `IntFloorDiv` floors and
+//!    panics on zero, `FloatEq` is IEEE.
+//! 3. Evaluation order is strictly left to right (§10.6). Where source order and KIR order
+//!    differ (named arguments, record fields written out of order) lowering binds the
+//!    values to temporaries first.
+//! 4. Every suspension point is marked (`ExprKind::Call::suspends`, `Coerce::SyncToSusp`).
+//!    Until `kalam-effects` runs in the pipeline these are `false`.
+//! 5. No sugar: `match` is a [`Stmt::Switch`] decision tree with a panicking default,
+//!    `and`/`or` are [`ExprKind::If`], interpolation is `*Show` plus `StrConcat`,
+//!    compound assignment is a plain rebinding, `while` is a [`Stmt::Loop`] with a
+//!    conditional `break`, and named arguments are positional.
 //! 6. No JavaScript concepts (`undefined`, `Promise`, prototypes).
 //!
-//! Status: data types and the backend seam. Lowering and passes are Phase 1.
+//! Conventions for built-in sum types: `Option` is `None` = variant 0, `Some` = variant 1;
+//! `Result` is `Ok` = variant 0, `Err` = variant 1. A user enum's variants are numbered in
+//! declaration order.
+
+pub mod lower;
+pub mod verify;
 
 use kalam_base::{FileSpan, Span};
 use kalam_resolve::DefId;
@@ -21,12 +35,61 @@ use kalam_typeck::Ty;
 pub type FnId = u32;
 pub type LocalId = u32;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Program {
     pub package: String,
     pub functions: Vec<Function>,
+    pub records: Vec<RecordDecl>,
+    pub enums: Vec<EnumDecl>,
     /// The function that `main` lowered to, if this package is an executable.
     pub entry: Option<FnId>,
+}
+
+impl Program {
+    pub fn function(&self, id: FnId) -> Option<&Function> {
+        self.functions.iter().find(|f| f.id == id)
+    }
+
+    pub fn record(&self, def: DefId) -> Option<&RecordDecl> {
+        self.records.iter().find(|r| r.def == def)
+    }
+
+    pub fn enum_decl(&self, def: DefId) -> Option<&EnumDecl> {
+        self.enums.iter().find(|e| e.def == def)
+    }
+}
+
+/// A record type: fields in declaration order (field `i` is `Field { index: i }`).
+#[derive(Clone, Debug)]
+pub struct RecordDecl {
+    pub def: DefId,
+    pub name: String,
+    pub generics: u32,
+    pub fields: Vec<(String, Ty)>,
+}
+
+#[derive(Clone, Debug)]
+pub struct VariantDecl {
+    pub def: DefId,
+    pub name: String,
+    pub fields: Vec<Ty>,
+}
+
+#[derive(Clone, Debug)]
+pub struct EnumDecl {
+    pub def: DefId,
+    pub name: String,
+    pub generics: u32,
+    pub variants: Vec<VariantDecl>,
+}
+
+#[derive(Clone, Debug)]
+pub struct LocalDecl {
+    /// Source name (for debuggers and source maps); temporaries are named `$tN`.
+    pub name: String,
+    pub ty: Ty,
+    /// Rebound by `Stmt::Assign` (a source `var`, or a lowering temporary).
+    pub mutable: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -36,7 +99,11 @@ pub struct Function {
     /// The canonical name as declared (identifiers are never translated between skins);
     /// used for JS exports.
     pub name: String,
+    /// Number of type parameters (`Ty::Param(0..generics)`).
+    pub generics: u32,
     pub params: Vec<(LocalId, Ty)>,
+    /// Every local of the body, indexed by `LocalId` (parameters included).
+    pub locals: Vec<LocalDecl>,
     pub ret: Ty,
     pub body: Block,
     /// Result of suspension inference for this instance.
@@ -60,6 +127,7 @@ pub struct Block {
 
 #[derive(Clone, Debug)]
 pub enum Stmt {
+    /// Initializes `local` (its type is `ty`, also recorded in `Function::locals`).
     Let {
         local: LocalId,
         ty: Ty,
@@ -75,13 +143,30 @@ pub enum Stmt {
         then: Block,
         otherwise: Block,
     },
-    /// A decision tree produced from `match` (defensive panicking default included).
+    /// A decision tree produced from `match`. `default` runs when no key matches; lowering
+    /// makes it a panic when the match was exhaustive (defensive, §11).
     Switch {
         scrutinee: Expr,
         arms: Vec<(SwitchKey, Block)>,
         default: Block,
     },
     Loop {
+        body: Block,
+    },
+    /// `for local in lo..hi` / `lo..=hi` over `Int`. `lo` then `hi` are evaluated once.
+    /// Iteration never overflows: `lo..=9223372036854775807` ends after its last value.
+    ForRange {
+        local: LocalId,
+        lo: Expr,
+        hi: Expr,
+        inclusive: bool,
+        body: Block,
+    },
+    /// `for local in xs` over a `List`, `Set` (insertion order) or `Map` (yielding
+    /// `(key, value)` tuples in insertion order).
+    ForEach {
+        local: LocalId,
+        iter: Expr,
         body: Block,
     },
     Break,
@@ -91,6 +176,7 @@ pub enum Stmt {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SwitchKey {
+    /// A variant number of the scrutinee's enum, `Option` or `Result` (see crate docs).
     Variant(u32),
     Int(i64),
     Str(String),
@@ -109,6 +195,10 @@ pub enum ExprKind {
     Local(LocalId),
     Int(i64),
     Float(f64),
+    /// Exact decimal literal text (`19.99`), parsed by the backend's decimal128 runtime.
+    Decimal(String),
+    /// Exact integer literal text of any size.
+    BigInt(String),
     Str(String),
     Bool(bool),
     Unit,
@@ -119,20 +209,50 @@ pub enum ExprKind {
     Call {
         callee: Callee,
         args: Vec<Expr>,
+        /// Type arguments of a generic callee, in its generics order.
+        type_args: Vec<Ty>,
         suspends: bool,
     },
+    /// Record construction; `fields` in declaration order.
     Record {
         def: DefId,
         fields: Vec<Expr>,
     },
+    /// User enum variant, `Option` or `Result` construction (`def` is the variant's
+    /// `DefId` for user enums and `None` for the built-in ones).
     Variant {
-        def: DefId,
+        def: Option<DefId>,
         index: u32,
         fields: Vec<Expr>,
     },
+    /// Record field `index` (declaration order).
     Field {
         base: Box<Expr>,
         index: u32,
+    },
+    /// Payload field `index` of variant `variant`. Only valid after a `Switch` on that
+    /// variant; backends may assume the tag matches.
+    VariantField {
+        base: Box<Expr>,
+        variant: u32,
+        index: u32,
+    },
+    Tuple(Vec<Expr>),
+    TupleField {
+        base: Box<Expr>,
+        index: u32,
+    },
+    List(Vec<Expr>),
+    /// A conditional expression; also how `and`/`or` short-circuit.
+    If {
+        cond: Box<Expr>,
+        then: Box<Expr>,
+        otherwise: Box<Expr>,
+    },
+    /// Runs `stmts`, then yields `value` (value-form `if`/`match` arms with statements).
+    Block {
+        stmts: Vec<Stmt>,
+        value: Box<Expr>,
     },
     Lambda {
         params: Vec<(LocalId, Ty)>,
@@ -149,15 +269,34 @@ pub enum ExprKind {
         parts: Vec<String>,
         holes: Vec<Expr>,
     },
+    /// `panic(msg)`: type `Never`.
     Panic(Box<Expr>),
+}
+
+impl Expr {
+    pub fn new(kind: ExprKind, ty: Ty, span: Span) -> Expr {
+        Expr { kind, ty, span }
+    }
 }
 
 #[derive(Clone, Debug)]
 pub enum Callee {
     Fn(FnId),
     Value(Box<Expr>),
+    /// A core prelude function.
+    Prelude(PreludeFn),
     /// A runtime primitive provided per target (`std/_platform/<target>`).
     Intrinsic(String),
+}
+
+/// Core functions every backend provides (spec §7.2, §16.4: ambient).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PreludeFn {
+    /// `print(s: String)`: writes `s` and a newline to stdout. Lowering applies `Show`
+    /// first, so the argument is always a `String`.
+    Print,
+    /// `assert(cond, msg)`: panics with `msg` when `cond` is false.
+    Assert,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -166,28 +305,100 @@ pub enum Coerce {
     SyncToSusp,
 }
 
-/// Primitive operations with spec-defined semantics (invariant 2).
+/// Primitive operations with spec-defined semantics (invariant 2). Each takes the number
+/// of arguments [`PrimOp::arity`] gives, evaluated left to right.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PrimOp {
+    // Int: 64-bit two's complement range, checked (D18, §9.2).
+    /// Panics on overflow.
     IntAdd,
+    /// Panics on overflow.
     IntSub,
+    /// Panics on overflow.
     IntMul,
+    /// Floors (Python `//`); panics on zero; `−2⁶³ // −1` overflows and panics.
     IntFloorDiv,
+    /// Sign of the divisor (Python `%`); panics on zero.
     IntMod,
+    /// `/` on two `Int`s: converts both to `Float` (round to nearest) and divides.
     IntToFloatDiv,
+    /// Panics on `−(−2⁶³)`.
     IntNeg,
     IntEq,
     IntLt,
+    IntLe,
+    IntGt,
+    IntGe,
+    /// Decimal digits, `-` sign, no separators.
+    IntShow,
+    // Float: IEEE-754 binary64.
     FloatAdd,
     FloatSub,
     FloatMul,
     FloatDiv,
+    FloatNeg,
+    /// IEEE equality (`NaN == NaN` is false; `!=` is `Not(FloatEq)`).
     FloatEq,
     FloatLt,
+    FloatLe,
+    FloatGt,
+    FloatGe,
+    /// Shortest round-trip decimal text (spec §20 `std/string` formatting is M4).
+    FloatShow,
+    // Decimal: decimal128, 34 significant digits, exact; traps on overflow.
+    DecAdd,
+    DecSub,
+    DecMul,
+    DecNeg,
+    DecEq,
+    DecLt,
+    DecLe,
+    DecGt,
+    DecGe,
+    DecShow,
+    // BigInt: arbitrary precision, same operators as Int without overflow.
+    BigAdd,
+    BigSub,
+    BigMul,
+    BigFloorDiv,
+    BigMod,
+    BigNeg,
+    BigEq,
+    BigLt,
+    BigLe,
+    BigGt,
+    BigGe,
+    BigShow,
+    // String: Unicode scalar values; equality and order are by code point.
     StrConcat,
     StrEq,
-    StructEq,
+    StrLt,
+    StrLe,
+    StrGt,
+    StrGe,
+    // Bool.
+    BoolEq,
+    /// `true` / `false`.
+    BoolShow,
     Not,
+    /// Structural equality of two values of one `Eq` type (records, enums, tuples,
+    /// collections). Never runs user code (§11 rule 11).
+    StructEq,
+    /// `xs[i]`: panics when `i` is out of bounds or negative (§10.8).
+    ListGet,
+    ListLen,
+    ListConcat,
+}
+
+impl PrimOp {
+    pub fn arity(self) -> usize {
+        use PrimOp::*;
+        match self {
+            IntNeg | IntShow | FloatNeg | FloatShow | DecNeg | DecShow | BigNeg | BigShow
+            | BoolShow | Not | ListLen => 1,
+            _ => 2,
+        }
+    }
 }
 
 /// Compilation targets (spec §13.5 `targets`).

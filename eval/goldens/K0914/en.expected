@@ -1,0 +1,14 @@
+-- ANGLE-BRACKET TYPE ARGUMENTS --------------------------------- main.kl  K0914
+
+Kalam writes type arguments in square brackets, `List[T]`, not `List<T>`, `Vec<T>`, `Array<T>` or `T[]`.
+
+1│ fn total(items: List<Int>) -> Int:
+                   ^^^^^
+
+Try: `[`
+
+Try: `]`
+
+Help: Write `List[T]`, and use square brackets for every other type argument too, such as `Map[K, V]`. `kalam fix` does this for you.
+
+Learn more: kalam explain K0914

@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0602"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "§9.8.1: \"`==` and `!=` are defined only between two values of the same type that implements `Eq`, or between two `Float`s with IEEE semantics (K0602 otherwise, 04 L4). `1 == 1.0` is K0602 (`Int` vs. `Float`).\" Different types."
+}

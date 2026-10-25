@@ -1,0 +1,5 @@
+dala ra2isi():
+    khali a = 1 == 2
+    khali b = "x" != "y"
+    khali c = 1.5 == 2.5
+    ektb("{a} {b} {c}")

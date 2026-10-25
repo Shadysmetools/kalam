@@ -1,0 +1,10 @@
+-- ARGUMENT ORDER ----------------------------------------------- main.kl  K0254
+
+This argument has no name, but it comes after a named one, so I can't tell which parameter it is for.
+
+4│     let sum = add(a: 1, 2)
+                           ^
+
+Help: Put the positional arguments first, then the named ones: `f(a, b, size: 2)`. Or give this argument its name too.
+
+Learn more: kalam explain K0254

@@ -1,0 +1,10 @@
+-- LONE SURROGATE ----------------------------------------------- main.kl  K0132
+
+`\u{D800}` is half of a UTF-16 surrogate pair, which is not a character on its own. Kalam strings hold whole Unicode characters.
+
+10│     print("total \u{D800} {n}")
+                     ^^^^^^^^
+
+Help: Write the character's own code point instead, for example `\u{1F600}` rather than `\u{D83D}\u{DE00}`.
+
+Learn more: kalam explain K0132

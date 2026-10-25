@@ -1,0 +1,10 @@
+-- NUMBER GLUED TO LETTERS -------------------------------------- main.kl  K0127
+
+`3ala` starts with a digit, so I read it as a number, but it has letters in it. Names can't start with a digit in any skin.
+
+9│     let n = 3ala
+               ^^^^
+
+Help: Start the name with a letter, or put a space between the number and the word. When the word is a misspelled keyword, which happens often in Franco, I suggest the right spelling.
+
+Learn more: kalam explain K0127

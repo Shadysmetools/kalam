@@ -1,0 +1,5 @@
+hat std/http ka web
+
+dala ra2isi():
+    khali r = http.router()
+    ektb("x")

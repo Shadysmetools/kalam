@@ -1,0 +1,12 @@
+-- NAME NOT FOUND ----------------------------------------------- main.kl  K0401
+
+I can't find a declaration of `nmae` that is visible here. Kalam has no global names and no glob imports, so every name comes from this scope, this module, an import or the prelude.
+
+3│     print(nmae)
+             ^^^^
+
+Try: `name`
+
+Help: Check the spelling (the suggested fix shows the closest visible name), declare it before this line with `let` or `fn`, or import it with `use`. A name written with lookalike letters is a different name: use the declared spelling exactly.
+
+Learn more: kalam explain K0401

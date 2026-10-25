@@ -1,0 +1,12 @@
+-- UNWRAP ------------------------------------------------------- main.kl  K0915
+
+`.unwrap()` stops the program without saying why. Kalam asks you to state what you expected, with `.expect("…")`.
+
+3│     let count = found.unwrap()
+                         ^^^^^^^^
+
+Try: `expect("…")`
+
+Help: Replace `.unwrap()` with `.expect("why this can't fail")`, or handle the missing case with `match` or `?`.
+
+Learn more: kalam explain K0915

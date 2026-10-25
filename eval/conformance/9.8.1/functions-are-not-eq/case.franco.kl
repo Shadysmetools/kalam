@@ -1,0 +1,7 @@
+dala one() -> adad => 1
+
+dala two() -> adad => 2
+
+dala ra2isi():
+    khali same = one == two
+    ektb("{same}")

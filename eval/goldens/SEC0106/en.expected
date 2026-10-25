@@ -1,0 +1,10 @@
+-- MARK INSIDE A NAME ----------------------------------------- main.kl  SEC0106
+
+U+064F  can't appear inside a keyword or a name, because it changes how a word looks without changing what it is.
+
+2│     let اسمُ = "Sara"
+              ^
+
+Help: Delete the mark, or replace a presentation form with the ordinary letter. `kalam fix` does this for you.
+
+Learn more: kalam explain SEC0106

@@ -1,0 +1,12 @@
+-- VARIANT MEN GHER NO2TA -------------------------------- main.franco.kl  K0917
+
+El variant bta3 el enum yetketeb b no2ta f awelo: `.Circle(r)` mesh `Circle(r)`. W el no2ta ma3naha "variant men el no3 el metwa22a3 hena".
+
+6│     khali s: Shape = Circle(radius: 1.0)
+                        ^^^^^^
+
+Garrab: `.`
+
+Mosa3da: Zawwed `.` 2abl esm el variant. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0917

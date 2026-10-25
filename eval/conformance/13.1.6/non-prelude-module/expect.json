@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0401"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "§13.1.6: \"The prelude is imported implicitly: the core names (§7.2), ... `AnyError`, `Cell`, ... and the modules `log` and `json`.\" `http` is not in the prelude, so without `use std/http` it is not defined."
+}

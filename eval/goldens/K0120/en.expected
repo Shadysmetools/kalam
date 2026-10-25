@@ -1,0 +1,10 @@
+-- INDENTATION -------------------------------------------------- main.kl  K0120
+
+This line's indentation doesn't fit. Each block goes exactly one level (4 spaces) deeper than the line that opens it with `:`.
+
+3│             return "negative"
+   ^^^^^^^^^^^^
+
+Help: Indent this line by a multiple of 4 spaces, one level deeper than the line ending in `:` above it, or line it up with its neighbours. `kalam fmt` fixes indentation it can work out.
+
+Learn more: kalam explain K0120

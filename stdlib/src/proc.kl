@@ -1,0 +1,39 @@
+# std/proc (spec §17.5, §20.1): methods of the prelude capability `Proc`. Kalam never runs
+# a shell: a `Command` is a program plus argv, built by `cmd"…"`.
+
+## What a finished process produced.
+export type Output:
+    status: Int
+    stdout: String
+    stderr: String
+
+## Why a process did not run or did not finish.
+export enum ProcError:
+    NotAllowed(program: String)
+    OptionLikeArgument(index: Int)
+    NotFound(program: String)
+    Io(message: String)
+
+impl ProcError as Error:
+    @builtin
+    fn message(self) -> String => panic("builtin")
+
+impl Proc:
+    ## Runs `command` to completion. The child gets an empty environment unless `env` is
+    ## given. A whole-word hole value starting with `-` and not after a literal `--` is
+    ## `Err(.OptionLikeArgument(index))`, and the process is not started.
+    @builtin
+    @suspends
+    export fn run(self, command: Command, env: Map[String, String] = {}) -> Result[
+        Output,
+        ProcError,
+    ] => panic("builtin")
+
+    ## Runs `commands` as a pipeline, each one's stdout feeding the next one's stdin.
+    @builtin
+    @suspends
+    export fn pipe(self, commands: List[Command]) -> Result[Output, ProcError] => panic("builtin")
+
+    ## A `Proc` that may run only `programs`.
+    @builtin
+    export fn only(self, programs: List[Path]) -> Proc => panic("builtin")

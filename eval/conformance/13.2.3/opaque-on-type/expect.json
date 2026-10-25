@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§13.2.3: \"`export opaque` (type/enum): like `export`, but fields, variants and the constructor stay private\"; grammar §8.2: \"opaque: type/enum only, K0302\" Positive twin."
+}

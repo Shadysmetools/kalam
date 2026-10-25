@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0401"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "§10.1.3: \"Every binding is initialized at its declaration.\" `b` is used before its declaration, where it is not yet bound (K0401)."
+}

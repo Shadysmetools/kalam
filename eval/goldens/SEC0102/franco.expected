@@ -1,0 +1,12 @@
+-- CONTROL CHARACTER ----------------------------------- main.franco.kl  SEC0102
+
+La2eit control character U+0007  hena. El control characters mesh bayna, w kol terminal w editor beyt3amel ma3aha b shakl.
+
+2│     khali name = "Sara"
+                       ^
+
+Garrab: `\u{7}`
+
+Mosa3da: Gowa string ektebo escape zay `\u{...}`, w f ay makan tany emsa7o.
+
+E3raf aktar: kalam explain SEC0102

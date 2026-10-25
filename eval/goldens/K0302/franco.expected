@@ -1,0 +1,10 @@
+-- MA2FOOL LEL ANWA3 BAS --------------------------------- main.franco.kl  K0302
+
+`ma2fool` betkhabbi el fields wel variants wel constructor bta3 `haykal` aw `ta3dad`. El dala aw el trait aw el constant aw el extern ma fihomsh 7aga tetkhebbi.
+
+4│ talla3 ma2fool dala answer() -> adad => 42
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Mosa3da: Shil `ma2fool` w khalli `talla3`.
+
+E3raf aktar: kalam explain K0302

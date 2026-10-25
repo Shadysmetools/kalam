@@ -1,0 +1,5 @@
+use std/http as web
+
+fn main():
+    let r = web.router()
+    print("x")

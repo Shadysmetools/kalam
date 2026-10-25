@@ -1,0 +1,4 @@
+type Ticket:
+    id: Int
+
+export fn ticket_id(t: Ticket) -> Int => t.id

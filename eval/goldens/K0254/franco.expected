@@ -1,0 +1,10 @@
+-- TARTEEB EL ARGUMENTS ---------------------------------- main.franco.kl  K0254
+
+El argument da malosh esm, bas gai ba3d wa7ed leeh esm, fa mesh 3aref howa l anhy parameter.
+
+4│     khali sum = add(a: 1, 2)
+                             ^
+
+Mosa3da: 7ot el arguments elly men gher asami el awel, ba3dein elly leeha asami: `f(a, b, size: 2)`. Aw edy el argument da esmo bardo.
+
+E3raf aktar: kalam explain K0254

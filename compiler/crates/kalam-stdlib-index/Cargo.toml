@@ -1,0 +1,22 @@
+[package]
+name = "kalam-stdlib-index"
+description = "Generates stdlib/api-index.json (every public stdlib item) from the stdlib signature stubs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+kalam-base.workspace = true
+kalam-skins.workspace = true
+kalam-parser.workspace = true
+kalam-diagnostics.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+# Path dependency so the shared root Cargo.toml needs no edit (see kalam-ast/Cargo.toml).
+kalam-ast = { path = "../kalam-ast" }
+
+[dev-dependencies]
+# The fixed-point test formats every stub with the real formatter.
+kalam-fmt.workspace = true

@@ -1,0 +1,10 @@
+-- PREFIX AW TEMPLATE STRING ----------------------------- main.franco.kl  K0913
+
+Strings Kalam mesh me7taga `f` f el awel, wala backticks ma3 `${…}`. Kol string `"…"` betmla el holes elly maktooba `{…}` aslan.
+
+10│     ektb(f"total {n}")
+             ^
+
+Mosa3da: Emsa7 el `f`, aw ghayar el backticks b `"` w kol `${` b `{`. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0913

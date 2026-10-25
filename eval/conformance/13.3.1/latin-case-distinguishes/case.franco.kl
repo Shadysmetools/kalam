@@ -1,0 +1,9 @@
+haykal Shape:
+    sides: adad
+
+dala shape() -> adad => 3
+
+dala ra2isi():
+    khali shape_count = shape()
+    khali s = Shape(sides: shape_count)
+    ektb("{s.sides}")

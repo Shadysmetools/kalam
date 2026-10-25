@@ -1,0 +1,5 @@
+dala limit() -> adad => 10
+
+dala ra2isi():
+    khali limit = 3
+    ektb("{limit}")

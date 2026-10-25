@@ -1,0 +1,9 @@
+تعداد Shape:
+    Circle(radius: كسري)
+    Empty
+
+دالة رئيسي():
+    ليكن s: Shape = .Circle(radius: 1.0)
+    ليكن t = Shape.Circle(radius: 2.0)
+    ليكن u: Shape = .Empty
+    اطبع("x")

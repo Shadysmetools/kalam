@@ -1,0 +1,4 @@
+fn main():
+    let total = 1.0 + 2.5
+    let count = 1 + 2
+    print("{total} {count}")

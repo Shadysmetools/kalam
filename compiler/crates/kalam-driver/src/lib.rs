@@ -8,8 +8,9 @@
 //! Incrementality: Phase 0 caches per file by content hash; Phase 1 moves to `salsa`
 //! queries. Dependency packages are never re-type-checked: their `.kli` interfaces are used.
 //!
-//! Status: [`check_source`] runs the lexer and the parser. Each later stage is added to
-//! [`check_source`] as it lands, in the order of spec §4.2.
+//! Status: [`check_source`] runs the lexer, the parser and name resolution (single file;
+//! [`check_project`] resolves a whole package, optionally with a stdlib directory). Each
+//! later stage is added as it lands, in the order of spec §4.2.
 
 use std::collections::BTreeMap;
 
@@ -97,16 +98,151 @@ pub struct NotKalamFile(pub String);
 pub fn check_source(path: &str, text: &str) -> Result<CheckedFile, NotKalamFile> {
     let skin = Skin::from_path(path).ok_or_else(|| NotKalamFile(path.to_string()))?;
     // Lexer and parser (FOUNDER-QUEUE Q17): every K01xx, K02xx, K07xx, K09xx and SEC
-    // finding they make, in source order. Next stages, in spec §4.2 order: resolve →
-    // typeck → effects → sinks/caps.
-    let parsed = kalam_parser::parse_source(text, skin, FileId(0));
+    // finding they make, in source order. Then name resolution. Next stages, in spec §4.2
+    // order: typeck → effects → sinks/caps.
+    let mut parsed = kalam_parser::parse_source(text, skin, FileId(0));
+    let diagnostics = std::mem::take(&mut parsed.diagnostics);
+    let diagnostics = resolve_single(skin, &parsed, diagnostics);
     Ok(CheckedFile {
         path: path.to_string(),
         skin,
         text: text.to_string(),
         lines: LineIndex::new(text),
-        diagnostics: parsed.diagnostics,
+        diagnostics,
     })
+}
+
+/// Name resolution of one file (`kalam_resolve::resolve_file`: every `use` is opaque),
+/// after the lexer and parser. It runs only when they reported no error: names declared
+/// inside unparsable code would otherwise come back as follow-on K0401s (root cause first,
+/// ARCHITECTURE.md §12.4). Its findings come after theirs (phase order), in source order.
+fn resolve_single(
+    skin: Skin,
+    parsed: &kalam_parser::ParseOutput,
+    diagnostics: Vec<Diagnostic>,
+) -> Vec<Diagnostic> {
+    if diagnostics.iter().any(Diagnostic::is_error) {
+        return diagnostics;
+    }
+    let (_, resolved) = kalam_resolve::resolve_file(FileId(0), skin, &parsed.ast);
+    append_resolved(diagnostics, resolved)
+}
+
+/// `earlier` followed by the resolver's findings, minus any that repeat an earlier finding
+/// at the same place with the same code.
+fn append_resolved(mut earlier: Vec<Diagnostic>, resolved: Vec<Diagnostic>) -> Vec<Diagnostic> {
+    for d in resolved {
+        if !earlier.iter().any(|e| e.code == d.code && e.span == d.span) {
+            earlier.push(d);
+        }
+    }
+    earlier
+}
+
+/// `path` relative to `dir` (`dir/a/b.kl` → `a/b.kl`); `path` itself if it is not under it.
+fn relative(path: &str, dir: &str) -> String {
+    path.strip_prefix(dir)
+        .and_then(|r| r.strip_prefix('/'))
+        .unwrap_or(path)
+        .to_string()
+}
+
+/// What [`check_project`] needs besides the files.
+#[derive(Clone, Debug, Default)]
+pub struct ProjectOptions {
+    /// The package's short name: the first segment of its module paths (`notes` for the
+    /// package `@team/notes`, whose modules are imported as `use notes/db`).
+    pub package: String,
+    /// The stdlib directory: every `.kl` file under it is the module `std/<path>` (spec
+    /// §20.1). `None` leaves `std/…` imports opaque (unchecked).
+    pub std_dir: Option<String>,
+}
+
+/// `kalam check` over a whole package: every Kalam file under `<root>/src` is one module
+/// (spec §13.1), resolved together with the stdlib modules. Returns one [`CheckedFile`] per
+/// package file (in path order), then one per stdlib file that has diagnostics. `vfs.list`
+/// must list files recursively.
+pub fn check_project(vfs: &dyn Vfs, root: &str, options: &ProjectOptions) -> Vec<CheckedFile> {
+    let root = root.trim_end_matches('/');
+    let kalam_files = |dir: &str| -> Vec<String> {
+        let mut files: Vec<String> = vfs
+            .list(dir)
+            .into_iter()
+            .filter(|p| Skin::from_path(p).is_some())
+            .collect();
+        files.sort();
+        files
+    };
+    let src_dir = format!("{root}/src");
+    let mut entries: Vec<(String, kalam_resolve::ModulePath, bool)> = kalam_files(&src_dir)
+        .into_iter()
+        .map(|p| {
+            let rel = relative(&p, root);
+            let module = kalam_resolve::ModulePath::from_file(&options.package, &rel);
+            (p, module, false)
+        })
+        .collect();
+    if let Some(std_dir) = &options.std_dir {
+        let std_dir = std_dir.trim_end_matches('/');
+        for p in kalam_files(std_dir) {
+            let rel = relative(&p, std_dir);
+            let module = kalam_resolve::ModulePath::from_file("std", &rel);
+            entries.push((p, module, true));
+        }
+    }
+    let mut files = Vec::new();
+    let mut parsed = Vec::new();
+    for (i, (path, _, _)) in entries.iter().enumerate() {
+        let skin = Skin::from_path(path).unwrap_or(Skin::En);
+        let text = vfs.read(path).unwrap_or_default();
+        let mut out = kalam_parser::parse_source(&text, skin, FileId(i as u32));
+        let diagnostics = std::mem::take(&mut out.diagnostics);
+        files.push(CheckedFile {
+            path: path.clone(),
+            skin,
+            lines: LineIndex::new(&text),
+            text,
+            diagnostics,
+        });
+        parsed.push(out);
+    }
+    let sources: Vec<kalam_resolve::SourceModule<'_>> = entries
+        .iter()
+        .zip(&parsed)
+        .enumerate()
+        .map(|(i, ((_, module, std), out))| kalam_resolve::SourceModule {
+            path: module.clone(),
+            file: FileId(i as u32),
+            skin: files[i].skin,
+            ast: &out.ast,
+            std: *std,
+        })
+        .collect();
+    let resolve_options = kalam_resolve::Options {
+        package: options.package.clone(),
+        whole_package: true,
+        std_loaded: options.std_dir.is_some(),
+    };
+    let (_, resolved) = kalam_resolve::resolve_program(&sources, &resolve_options);
+    let mut per_file: Vec<Vec<Diagnostic>> = vec![Vec::new(); files.len()];
+    for d in resolved {
+        if let Some(list) = per_file.get_mut(d.file.0 as usize) {
+            list.push(d);
+        }
+    }
+    for (file, resolved) in files.iter_mut().zip(per_file) {
+        // Same gate as `check_source`: a file with syntax errors keeps only those.
+        if !file.has_errors() {
+            let earlier = std::mem::take(&mut file.diagnostics);
+            file.diagnostics = append_resolved(earlier, resolved);
+        }
+    }
+    files
+        .into_iter()
+        .zip(&entries)
+        .filter(|(f, (_, _, std))| !*std || !f.diagnostics.is_empty())
+        .map(|(f, _)| f)
+        .collect()
 }
 
 /// Checks one file as read from disk (`kalam check`): like [`check_source`], but invalid
@@ -117,9 +253,11 @@ pub fn check_bytes(path: &str, bytes: &[u8]) -> Result<CheckedFile, NotKalamFile
     let skin = Skin::from_path(path).ok_or_else(|| NotKalamFile(path.to_string()))?;
     let lexed = kalam_lexer::lex_bytes(bytes, skin);
     let text = lexed.text.as_str();
-    let parsed = kalam_parser::parse(text, &lexed.lexed, skin, FileId(0));
+    let mut parsed = kalam_parser::parse(text, &lexed.lexed, skin, FileId(0));
+    let parser = std::mem::take(&mut parsed.diagnostics);
     let diagnostics =
-        kalam_parser::merge_diagnostics(text, lexed.lexed.diagnostics.clone(), parsed.diagnostics);
+        kalam_parser::merge_diagnostics(text, lexed.lexed.diagnostics.clone(), parser);
+    let diagnostics = resolve_single(skin, &parsed, diagnostics);
     Ok(CheckedFile {
         path: path.to_string(),
         skin,
@@ -374,6 +512,151 @@ mod tests {
         let b = check_source("a.kl", src).unwrap();
         assert_eq!(a.diagnostics, b.diagnostics);
         assert!(check_bytes("a.txt", b"").is_err());
+    }
+
+    #[test]
+    fn check_runs_name_resolution_after_a_clean_parse() {
+        let codes = |path: &str, src: &str| -> Vec<&'static str> {
+            check_source(path, src)
+                .unwrap()
+                .diagnostics
+                .iter()
+                .map(|d| d.code)
+                .collect()
+        };
+        // SEC0104 (D19 fold) and K0401 with the declared spelling (FOUNDER-QUEUE Q7).
+        assert_eq!(
+            codes(
+                "a.ar.kl",
+                "دالة رئيسي():
+    ليكن كتاب = 1
+    ليكن کتاب = 2
+"
+            ),
+            vec!["SEC0104"]
+        );
+        let used = check_source(
+            "a.ar.kl",
+            "دالة رئيسي():
+    ليكن كتاب = 1
+    اطبع(\"{کتاب}\")
+",
+        )
+        .unwrap();
+        assert_eq!(used.diagnostics.len(), 1);
+        assert_eq!(used.diagnostics[0].code, "K0401");
+        assert_eq!(used.diagnostics[0].fixes[0].edits[0].insert, "كتاب");
+        // `check_bytes` resolves too, identically.
+        let src = "fn main():
+    let al = 1
+    let a1 = 2
+";
+        let a = check_bytes("a.kl", src.as_bytes()).unwrap();
+        assert_eq!(
+            a.diagnostics,
+            check_source("a.kl", src).unwrap().diagnostics
+        );
+        assert_eq!(codes("a.kl", src), vec!["SEC0104"]);
+        // A syntax error suppresses resolution (no follow-on K0401 for `y`).
+        assert_eq!(
+            codes(
+                "a.kl",
+                "fn main():
+    let = 5
+    print(\"{y}\")
+"
+            ),
+            vec!["K0250"]
+        );
+        // Imports of other modules are opaque in a single-file check.
+        assert!(codes(
+            "a.kl",
+            "use std/http.{Router}
+use app/db
+fn main():
+    let r: Router = db.open()
+"
+        )
+        .is_empty());
+    }
+
+    #[test]
+    fn check_project_resolves_modules_and_the_stdlib() {
+        let mut vfs = MemoryVfs::default();
+        let mut add = |path: &str, text: &str| {
+            vfs.files.insert(path.to_string(), text.to_string());
+        };
+        add(
+            "proj/src/shapes.kl",
+            "export enum Shape:
+    Circle(r: Int)
+    Empty
+",
+        );
+        add(
+            "proj/src/main.ar.kl",
+            "استخدم app/shapes.{Shape}
+استخدم std/http
+
+دالة رئيسي():
+    ليكن ش: Shape = .Empty
+    ليكن ر = http.router()
+    اطبع(\"x\")
+",
+        );
+        add(
+            "proj/src/broken.kl",
+            "use app/nope
+",
+        );
+        add(
+            "std/http.kl",
+            "export type Router:
+    a: Int
+
+export fn router() -> Router => Router(a: 1)
+",
+        );
+        add(
+            "std/log.kl",
+            "export fn info(s: String):
+    pass
+",
+        );
+        add(
+            "std/json.kl",
+            "export fn encode(x: Int) -> String => \"\"
+",
+        );
+        let opts = ProjectOptions {
+            package: "app".into(),
+            std_dir: Some("std".into()),
+        };
+        let checked = check_project(&vfs, "proj", &opts);
+        let paths: Vec<&str> = checked.iter().map(|c| c.path.as_str()).collect();
+        assert_eq!(
+            paths,
+            vec![
+                "proj/src/broken.kl",
+                "proj/src/main.ar.kl",
+                "proj/src/shapes.kl"
+            ]
+        );
+        let codes: Vec<Vec<&str>> = checked
+            .iter()
+            .map(|c| c.diagnostics.iter().map(|d| d.code).collect())
+            .collect();
+        assert_eq!(codes, vec![vec!["K0401"], vec![], vec![]]);
+        // Without the stdlib, `std/…` is opaque, so nothing changes for this program.
+        let opaque = check_project(
+            &vfs,
+            "proj",
+            &ProjectOptions {
+                std_dir: None,
+                ..opts
+            },
+        );
+        assert!(opaque[1].diagnostics.is_empty());
     }
 
     #[test]

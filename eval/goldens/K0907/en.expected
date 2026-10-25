@@ -1,0 +1,10 @@
+-- ASYNC OR AWAIT ----------------------------------------------- main.kl  K0907
+
+Kalam has no `async` or `await`. The compiler works out which functions wait for input or output and handles the waiting for you (decision D12).
+
+1│ async fn describe(n: Int) -> String:
+   ^^^^^
+
+Help: Delete `async` and `await` and write an ordinary call. `kalam fix` does this for you.
+
+Learn more: kalam explain K0907

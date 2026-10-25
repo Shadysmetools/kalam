@@ -1,0 +1,11 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1203"
+  ],
+  "lines": [
+    1
+  ],
+  "stage": "parse",
+  "notes": "§13.1.2: \"There are no glob imports (`*` is K1203): globs feed hallucination and hide where names come from.\" A glob is visible to the parser."
+}

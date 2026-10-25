@@ -5,7 +5,20 @@
 //! kalam-eval freeze    [--root DIR] [--target TIER] [--timestamp TS] [--holdout DIR]
 //! kalam-eval integrity [--root DIR] [--holdout DIR]
 //! kalam-eval holdout   --root DIR --store DIR
+//! kalam-eval clauses   [--root DIR] [--write | --check]
+//! kalam-eval judge-sample [--root DIR] [--check]
+//! kalam-eval judge-ingest [--root DIR] --in FILE
 //! ```
+//!
+//! `--kalam PATH` (or `KALAM_BIN`) names the `kalam` binary used by the M2 checkpoints and
+//! by conformance cases that run the interpreter. The harness never builds it.
+//!
+//! - `clauses` prints the spec clause index (`eval/conformance/CLAUSES.json`, src/clauses.rs);
+//!   `--write` writes it, `--check` exits 1 when the committed file is stale.
+//! - `judge-sample` writes the pinned judge sample `eval/judge/sample.json` (src/judge.rs);
+//!   `--check` exits 1 when the committed sample is stale.
+//! - `judge-ingest --in FILE` validates externally produced judge scores against the pinned
+//!   sample and rubric and writes `eval/judge/report.json`.
 //!
 //! The default command prints the JSON scorecard on stdout. With `--append`, it also appends
 //! one line to `eval/history.jsonl` (or `--history FILE`). The timestamp is always passed in,
@@ -25,7 +38,7 @@
 use kalam_eval::history::{self, AppendArgs};
 use kalam_eval::report::{self, Options};
 use kalam_eval::scorecard::Scorecard;
-use kalam_eval::{holdout, integrity, parity};
+use kalam_eval::{clauses, goldens, holdout, integrity, judge, parity};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
@@ -34,7 +47,11 @@ const USAGE: &str = "usage:
              [--append --timestamp TS [--history FILE] [--git-sha SHA] [--outcome OUTCOME] [--notes TEXT]]
   kalam-eval freeze    [--root DIR] [--target TIER] [--timestamp TS] [--holdout DIR]
   kalam-eval integrity [--root DIR] [--holdout DIR]
-  kalam-eval holdout   --root DIR --store DIR";
+  kalam-eval holdout   --root DIR --store DIR
+  kalam-eval clauses   [--root DIR] [--write | --check]
+  kalam-eval judge-sample [--root DIR] [--check]
+  kalam-eval judge-ingest [--root DIR] --in FILE
+  (scorecard runs also take --kalam PATH: the kalam binary for the M2 checkpoints)";
 
 #[derive(Default)]
 struct Args {
@@ -53,6 +70,10 @@ struct Args {
     holdout: Option<PathBuf>,
     no_holdout: bool,
     store: Option<PathBuf>,
+    kalam: Option<PathBuf>,
+    write: bool,
+    check: bool,
+    input: Option<PathBuf>,
 }
 
 fn parse_args(argv: &[String]) -> Result<Args, String> {
@@ -60,7 +81,9 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
     let mut it = argv.iter().peekable();
     if let Some(cmd) = it.peek().filter(|c| !c.starts_with('-')) {
         match cmd.as_str() {
-            "freeze" | "integrity" | "holdout" => a.command = Some(cmd.to_string()),
+            "freeze" | "integrity" | "holdout" | "clauses" | "judge-sample" | "judge-ingest" => {
+                a.command = Some(cmd.to_string())
+            }
             other => return Err(format!("unknown command `{other}`\n{USAGE}")),
         }
         it.next();
@@ -86,12 +109,22 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
             "--holdout" => a.holdout = Some(val()?.into()),
             "--no-holdout" => a.no_holdout = true,
             "--store" => a.store = Some(val()?.into()),
+            "--kalam" => a.kalam = Some(val()?.into()),
+            "--write" => a.write = true,
+            "--check" => a.check = true,
+            "--in" => a.input = Some(val()?.into()),
             "-h" | "--help" => return Err(USAGE.into()),
             other => return Err(format!("unknown argument `{other}`\n{USAGE}")),
         }
     }
     if a.append && a.timestamp.is_none() {
         return Err("--append needs --timestamp <ISO-8601 UTC>".into());
+    }
+    if a.command.as_deref() == Some("judge-ingest") && a.input.is_none() {
+        return Err("judge-ingest needs --in FILE".into());
+    }
+    if a.write && a.check {
+        return Err("--write and --check exclude each other".into());
     }
     if a.command.as_deref() == Some("holdout") && (a.root.is_none() || a.store.is_none()) {
         return Err("holdout needs --root and --store".into());
@@ -201,6 +234,12 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
+    match args.command.as_deref() {
+        Some("clauses") => return clauses_cmd(&root, &args),
+        Some("judge-sample") => return judge_sample_cmd(&root, &args),
+        Some("judge-ingest") => return judge_ingest_cmd(&root, &args),
+        _ => {}
+    }
     let sc = match load_scorecard(&root) {
         Ok(sc) => sc,
         Err(e) => {
@@ -289,6 +328,7 @@ fn main() -> ExitCode {
             git_sha: git_sha.clone(),
             holdout: runner,
             run_props: args.run_props,
+            kalam: args.kalam.clone(),
         },
     ) {
         Ok(r) => r,
@@ -334,6 +374,162 @@ fn main() -> ExitCode {
     ExitCode::SUCCESS
 }
 
+fn fail(msg: impl std::fmt::Display) -> ExitCode {
+    eprintln!("{msg}");
+    ExitCode::from(1)
+}
+
+/// Writes `text` to `root/rel`, creating the parent directory.
+fn write_rel(root: &Path, rel: &str, text: &str) -> Result<(), String> {
+    let p = root.join(rel);
+    if let Some(d) = p.parent() {
+        std::fs::create_dir_all(d).map_err(|e| format!("{}: {e}", d.display()))?;
+    }
+    std::fs::write(&p, text).map_err(|e| format!("{}: {e}", p.display()))
+}
+
+/// `kalam-eval clauses [--write | --check]`.
+fn clauses_cmd(root: &Path, args: &Args) -> ExitCode {
+    let spec = match std::fs::read_to_string(root.join(clauses::SPEC_PATH)) {
+        Ok(s) => s,
+        Err(e) => return fail(format!("{}: {e}", clauses::SPEC_PATH)),
+    };
+    let units = clauses::index(&spec);
+    let text = format!(
+        "{}\n",
+        serde_json::to_string_pretty(&clauses::to_json(&units, &spec)).expect("JSON serializes")
+    );
+    if args.check {
+        let committed = std::fs::read_to_string(root.join(clauses::CLAUSES_PATH)).ok();
+        return match clauses::load_checked(committed.as_deref(), &spec) {
+            Ok(u) => {
+                eprintln!("{} is current ({} units)", clauses::CLAUSES_PATH, u.len());
+                ExitCode::SUCCESS
+            }
+            Err(e) => fail(e),
+        };
+    }
+    if args.write {
+        return match write_rel(root, clauses::CLAUSES_PATH, &text) {
+            Ok(()) => {
+                eprintln!(
+                    "wrote {} ({} units, {} clauses)",
+                    clauses::CLAUSES_PATH,
+                    units.len(),
+                    units.iter().map(|u| u.clauses.len()).sum::<usize>()
+                );
+                ExitCode::SUCCESS
+            }
+            Err(e) => fail(e),
+        };
+    }
+    print!("{text}");
+    ExitCode::SUCCESS
+}
+
+fn current_sample(root: &Path) -> Result<serde_json::Value, String> {
+    let goldens = goldens::load(&root.join(goldens::GOLDENS_DIR))?
+        .ok_or_else(|| format!("{} does not exist", goldens::GOLDENS_DIR))?;
+    let rubric = std::fs::read_to_string(root.join(judge::RUBRIC_PATH))
+        .map_err(|e| format!("{}: {e}", judge::RUBRIC_PATH))?;
+    judge::sample(&goldens, &rubric)
+}
+
+/// `kalam-eval judge-sample [--check]`.
+fn judge_sample_cmd(root: &Path, args: &Args) -> ExitCode {
+    let sample = match current_sample(root) {
+        Ok(s) => s,
+        Err(e) => return fail(e),
+    };
+    if args.check {
+        let committed = std::fs::read_to_string(root.join(judge::SAMPLE_PATH))
+            .ok()
+            .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok());
+        return match committed {
+            Some(c) if c == sample => {
+                eprintln!("{} is current ({} items)", judge::SAMPLE_PATH, sample["n"]);
+                ExitCode::SUCCESS
+            }
+            _ => fail(format!("{} is missing or stale", judge::SAMPLE_PATH)),
+        };
+    }
+    let text = format!(
+        "{}\n",
+        serde_json::to_string_pretty(&sample).expect("JSON serializes")
+    );
+    match write_rel(root, judge::SAMPLE_PATH, &text) {
+        Ok(()) => {
+            eprintln!(
+                "wrote {} ({} items, sample_sha256 {})",
+                judge::SAMPLE_PATH,
+                sample["n"],
+                sample["sample_sha256"]
+            );
+            ExitCode::SUCCESS
+        }
+        Err(e) => fail(e),
+    }
+}
+
+/// `kalam-eval judge-ingest --in FILE`.
+fn judge_ingest_cmd(root: &Path, args: &Args) -> ExitCode {
+    let Some(input) = &args.input else {
+        return ExitCode::from(2);
+    };
+    let pinned = match std::fs::read_to_string(root.join(judge::SAMPLE_PATH))
+        .map_err(|e| {
+            format!(
+                "{}: {e} (run `kalam-eval judge-sample` first)",
+                judge::SAMPLE_PATH
+            )
+        })
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).map_err(|e| e.to_string()))
+    {
+        Ok(v) => v,
+        Err(e) => return fail(e),
+    };
+    match current_sample(root) {
+        Ok(cur) if cur == pinned => {}
+        Ok(_) => {
+            return fail(format!(
+                "{} is stale (the goldens or the rubric changed); re-run `kalam-eval judge-sample` and the judge",
+                judge::SAMPLE_PATH
+            ))
+        }
+        Err(e) => return fail(e),
+    }
+    let scores = match std::fs::read_to_string(input)
+        .map_err(|e| format!("{}: {e}", input.display()))
+        .and_then(|t| {
+            serde_json::from_str::<serde_json::Value>(&t)
+                .map_err(|e| format!("{}: {e}", input.display()))
+        }) {
+        Ok(v) => v,
+        Err(e) => return fail(e),
+    };
+    let report = match judge::ingest(&pinned, &scores) {
+        Ok(r) => r,
+        Err(e) => return fail(format!("rejected: {e}")),
+    };
+    let text = format!(
+        "{}\n",
+        serde_json::to_string_pretty(&report).expect("JSON serializes")
+    );
+    match write_rel(root, judge::REPORT_PATH, &text) {
+        Ok(()) => {
+            eprintln!(
+                "wrote {}: model {}, {} items, mean {}",
+                judge::REPORT_PATH,
+                report["model"],
+                report["n"],
+                report["mean"]
+            );
+            ExitCode::SUCCESS
+        }
+        Err(e) => fail(e),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -374,6 +570,13 @@ mod tests {
         assert!(parse_args(&argv(&["holdout", "--root", "r", "--store", "s"])).is_ok());
         assert!(parse_args(&argv(&["unfreeze"])).is_err());
         assert!(parse_args(&argv(&["--no-holdout"])).unwrap().no_holdout);
+        assert!(parse_args(&argv(&["clauses", "--write"])).unwrap().write);
+        assert!(parse_args(&argv(&["clauses", "--write", "--check"])).is_err());
+        assert!(parse_args(&argv(&["judge-ingest"])).is_err());
+        let a = parse_args(&argv(&["judge-ingest", "--in", "s.json"])).unwrap();
+        assert_eq!(a.command.as_deref(), Some("judge-ingest"));
+        let a = parse_args(&argv(&["--kalam", "k.exe"])).unwrap();
+        assert_eq!(a.kalam, Some(PathBuf::from("k.exe")));
     }
 
     #[test]

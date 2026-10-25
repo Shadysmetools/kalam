@@ -1,0 +1,12 @@
+-- CLASS OR STRUCT KEYWORD -------------------------------------- main.kl  K0920
+
+`class`, `struct`, `record` and `interface` come from other languages. Kalam declares a record type with `type` and an interface with `trait`.
+
+1│ class Point:
+   ^^^^^
+
+Try: `type`
+
+Help: Write `type Name:` with one `field: Type` per indented line, or `trait Name:` for an interface. `kalam fix` rewrites the keyword.
+
+Learn more: kalam explain K0920

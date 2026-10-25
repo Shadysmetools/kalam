@@ -1,0 +1,10 @@
+-- UNCLOSED BRACKET --------------------------------------------- main.kl  K0251
+
+This bracket is still open when the line or file ends, so I can't tell where the expression inside it stops.
+
+3│     print("{count}"
+            ^
+
+Help: Add the matching `)`, `]` or `}` where the expression ends.
+
+Learn more: kalam explain K0251

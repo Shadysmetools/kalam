@@ -1,0 +1,32 @@
+# std/result (spec §9.3, §14, §20.1): methods of the prelude type `Result[T, E]`.
+# A `Result` is must-use (K1303); `let _ = r` discards one deliberately.
+
+impl[T, E] Result[T, E]:
+    ## `Ok(f(x))` for `Ok(x)`; an `Err` is kept.
+    @builtin
+    export fn map[U](self, f: fn(T) -> U) -> Result[U, E] => panic("builtin")
+
+    ## `Err(f(e))` for `Err(e)`; an `Ok` is kept.
+    @builtin
+    export fn map_err[F](self, f: fn(E) -> F) -> Result[T, F] => panic("builtin")
+
+    ## `Some(x)` for `Ok(x)`, `None` for an `Err`.
+    @builtin
+    export fn ok(self) -> Option[T] => panic("builtin")
+
+    ## The value. Panics with `reason` for an `Err`.
+    @builtin
+    export fn expect(self, reason: String) -> T => panic("builtin")
+
+    ## True for `Ok`.
+    @builtin
+    export fn is_ok(self) -> Bool => panic("builtin")
+
+    ## True for `Err`.
+    @builtin
+    export fn is_err(self) -> Bool => panic("builtin")
+
+impl[T, E: Error] Result[T, E]:
+    ## The error boxed into `AnyError` with `message` added to its chain.
+    @builtin
+    export fn context(self, message: String) -> Result[T, AnyError] => panic("builtin")

@@ -1,0 +1,45 @@
+# std/map (spec §9.3, §10.4, §10.8, §20.1): methods of the prelude type `Map[K, V]`.
+# Maps are immutable and insertion-ordered; `m[k] = v` on a `var` means
+# `m = m.insert(k, v)`. Iterating yields `(key, value)` pairs in insertion order.
+
+impl[K: Eq + Hash, V] Map[K, V]:
+    ## The number of entries.
+    @builtin
+    export fn len(self) -> Int => panic("builtin")
+
+    ## True when the map has no entries.
+    @builtin
+    export fn is_empty(self) -> Bool => panic("builtin")
+
+    ## The value for `key`, or `None` when it is absent. `m[key]` panics instead.
+    @builtin
+    export fn get(self, key: K) -> Option[V] => panic("builtin")
+
+    ## True when `key` is present.
+    @builtin
+    export fn contains_key(self, key: K) -> Bool => panic("builtin")
+
+    ## A copy with `key` set to `value` (a new key goes last; an existing key keeps its place).
+    @builtin
+    @positional
+    export fn insert(self, key: K, value: V) -> Map[K, V] => panic("builtin")
+
+    ## A copy without `key`.
+    @builtin
+    export fn remove(self, key: K) -> Map[K, V] => panic("builtin")
+
+    ## The keys in insertion order.
+    @builtin
+    export fn keys(self) -> List[K] => panic("builtin")
+
+    ## The values in insertion order.
+    @builtin
+    export fn values(self) -> List[V] => panic("builtin")
+
+    ## `f` applied to every value; keys and order are kept.
+    @builtin
+    export fn map[U](self, f: fn(V) -> U) -> Map[K, U] => panic("builtin")
+
+    ## The entries for which `keep` is true.
+    @builtin
+    export fn filter(self, keep: fn(K, V) -> Bool) -> Map[K, V] => panic("builtin")

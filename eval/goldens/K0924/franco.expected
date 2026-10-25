@@ -1,0 +1,12 @@
+-- SINGLE QUOTES ----------------------------------------- main.franco.kl  K0924
+
+El strings f Kalam bein double quotes, wel single quote mabteftahsh string.
+
+11│     ektb('done')
+             ^^^^^^
+
+Garrab: `"done"`
+
+Mosa3da: Ghayar el single quotes b double quotes: `"..."`. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0924

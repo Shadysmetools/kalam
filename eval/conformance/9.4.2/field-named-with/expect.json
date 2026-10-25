@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0417"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "§9.4.2: \"`u.with(name: \\\"Omar\\\")` returns a copy. `with` is a reserved method name on every record, so a field may not be called `with` (K0417).\""
+}

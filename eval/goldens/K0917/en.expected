@@ -1,0 +1,12 @@
+-- VARIANT WITHOUT A DOT ---------------------------------------- main.kl  K0917
+
+An enum variant is written with a leading `.`: `.Circle(r)`, not `Circle(r)`. The dot means "a variant of the type expected here".
+
+6│     let s: Shape = Circle(radius: 1.0)
+                      ^^^^^^
+
+Try: `.`
+
+Help: Add `.` before the variant name. `kalam fix` does this for you.
+
+Learn more: kalam explain K0917

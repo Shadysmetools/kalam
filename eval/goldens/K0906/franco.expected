@@ -1,0 +1,12 @@
+-- NULL MEN LOGHA TANYA ---------------------------------- main.franco.kl  K0906
+
+Mafeesh f Kalam `null` wala `nil` wala `undefined`. El qeema elly momken tekoon mesh mawgooda no3ha `ekhtiyari[T]`, w 7alet el gheyab tetketeb `mafeesh`.
+
+2│     khali count = null
+                     ^^^^
+
+Garrab: `mafeesh`
+
+Mosa3da: Ekteb `mafeesh`, w ekhali no3 el variable `ekhtiyari[T]`, 3ashan el compiler yeraga3 kol makan beye2rah.
+
+E3raf aktar: kalam explain K0906

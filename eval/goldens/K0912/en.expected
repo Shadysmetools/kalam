@@ -1,0 +1,12 @@
+-- MUTABILITY KEYWORDS FROM ANOTHER LANGUAGE -------------------- main.kl  K0912
+
+`let mut` and `const` come from other languages. In Kalam, `let` declares a name you can't reassign, and `var` declares one you can.
+
+8│     const xs = [1, 2, 3]
+       ^^^^^
+
+Try: `let`
+
+Help: Write `var x` instead of `let mut x`, and `let x` instead of `const x`. `kalam fix` does this for you.
+
+Learn more: kalam explain K0912

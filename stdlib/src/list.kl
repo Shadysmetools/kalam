@@ -1,0 +1,105 @@
+# std/list (spec §9.3, §10.8, §20.1): methods of the prelude type `List[T]`. Lists are
+# immutable: every "change" returns a new list (`items = items.append(x)`).
+
+impl[T] List[T]:
+    ## The number of elements.
+    @builtin
+    export fn len(self) -> Int => panic("builtin")
+
+    ## True when the list has no elements.
+    @builtin
+    export fn is_empty(self) -> Bool => panic("builtin")
+
+    ## The element at `index`, or `None` when it is out of bounds.
+    @builtin
+    export fn get(self, index: Int) -> Option[T] => panic("builtin")
+
+    ## A copy with the element at `index` replaced. Panics when out of bounds.
+    @builtin
+    @positional
+    export fn set(self, index: Int, value: T) -> List[T] => panic("builtin")
+
+    ## A copy with `item` added at the end.
+    @builtin
+    export fn append(self, item: T) -> List[T] => panic("builtin")
+
+    ## A copy with `item` inserted before `index`. Panics when `index > len`.
+    @builtin
+    @positional
+    export fn insert(self, index: Int, item: T) -> List[T] => panic("builtin")
+
+    ## A copy without the element at `index`. Panics when out of bounds.
+    @builtin
+    export fn remove(self, index: Int) -> List[T] => panic("builtin")
+
+    ## `f` applied to every element, in order.
+    @builtin
+    export fn map[U](self, f: fn(T) -> U) -> List[U] => panic("builtin")
+
+    ## The elements for which `keep` is true.
+    @builtin
+    export fn filter(self, keep: fn(T) -> Bool) -> List[T] => panic("builtin")
+
+    ## `f(…f(f(init, x0), x1)…)` over the elements in order.
+    @builtin
+    export fn fold[A](self, init: A, f: fn(A, T) -> A) -> A => panic("builtin")
+
+    ## The first element for which `predicate` is true.
+    @builtin
+    export fn find(self, predicate: fn(T) -> Bool) -> Option[T] => panic("builtin")
+
+    ## True when `predicate` is true for at least one element.
+    @builtin
+    export fn any(self, predicate: fn(T) -> Bool) -> Bool => panic("builtin")
+
+    ## True when `predicate` is true for every element (and for the empty list).
+    @builtin
+    export fn all(self, predicate: fn(T) -> Bool) -> Bool => panic("builtin")
+
+    ## A stable sort by a comparator that cannot suspend.
+    @builtin
+    export fn sort_by(self, cmp: @sync fn(T, T) -> Ordering) -> List[T] => panic("builtin")
+
+    ## Each element with its index: `(0, x0), (1, x1), …`.
+    @builtin
+    export fn enumerate(self) -> List[(Int, T)] => panic("builtin")
+
+    ## Pairs of elements at the same index; the longer list is cut to the shorter one.
+    @builtin
+    @positional
+    export fn zip[U](self, other: List[U]) -> List[(T, U)] => panic("builtin")
+
+    ## The first `count` elements (all of them when there are fewer).
+    @builtin
+    export fn take(self, count: Int) -> List[T] => panic("builtin")
+
+    ## The elements after the first `count`.
+    @builtin
+    export fn skip(self, count: Int) -> List[T] => panic("builtin")
+
+    ## The first element, or `None` for the empty list.
+    @builtin
+    export fn first(self) -> Option[T] => panic("builtin")
+
+    ## The last element, or `None` for the empty list.
+    @builtin
+    export fn last(self) -> Option[T] => panic("builtin")
+
+    ## The elements grouped by `key`, groups in order of first appearance.
+    @builtin
+    export fn group_by[K: Eq + Hash](self, key: fn(T) -> K) -> Map[K, List[T]] => panic("builtin")
+
+impl[T: Eq] List[T]:
+    ## True when some element equals `item`.
+    @builtin
+    export fn contains(self, item: T) -> Bool => panic("builtin")
+
+impl[T: Ord] List[T]:
+    ## A stable sort in ascending `Ord` order.
+    @builtin
+    export fn sorted(self) -> List[T] => panic("builtin")
+
+impl List[Int]:
+    ## The sum of the elements. Panics on overflow.
+    @builtin
+    export fn sum(self) -> Int => panic("builtin")

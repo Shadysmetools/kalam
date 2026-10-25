@@ -1,0 +1,8 @@
+{
+  "must_reject": true,
+  "codes": [
+    "SEC0104"
+  ],
+  "stage": "resolve",
+  "notes": "§5.3.10: \"Skeleton and collision rule (SEC0104, DR-04).\" with §5.3.12: \"the Persian/Urdu letters ... ک (U+06A9) → ك\" and DR-04: \"`کتاب` and `كتاب` have one skeleton: declaring both in one scope is SEC0104\""
+}

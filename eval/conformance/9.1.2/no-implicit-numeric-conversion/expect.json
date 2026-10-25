@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0601"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "§9.1.2: \"No implicit conversions (04 L3).\" §10.6 (operators): \"Mixing numeric types (`Int + Float`) is K0601, with a fix to `.to_float()`.\""
+}

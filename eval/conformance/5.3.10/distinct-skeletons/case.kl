@@ -1,0 +1,5 @@
+fn main():
+    let كتاب = "a"
+    let دفتر = "b"
+    print(كتاب)
+    print(دفتر)

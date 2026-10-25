@@ -1,0 +1,73 @@
+# std/sql (spec §16.1, §17.3, §20.1): databases. Every query is a `Sql` value from
+# `sql"…"` (holes are bound parameters) or `sql.ident`; a `String` is never a query (K1601).
+# The module `sql` and the tag `sql` live in different namespaces (spec §17.1).
+
+## A database connection or open transaction. Built from a capability by `sqlite` or
+## `postgres`; a library that needs a database takes a `Db`.
+@builtin
+@handle
+export extern type Db
+
+## Why a database call failed.
+export enum DbError:
+    Connect(message: String)
+    Query(message: String)
+    Constraint(message: String)
+    Shape(message: String)
+    EmptyList
+    BadIdentifier(name: String)
+
+impl DbError as Error:
+    @builtin
+    fn message(self) -> String => panic("builtin")
+
+## Opens (or creates) the SQLite database file `file` under `fs`.
+@builtin
+@suspends
+export fn sqlite(fs: Fs, file: String) -> Result[Db, DbError] => panic("builtin")
+
+## Connects to Postgres. TLS verification is always on.
+@builtin
+@suspends
+export fn postgres(net: Net, url: Secret[String]) -> Result[Db, DbError] => panic("builtin")
+
+## `name` as an SQL identifier, only when it is one of `allowed`.
+@builtin
+export fn ident(name: String, allowed: List[String]) -> Result[Sql, DbError] => panic("builtin")
+
+## A `LIKE` pattern matching text that contains `text` (`%`, `_` and `\` escaped).
+@builtin
+export fn like_contains(text: String) -> String => panic("builtin")
+
+## A `LIKE` pattern matching text that starts with `text`.
+@builtin
+export fn like_prefix(text: String) -> String => panic("builtin")
+
+## A `LIKE` pattern matching text that ends with `text`.
+@builtin
+export fn like_suffix(text: String) -> String => panic("builtin")
+
+impl Db:
+    ## Every row of `query`, decoded by column name into `T` (from the expected type).
+    @builtin
+    @suspends
+    export fn all[T: Row](self, query: Sql) -> Result[List[T], DbError] => panic("builtin")
+
+    ## The first row of `query`, or `None`.
+    @builtin
+    @suspends
+    export fn one[T: Row](self, query: Sql) -> Result[Option[T], DbError] => panic("builtin")
+
+    ## Runs `query` and returns the number of rows affected.
+    @builtin
+    @suspends
+    export fn exec(self, query: Sql) -> Result[Int, DbError] => panic("builtin")
+
+    ## Runs `body` in a transaction: it commits on `Ok` and rolls back on `Err`, on panic
+    ## and on cancellation.
+    @builtin
+    @suspends
+    export fn transaction[T, E: From[DbError]](self, body: fn(Db) -> Result[T, E]) -> Result[
+        T,
+        E,
+    ] => panic("builtin")

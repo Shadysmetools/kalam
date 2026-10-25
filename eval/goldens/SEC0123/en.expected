@@ -1,0 +1,12 @@
+-- ARABIC THOUSANDS SEPARATOR --------------------------------- main.kl  SEC0123
+
+U+066C (٬) looks like `,` and like `٫`, so a number containing it can be read as a list or as a fraction. Kalam doesn't use it.
+
+2│     let count = 1٬000
+                    ^
+
+Try: `_`
+
+Help: Group digits with `_` instead, for example `1_000_000`. `kalam fix` does this for you.
+
+Learn more: kalam explain SEC0123

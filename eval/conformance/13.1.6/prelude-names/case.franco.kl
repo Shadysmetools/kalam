@@ -1,0 +1,9 @@
+dala ra2isi():
+    khali a: ekhtiyari[adad] = mawgood(1)
+    khali b: natiga[adad, nass] = naga7(2)
+    hasab a:
+        lama mawgood(v): ektb("{v}")
+        lama mafeesh: ektb("none")
+    hasab b:
+        lama naga7(v): ektb("{v}")
+        lama fashal(e): ektb(e)

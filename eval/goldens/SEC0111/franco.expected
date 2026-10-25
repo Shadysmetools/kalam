@@ -1,0 +1,12 @@
+-- 7ARF MESH BAYEN ------------------------------------- main.franco.kl  SEC0111
+
+La2eit 7arf mesh bayen U+200B (ZERO WIDTH SPACE). Momken ykhalli esmeen mokhtalfeen shabah ba3d.
+
+2│     khali name = "Sa​ra"
+                       ^
+
+Garrab: `\u{200B}`
+
+Mosa3da: F el code aw gowa esm emsa7o (`kalam fix` beyemsa7o). Gowa el string ektebo `\u{...}` 3ashan elly beye2ra yshofo.
+
+E3raf aktar: kalam explain SEC0111

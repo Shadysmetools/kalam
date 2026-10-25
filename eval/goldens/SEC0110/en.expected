@@ -1,0 +1,10 @@
+-- HIDDEN TEXT-DIRECTION CHARACTER ---------------------------- main.kl  SEC0110
+
+I found U+202E (RIGHT-TO-LEFT OVERRIDE). It changes how the line is displayed without changing how it compiles, which is how Trojan Source attacks work. Arabic text never needs it raw.
+
+8│     let xs = [1, 2, 3]  # ‮reversed
+                             ^
+
+Help: Delete it. If a string really needs it, write it as an escape, `\u{...}`, so readers can see it.
+
+Learn more: kalam explain SEC0110

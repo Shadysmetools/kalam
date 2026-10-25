@@ -1,0 +1,10 @@
+-- DEDENT ------------------------------------------------------- main.kl  K0122
+
+This line moves left to a column that no enclosing block uses, so I can't tell which block it continues.
+
+5│    return sum
+   ^^^
+
+Help: Line it up exactly with one of the blocks above it.
+
+Learn more: kalam explain K0122

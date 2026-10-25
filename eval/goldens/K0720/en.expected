@@ -1,0 +1,10 @@
+-- CHAINED COMPARISON ------------------------------------------- main.kl  K0720
+
+Comparisons don't chain in Kalam, so `a < b < c` doesn't mean what it does in math.
+
+2│     if -10 < n < 0:
+                  ^
+
+Help: Write two comparisons joined with `and`: `a < b and b < c`.
+
+Learn more: kalam explain K0720

@@ -1,0 +1,39 @@
+# std/set (spec §9.3, §20.1): methods of the prelude type `Set[T]`. Sets are immutable
+# and insertion-ordered.
+
+impl[T: Eq + Hash] Set[T]:
+    ## A set of the distinct items, in order of first appearance.
+    @builtin
+    export fn of(items: List[T]) -> Set[T] => panic("builtin")
+
+    ## The number of elements.
+    @builtin
+    export fn len(self) -> Int => panic("builtin")
+
+    ## True when the set has no elements.
+    @builtin
+    export fn is_empty(self) -> Bool => panic("builtin")
+
+    ## True when `item` is in the set.
+    @builtin
+    export fn contains(self, item: T) -> Bool => panic("builtin")
+
+    ## A copy with `item` added (no change when it is present).
+    @builtin
+    export fn insert(self, item: T) -> Set[T] => panic("builtin")
+
+    ## A copy without `item`.
+    @builtin
+    export fn remove(self, item: T) -> Set[T] => panic("builtin")
+
+    ## The elements of both sets: `self`'s first, then the new ones of `other`.
+    @builtin
+    export fn union(self, other: Set[T]) -> Set[T] => panic("builtin")
+
+    ## The elements of `self` that are also in `other`.
+    @builtin
+    export fn intersection(self, other: Set[T]) -> Set[T] => panic("builtin")
+
+    ## The elements in insertion order.
+    @builtin
+    export fn to_list(self) -> List[T] => panic("builtin")

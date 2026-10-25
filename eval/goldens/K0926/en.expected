@@ -1,0 +1,12 @@
+-- C-STYLE LOOP ------------------------------------------------- main.kl  K0926
+
+`for (let i = 0; i < n; i++)` and `for i in range(n)` come from other languages. Kalam loops over a range written `0..n`.
+
+3│     for (var i = 0; i < items.len(); i += 1):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Try: ` i in 0..items.len()`
+
+Help: Write `for i in 0..n:`. Use `0..=n` to include `n` itself. `kalam fix` does this for you.
+
+Learn more: kalam explain K0926

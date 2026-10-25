@@ -1,0 +1,12 @@
+-- SEFR F EL AWEL ---------------------------------------- main.franco.kl  K0125
+
+`007` beyebda2 b sefr. Arqam Kalam mabtebda2sh b asfar, 3ashan `007` mayet2resh octal.
+
+9│     khali n = total(xs) + 007
+                             ^^^
+
+Garrab: `7`
+
+Mosa3da: Ekteb `7`. W law 3ayez octal ektebo b `0o`. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0125

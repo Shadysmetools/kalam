@@ -1,0 +1,27 @@
+# std/option (spec §9.3, §11 rule 12, §14.4, §20.1): methods of the prelude type
+# `Option[T]`. There is no bare `unwrap()`: `expect` requires a reason (K0915).
+
+impl[T] Option[T]:
+    ## `Some(f(x))` for `Some(x)`, `None` for `None`.
+    @builtin
+    export fn map[U](self, f: fn(T) -> U) -> Option[U] => panic("builtin")
+
+    ## The value, or `default` for `None`.
+    @builtin
+    export fn `or`(self, default: T) -> T => panic("builtin")
+
+    ## `Ok(x)` for `Some(x)`, `Err(error)` for `None`.
+    @builtin
+    export fn ok_or[E](self, error: E) -> Result[T, E] => panic("builtin")
+
+    ## The value. Panics with `reason` for `None`.
+    @builtin
+    export fn expect(self, reason: String) -> T => panic("builtin")
+
+    ## True for `Some`.
+    @builtin
+    export fn is_some(self) -> Bool => panic("builtin")
+
+    ## True for `None`.
+    @builtin
+    export fn is_none(self) -> Bool => panic("builtin")

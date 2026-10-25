@@ -1,0 +1,12 @@
+-- TAB --------------------------------------------------- main.franco.kl  K0103
+
+La2eit tab. Kalam beyesta5dem 4 masafat l kol mostawa, 3ashan el code yban zay ba3do f kol editor.
+
+2│ 	motghayer sum = 0
+   ^
+
+Garrab: `    `
+
+Mosa3da: Ghayar el tab b masafat (4 l kol mostawa). `kalam fmt` bey3mel keda lak, w gowa el string ekteb `\t`.
+
+E3raf aktar: kalam explain K0103

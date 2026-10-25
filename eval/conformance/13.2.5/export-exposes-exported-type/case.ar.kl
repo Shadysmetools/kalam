@@ -1,0 +1,4 @@
+علني هيكل Ticket:
+    id: عدد
+
+علني دالة make_ticket() -> Ticket => Ticket(id: 1)

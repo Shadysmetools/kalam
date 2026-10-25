@@ -1,0 +1,8 @@
+type Point:
+    x: Int
+    y: Int = 0
+
+fn main():
+    let p = Point(x: 1)
+    let q = Point(x: 1, y: 2)
+    print("{p.x} {q.y}")
