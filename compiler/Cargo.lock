@@ -99,6 +99,7 @@ dependencies = [
 name = "kalam-fmt"
 version = "0.1.0"
 dependencies = [
+ "kalam-ast",
  "kalam-base",
  "kalam-diagnostics",
  "kalam-lexer",
@@ -196,6 +197,8 @@ name = "kalam-syntax"
 version = "0.1.0"
 dependencies = [
  "kalam-base",
+ "kalam-lexer",
+ "kalam-parser",
  "kalam-skins",
 ]
 

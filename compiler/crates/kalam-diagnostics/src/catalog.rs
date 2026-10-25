@@ -5,7 +5,8 @@
 //! tone (never "illegal", "invalid", "fatal" or "bad"); say what was found, why it matters
 //! and how to fix it. Templates use `{name}` placeholders filled from the diagnostic's args.
 //!
-//! This inline table covers the codes the scaffold lexer emits. It moves to
+//! This inline table covers every code the lexer and parser emit; the integration test
+//! `tests/catalog_completeness.rs` scans the workspace and fails on a gap. It moves to
 //! `catalog/{en,ar,franco}.toml` plus `explain/` pages once it grows (ARCHITECTURE.md §12.2).
 //! CI parity rule (05 P6): every code has all three languages.
 
@@ -122,9 +123,10 @@ pub static CATALOG: &[Entry] = &[
         code: "SEC0111",
         title: ["INVISIBLE CHARACTER", "حرف غير مرئي", "7ARF MESH BAYEN"],
         message: [
-            "I found the invisible character {cp} {name}. Inside a string, write it as `\\u{...}` so readers can see it.",
-            "وجدت الحرف غير المرئي {cp} {name}. داخل النص اكتبه على صورة `\\u{...}` حتى يراه القارئ.",
-            "La2eit 7arf mesh bayen {cp} {name}. Gowa el string ektebo `\\u{...}` 3ashan elly beye2ra yshofo.",
+            "I found the invisible character {cp} {name}. It can make two different names look the same. In code or a name, delete it (`kalam fix` does this). Inside a string, write it as `\\u{...}` so readers can see it.",
+            // ar/franco: pending native review (sentence added for names).
+            "وجدت الحرف غير المرئي {cp} {name}. قد يجعل اسمين مختلفين يبدوان متطابقين. في الكود أو داخل اسم احذفه (الأمر `kalam fix` يفعل ذلك). داخل النص اكتبه على صورة `\\u{...}` حتى يراه القارئ.",
+            "La2eit 7arf mesh bayen {cp} {name}. Momken ykhalli esmeen mokhtalfeen shabah ba3d. F el code aw gowa esm emsa7o (`kalam fix` beyemsa7o). Gowa el string ektebo `\\u{...}` 3ashan elly beye2ra yshofo.",
         ],
         proposed: false,
     },
@@ -328,6 +330,123 @@ pub static CATALOG: &[Entry] = &[
         ],
         proposed: false,
     },
+    // ---- Parse errors (kalam-parser/PARSE-CODES.md). K0250–K0259 are proposed codes
+    // (spec/CRITIQUE.md B4); K0710, K0720, K0731 and K0921 are spec §27 codes.
+    // These messages take no code arguments except K0250, so they never spell a keyword:
+    // code in a message must stay in the file's skin (spec §21.4 rule 1).
+    // ar/franco: pending native review (machine-drafted, not yet checked by a native
+    // Egyptian Arabic speaker).
+    Entry {
+        code: "K0250",
+        title: ["UNEXPECTED TOKEN", "رمز غير متوقع", "7AGA MESH MATWAQA3A"],
+        message: [
+            "I expected {expected} here, but I found {found}. I skipped the rest of this line and carried on from the next one.",
+            "كنت أتوقع {expected} هنا، لكنني وجدت {found}. تجاوزت بقية هذا السطر وأكملت من السطر التالي.",
+            "Kont mestanni {expected} hena, bas la2eit {found}. Fawett ba2eit el satr da w kammelt men elly ba3do.",
+        ],
+        proposed: true,
+    },
+    Entry {
+        code: "K0251",
+        title: ["UNCLOSED BRACKET", "قوس غير مغلق", "QAWS MESH MA2FOOL"],
+        message: [
+            "This bracket is still open when the line or file ends. Add the matching `)`, `]` or `}`.",
+            "هذا القوس ما زال مفتوحًا عند نهاية السطر أو الملف. أضف القوس المقابل `)` أو `]` أو `}`.",
+            "El qaws da lessa maftoo7 lamma el satr aw el file khelso. Zawwed el qaws elly ye2felo `)` aw `]` aw `}`.",
+        ],
+        proposed: true,
+    },
+    Entry {
+        code: "K0252",
+        title: ["MISSING BLOCK", "كتلة ناقصة", "BLOCK NA2ES"],
+        message: [
+            "This line ends with `:`, so I expected an indented block on the next line, one level (4 spaces) deeper. Indent the lines that belong to it.",
+            "هذا السطر ينتهي بـ `:`، لذلك توقعت كتلة مُزاحة في السطر التالي، أعمق بمستوى واحد (4 مسافات). أزح الأسطر التي تنتمي إليه.",
+            "El satr da beyekhlas b `:`, fa kont mestanni block maza7 f el satr elly ba3do, mostawa wa7ed agwa (4 masafat). Zo77 el satr elly tab3a lo.",
+        ],
+        proposed: true,
+    },
+    Entry {
+        code: "K0253",
+        title: ["INTERPOLATION HOLE", "فجوة الإدراج", "HOLE EL STRING"],
+        message: [
+            "Each `{...}` hole in a string holds exactly one expression, and this one doesn't. Put one value in it, or write `\\{` for a literal brace.",
+            "كل فجوة `{...}` داخل النص تحتوي على تعبير واحد بالضبط، وهذه لا تحتوي عليه. ضع فيها قيمة واحدة، أو اكتب `\\{` إذا أردت قوسًا عاديًا.",
+            "Kol hole `{...}` gowa el string feeha expression wa7ed bel zabt, w di la2. 7ot feeha qeema wa7da, aw ekteb `\\{` law 3ayez qaws 3adi.",
+        ],
+        proposed: true,
+    },
+    Entry {
+        code: "K0254",
+        title: ["ARGUMENT ORDER", "ترتيب المعاملات", "TARTEEB EL ARGUMENTS"],
+        message: [
+            "This argument has no name, but it comes after a named one. Put the positional arguments first, then the named ones: `f(a, b, size: 2)`.",
+            "هذا المعامل بلا اسم، لكنه جاء بعد معامل مُسمّى. ضع المعاملات بلا أسماء أولًا ثم المُسمّاة: `f(a, b, size: 2)`.",
+            "El argument da malosh esm, bas gai ba3d wa7ed leeh esm. 7ot el arguments elly men gher asami el awel, ba3dein elly leeha asami: `f(a, b, size: 2)`.",
+        ],
+        proposed: true,
+    },
+    Entry {
+        code: "K0255",
+        title: ["STATEMENT OUTSIDE A FUNCTION", "جملة خارج دالة", "STATEMENT BARA DALA"],
+        message: [
+            "I found a statement at the top level of the file. The top level holds declarations only: functions, types, traits, constants and imports. Move this line into a function, such as the program's main function.",
+            "وجدت جملة في المستوى الأعلى من الملف. المستوى الأعلى للتعريفات فقط: الدوال والأنواع والسمات والثوابت والاستيرادات. انقل هذا السطر إلى داخل دالة، مثل الدالة الرئيسية للبرنامج.",
+            "La2eit statement f awel mostawa f el file. Awel mostawa lel ta3reefat bas: dawal w anwa3 w traits w sawabet w imports. Ensel el satr da gowa dala, zay el dala el ra2iseya.",
+        ],
+        proposed: true,
+    },
+    Entry {
+        code: "K0256",
+        title: ["IMPORT AFTER A DECLARATION", "استيراد بعد تعريف", "IMPORT BA3D TA3REEF"],
+        message: [
+            "This import comes after a declaration. Imports go at the top of the file, before everything else, so readers see a file's dependencies first. `kalam fmt` moves it for you.",
+            "هذا الاستيراد جاء بعد تعريف. الاستيرادات تأتي في أول الملف قبل أي شيء آخر، حتى يرى القارئ اعتماديات الملف أولًا. الأمر `kalam fmt` ينقله لك.",
+            "El import da gai ba3d ta3reef. El imports bteegi f awel el file 2abl ay 7aga, 3ashan elly beye2ra yshoof el dependencies el awel. `kalam fmt` hayenqelo lak.",
+        ],
+        proposed: true,
+    },
+    Entry {
+        code: "K0259",
+        title: ["NESTED TOO DEEPLY", "تداخل عميق جدًا", "MET2ASSA GAMED"],
+        message: [
+            "This code is nested more deeply than I can read safely, so I stopped descending here. Split the expression or block into smaller named pieces with their own bindings or functions.",
+            "هذا الكود متداخل أعمق مما أستطيع قراءته بأمان، لذلك توقفت عن النزول هنا. قسّم التعبير أو الكتلة إلى أجزاء أصغر لها أسماء أو دوال خاصة بها.",
+            "El code da met2assa agwa men elly a2dar a2rah b amaan, fa we2eft hena. 2assem el expression aw el block l 7etat as8ar leeha asami aw dawal.",
+        ],
+        proposed: true,
+    },
+    // ar/franco: pending native review.
+    Entry {
+        code: "K0710",
+        title: ["CAN'T ASSIGN TO THIS", "لا يمكن الإسناد إلى هذا", "MAYENFA3SH TEDDILO QEEMA"],
+        message: [
+            "The left side of `=` has to be a place: a variable, optionally followed by `.field` or `[index]`, whose root was declared as a mutable variable. This is a computed value, so there is nowhere to store the result. Bind the value to a new name instead.",
+            "الطرف الأيسر من `=` يجب أن يكون مكانًا: متغيرًا، وبعده اختياريًا `.حقل` أو `[فهرس]`، وأصله مُعرَّف كمتغير قابل للتغيير. أما هذا فقيمة محسوبة، فلا يوجد مكان لحفظ النتيجة. اربط القيمة باسم جديد بدلًا من ذلك.",
+            "El naw7eya el shmal men `=` lazem tekoon makan: variable, w momken ba3do `.field` aw `[index]`, w aslo ma3mool variable yet8ayar. Da qeema met7asba, fa mafeesh makan net7afaz feeh el natiga. Erbot el qeema b esm gedeed badal keda.",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K0720",
+        title: ["CHAINED COMPARISON", "مقارنة متسلسلة", "MO2ARNA METSALSELA"],
+        message: [
+            "Comparisons don't chain in Kalam, so `a < b < c` doesn't mean what it does in math. Write two comparisons, `a < b` and `b < c`, joined with the keyword for \"and\".",
+            "المقارنات في كلام لا تتسلسل، فـ `a < b < c` لا تعني ما تعنيه في الرياضيات. اكتب مقارنتين، `a < b` و`b < c`، واربطهما بالكلمة المحجوزة التي تعني \"و\".",
+            "El mo2aranat f Kalam mabtetsalselsh, fa `a < b < c` mesh ma3naha zay el riyadeyat. Ekteb mo2arnteen, `a < b` w `b < c`, w erbothom bel keyword elly ma3naha \"w\".",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K0731",
+        title: ["CONDITION WITHOUT AN ELSE", "شرط بلا فرع بديل", "SHART MEN GHER ELSE"],
+        message: [
+            "This conditional is used as a value, so it needs an else branch: without one, there is no value when the condition is false. Add the else branch, or use the conditional as a statement on its own line.",
+            "هذا الشرط مستخدم كقيمة، لذلك يحتاج إلى فرع بديل: بدونه لا توجد قيمة عندما يكون الشرط خاطئًا. أضف الفرع البديل، أو استخدم الشرط كجملة مستقلة في سطرها.",
+            "El shart da mesta5dem ka qeema, fa me7tag far3 else: men gheiro mafeesh qeema lamma el shart yeb2a ghalat. Zawwed far3 el else, aw esta5dem el shart ka statement f satr lewa7do.",
+        ],
+        proposed: false,
+    },
     Entry {
         code: "K0904",
         title: ["SEMICOLON", "فاصلة منقوطة", "SEMICOLON"],
@@ -345,6 +464,17 @@ pub static CATALOG: &[Entry] = &[
             "Kalam writes `{found}` as `{expected}`.",
             "في كلام يُكتب `{found}` هكذا: `{expected}`.",
             "F Kalam `{found}` btetketeb keda: `{expected}`.",
+        ],
+        proposed: false,
+    },
+    // ar/franco: pending native review.
+    Entry {
+        code: "K0921",
+        title: ["MULTI-LINE LAMBDA", "دالة مجهولة متعددة الأسطر", "LAMBDA 3ALA KAZA SATR"],
+        message: [
+            "A lambda body is a single expression in Kalam. For a body with several lines, declare a local function just before this call, give it a name, and pass the name.",
+            "جسم الدالة المجهولة في كلام تعبير واحد فقط. إذا احتجت عدة أسطر، عرّف دالة محلية قبل هذا الاستدعاء مباشرةً، وأعطها اسمًا، ومرّر الاسم.",
+            "Gesm el lambda f Kalam expression wa7ed bas. Law me7tag kaza satr, 3arraf dala local 2abl el call da 3ala tool, iddeelha esm, w ba3at el esm.",
         ],
         proposed: false,
     },

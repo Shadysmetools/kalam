@@ -10,3 +10,9 @@ publish = false
 [dependencies]
 kalam-base.workspace = true
 kalam-skins.workspace = true
+# KCF re-lexes the code inside interpolation holes (spec §4.4: hole code is code).
+kalam-lexer.workspace = true
+
+[dev-dependencies]
+# Integration tests only (tests/*.rs): the parser builds the CSTs that KCF serializes.
+kalam-parser.workspace = true

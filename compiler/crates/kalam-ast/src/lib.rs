@@ -17,10 +17,13 @@
 //! line numbers, so the formatter and the skin converter can re-attach it. The byte-exact
 //! lossless tree is the CST that `kalam-parser` builds next to this AST.
 
+use std::fmt;
+
 use kalam_base::Span;
 use kalam_skins::Concept;
 
 pub mod shape;
+pub mod stack;
 
 pub use shape::{shape, ShapeOptions};
 
@@ -353,10 +356,60 @@ pub enum StmtKind {
 // Expressions
 // ---------------------------------------------------------------------------------------
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+/// An expression. `Clone`, `PartialEq` and `Debug` are written by hand only to make them
+/// stack-safe ([`stack::deeper`]): they behave exactly like the derived impls.
 pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
+}
+
+impl Clone for Expr {
+    fn clone(&self) -> Self {
+        stack::deeper(|| Expr {
+            kind: self.kind.clone(),
+            span: self.span,
+        })
+    }
+}
+
+impl PartialEq for Expr {
+    fn eq(&self, other: &Self) -> bool {
+        stack::deeper(|| self.span == other.span && self.kind == other.kind)
+    }
+}
+
+impl Eq for Expr {}
+
+impl fmt::Debug for Expr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if stack::must_move() {
+            // A `Formatter` cannot cross threads: print this subtree to a string on the big
+            // stack, then write it here (inside `{:#?}` the caller's pad adapter indents it).
+            let alternate = f.alternate();
+            let fields = ExprFields(self);
+            let text = stack::deeper(|| {
+                if alternate {
+                    format!("{fields:#?}")
+                } else {
+                    format!("{fields:?}")
+                }
+            });
+            return f.write_str(&text);
+        }
+        stack::level(|| ExprFields(self).fmt(f))
+    }
+}
+
+/// The derived-style `Debug` body of [`Expr`].
+struct ExprFields<'a>(&'a Expr);
+
+impl fmt::Debug for ExprFields<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Expr")
+            .field("kind", &self.0.kind)
+            .field("span", &self.0.span)
+            .finish()
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

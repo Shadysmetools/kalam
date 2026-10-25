@@ -432,7 +432,13 @@ impl W {
         self.s(")");
     }
 
+    /// Expressions are the only part of the tree that nests up to the parser's height cap
+    /// (operator and postfix chains), so this is where the walk is made stack-safe.
     fn expr(&mut self, e: &Expr) {
+        crate::stack::deeper(|| self.expr_level(e));
+    }
+
+    fn expr_level(&mut self, e: &Expr) {
         self.sp();
         match &e.kind {
             ExprKind::Int(i) => self.s(&format!("(int {})", i.text)),

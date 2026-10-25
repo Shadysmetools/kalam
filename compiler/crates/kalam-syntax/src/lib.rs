@@ -10,7 +10,8 @@
 //! - [`kcf`] serializes the tree with concepts instead of spellings; its SHA-256 is the unit
 //!   of identity (lockfile, registry, signing, parity gate P1).
 //!
-//! Status: data types only. Open item A1 (in-house tree vs. the `rowan` crate).
+//! Status: green tree, builder and KCF (with an in-house SHA-256, [`sha256`]) work; the typed
+//! AST views are still stubs. Open item A1 (in-house tree vs. the `rowan` crate).
 
 use std::sync::Arc;
 
@@ -93,6 +94,11 @@ impl GreenElement {
             GreenElement::Token(t) => t.text.len() as u32,
         }
     }
+
+    /// True for a zero-width element (a layout token, or a node holding only those).
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 /// Builds a green tree from parser events (`start_node`, `token`, `finish_node`).
@@ -121,7 +127,11 @@ impl TreeBuilder {
     pub fn finish_node(&mut self) {
         let (kind, children) = self.stack.pop().expect("unbalanced finish_node()");
         let len = children.iter().map(GreenElement::len).sum();
-        let node = GreenElement::Node(Arc::new(GreenNode { kind, children, len }));
+        let node = GreenElement::Node(Arc::new(GreenNode {
+            kind,
+            children,
+            len,
+        }));
         match self.stack.last_mut() {
             Some(parent) => parent.1.push(node),
             None => self.stack.push((SyntaxKind::File, vec![node])),
@@ -147,16 +157,32 @@ pub struct Cst {
 impl Cst {
     /// Reconstructs the source text (lossless round trip in the file's own skin).
     pub fn text(&self) -> String {
-        fn walk(node: &GreenNode, out: &mut String) {
-            for child in &node.children {
-                match child {
-                    GreenElement::Node(n) => walk(n, out),
-                    GreenElement::Token(t) => out.push_str(&t.text),
-                }
+        let mut out = String::with_capacity(self.root.len as usize);
+        for (_, t) in self.root.tokens() {
+            out.push_str(&t.text);
+        }
+        out
+    }
+}
+
+impl GreenNode {
+    /// Every token under this node in source order, each with the kind of the node that
+    /// directly holds it. Iterative, so any tree depth is safe on a small stack.
+    pub fn tokens(&self) -> Vec<(SyntaxKind, &GreenToken)> {
+        let mut out = Vec::new();
+        let mut stack: Vec<(&GreenNode, usize)> = vec![(self, 0)];
+        while let Some(top) = stack.last_mut() {
+            let (node, i) = (top.0, top.1);
+            let Some(child) = node.children.get(i) else {
+                stack.pop();
+                continue;
+            };
+            top.1 += 1;
+            match child {
+                GreenElement::Node(n) => stack.push((n, 0)),
+                GreenElement::Token(t) => out.push((node.kind, &**t)),
             }
         }
-        let mut out = String::new();
-        walk(&self.root, &mut out);
         out
     }
 }
@@ -170,21 +196,8 @@ pub mod ast {
     pub struct FnDecl(pub Arc<GreenNode>);
 }
 
-/// Kalam Canonical Form (spec §4.4).
-pub mod kcf {
-    use super::Cst;
-
-    /// SHA-256 of the KCF bytes. The `sha2` dependency is added with the parser.
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-    pub struct KcfHash(pub [u8; 32]);
-
-    /// Serializes a CST skin-free: keywords and core names as concept IDs, `،`/`؟` as their
-    /// ASCII concepts, numbers as kind plus exact value, identifiers as NFC code points,
-    /// strings, comments and blank lines byte for byte.
-    pub fn serialize(_cst: &Cst) -> Vec<u8> {
-        todo!("KCF serialization (Phase 0, step 3)")
-    }
-}
+pub mod kcf;
+pub mod sha256;
 
 /// Spans are byte ranges; this re-export keeps downstream crates on one definition.
 pub type TextRange = Span;

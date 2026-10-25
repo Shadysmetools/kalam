@@ -332,7 +332,7 @@ impl KeywordTable {
                 .collect();
             for word in words {
                 // Rule 2: no Franco spelling starts with a digit.
-                if word.chars().next().map_or(false, |c| c.is_ascii_digit()) {
+                if word.chars().next().is_some_and(|c| c.is_ascii_digit()) {
                     return Err(TableError(format!(
                         "{}: Franco spelling `{}` starts with a digit",
                         row.concept, word
@@ -372,7 +372,9 @@ fn build_skin(
     };
     for (concept, &i) in by_concept {
         let row = &rows[i];
-        table.canonical.insert(*concept, row.spelling(skin).to_string());
+        table
+            .canonical
+            .insert(*concept, row.spelling(skin).to_string());
         if row.kind == Kind::Punctuation {
             continue; // punctuation aliases are lexed as punctuation, not as words
         }
@@ -475,7 +477,10 @@ mod tests {
             Some(Concept::CoreMain)
         );
         assert_eq!(
-            table.skin(Skin::Franco).lookup_word("unsafe").map(|m| m.kind),
+            table
+                .skin(Skin::Franco)
+                .lookup_word("unsafe")
+                .map(|m| m.kind),
             Some(Kind::AsciiFixed)
         );
         assert_eq!(table.spelling(Concept::KwFn, Skin::Franco), "dala");
@@ -490,8 +495,8 @@ mod tests {
         assert_eq!(arabic_fold("\u{06D5}"), "\u{0647}"); // ە → ه
         assert_eq!(arabic_fold("\u{06BE}"), "\u{0647}"); // ھ → ه
         assert_eq!(arabic_fold("\u{06C0}"), "\u{0647}"); // ۀ → ه
-        // Persian and Arabic spellings of one word share a fold key, so they match the
-        // same keyword and collide as identifier skeletons (SEC0104).
+                                                         // Persian and Arabic spellings of one word share a fold key, so they match the
+                                                         // same keyword and collide as identifier skeletons (SEC0104).
         assert_eq!(arabic_fold("\u{06A9}تاب"), arabic_fold("كتاب"));
         assert_eq!(arabic_fold("عل\u{06CC}"), arabic_fold("علي"));
         assert_eq!(arabic_fold("عل\u{06CC}"), arabic_fold("على"));

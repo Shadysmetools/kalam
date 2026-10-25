@@ -321,7 +321,7 @@ mod tests {
         let d = Diagnostic::new("K0904", FileId(0), Span::new(0, 1));
         let v = render_json(&d, &src);
         assert_eq!(v["code"], "K0904");
-        assert!(v["message"]["ar"].as_str().unwrap().len() > 0);
+        assert!(!v["message"]["ar"].as_str().unwrap().is_empty());
         assert_eq!(v["span"]["start"]["line"], 1);
     }
 

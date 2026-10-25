@@ -565,7 +565,6 @@ fn large_inputs_stay_linear_and_one_error_per_bad_line() {
 /// `catch_unwind` can catch it. Run with `--ignored` to reproduce. That run aborts the test
 /// binary until this is fixed.
 #[test]
-#[ignore = "kalam-ast shape overflows a 1 MiB stack near MAX_HEIGHT; see doc comment"]
 fn shape_of_a_max_height_tree_fits_a_1mib_stack() {
     let src = format!("fn main():\n    let x = 1{}\n", " + 1".repeat(800));
     std::thread::Builder::new()

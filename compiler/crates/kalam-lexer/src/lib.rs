@@ -267,6 +267,22 @@ fn is_ident_continue(c: char) -> bool {
         || is_tatweel_or_haraka(c)
 }
 
+/// ZWNJ / ZWJ. Inside a word run they are reported (SEC0111) but do not split the word,
+/// so one stray joiner gives one diagnostic instead of a cascade of parse errors.
+fn is_joiner(c: char) -> bool {
+    c == '\u{200C}' || c == '\u{200D}'
+}
+
+/// Keywords that can legally follow a name on the same line (`x in xs`, `a and b`,
+/// `v as T`, `case n if n > 0`, `if c: a else: b`). Any other word after a name is a
+/// syntax error, which is what makes a cross-skin keyword detectable in the lexer.
+fn may_follow_a_name(concept: Concept) -> bool {
+    matches!(
+        concept,
+        Concept::KwIn | Concept::KwAnd | Concept::KwOr | Concept::KwAs | Concept::KwElse | Concept::KwIf | Concept::KwNot
+    )
+}
+
 fn is_dec(c: char) -> bool {
     c.is_ascii_digit()
 }
@@ -285,8 +301,8 @@ fn is_oct(c: char) -> bool {
 
 /// `D { [ "_" ] D }`: non-empty, starts and ends with a digit, no doubled underscore.
 fn digits_ok(s: &str, pred: fn(char) -> bool) -> bool {
-    s.chars().next().map_or(false, pred)
-        && s.chars().last().map_or(false, pred)
+    s.chars().next().is_some_and(pred)
+        && s.chars().last().is_some_and(pred)
         && !s.contains("__")
         && s.chars().all(|c| c == '_' || pred(c))
 }
@@ -305,7 +321,7 @@ fn validate_ascii_number(s: &str) -> Result<TokenKind, &'static str> {
     if let Some(rest) = s.strip_prefix("0o") {
         return if digits_ok(rest, is_oct) { Ok(TokenKind::Int) } else { Err("K0127") };
     }
-    let (mantissa, exponent) = match s.find(|c: char| c == 'e' || c == 'E') {
+    let (mantissa, exponent) = match s.find(['e', 'E']) {
         Some(i) => (&s[..i], Some(&s[i + 1..])),
         None => (s, None),
     };
@@ -434,7 +450,7 @@ pub fn to_ascii_digits(s: &str) -> String {
 
 /// Removes leading zeros for the K0125 fix (`007` → `7`, `00.5` → `0.5`).
 fn strip_leading_zeros(s: &str) -> String {
-    let trimmed = s.trim_start_matches(|c: char| c == '0' || c == '\u{0660}' || c == '_');
+    let trimmed = s.trim_start_matches(['0', '\u{0660}', '_']);
     if trimmed.is_empty() || trimmed.starts_with('.') || trimmed.starts_with('\u{066B}') {
         let zero = if s.starts_with('\u{0660}') { '\u{0660}' } else { '0' };
         format!("{zero}{trimmed}")
@@ -860,8 +876,14 @@ impl<'a> Lexer<'a> {
         let src = self.text;
         let start_i = self.i;
         let start = self.pos();
-        while matches!(self.peek(), Some(c) if is_ident_continue(c)) {
-            self.i += 1;
+        loop {
+            match self.peek() {
+                Some(c) if is_ident_continue(c) => self.i += 1,
+                Some(c) if is_joiner(c) && matches!(self.peek_at(1), Some(n) if is_ident_continue(n)) => {
+                    self.i += 1
+                }
+                _ => break,
+            }
         }
         let text = &src[start as usize..self.pos() as usize];
 
@@ -888,12 +910,22 @@ impl<'a> Lexer<'a> {
                     .arg("cp", code_point(c))
                     .fix(Fix::machine("use an ASCII digit", span, ascii));
                 self.report(d);
+            } else if is_joiner(c) {
+                let d = self
+                    .diag("SEC0111", span)
+                    .arg("cp", code_point(c))
+                    .arg("name", display_name(c))
+                    .fix(Fix::machine("remove the invisible character", span, ""));
+                self.report(d);
             }
         }
 
         // Contextual freedom (§5.3 rule 8): a word right after `.` is always a member name.
         if !self.last_is_dot() {
-            let cleaned: String = text.chars().filter(|&c| !is_tatweel_or_haraka(c)).collect();
+            let cleaned: String = text
+                .chars()
+                .filter(|&c| !is_tatweel_or_haraka(c) && !is_joiner(c))
+                .collect();
             if let Some(m) = self.words.lookup_word(&cleaned) {
                 let kind = match m.kind {
                     Kind::CoreName => TokenKind::Core(m.concept),
@@ -906,8 +938,61 @@ impl<'a> Lexer<'a> {
                 self.push(kind, start, flags);
                 return;
             }
+            if let Some(concept) = self.cross_skin_keyword(&cleaned) {
+                let expected = self.words.spelling(concept).to_string();
+                let span = Span::new(start, self.pos());
+                let d = self
+                    .diag("K0201", span)
+                    .arg("found", text)
+                    .arg("expected", expected.clone())
+                    .fix(Fix::machine(format!("write `{expected}`"), span, expected));
+                self.report(d);
+                self.push(TokenKind::Keyword(concept), start, TokenFlags::default());
+                return;
+            }
         }
         self.push(TokenKind::Ident, start, TokenFlags::default());
+    }
+
+    /// K0201 (spec §5.4 bullet 3, §21.4 rule 6): `word` is a keyword of another skin, used
+    /// where reading it as a name would be a syntax error. Another skin's word used as a
+    /// declared name stays legal (§5.4 bullet 2), so the lexer only fires on the one
+    /// position it can judge alone: the word is directly followed on the same line by
+    /// another word, number or string, and that next word is not a keyword that may follow
+    /// a name (`for law in xs`). Two names side by side never parse.
+    ///
+    /// Not covered here (needs parser position or name resolution): a cross-skin keyword
+    /// followed by an operator or `:` (`else:`, `return -1`), and core names (`print(…)`
+    /// in an Arabic file is an undefined name, so it belongs to the resolver).
+    fn cross_skin_keyword(&self, word: &str) -> Option<Concept> {
+        let concept = Skin::ALL
+            .into_iter()
+            .filter(|&s| s != self.skin)
+            .filter_map(|s| self.table.skin(s).lookup_word(word))
+            .find(|m| m.kind == Kind::Keyword)?
+            .concept;
+
+        let mut j = self.i;
+        while self.chars.get(j).is_some_and(|&(_, c)| c == ' ') {
+            j += 1;
+        }
+        let next = self.chars.get(j).map(|&(_, c)| c)?;
+        if next == '"' || next == '`' || is_any_digit(next) {
+            return Some(concept);
+        }
+        if !is_ident_start(next) {
+            return None;
+        }
+        let next_word: String = self.chars[j..]
+            .iter()
+            .map(|&(_, c)| c)
+            .take_while(|&c| is_ident_continue(c) || is_joiner(c))
+            .filter(|&c| !is_tatweel_or_haraka(c) && !is_joiner(c))
+            .collect();
+        match self.words.lookup_word(&next_word) {
+            Some(m) if may_follow_a_name(m.concept) => None,
+            _ => Some(concept),
+        }
     }
 
     /// "A digit always starts a number" (§5.6, DR-03).
@@ -1375,6 +1460,114 @@ mod tests {
             vec![T::Ident, T::Op(LParen), T::Ident, T::Op(Comma), T::Ident, T::Op(RParen), T::Newline, T::Eof]
         );
         assert_eq!(codes("f(a\u{060C} b)\n", Skin::En), vec!["K0201"]);
+    }
+
+    /// The single K0201 for `text`, or a panic with all diagnostics.
+    fn one_k0201(text: &str, skin: Skin) -> (LexOutput, Diagnostic) {
+        let out = lex(text, skin, FileId(0));
+        let codes: Vec<_> = out.diagnostics.iter().map(|d| d.code).collect();
+        assert_eq!(codes, vec!["K0201"], "{text:?}");
+        let d = out.diagnostics[0].clone();
+        (out, d)
+    }
+
+    fn arg<'d>(d: &'d Diagnostic, name: &str) -> &'d str {
+        d.args.iter().find(|(n, _)| *n == name).map(|(_, v)| v.as_str()).unwrap_or("")
+    }
+
+    #[test]
+    fn keyword_from_another_skin_is_k0201_with_a_machine_fix() {
+        // Spec §5.4 bullet 3, §21.4 rule 6. Each case: (source, skin, found, expected).
+        let cases = [
+            ("if صح:\n", Skin::Ar, "if", "إذا"),
+            ("law صح:\n", Skin::Ar, "law", "إذا"),
+            ("إذا x:\n", Skin::En, "إذا", "if"),
+            ("إذا sa7:\n", Skin::Franco, "إذا", "law"),
+            ("if x:\n", Skin::Franco, "if", "law"),
+            ("for x في xs:\n", Skin::Ar, "for", "لكل"),
+        ];
+        for (src, skin, found, expected) in cases {
+            let (out, d) = one_k0201(src, skin);
+            assert_eq!(arg(&d, "found"), found, "{src:?}");
+            assert_eq!(arg(&d, "expected"), expected, "{src:?}");
+            // The fix replaces exactly the word, and is safe to apply without review.
+            assert_eq!(d.fixes.len(), 1);
+            let fix = &d.fixes[0];
+            assert_eq!(fix.applicability, kalam_diagnostics::Applicability::Machine);
+            assert_eq!(fix.edits.len(), 1);
+            assert_eq!(&src[fix.edits[0].span.range()], found);
+            assert_eq!(fix.edits[0].insert, expected);
+            // The word lexes as the keyword, so the parser recovers without a cascade.
+            assert!(matches!(out.tokens[0].kind, T::Keyword(Concept::KwIf | Concept::KwFor)), "{src:?}");
+        }
+        // Every English word in an Arabic file gets its own fix.
+        let out = lex("for x in xs:\n", Skin::Ar, FileId(0));
+        let codes: Vec<_> = out.diagnostics.iter().map(|d| d.code).collect();
+        assert_eq!(codes, vec!["K0201", "K0201"]);
+        assert_eq!(out.tokens[2].kind, T::Keyword(Concept::KwIn));
+        // The message renders the file-skin spelling.
+        let (_, d) = one_k0201("if صح:\n", Skin::Ar);
+        assert!(d.message(Skin::En).contains("إذا"));
+    }
+
+    #[test]
+    fn another_skins_word_used_as_a_name_is_legal() {
+        // Spec §5.4 bullet 2: a declared identifier equal to another skin's reserved word is
+        // fine. K0201 is only where reading it as a name would be a syntax error.
+        for (src, skin) in [
+            ("law\n", Skin::En),
+            ("let law = 1\n", Skin::En),
+            ("fn law(x):\n", Skin::En),
+            ("for law in xs:\n", Skin::En),
+            ("law(x) + law\n", Skin::En),
+            ("contract.law\n", Skin::Franco),
+            ("contract.if x\n", Skin::Ar),
+            ("`law` صح\n", Skin::Ar),
+            ("إذا = 1\n", Skin::En),
+            ("f(if: 1)\n", Skin::Ar),
+        ] {
+            let out = lex(src, skin, FileId(0));
+            assert!(
+                out.diagnostics.iter().all(|d| d.code != "K0201"),
+                "{src:?}: {:?}",
+                out.diagnostics
+            );
+        }
+        // Core names (`print` in an Arabic file) need name resolution: not the lexer's job.
+        assert!(codes("print(1)\n", Skin::Ar).is_empty());
+    }
+
+    #[test]
+    fn zero_width_joiners_inside_a_name_keep_one_token() {
+        for (src, cp) in [("let a\u{200D}b = 1\n", "U+200D"), ("let a\u{200C}b = 1\n", "U+200C")] {
+            let out = lex(src, Skin::En, FileId(0));
+            let codes: Vec<_> = out.diagnostics.iter().map(|d| d.code).collect();
+            assert_eq!(codes, vec!["SEC0111"], "{src:?}");
+            let d = &out.diagnostics[0];
+            assert_eq!(arg(d, "cp"), cp);
+            assert_eq!(d.fixes[0].applicability, kalam_diagnostics::Applicability::Machine);
+            assert_eq!(d.fixes[0].edits[0].insert, "");
+            assert_eq!(&src[d.fixes[0].edits[0].span.range()], &src[5..8]);
+            assert_eq!(
+                out.kinds(),
+                vec![T::Keyword(Concept::KwLet), T::Ident, T::Op(Op::Eq), T::Int, T::Newline, T::Eof]
+            );
+            assert_eq!(&src[out.tokens[1].span.range()], &src[4..9]);
+        }
+        // Arabic words join letters with ZWNJ in some typing habits: still one name.
+        let out = lex("خلي ك\u{200C}تاب = 1\n", Skin::Ar, FileId(0));
+        assert_eq!(out.diagnostics.iter().map(|d| d.code).collect::<Vec<_>>(), vec!["SEC0111"]);
+        assert_eq!(out.tokens[1].kind, T::Ident);
+        assert_eq!(out.tokens[2].kind, T::Op(Op::Eq));
+        // A joiner hidden inside a keyword still reads as the keyword it looks like.
+        let out = lex("i\u{200D}f x:\n", Skin::En, FileId(0));
+        assert_eq!(out.diagnostics.iter().map(|d| d.code).collect::<Vec<_>>(), vec!["SEC0111"]);
+        assert_eq!(out.tokens[0].kind, T::Keyword(Concept::KwIf));
+        assert!(out.tokens[0].flags.variant_spelling);
+        // A trailing joiner (not between name characters) is reported on its own.
+        let out = lex("a\u{200D} = 1\n", Skin::En, FileId(0));
+        assert_eq!(out.diagnostics.iter().map(|d| d.code).collect::<Vec<_>>(), vec!["SEC0111"]);
+        assert_eq!(out.kinds(), vec![T::Ident, T::Op(Op::Eq), T::Int, T::Newline, T::Eof]);
     }
 
     #[test]
