@@ -1,0 +1,12 @@
+haykal Money:
+    amount: adad
+    currency: nass
+
+naffez Money ka Show:
+    dala show(nafso) -> nass => "{nafso.amount} {nafso.currency}"
+
+dala ra2isi():
+    ektb(Money(amount: 5, currency: "EGP"))
+
+naffez Money:
+    dala zero(currency: nass) -> Money => Money(amount: 0, currency: currency)

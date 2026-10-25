@@ -1,0 +1,3 @@
+fn main(world: World):
+    let same = world.net == world.net
+    print("{same}")

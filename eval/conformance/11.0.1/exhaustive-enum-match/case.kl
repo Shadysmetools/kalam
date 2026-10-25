@@ -1,0 +1,14 @@
+enum Light:
+    Red
+    Amber
+    Green
+
+fn main():
+    let light: Light = .Red
+    match light:
+        case .Red:
+            print("stop")
+        case .Amber:
+            print("wait")
+        case .Green:
+            print("go")

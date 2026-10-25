@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§10.8.4: \"Strings cannot be indexed (K0650).\" §10.8.1: \"`xs[i]` on a `List` panics when out of bounds. `xs.get(i)` returns `Option[T]`.\" §10.8.2: \"`m[k]` on a `Map` panics when the key is absent.\" Positive twin."
+}

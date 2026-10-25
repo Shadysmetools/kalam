@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§10.3.3: \"**Multi-line value form:** after `let x =`, `var x =`, an assignment or `return`, `if_form` and `match_form` are expressions. Each arm yields its **last expression**, and all arms must have the same type. `if` without `else` is not allowed there (K0731).\" §10.3.2: \"**Inline:** `if c: a else: b` is an expression anywhere\". Positive twin."
+}

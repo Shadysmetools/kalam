@@ -37,7 +37,11 @@ fn usage() -> &'static str {
     "kalam: the Kalam toolchain\n\
      \n\
      usage:\n\
-     \x20 kalam check [--json] FILE           check a file (source text, lexing, parsing)\n\
+     \x20 kalam check [--json] FILE           check a file (source text, lexing, parsing, names)\n\
+     \x20 kalam check [--json] [--std DIR] PROJECT\n\
+     \x20                                    check a package: every file under PROJECT/src as one\n\
+     \x20                                    module graph, with the stdlib at DIR (default: the\n\
+     \x20                                    repository stdlib/)\n\
      \x20 kalam fmt [--check|--stdout] FILE...  format files in canonical layout (in place)\n\
      \x20 kalam convert --to en|ar|franco [--write] FILE\n\
      \x20                                    print FILE in another skin (--write: rename it)\n\
@@ -125,11 +129,37 @@ fn read_file(path: &str) -> Result<String, ExitCode> {
 }
 
 fn check(args: &[String]) -> ExitCode {
-    let json = args.iter().any(|a| a == "--json");
-    let Some(path) = args.iter().find(|a| !a.starts_with("--")) else {
-        eprintln!("usage: kalam check [--json] FILE");
+    let mut json = false;
+    let mut std_dir: Option<&String> = None;
+    let mut path: Option<&String> = None;
+    let mut i = 0;
+    while i < args.len() {
+        match args[i].as_str() {
+            "--json" => json = true,
+            "--std" => {
+                i += 1;
+                std_dir = args.get(i);
+                if std_dir.is_none() {
+                    eprintln!("--std needs a directory");
+                    return ExitCode::from(2);
+                }
+            }
+            a if !a.starts_with("--") && path.is_none() => path = Some(&args[i]),
+            _ => {}
+        }
+        i += 1;
+    }
+    let Some(path) = path else {
+        eprintln!("usage: kalam check [--json] FILE | kalam check [--json] [--std DIR] PROJECT");
         return ExitCode::from(2);
     };
+    if std::path::Path::new(path).is_dir() {
+        return check_dir(path, std_dir.map(String::as_str), json);
+    }
+    if std_dir.is_some() {
+        eprintln!("--std applies to a PROJECT directory, not to a single file");
+        return ExitCode::from(2);
+    }
     // Bytes, not text: invalid UTF-8 is a finding (SEC0100), not an unreadable file.
     let bytes = match std::fs::read(path) {
         Ok(bytes) => bytes,
@@ -151,6 +181,141 @@ fn check(args: &[String]) -> ExitCode {
         eprint!("{}", checked.render_human(message_lang()));
     }
     if checked.has_errors() {
+        ExitCode::from(1)
+    } else {
+        ExitCode::SUCCESS
+    }
+}
+
+/// The repository stdlib (`stdlib/` next to `compiler/`), the default for `--std`.
+fn default_std_dir() -> String {
+    format!("{}/../../../stdlib", env!("CARGO_MANIFEST_DIR"))
+}
+
+/// A path in the form `kalam_driver::check_project` expects: `/` separators and no
+/// trailing `/` (its module paths come from `strip_prefix(dir)` and then `/`).
+fn slash_path(p: &str) -> String {
+    let p = p.replace('\\', "/");
+    match p.trim_end_matches('/') {
+        "" => p,
+        t => t.to_string(),
+    }
+}
+
+/// The real file system for `check_project`. `list` is recursive and returns
+/// `{dir}/{relative path}` with `/`, built from the exact `dir` string it was given.
+struct DiskVfs;
+
+impl kalam_driver::Vfs for DiskVfs {
+    fn read(&self, path: &str) -> Option<String> {
+        // Project mode reads text: an invalid UTF-8 run reads as U+FFFD (the single-file
+        // `kalam check FILE` reports it as SEC0100).
+        std::fs::read(path)
+            .ok()
+            .map(|b| String::from_utf8_lossy(&b).into_owned())
+    }
+
+    fn list(&self, dir: &str) -> Vec<String> {
+        fn walk(dir: &str, out: &mut Vec<String>) {
+            let Ok(entries) = std::fs::read_dir(dir) else {
+                return;
+            };
+            for e in entries.flatten() {
+                let p = format!("{dir}/{}", e.file_name().to_string_lossy());
+                match e.file_type() {
+                    Ok(t) if t.is_dir() => walk(&p, out),
+                    Ok(_) => out.push(p),
+                    Err(_) => {}
+                }
+            }
+        }
+        let mut out = Vec::new();
+        walk(dir.trim_end_matches('/'), &mut out);
+        out.sort();
+        out
+    }
+}
+
+/// The package's short name (spec §13.1, §13.5): `[package] name` in `kalam.toml` without
+/// its scope (`@team/notes` → `notes`), else the directory's name, else `app`.
+fn package_name(root: &str) -> String {
+    let manifest = std::fs::read_to_string(format!("{root}/kalam.toml")).unwrap_or_default();
+    let mut in_package = false;
+    for line in manifest.lines().map(str::trim) {
+        if line.starts_with('[') {
+            in_package = line == "[package]";
+            continue;
+        }
+        let Some((key, value)) = line.split_once('=').filter(|_| in_package) else {
+            continue;
+        };
+        if key.trim() == "name" {
+            let value = value
+                .split('#')
+                .next()
+                .unwrap_or("")
+                .trim()
+                .trim_matches('"');
+            let short = value
+                .rsplit('/')
+                .next()
+                .unwrap_or(value)
+                .trim_start_matches('@');
+            if !short.is_empty() {
+                return short.to_string();
+            }
+        }
+    }
+    std::path::Path::new(root)
+        .canonicalize()
+        .ok()
+        .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+        .filter(|n| !n.is_empty())
+        .unwrap_or_else(|| "app".to_string())
+}
+
+/// `kalam check [--json] [--std DIR] PROJECT`: every Kalam file under `PROJECT/src` is one
+/// module (spec §13.1), resolved as one package together with the stdlib modules under DIR
+/// (`kalam_driver::check_project`), so a module-level finding such as K0301 (two skin files
+/// for one module, spec §4.1) is reported. `--json` prints one array over every file; each
+/// diagnostic names its `file`. A project without a source file, or a stdlib directory that
+/// does not exist, is a usage error (exit 2), never an empty pass.
+fn check_dir(root: &str, std_dir: Option<&str>, json: bool) -> ExitCode {
+    let root = slash_path(root);
+    let std_dir = std_dir.map_or_else(default_std_dir, str::to_string);
+    if !std::path::Path::new(&std_dir).is_dir() {
+        eprintln!("the stdlib directory `{std_dir}` does not exist (pass --std DIR)");
+        return ExitCode::from(2);
+    }
+    let vfs = DiskVfs;
+    let src = format!("{root}/src");
+    if !kalam_driver::Vfs::list(&vfs, &src)
+        .iter()
+        .any(|p| Skin::from_path(p).is_some())
+    {
+        eprintln!("`{src}` holds no Kalam file (.kl, .ar.kl or .franco.kl)");
+        return ExitCode::from(2);
+    }
+    let options = kalam_driver::ProjectOptions {
+        package: package_name(&root),
+        std_dir: Some(slash_path(&std_dir)),
+    };
+    let checked = kalam_driver::check_project(&vfs, &root, &options);
+    if json {
+        // one flat array: the inside of each file's array, joined
+        let items: Vec<String> = checked
+            .iter()
+            .map(|c| c.render_json())
+            .map(|a| a[1..a.len() - 1].to_string())
+            .filter(|a| !a.is_empty())
+            .collect();
+        println!("[{}]", items.join(","));
+    } else {
+        for c in checked.iter().filter(|c| !c.diagnostics.is_empty()) {
+            eprintln!("{}", c.render_human(message_lang()));
+        }
+    }
+    if checked.iter().any(|c| c.has_errors()) {
         ExitCode::from(1)
     } else {
         ExitCode::SUCCESS

@@ -1,0 +1,6 @@
+fn first[T](xs: List[T]) -> Option[T] => xs.get(0)
+
+fn main():
+    let xs = [1, 2, 3]
+    let head = first[Int](xs)
+    print("x")

@@ -1,0 +1,6 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "stage": "resolve",
+  "notes": "§7.2.1: \"Core names are prelude items whose *spelling* comes from the skin table. They cannot be declared, redefined or shadowed (K0413), so translating them never changes meaning.\" FOUNDER-QUEUE Q21 (binding provisional): \"Core names from another skin used as names (`let عدد = 1` in an English file, `ليكن print = 1` in an Arabic file) | Legal per §5.4/H0202. Only the file's own skin spelling of a core name is K0413.\" The three files are written by hand, because conversion would translate the name: the English file binds the Arabic `عدد` (Int), the Arabic and Franco files bind the English `print`. H0202 is a hint, not an error."
+}

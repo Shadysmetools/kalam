@@ -1,0 +1,9 @@
+علني دالة transfer(from: عدد، to: عدد، amount: عدد) -> عدد => from + to + amount
+
+دالة fee(amount: عدد، rate: عدد = 2) -> عدد => amount * rate
+
+دالة رئيسي():
+    ليكن r = transfer(from: 3، to: 2، amount: 1)
+    ليكن s = transfer(from: 1، to: 2، amount: 3)
+    ليكن f = fee(10)
+    اطبع("{r} {s} {f}")

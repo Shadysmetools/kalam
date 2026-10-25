@@ -1,0 +1,4 @@
+async dala ping() -> adad => 1
+
+dala ra2isi():
+    ektb("{ping()}")

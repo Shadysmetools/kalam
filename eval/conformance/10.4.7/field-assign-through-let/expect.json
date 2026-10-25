@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0710"
+  ],
+  "lines": [
+    7
+  ],
+  "notes": "§10.4.7: \"The root of a place must be a `var` (K0710).\" §10.4.3: \"`p.x = e` | `p = p.with(x: e)`\". The root `p` of the place `p.x` is a `let`."
+}

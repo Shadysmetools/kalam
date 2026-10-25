@@ -1,0 +1,6 @@
+fn head(xs: List[Int]) -> Result[Int, String]:
+    let n = xs.get(0)?
+    return Ok(n)
+
+fn main():
+    let _ = head([2])

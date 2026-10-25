@@ -1,0 +1,7 @@
+دالة upload(name: PathSegment) -> Path => path"uploads/{name}"
+
+دالة رئيسي():
+    ليكن id = 7
+    ليكن term = "kalam"
+    ليكن _ = url"https://api.example.com/users/{id}?q={term}"
+    ليكن _ = regex"^[a-z0-9_]\{3,20\}$"

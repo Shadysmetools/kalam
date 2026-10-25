@@ -264,10 +264,13 @@ dependencies = [
 name = "kalam-typeck"
 version = "0.1.0"
 dependencies = [
+ "kalam-ast",
  "kalam-base",
  "kalam-diagnostics",
+ "kalam-parser",
  "kalam-resolve",
  "kalam-sinks",
+ "kalam-skins",
 ]
 
 [[package]]

@@ -56,10 +56,126 @@ const DESCRIPTIONS: &[(&str, &str, [&str; 3])] = &[
             "el ketaba el sa7",
         ],
     ),
+    ("", "type", ["the type", "النوع", "el type"]),
+    (
+        "K0126",
+        "type",
+        ["the literal's type", "نوع القيمة الحرفية", "no3 el literal"],
+    ),
+    // The type checker (kalam-typeck). ar/franco: pending native review.
     (
         "",
+        "left",
+        [
+            "the left operand's type",
+            "نوع الطرف الأيسر",
+            "no3 el taraf el shemal",
+        ],
+    ),
+    (
+        "",
+        "right",
+        [
+            "the right operand's type",
+            "نوع الطرف الأيمن",
+            "no3 el taraf el yemeen",
+        ],
+    ),
+    (
+        "",
+        "missing",
+        [
+            "the cases no arm handles",
+            "الحالات التي لا يعالجها أي فرع",
+            "el 7alat elly mafeesh far3 bey3alegha",
+        ],
+    ),
+    (
+        "",
+        "detail",
+        [
+            "how the arguments differ from the parameters",
+            "الفرق بين المعاملات الممرَّرة ومعاملات الدالة",
+            "el far2 ben el arguments wel parameters",
+        ],
+    ),
+    (
+        "K0420",
         "type",
-        ["the literal's type", "نوع القيمة", "no3 el qeema"],
+        [
+            "the type of the value before the dot",
+            "نوع القيمة التي قبل النقطة",
+            "no3 el qeema elly 2abl el no2ta",
+        ],
+    ),
+    (
+        "K0420",
+        "name",
+        [
+            "the field or method name as you wrote it",
+            "اسم الحقل أو الدالة كما كتبته",
+            "esm el field aw el method zay ma katabto",
+        ],
+    ),
+    (
+        "K0603",
+        "type",
+        ["the value's type", "نوع القيمة", "no3 el qeema"],
+    ),
+    (
+        "K0730",
+        "type",
+        ["the expression's type", "نوع التعبير", "no3 el expression"],
+    ),
+    (
+        "K0803",
+        "name",
+        [
+            "the member's name, such as Circle",
+            "اسم العضو، مثل دائرة",
+            "esm el member, zay Circle",
+        ],
+    ),
+    (
+        "K1103",
+        "name",
+        ["the method's name", "اسم الدالة", "esm el method"],
+    ),
+    (
+        "K0418",
+        "name",
+        [
+            "the private item's name",
+            "اسم العنصر الخاص",
+            "esm el 7aga el private",
+        ],
+    ),
+    (
+        "K0418",
+        "module",
+        [
+            "the module that declares it",
+            "الوحدة التي تعرّفه",
+            "el module elly bet3arrafo",
+        ],
+    ),
+    (
+        "K1601",
+        "expected",
+        [
+            "the sink type, such as Sql",
+            "نوع المصبّ، مثل Sql",
+            "no3 el sink, zay Sql",
+        ],
+    ),
+    (
+        "K1601",
+        "found",
+        [
+            "the type you passed, such as String",
+            "النوع الذي مرّرته، مثل نص",
+            "el type elly ba3ato, zay nass",
+        ],
     ),
     (
         "",

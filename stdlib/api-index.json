@@ -2149,6 +2149,22 @@
       "doc": "The same value as a `Float` (exact up to 2^53)."
     },
     {
+      "path": "Int.to_string",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "to_string",
+      "owner": "Int",
+      "receiver": "impl Int",
+      "signature": "fn to_string(self) -> String",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The decimal text with ASCII digits, a stable wire format (§6.2)."
+    },
+    {
       "path": "Int.wrapping_add",
       "module": "std/prelude",
       "kind": "method",

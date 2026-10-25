@@ -1,0 +1,6 @@
+dala ra2isi():
+    khali point = (3, 4)
+    khali (x, y) = point
+    motghayer total = x + y
+    total += 1
+    ektb("{total}")

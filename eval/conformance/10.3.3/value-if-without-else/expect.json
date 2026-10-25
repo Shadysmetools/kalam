@@ -1,0 +1,11 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0731"
+  ],
+  "lines": [
+    3
+  ],
+  "stage": "parse",
+  "notes": "§10.3.3: \"**Multi-line value form:** after `let x =`, `var x =`, an assignment or `return`, `if_form` and `match_form` are expressions. Each arm yields its **last expression**, and all arms must have the same type. `if` without `else` is not allowed there (K0731).\" Stage `parse`: the value position (after `let x =`) and the missing `else` are both syntactic (§8.3, §10.3.3)."
+}

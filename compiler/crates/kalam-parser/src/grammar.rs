@@ -81,6 +81,15 @@ impl<'t> Parser<'t> {
             let open = self.bump().span;
             let items = self.delimited(Op::RBrace, open, "`}`", |p| p.use_item());
             UseTail::Items(items)
+        } else if self.at_op(Op::Dot) && self.nth(1) == TokenKind::Op(Op::Star) {
+            // `use a.*` (K1203): there are no glob imports (§13.1). Read as `use a`, so the
+            // rest of the file parses; no fix, since only the author knows which names to list.
+            let start = self.cur().span.start;
+            let end = self.toks.get(self.pos + 1).map_or(start, |t| t.span.end);
+            self.mistake(codes::GLOB_IMPORT, mk_span(start, end), None);
+            self.bump();
+            self.bump();
+            UseTail::None
         } else if self.eat_kw(Concept::KwAs) {
             UseTail::Alias(self.ident("a module alias"))
         } else {
@@ -144,7 +153,7 @@ impl<'t> Parser<'t> {
             TokenKind::Keyword(Concept::KwEnum) => SyntaxKind::EnumDecl,
             TokenKind::Keyword(Concept::KwTrait) => SyntaxKind::TraitDecl,
             TokenKind::Keyword(Concept::KwImpl) => SyntaxKind::ImplDecl,
-            TokenKind::Keyword(Concept::KwLet) => SyntaxKind::ConstDecl,
+            TokenKind::Keyword(Concept::KwLet | Concept::KwVar) => SyntaxKind::ConstDecl,
             TokenKind::Keyword(Concept::KwExtern) => SyntaxKind::ExternDecl,
             TokenKind::Keyword(Concept::KwTest) => SyntaxKind::TestDecl,
             _ => SyntaxKind::Error,
@@ -168,6 +177,7 @@ impl<'t> Parser<'t> {
             TokenKind::Keyword(Concept::KwTrait) => self.trait_decl(),
             TokenKind::Keyword(Concept::KwImpl) => self.impl_decl(),
             TokenKind::Keyword(Concept::KwLet) => self.const_decl(),
+            TokenKind::Keyword(Concept::KwVar) => self.module_var(),
             TokenKind::Keyword(Concept::KwExtern) => self.extern_decl(),
             TokenKind::Keyword(Concept::KwTest) => self.test_decl(),
             _ => match self.item_mistake() {
@@ -293,12 +303,11 @@ impl<'t> Parser<'t> {
             return Some(Param::SelfParam(mk_span(t.span.start, t.span.end)));
         }
         let start = self.start();
-        if self.peek() != TokenKind::Ident {
+        if !self.at_binding_name() {
             self.expected("a parameter name");
             return None;
         }
-        let t = self.bump();
-        let name = self.word_ident(t);
+        let name = self.binding_ident("a parameter name");
         let ty = if self.at_op(Op::Colon) {
             self.bump();
             self.ty()
@@ -653,6 +662,24 @@ impl<'t> Parser<'t> {
         ItemKind::Const(ConstDecl { name, ty, value })
     }
 
+    /// `var x = …` at module level (K1202, §13.4: no global mutable state), parsed as the
+    /// constant `let x = …` so nothing cascades. The fix to `let` is only a suggestion: code
+    /// that assigns to the variable needs a `Cell` passed down from `main` instead (§15.6).
+    fn module_var(&mut self) -> ItemKind {
+        let t = self.cur();
+        let kw = self.spell(Concept::KwLet);
+        self.mistake(
+            codes::MODULE_VAR,
+            t.span,
+            Some(kalam_diagnostics::Fix::suggestion(
+                format!("write `{kw}`"),
+                t.span,
+                kw,
+            )),
+        );
+        self.const_decl()
+    }
+
     fn extern_decl(&mut self) -> ItemKind {
         self.bump(); // extern
         let decl = if self.at_kw(Concept::KwFn) {
@@ -992,7 +1019,7 @@ impl<'t> Parser<'t> {
     /// `NAME [":" type] "=" rhs` after `var` (or a reported `let mut`).
     fn var_rest(&mut self, forms: bool, binding_start: u32) -> (StmtKind, bool) {
         self.block_lambda = None;
-        let name = self.ident("a variable name");
+        let name = self.binding_ident("a variable name");
         let ty = if self.eat_op(Op::Colon) {
             Some(self.ty())
         } else {
@@ -1255,6 +1282,29 @@ impl<'t> Parser<'t> {
                 span: self.cur_span(),
             }
         }
+    }
+
+    /// A name being bound where the AST keeps a plain identifier: a `var` name, a function
+    /// or lambda parameter, a name after `as`, a list-rest name. The file's own core name
+    /// there is K0413 (§7.2: core names cannot be declared or shadowed), recovered as an
+    /// identifier. Another skin's core name lexes as an identifier and is legal
+    /// (FOUNDER-QUEUE Q21), and so is a backticked one.
+    pub(crate) fn binding_ident(&mut self, what: &str) -> Ident {
+        if let TokenKind::Core(_) = self.peek() {
+            let t = self.bump();
+            let id = self.word_ident(t);
+            self.diags.push(
+                kalam_diagnostics::Diagnostic::new(codes::CORE_NAME_DECLARED, self.file, id.span)
+                    .arg("name", format!("`{}`", id.name)),
+            );
+            return id;
+        }
+        self.ident(what)
+    }
+
+    /// The cursor is at an identifier or a core name (a name [`Self::binding_ident`] takes).
+    pub(crate) fn at_binding_name(&self) -> bool {
+        matches!(self.peek(), TokenKind::Ident | TokenKind::Core(_))
     }
 
     pub(crate) fn error_expr(&self) -> Expr {

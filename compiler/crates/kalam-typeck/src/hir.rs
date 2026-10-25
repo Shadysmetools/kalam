@@ -1,13 +1,18 @@
-//! The resolved program the type checker consumes: a small, skin-free HIR in which every
-//! name is already resolved, plus the [`ResolvedProgram`] trait that serves it.
+//! The type checker's input: a small, skin-free HIR in which every name is already
+//! resolved.
 //!
-//! **Contract with `kalam-resolve` (ARCHITECTURE.md §8.1).** `kalam-typeck` depends on
-//! `kalam-resolve`, so resolve cannot implement a trait defined here without a dependency
-//! cycle. The adapter is therefore `impl ResolvedProgram for <resolve's output>`, written in
-//! this crate (allowed: the trait is local) or in `kalam-driver`. Resolve's obligations:
+//! **Where it comes from.** [`crate::lower::lower_program`] builds it from the real output
+//! of name resolution, `kalam_resolve::Program`, together with each module's `kalam_ast`
+//! tree (ARCHITECTURE.md §8.1: "the adapter walks `kalam_ast` together with resolve's
+//! `Program` (its `uses`/`decls` tables keyed by name spans) and emits HIR"). Resolve keeps
+//! owning `DefId` and `ModulePath`; HIR reuses them unchanged. [`crate::builder`] builds HIR
+//! by hand for unit tests of later passes.
 //!
-//! 1. Every item, impl/trait method, enum variant and record gets a [`DefId`]; every local
-//!    and parameter gets a [`LocalId`] unique within its body (the owning item's body).
+//! Resolve's obligations, which the lowering relies on:
+//!
+//! 1. Every item, impl/trait method, enum variant and record has a [`DefId`]; every local
+//!    and parameter of a body gets a [`LocalId`] unique within that body (the owning item's
+//!    body; lambdas and local `fn`s share their enclosing body's table).
 //! 2. Every name use is an [`ExprKind::Local`], [`ExprKind::Def`] or [`ExprKind::Lang`]
 //!    (core names: `print`, `panic`, `assert`, `Some`, `None`, `Ok`, `Err`); unresolved
 //!    names become [`ExprKind::Error`] after resolve has reported K0401.
@@ -23,28 +28,16 @@
 //! 7. No-shadowing, one-namespace, visibility and `break`-outside-loop are resolve's checks;
 //!    typeck assumes them.
 //!
-//! [`HirProgram`] is a plain in-memory implementation, used by unit tests and usable by
-//! the adapter.
+//! A `DefId` that names no item is treated by the checker as an already-reported error,
+//! never a panic: the type checker is a fuzz target.
 
 use std::collections::HashMap;
 
-use kalam_base::{FileId, Span};
+use kalam_base::{FileId, Skin, Span};
 use kalam_resolve::{DefId, ModulePath};
 
 use crate::traits::{BuiltinTrait, TraitId};
 use crate::ty::{Capability, SinkType};
-
-/// The interface between name resolution and type checking.
-pub trait ResolvedProgram {
-    /// Every item, in any order: functions (top-level, impl and trait methods, signature
-    /// stubs), records, enums, aliases, traits, impls and constants. Variants are not
-    /// items; they are listed inside their enum.
-    fn item_ids(&self) -> Vec<DefId>;
-    /// `None` when `def` is not an item (a local, a variant, a prelude name the adapter
-    /// does not model). The checker treats that as an already-reported error, never a
-    /// panic, so malformed input cannot crash it.
-    fn item(&self, def: DefId) -> Option<&Item>;
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct LocalId(pub u32);
@@ -98,7 +91,7 @@ pub struct Type {
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypeKind {
     Builtin(BuiltinType, Vec<Type>),
-    /// A record, enum or alias.
+    /// A record, enum, alias or extern type.
     Def(DefId, Vec<Type>),
     Param(u32),
     SelfType,
@@ -146,6 +139,11 @@ pub enum ItemKind {
     Trait(TraitItem),
     Impl(ImplItem),
     Const(ConstDecl),
+    /// `extern type Db` (a type with no visible structure, spec §19.1), including the
+    /// stdlib's opaque built-in stubs that are not core types (`Cell[T]`, `Instant`, …).
+    Extern(ExternTypeDecl),
+    /// `test "name": body` (checked like the body of `fn() -> ()`).
+    Test(Body),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -167,9 +165,11 @@ pub struct FnDecl {
     pub ret: Option<Type>,
     /// `@sync` on the declaration (§15.4, K1402 is checked by `kalam-effects`).
     pub sync_attr: bool,
+    /// `@positional` (§12.1): exempt from K1104.
+    pub positional: bool,
     /// The impl or trait this method belongs to.
     pub parent: Option<DefId>,
-    /// `None` for a signature stub (stdlib stubs in M2, extern, required trait method).
+    /// `None` for a signature stub (extern, required trait method).
     pub body: Option<Body>,
 }
 
@@ -179,6 +179,9 @@ pub struct LocalDecl {
     /// `var` (rebindable, §10.2).
     pub mutable: bool,
     pub span: Span,
+    /// The closure (lambda or local `fn`) that declares it: 0 for the item's own body, then
+    /// one id per closure in the body. A use from another closure is a capture (§12.3).
+    pub closure: u32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -241,9 +244,17 @@ pub struct AliasDecl {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct ExternTypeDecl {
+    pub generics: Vec<GenericParamDecl>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct TraitItem {
     pub generics: Vec<GenericParamDecl>,
     pub methods: Vec<DefId>,
+    /// The stdlib's declaration of a built-in trait (`trait Show:` in `std/prelude`): the
+    /// trait is [`TraitId::Builtin`] and this item only supplies its methods.
+    pub builtin: Option<BuiltinTrait>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -320,6 +331,13 @@ pub enum StmtKind {
         cond: Expr,
         body: Block,
     },
+    /// A local `fn` (§12.3). Its parameters and locals live in the enclosing body's table,
+    /// declared with this closure id.
+    LocalFn {
+        local: LocalId,
+        closure: u32,
+        decl: Box<FnDecl>,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -358,6 +376,20 @@ impl BinOp {
             BinOp::IntDiv => "//",
             BinOp::Rem => "%",
         }
+    }
+
+    pub fn is_comparison(self) -> bool {
+        matches!(
+            self,
+            BinOp::Eq | BinOp::NotEq | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge
+        )
+    }
+
+    pub fn is_arithmetic(self) -> bool {
+        matches!(
+            self,
+            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::IntDiv | BinOp::Rem
+        )
     }
 }
 
@@ -418,7 +450,7 @@ pub enum ExprKind {
     /// `"a {x} b"`: holes must be `Show` (§9.7).
     Interp(Vec<StrPart>),
     /// `sql"…"` etc.: literal parts plus holes (§17). Hole requirements come from
-    /// `kalam-sinks` once its parsers land.
+    /// `kalam-sinks` once its parsers land; `path"…"` holes are `PathSegment` (K1641).
     Tagged {
         tag: kalam_sinks::Tag,
         parts: Vec<String>,
@@ -427,12 +459,19 @@ pub enum ExprKind {
     Bool(bool),
     Unit,
     Local(LocalId),
-    /// A function, constant, record (constructor), enum variant (qualified, `Shape.Circle`)
-    /// or trait method used by name (`Trait.m`).
+    /// A function, constant, record (constructor), enum variant (qualified, `Shape.Circle`),
+    /// an associated function (`Email.parse`) or a trait method used by name (`Trait.m`).
     Def(DefId),
     Lang(LangItem),
     /// `.Circle`, resolved against the expected type.
     ImplicitMember(String),
+    /// `Type.name` that name resolution could not settle (a member of a built-in type such
+    /// as `Decimal.from`, or a trait method reached through a type): an inherent or trait
+    /// associated function, chosen by DR-27's exactly-one rule.
+    AssocFn {
+        ty: Type,
+        name: String,
+    },
     Call {
         callee: Box<Expr>,
         args: Vec<Arg>,
@@ -470,6 +509,10 @@ pub enum ExprKind {
     },
     Tuple(Vec<Expr>),
     List(Vec<Expr>),
+    /// `{k: v, …}`; `{}` needs an expected type (K0802).
+    Map(Vec<(Expr, Expr)>),
+    /// `e?` (§14.3).
+    Try(Box<Expr>),
     /// Both the statement form and the value form (§10.3); `Stmt::Expr` position means
     /// statement form.
     If {
@@ -480,11 +523,20 @@ pub enum ExprKind {
         scrutinee: Box<Expr>,
         arms: Vec<Arm>,
     },
-    /// `fn(x) => body` (one expression, DR-15).
+    /// `fn(x) => body` (one expression, DR-15). Its parameters are declared with this
+    /// closure id (§12.3: a use of a `var` from outside is K1110).
     Lambda {
         params: Vec<LambdaParam>,
+        ret: Option<Type>,
         body: Box<Expr>,
+        closure: u32,
     },
+    /// `unsafe.raw_sql(…)` and the other escape hatches (§17.1). Typed with the capability
+    /// and sink rules of the next iteration; until then it is poison.
+    Unsafe(String),
+    /// A name that denotes a type (not a record constructor) used where a value goes:
+    /// `first[Int](xs)` (explicit type arguments, K0922). Elsewhere it is poison.
+    TypeName(Type),
     Error,
 }
 
@@ -492,6 +544,13 @@ pub enum ExprKind {
 pub struct Pat {
     pub kind: PatKind,
     pub span: Span,
+}
+
+/// One field of a variant or record pattern: `w`, `width: w`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PatField {
+    pub label: Option<String>,
+    pub pat: Pat,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -519,37 +578,76 @@ pub enum PatKind {
         item: LangItem,
         inner: Option<Box<Pat>>,
     },
-    /// `.V(…)` (`def: None`) or `Shape.V(…)`.
+    /// `.V(…)` (`def: None`) or `Shape.V(…)`. Fields are positional (declaration order) or
+    /// labelled; `rest` is a trailing `..`.
     Variant {
         def: Option<DefId>,
         name: String,
-        fields: Vec<Pat>,
+        fields: Vec<PatField>,
         rest: bool,
     },
+    /// `User(role: .Admin, name: n, ..)` (§11 rule 8).
+    Record {
+        def: DefId,
+        fields: Vec<PatField>,
+        rest: bool,
+    },
+    /// `[]`, `[x]`, `[first, ..rest]`, `[.., last]` (§11 rule 7). `rest` is `Some` when
+    /// the pattern has `..`, with the binding of `..name`.
+    List {
+        before: Vec<Pat>,
+        rest: Option<Option<LocalId>>,
+        after: Vec<Pat>,
+    },
     Or(Vec<Pat>),
+    /// `p as name` (§11 rule 9).
+    As {
+        pat: Box<Pat>,
+        local: LocalId,
+    },
     Error,
 }
 
 impl Pat {
-    /// Irrefutable patterns may appear in `let` and `for` (K1003).
+    /// A pattern that matches every value of a single-constructor type: a quick test only;
+    /// the checker decides refutability with the usefulness algorithm (K1003).
     pub fn is_irrefutable(&self) -> bool {
         match &self.kind {
             PatKind::Wild | PatKind::Bind(_) | PatKind::Error => true,
             PatKind::Tuple(ps) => ps.iter().all(Pat::is_irrefutable),
+            PatKind::As { pat, .. } => pat.is_irrefutable(),
+            PatKind::Record { fields, .. } => fields.iter().all(|f| f.pat.is_irrefutable()),
             _ => false,
         }
     }
 }
 
 // ---------------------------------------------------------------------------------------
-// In-memory program
+// The program
 // ---------------------------------------------------------------------------------------
 
-/// A plain in-memory [`ResolvedProgram`].
+/// A whole program in HIR form.
 #[derive(Clone, Debug, Default)]
 pub struct HirProgram {
     items: Vec<Item>,
     index: HashMap<DefId, usize>,
+    /// The members of built-in types are known: the stdlib signature stubs are part of the
+    /// program, so an unknown method or field of a built-in type is K0420. Without them a
+    /// member of a built-in type is poison (nothing is reported about it).
+    pub api_complete: bool,
+    /// The stdlib's `World` record stub, whose fields (`world.net`, `world.stdin`, …) are
+    /// the fields of the capability type `World` (§16.1).
+    pub world: Option<DefId>,
+    /// The source text between the quotes of each plain one-line string literal (escapes
+    /// as written), by `(owner, ExprId)`. K1601's fix rewrites `"…" + x` concatenation into
+    /// a tagged literal from these texts (§17.1).
+    pub raw_strings: HashMap<(DefId, ExprId), String>,
+    /// For each body owner, how many times each local is used (K1601's fix may rewrite the
+    /// initializer of a local used once).
+    pub local_uses: HashMap<(DefId, LocalId), u32>,
+    /// Each file's skin: a fix that inserts a keyword (K1101's `return`) spells it the way
+    /// the file does.
+    pub skins: HashMap<FileId, Skin>,
 }
 
 impl HirProgram {
@@ -572,14 +670,17 @@ impl HirProgram {
     pub fn items(&self) -> &[Item] {
         &self.items
     }
-}
 
-impl ResolvedProgram for HirProgram {
-    fn item_ids(&self) -> Vec<DefId> {
+    /// Every item, in program order: functions (top-level, impl and trait methods, signature
+    /// stubs), records, enums, aliases, traits, impls, constants, extern types and tests.
+    /// Variants are not items; they are listed inside their enum.
+    pub fn item_ids(&self) -> Vec<DefId> {
         self.items.iter().map(|i| i.def).collect()
     }
 
-    fn item(&self, def: DefId) -> Option<&Item> {
+    /// `None` when `def` is not an item (a local, a variant, a prelude name). The checker
+    /// treats that as an already-reported error, never a panic.
+    pub fn item(&self, def: DefId) -> Option<&Item> {
         self.index.get(&def).map(|&i| &self.items[i])
     }
 }

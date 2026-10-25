@@ -1,0 +1,11 @@
+fn main():
+    let n = 2
+    let short = if n == 1: "item" else: "items"
+    let label = if n == 1:
+        "one"
+    else:
+        "many"
+    let size = match n:
+        case 0: "none"
+        case _: "some"
+    print("{short} {label} {size}")

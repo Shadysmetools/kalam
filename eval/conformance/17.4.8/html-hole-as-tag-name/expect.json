@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1614"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "§17.4.8: \"tag name or attribute name (`<{t}>`, `<a {n}=\"x\">`) | — | **K1614**.\""
+}

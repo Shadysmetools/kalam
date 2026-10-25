@@ -1,0 +1,8 @@
+fn main():
+    for i in 0..3:
+        print("{i}")
+    for j in 1..=2:
+        print("{j}")
+    var n = 0
+    while n < 2:
+        n += 1

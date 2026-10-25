@@ -1,0 +1,3 @@
+fn main():
+    let host = "example.com"
+    let _ = url"https://{host}/users"

@@ -123,6 +123,10 @@ impl Int:
     @builtin
     export fn to_float(self) -> Float => panic("builtin")
 
+    ## The decimal text with ASCII digits, a stable wire format (§6.2).
+    @builtin
+    export fn to_string(self) -> String => panic("builtin")
+
     ## The absolute value. Panics on the minimum `Int`.
     @builtin
     export fn abs(self) -> Int => panic("builtin")

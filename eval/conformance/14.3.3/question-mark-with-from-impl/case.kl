@@ -1,0 +1,25 @@
+enum ParseFail:
+    Empty
+
+enum LoadFail:
+    Missing
+
+fn parse(text: String) -> Result[Int, ParseFail]:
+    if text == "":
+        return Err(.Empty)
+    return Ok(1)
+
+impl LoadFail as From[ParseFail]:
+    fn from(value: ParseFail) -> LoadFail => LoadFail.Missing
+
+fn load(text: String) -> Result[Int, LoadFail]:
+    let n = parse(text)?
+    return Ok(n)
+
+fn reparse(text: String) -> Result[Int, ParseFail]:
+    let n = parse(text)?
+    return Ok(n + 1)
+
+fn main():
+    let _ = load("1")
+    let _ = reparse("1")

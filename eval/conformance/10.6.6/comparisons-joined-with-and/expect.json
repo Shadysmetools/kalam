@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§10.6.6: \"| 6 | `==` `!=` `<` `<=` `>` `>=` | none (chaining is K0720) |\". Positive twin: two comparisons joined with `and`, and a parenthesized comparison compared again."
+}

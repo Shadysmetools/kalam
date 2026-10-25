@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§12.1.1: \"**Block-bodied functions with a non-`()` return type need an explicit `return`** on every path (K1101; the fix inserts `return` before a final expression of the right type) (DR-08).\" §12.1.2: \"**Expression-bodied** functions use `=> expr`.\" Positive twin."
+}

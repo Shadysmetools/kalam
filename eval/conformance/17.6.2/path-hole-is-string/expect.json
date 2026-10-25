@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1641"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "§17.6.2: \"`path\"uploads/{name}\"`: a hole must be a `PathSegment`, not a `String` (K1641, fix-it `PathSegment.parse(name)?`).\""
+}

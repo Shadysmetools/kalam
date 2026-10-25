@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§17.3.1: \"Each `{expr}` becomes a **bound parameter** … Accepted hole types implement `SqlParam`: `Int`, … `String`, … `List[T]` (expanded for `IN {ids}` …)\". §17.3.4: a `;` inside quotes is not a second statement. §17.3.5: \"`--` and `/* */` comments are allowed in the literal.\" Positive twin of K1602–K1605."
+}

@@ -1,0 +1,11 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0413"
+  ],
+  "lines": [
+    2
+  ],
+  "stage": "resolve",
+  "notes": "§7.2.1: \"Core names are prelude items whose *spelling* comes from the skin table. They cannot be declared, redefined or shadowed (K0413), so translating them never changes meaning.\" A local `let` that reuses the file's own spelling of `print` redefines a core name. The converted skins use their own spelling (`اطبع`, `ektb`). (§10.1.2 also lists core names under K0405; §7.2 and §27 name K0413, so this case expects K0413.)"
+}

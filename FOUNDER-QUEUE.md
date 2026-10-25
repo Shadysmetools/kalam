@@ -32,3 +32,9 @@ Minor design forks the loop decided provisionally. Each one is reversible. Confi
 | Q24 | Denominator for diagnostic completeness | Strict: every code in §27 plus the catalog (136 today) | M2 iter 1 |
 | Q25 | Literal typing in binary operators (`1 + 2.5`) | Bidirectional: an integer literal takes the other operand's known `Float`/`Decimal`/`BigInt` type, so `1 + 2.5` is a Float. Variables still never convert (K0601). Conformance case 9.1.2 is rewritten to use a variable operand | M2 iter 1 (typeck proposal) |
 | Q26 | M1 fuzz oracle violations (3 convert bugs: an Arabic conversion triggers SEC0105; one Franco round trip) found on the frozen M1 binary | They don't reset the crash-free clock. They are documented at M1 close and fixed in M2 code, and the M2 fuzz run re-verifies them | M2 iter 1 |
+| Q27 | An impl method that doesn't match its trait (wrong return type or parameters; a missing or extra method) has no §27 code | New code K1107 "impl does not match its trait" (spec §27 erratum) | M2 iter 2 verifier |
+| Q28 | `?` inside a lambda | It returns from the lambda (as in Rust closures), so the lambda's return type is inferred as Result/Option | M2 iter 2 |
+| Q29 | Counting SEC0110 bidi controls on one line | The lexer merges each line's controls into one diagnostic that names every code point (matches T50's expected output) | M2 iter 2 |
+| Q30 | Golden coverage against the 141-code denominator | No exemption: author goldens until coverage reaches ≥ 70% | M2 iter 2 |
+| Q31 | `let x: Int = 7 / 2` (Int / Int is Float) | K0600 "expected Int, found Float", with help suggesting `//` | M2 iter 2 |
+| Q32 | K1001 missing-arms fix (§11 rule 1) | A machine fix in M2 | M2 iter 2 |

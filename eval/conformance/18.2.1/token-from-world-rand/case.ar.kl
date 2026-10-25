@@ -1,0 +1,5 @@
+دالة رئيسي(world: عالم):
+    ليكن t = world.rand.token(bytes: 32)
+    ليكن n = world.rand.int(0..10)
+    ليكن id = world.rand.uuid_v4()
+    اطبع("{t} {n} {id}")

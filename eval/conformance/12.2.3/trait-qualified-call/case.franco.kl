@@ -1,0 +1,23 @@
+sefa Named:
+    dala label(nafso) -> nass
+
+sefa Tagged:
+    dala label(nafso) -> nass
+
+haykal Item:
+    id: adad
+
+naffez Item ka Named:
+    dala label(nafso) -> nass => "named"
+
+naffez Item ka Tagged:
+    dala label(nafso) -> nass => "tagged"
+
+naffez Item:
+    dala code(nafso) -> adad => nafso.id
+
+dala ra2isi():
+    khali item = Item(id: 1)
+    ektb(Named.label(item))
+    ektb(Tagged.label(item))
+    ektb("{item.code()}")

@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§17.6.1: holes in a literal-host URL are percent-encoded. §17.6.2: a `path` hole must be a `PathSegment`. §17.6.3: `regex\"^[a-z0-9_]\\{3,20\\}$\"` is the spec's own example. Positive twin of K1631/K1641."
+}

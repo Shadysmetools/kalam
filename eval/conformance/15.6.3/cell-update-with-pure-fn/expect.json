@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§15.6.3: \"`Cell[T]`: `Cell.new(v)`, `.get()`, `.set(v)`, `.update(@sync fn(T) -> T)`. The update function cannot suspend, so **`update` is atomic**.\" §15.4.1: passing a suspending function where `@sync` is required is K1401. §16.1.2: `Cell` is ambient. Positive twin."
+}

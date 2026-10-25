@@ -182,7 +182,8 @@ fn equality_needs_same_eq_type_but_float_has_ieee_equality() {
         vec![let_stmt(b, None, eq)]
     });
     assert_eq!(codes(b), vec!["K0602"]);
-    // `1 == 1.0` is mixed numeric
+    // `i == 1.0` with `i: Int` compares two types: §9.8 says K0602 ("`1 == 1.0` is
+    // K0602"), not the arithmetic code K0601.
     let b = main_with(|b| {
         let one = b.int(1);
         let (s1, x) = b.let_("i", None, one);
@@ -191,7 +192,7 @@ fn equality_needs_same_eq_type_but_float_has_ieee_equality() {
         let eq = b.bin(BinOp::Eq, xr, f);
         vec![s1, let_stmt(b, None, eq)]
     });
-    assert_eq!(codes(b), vec!["K0601"]);
+    assert_eq!(codes(b), vec!["K0602"]);
     // Float == Float is fine.
     ok(main_with(|b| {
         let (l, r) = (b.float("0.1"), b.float("0.2"));
@@ -602,6 +603,7 @@ fn add_first(b: &mut Builder) -> DefId {
             params: vec![xs],
             ret: Some(ret),
             sync_attr: false,
+            positional: false,
             parent: None,
             body: None,
         }),
@@ -653,6 +655,7 @@ fn fn_typed_parameters_are_effect_polymorphic() {
             params: vec![f, x],
             ret: Some(i),
             sync_attr: false,
+            positional: false,
             parent: None,
             body: None,
         }),
@@ -746,7 +749,9 @@ fn lambdas_need_types_from_context() {
         let body = b.local_ref(p);
         let lam = b.e(ExprKind::Lambda {
             params: vec![LambdaParam { local: p, ty: None }],
+            ret: None,
             body: Box::new(body),
+            closure: 1,
         });
         vec![let_stmt(b, None, lam)]
     });
@@ -758,7 +763,9 @@ fn lambdas_need_types_from_context() {
     let body = b.bin(BinOp::Add, pr, one);
     let lam = b.e(ExprKind::Lambda {
         params: vec![LambdaParam { local: p, ty: None }],
+        ret: None,
         body: Box::new(body),
+        closure: 1,
     });
     let i = int_ty(&b);
     let ft = b.ty(TypeKind::Fn {

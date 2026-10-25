@@ -8,11 +8,22 @@
 //! Incrementality: Phase 0 caches per file by content hash; Phase 1 moves to `salsa`
 //! queries. Dependency packages are never re-type-checked: their `.kli` interfaces are used.
 //!
-//! Status: [`check_source`] runs the lexer, the parser and name resolution (single file;
-//! [`check_project`] resolves a whole package, optionally with a stdlib directory). Each
-//! later stage is added as it lands, in the order of spec §4.2.
+//! Status: [`check_source`] runs the lexer, the parser, name resolution and the type
+//! checker on one file; [`check_project`] does the same for a whole package, optionally
+//! with a stdlib directory. Each stage runs only when the stages before it found no error
+//! (root cause first, ARCHITECTURE.md §12.4). Each later stage is added as it lands, in the
+//! order of spec §4.2.
+//!
+//! **Type checking one file.** `kalam check FILE` resolves the file on its own (every
+//! import opaque), exactly as before, and reports what that finds. When that is clean, the
+//! file is type-checked against the stdlib signature stubs, which this crate embeds
+//! (`stdlib/src`, the same text `kalam check --std` reads): the file is resolved a second
+//! time together with them, so `xs.len()` and `use std/http` have their real types. If
+//! that second resolution finds an error the first did not (a stub name the file reuses),
+//! the type check is skipped rather than guessed. Imports of other modules stay opaque.
 
 use std::collections::BTreeMap;
+use std::sync::OnceLock;
 
 use kalam_base::{FileId, LineIndex, Skin};
 use kalam_diagnostics::{render_human, render_json, Diagnostic, Lang, SourceView};
@@ -103,6 +114,7 @@ pub fn check_source(path: &str, text: &str) -> Result<CheckedFile, NotKalamFile>
     let mut parsed = kalam_parser::parse_source(text, skin, FileId(0));
     let diagnostics = std::mem::take(&mut parsed.diagnostics);
     let diagnostics = resolve_single(skin, &parsed, diagnostics);
+    let diagnostics = typecheck_single(skin, &parsed, diagnostics);
     Ok(CheckedFile {
         path: path.to_string(),
         skin,
@@ -126,6 +138,95 @@ fn resolve_single(
     }
     let (_, resolved) = kalam_resolve::resolve_file(FileId(0), skin, &parsed.ast);
     append_resolved(diagnostics, resolved)
+}
+
+/// The stdlib signature stubs (`stdlib/src`), embedded so a single-file check can type
+/// against them. Module `std/<name>` for `<name>.kl`.
+const STDLIB: &[(&str, &str)] = &[
+    ("bigint", include_str!("../../../../stdlib/src/bigint.kl")),
+    ("decimal", include_str!("../../../../stdlib/src/decimal.kl")),
+    ("env", include_str!("../../../../stdlib/src/env.kl")),
+    ("fs", include_str!("../../../../stdlib/src/fs.kl")),
+    ("http", include_str!("../../../../stdlib/src/http.kl")),
+    ("json", include_str!("../../../../stdlib/src/json.kl")),
+    ("list", include_str!("../../../../stdlib/src/list.kl")),
+    ("log", include_str!("../../../../stdlib/src/log.kl")),
+    ("map", include_str!("../../../../stdlib/src/map.kl")),
+    ("math", include_str!("../../../../stdlib/src/math.kl")),
+    ("option", include_str!("../../../../stdlib/src/option.kl")),
+    ("path", include_str!("../../../../stdlib/src/path.kl")),
+    ("prelude", include_str!("../../../../stdlib/src/prelude.kl")),
+    ("proc", include_str!("../../../../stdlib/src/proc.kl")),
+    ("random", include_str!("../../../../stdlib/src/random.kl")),
+    ("result", include_str!("../../../../stdlib/src/result.kl")),
+    ("set", include_str!("../../../../stdlib/src/set.kl")),
+    ("sql", include_str!("../../../../stdlib/src/sql.kl")),
+    ("string", include_str!("../../../../stdlib/src/string.kl")),
+    ("time", include_str!("../../../../stdlib/src/time.kl")),
+];
+
+/// The embedded stubs, parsed once: module path and parse. `None` if one of them does
+/// not parse (then single-file checks stop after name resolution).
+type StdModules = Vec<(kalam_resolve::ModulePath, kalam_parser::ParseOutput)>;
+
+fn embedded_stdlib() -> Option<&'static StdModules> {
+    static PARSED: OnceLock<Option<StdModules>> = OnceLock::new();
+    PARSED
+        .get_or_init(|| {
+            let mut out = Vec::new();
+            for (i, (name, text)) in STDLIB.iter().enumerate() {
+                let parsed = kalam_parser::parse_source(text, Skin::En, FileId(1 + i as u32));
+                if parsed.diagnostics.iter().any(Diagnostic::is_error) {
+                    return None;
+                }
+                out.push((kalam_resolve::ModulePath(format!("std/{name}")), parsed));
+            }
+            Some(out)
+        })
+        .as_ref()
+}
+
+/// The type checker on one file (see the crate docs), after a clean lex, parse and
+/// resolve. Its findings come after the earlier ones, in source order.
+fn typecheck_single(
+    skin: Skin,
+    parsed: &kalam_parser::ParseOutput,
+    diagnostics: Vec<Diagnostic>,
+) -> Vec<Diagnostic> {
+    if diagnostics.iter().any(Diagnostic::is_error) {
+        return diagnostics;
+    }
+    let Some(std) = embedded_stdlib() else {
+        return diagnostics;
+    };
+    let mut sources = vec![kalam_resolve::SourceModule {
+        path: kalam_resolve::ModulePath("main".to_string()),
+        file: FileId(0),
+        skin,
+        ast: &parsed.ast,
+        std: false,
+    }];
+    for (i, (path, out)) in std.iter().enumerate() {
+        sources.push(kalam_resolve::SourceModule {
+            path: path.clone(),
+            file: FileId(1 + i as u32),
+            skin: Skin::En,
+            ast: &out.ast,
+            std: true,
+        });
+    }
+    // `std_loaded: false`: a `std/...` module the stubs do not have stays opaque, as in the
+    // plain single-file resolution.
+    let (program, resolved) =
+        kalam_resolve::resolve_program(&sources, &kalam_resolve::Options::default());
+    if resolved.iter().any(Diagnostic::is_error) {
+        return diagnostics;
+    }
+    let typed = kalam_typeck::diagnose_against_std(&program, &sources)
+        .into_iter()
+        .filter(|d| d.file == FileId(0))
+        .collect();
+    append_resolved(diagnostics, typed)
 }
 
 /// `earlier` followed by the resolver's findings, minus any that repeat an earlier finding
@@ -223,7 +324,7 @@ pub fn check_project(vfs: &dyn Vfs, root: &str, options: &ProjectOptions) -> Vec
         whole_package: true,
         std_loaded: options.std_dir.is_some(),
     };
-    let (_, resolved) = kalam_resolve::resolve_program(&sources, &resolve_options);
+    let (program, resolved) = kalam_resolve::resolve_program(&sources, &resolve_options);
     let mut per_file: Vec<Vec<Diagnostic>> = vec![Vec::new(); files.len()];
     for d in resolved {
         if let Some(list) = per_file.get_mut(d.file.0 as usize) {
@@ -235,6 +336,21 @@ pub fn check_project(vfs: &dyn Vfs, root: &str, options: &ProjectOptions) -> Vec
         if !file.has_errors() {
             let earlier = std::mem::take(&mut file.diagnostics);
             file.diagnostics = append_resolved(earlier, resolved);
+        }
+    }
+    // The type checker runs on the whole program, and only when every file (stdlib
+    // included) lexed, parsed and resolved without error.
+    if !files.iter().any(CheckedFile::has_errors) {
+        let typed = kalam_typeck::diagnose(&program, &sources);
+        let mut per_file: Vec<Vec<Diagnostic>> = vec![Vec::new(); files.len()];
+        for d in typed {
+            if let Some(list) = per_file.get_mut(d.file.0 as usize) {
+                list.push(d);
+            }
+        }
+        for (file, typed) in files.iter_mut().zip(per_file) {
+            let earlier = std::mem::take(&mut file.diagnostics);
+            file.diagnostics = append_resolved(earlier, typed);
         }
     }
     files
@@ -258,6 +374,7 @@ pub fn check_bytes(path: &str, bytes: &[u8]) -> Result<CheckedFile, NotKalamFile
     let diagnostics =
         kalam_parser::merge_diagnostics(text, lexed.lexed.diagnostics.clone(), parser);
     let diagnostics = resolve_single(skin, &parsed, diagnostics);
+    let diagnostics = typecheck_single(skin, &parsed, diagnostics);
     Ok(CheckedFile {
         path: path.to_string(),
         skin,
@@ -568,16 +685,86 @@ mod tests {
             ),
             vec!["K0250"]
         );
-        // Imports of other modules are opaque in a single-file check.
+        // Imports of other modules are opaque in a single-file check (the stdlib stubs are
+        // known to the type checker, so `Router` takes its type argument).
         assert!(codes(
             "a.kl",
             "use std/http.{Router}
 use app/db
 fn main():
-    let r: Router = db.open()
+    let r: Router[Int] = db.open()
 "
         )
         .is_empty());
+    }
+
+    #[test]
+    fn check_runs_the_type_checker_after_a_clean_resolve() {
+        let codes = |path: &str, src: &str| -> Vec<&'static str> {
+            check_source(path, src)
+                .unwrap()
+                .diagnostics
+                .iter()
+                .map(|d| d.code)
+                .collect()
+        };
+        // Spec §9.8: `1 == 1.0` compares an `Int` with a `Float`.
+        let probe = "fn main():\n    let same = 1 == 1.0\n    print(\"{same}\")\n";
+        assert_eq!(codes("a.kl", probe), vec!["K0602"]);
+        assert_eq!(
+            codes(
+                "a.ar.kl",
+                "دالة رئيسي():\n    ليكن same = 1 == 1.0\n    اطبع(\"{same}\")\n"
+            ),
+            vec!["K0602"]
+        );
+        // Stdlib members are typed from the embedded stubs: `List.get` is an `Option`.
+        assert_eq!(
+            codes(
+                "a.kl",
+                "fn head(xs: List[Int]) -> Result[Int, String]:\n    let n = xs.get(0)?\n    return Ok(n)\n\nfn main():\n    let _ = head([2])\n"
+            ),
+            vec!["K1302"]
+        );
+        assert!(codes(
+            "a.kl",
+            "use std/http\n\nfn main():\n    let r = http.router()\n    print(\"x\")\n"
+        )
+        .is_empty());
+        // A name error stops before the type checker: one root cause.
+        assert_eq!(
+            codes(
+                "a.kl",
+                "fn main():\n    let x: Int = nope\n    print(\"{x}\")\n"
+            ),
+            vec!["K0401"]
+        );
+        // `check_bytes` runs it too.
+        let a = check_bytes("a.kl", probe.as_bytes()).unwrap();
+        assert_eq!(a.diagnostics.len(), 1);
+        assert_eq!(a.diagnostics[0].code, "K0602");
+    }
+
+    #[test]
+    fn the_embedded_stdlib_is_the_stdlib_directory() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../stdlib/src");
+        let mut on_disk: Vec<(String, String)> = std::fs::read_dir(&dir)
+            .unwrap()
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().is_some_and(|x| x == "kl"))
+            .map(|p| {
+                let name = p.file_stem().unwrap().to_string_lossy().into_owned();
+                (name, std::fs::read_to_string(&p).unwrap())
+            })
+            .collect();
+        on_disk.sort();
+        let embedded: Vec<(String, String)> = STDLIB
+            .iter()
+            .map(|(n, t)| (n.to_string(), t.to_string()))
+            .collect();
+        assert_eq!(embedded, on_disk, "update STDLIB when stdlib/src changes");
+        assert!(embedded_stdlib().is_some(), "every stub parses");
     }
 
     #[test]

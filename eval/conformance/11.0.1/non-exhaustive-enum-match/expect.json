@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1001"
+  ],
+  "lines": [
+    null
+  ],
+  "notes": "§11.0.1: \"**Exhaustiveness is mandatory** (04 L8). A non-exhaustive `match` is K1001.\" `.Amber` is missing. The spec does not pin the line of K1001, so it is not checked."
+}

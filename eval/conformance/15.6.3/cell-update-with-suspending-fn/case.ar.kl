@@ -1,0 +1,9 @@
+دالة رئيسي(world: عالم):
+    ليكن counter = Cell.new(0)
+    ليكن fs = world.fs
+    دالة step(x: عدد) -> عدد:
+        إذا fs.exists(path"flag.txt"):
+            أرجع x + 1
+        أرجع x
+    counter.update(step)
+    اطبع("{counter.get()}")

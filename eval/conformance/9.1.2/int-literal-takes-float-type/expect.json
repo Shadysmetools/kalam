@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§9.1.2: \"No implicit conversions (04 L3).\" §10.6.11: \"Mixing numeric types (`Int + Float`) is K0601, with a fix to `.to_float()`.\" FOUNDER-QUEUE Q25 (binding provisional): \"Bidirectional: an integer literal takes the other operand's known `Float`/`Decimal`/`BigInt` type, so `1 + 2.5` is a Float.\" Positive twin: a literal operand, and an explicit `.to_float()` on an `Int`."
+}

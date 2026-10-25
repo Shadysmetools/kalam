@@ -1,0 +1,6 @@
+دالة has_config(fs: Fs) -> منطقي => fs.exists(path"config.toml")
+
+دالة رئيسي(world: عالم):
+    ليكن found = has_config(world.fs)
+    اطبع("{found}")
+    اطبع("{world.net}")

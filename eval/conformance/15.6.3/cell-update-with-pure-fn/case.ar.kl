@@ -1,0 +1,5 @@
+دالة رئيسي():
+    ليكن counter = Cell.new(0)
+    counter.update(دالة(n) => n + 1)
+    counter.set(5)
+    اطبع("{counter.get()}")

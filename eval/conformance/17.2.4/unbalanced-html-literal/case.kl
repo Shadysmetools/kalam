@@ -1,0 +1,2 @@
+fn main():
+    let _ = html"<p><b>hi</p>"

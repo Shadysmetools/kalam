@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1621"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "§17.5.2: \"**The program (first word) must be literal text** (K1621).\""
+}

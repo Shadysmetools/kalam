@@ -1,0 +1,4 @@
+fn main():
+    let r = Rand.seeded(7)
+    let t = r.token(bytes: 32)
+    print("{t}")

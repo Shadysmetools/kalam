@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1617"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "§17.4.10: \"unknown `k-*` attribute | — | **K1617**\". §20.3/DR-32: \"The `k-` attribute namespace is reserved\"."
+}

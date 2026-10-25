@@ -1,0 +1,11 @@
+دالة رئيسي():
+    ليكن n = 2
+    ليكن short = إذا n == 1: "item" وإلا: "items"
+    ليكن label = إذا n == 1:
+        "one"
+    وإلا:
+        "many"
+    ليكن size = حسب n:
+        عندما 0: "none"
+        عندما _: "some"
+    اطبع("{short} {label} {size}")

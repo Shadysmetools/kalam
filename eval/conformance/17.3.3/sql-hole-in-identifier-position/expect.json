@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1603"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "§17.3.3: \"**A hole in an identifier position** (table or column name, `ORDER BY {col}`, `ASC`/`DESC`) is **K1603**.\""
+}

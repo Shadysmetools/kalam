@@ -1,0 +1,9 @@
+dala ra2isi():
+    motghayer count = 1
+    count += 1
+    khali snapshot = count
+    khali add = dala(x: adad) => x + snapshot
+    dala twice(x: adad) -> adad:
+        khali once = add(x)
+        rag3 add(once)
+    ektb("{twice(1)}")

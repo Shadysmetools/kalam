@@ -32,6 +32,8 @@ pub struct VariantDef {
 pub enum AdtKind {
     Record(Vec<FieldDef>),
     Enum(Vec<VariantDef>),
+    /// An `extern type` (`Db`, `Cell[T]`, `Instant`): no visible fields or variants.
+    Extern,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -42,7 +44,8 @@ pub struct AdtDef {
     pub module: ModulePath,
     pub generics: Vec<GenericParam>,
     pub kind: AdtKind,
-    /// `export opaque`: fields, construction and `.with` are private to `module`.
+    /// `export opaque`: fields, construction and `.with` (and an enum's variants) are
+    /// private to `module` (§9.4, §9.5).
     pub opaque: bool,
     /// Explicit `@derive(…)` traits (needed for `Ord`, `Encode`, `Decode`, `Row`, `Message`).
     pub derives: Vec<BuiltinTrait>,
@@ -58,27 +61,28 @@ impl AdtDef {
                 .iter()
                 .flat_map(|v| v.fields.iter().map(|f| f.ty.subst(args)))
                 .collect(),
+            AdtKind::Extern => Vec::new(),
         }
     }
 
     pub fn field(&self, name: &str) -> Option<(usize, &FieldDef)> {
         match &self.kind {
             AdtKind::Record(fields) => fields.iter().enumerate().find(|(_, f)| f.name == name),
-            AdtKind::Enum(_) => None,
+            AdtKind::Enum(_) | AdtKind::Extern => None,
         }
     }
 
     pub fn variant(&self, name: &str) -> Option<(usize, &VariantDef)> {
         match &self.kind {
             AdtKind::Enum(vs) => vs.iter().enumerate().find(|(_, v)| v.name == name),
-            AdtKind::Record(_) => None,
+            AdtKind::Record(_) | AdtKind::Extern => None,
         }
     }
 
     pub fn variant_by_def(&self, def: DefId) -> Option<(usize, &VariantDef)> {
         match &self.kind {
             AdtKind::Enum(vs) => vs.iter().enumerate().find(|(_, v)| v.def == def),
-            AdtKind::Record(_) => None,
+            AdtKind::Record(_) | AdtKind::Extern => None,
         }
     }
 }

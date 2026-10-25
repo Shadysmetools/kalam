@@ -1,0 +1,9 @@
+talla3 dala transfer(from: adad, to: adad, amount: adad) -> adad => from + to + amount
+
+dala fee(amount: adad, rate: adad = 2) -> adad => amount * rate
+
+dala ra2isi():
+    khali r = transfer(from: 3, to: 2, amount: 1)
+    khali s = transfer(from: 1, to: 2, amount: 3)
+    khali f = fee(10)
+    ektb("{r} {s} {f}")

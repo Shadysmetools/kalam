@@ -1,0 +1,12 @@
+تعداد Payment:
+    Card(last4: نص)
+    Wallet(id: نص)
+    Cash
+
+دالة رئيسي():
+    ليكن p: Payment = .Cash
+    حسب p:
+        عندما .Card(code) | .Wallet(code):
+            اطبع(code)
+        عندما .Cash:
+            اطبع("cash")

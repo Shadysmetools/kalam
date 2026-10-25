@@ -112,6 +112,10 @@ pub struct ImplDecl {
     pub trait_ref: Option<TraitRef>,
     pub methods: Vec<(String, DefId)>,
     pub span: FileSpan,
+    /// Written by the stdlib, the one privileged package (stdlib/README.md "Where methods
+    /// live"): it implements built-in traits for built-in types, so the orphan rule does
+    /// not apply to it.
+    pub privileged: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -132,6 +136,8 @@ pub enum CoherenceError {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MethodCandidate {
+    /// The impl that writes the method; for a trait method that applies by derivation or
+    /// by a generic bound, the trait's own declaration.
     pub impl_def: DefId,
     pub method: DefId,
     /// `None` for an inherent method.
@@ -142,6 +148,15 @@ pub struct MethodCandidate {
 pub struct TraitEnv {
     pub traits: HashMap<TraitId, TraitDecl>,
     pub impls: Vec<ImplDecl>,
+}
+
+/// How deep trait solving follows components and impl bounds before assuming the goal.
+const MAX_SOLVE_DEPTH: usize = 64;
+
+/// `ty` with every inference variable replaced by `Ty::Error` (which unifies with
+/// anything), for matching against impl heads in a fresh inference context.
+pub fn erase_vars(ty: &Ty) -> Ty {
+    ty.map(&mut |t| matches!(t, Ty::Var(_)).then_some(Ty::Error))
 }
 
 /// The module that defines the head of `ty`, or `None` for a built-in type.
@@ -217,6 +232,9 @@ impl TraitEnv {
         let mut errors = Vec::new();
         for imp in &self.impls {
             let Some(tr) = &imp.trait_ref else { continue };
+            if imp.privileged {
+                continue;
+            }
             let trait_mod = self.trait_module(tr.id);
             let type_mod = head_module(&imp.self_ty, adts);
             if trait_mod != Some(&imp.module) && type_mod != Some(&imp.module) {
@@ -280,6 +298,12 @@ impl TraitEnv {
         tr: &TraitRef,
         assumed: &mut Vec<(Ty, TraitRef)>,
     ) -> Answer {
+        // An inference variable anywhere in the goal makes the answer depend on it: the
+        // checker asks again once the body is solved. (Impl heads are matched in a fresh
+        // inference context, which must never see an outer variable.)
+        if ty.has_vars() || tr.args.iter().any(Ty::has_vars) {
+            return Answer::Unknown;
+        }
         match ty {
             Ty::Error => return Answer::Yes,
             Ty::Var(_) => return Answer::Unknown,
@@ -292,7 +316,10 @@ impl TraitEnv {
             _ => {}
         }
         // Coinduction: a recursive type (`enum Tree: Node(left: Tree, …)`) assumes the goal.
-        if assumed.iter().any(|(t, r)| t == ty && r == tr) {
+        // A non-regular one (`Node(next: Tree[List[T]])`) never repeats a goal exactly, so
+        // past a fixed depth the goal is assumed too (no unbounded recursion: typeck is a
+        // fuzz target).
+        if assumed.len() > MAX_SOLVE_DEPTH || assumed.iter().any(|(t, r)| t == ty && r == tr) {
             return Answer::Yes;
         }
         assumed.push((ty.clone(), tr.clone()));
@@ -343,7 +370,15 @@ impl TraitEnv {
                 return Answer::No;
             }
             let comps = adt.component_types(args);
-            return self.all(adts, generics, &comps, tr, assumed);
+            // `Row` decodes each field from one column, and `Message` travels as data
+            // (§9.7, §17.3, §20.3): their fields need `Decode`, not the derived trait.
+            let field_trait = match b {
+                BuiltinTrait::Row | BuiltinTrait::Message => {
+                    TraitRef::builtin(BuiltinTrait::Decode)
+                }
+                _ => tr.clone(),
+            };
+            return self.all(adts, generics, &comps, &field_trait, assumed);
         }
         match builtin_requirement(ty, b) {
             None => Answer::No,
@@ -398,16 +433,26 @@ impl TraitEnv {
         None
     }
 
-    /// Methods named `name` that apply to `ty` (DR-27). The caller requires exactly one.
+    /// True when `imp`'s self type can be `ty` (bounds ignored). Inference variables of
+    /// the caller's context are erased first, since they could be anything.
+    pub fn impl_matches(imp: &ImplDecl, ty: &Ty) -> bool {
+        let ty = erase_vars(ty);
+        let mut cx = InferCtx::new();
+        let fresh: Vec<Ty> = imp.generics.iter().map(|_| cx.fresh()).collect();
+        cx.unify(&ty, &imp.self_ty.subst(&fresh)).is_ok()
+    }
+
+    /// Methods named `name` of impls whose self type can be `ty` (DR-27's impl part: the
+    /// inherent methods, and the trait methods some impl writes out). The checker adds the
+    /// methods of traits `ty` implements by derivation or by a bound, and requires exactly
+    /// one candidate.
     pub fn method_candidates(&self, ty: &Ty, name: &str) -> Vec<MethodCandidate> {
         let mut out = Vec::new();
         for imp in &self.impls {
             let Some((_, method)) = imp.methods.iter().find(|(n, _)| n == name) else {
                 continue;
             };
-            let mut cx = InferCtx::new();
-            let fresh: Vec<Ty> = imp.generics.iter().map(|_| cx.fresh()).collect();
-            if cx.unify(ty, &imp.self_ty.subst(&fresh)).is_ok() {
+            if Self::impl_matches(imp, ty) {
                 out.push(MethodCandidate {
                     impl_def: imp.def,
                     method: *method,
@@ -460,6 +505,7 @@ mod tests {
             trait_ref: Some(TraitRef::builtin(BuiltinTrait::Show)),
             methods: vec![("show".into(), DefId(def + 1000))],
             span: FileSpan::default(),
+            privileged: false,
         }
     }
 
@@ -630,6 +676,7 @@ mod tests {
             }),
             methods: vec![("pretty".into(), DefId(21))],
             span: FileSpan::default(),
+            privileged: false,
         };
         let int_list = ImplDecl {
             def: DefId(22),

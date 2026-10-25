@@ -1,0 +1,5 @@
+fn main():
+    let counter = Cell.new(0)
+    counter.update(fn(n) => n + 1)
+    counter.set(5)
+    print("{counter.get()}")

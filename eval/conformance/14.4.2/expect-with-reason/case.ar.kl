@@ -1,0 +1,5 @@
+دالة رئيسي():
+    ليكن xs = [1]
+    ليكن n = xs.get(0).expect("xs has one element")
+    تحقق(n == 1، "n is one")
+    اطبع("{n}")

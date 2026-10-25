@@ -248,9 +248,9 @@ fn p6_code_set_comes_from_spec_section_27() {
     ] {
         assert!(set.contains(code), "P6 set misses {code}");
     }
-    for code in ["SEC0107", "H0202", "W0114", "K1601"] {
-        assert!(!set.contains(code), "P6 set must not hold {code}");
-    }
+    // Retired codes never enter the set. (Codes of other families can: since M2 the
+    // catalog covers every spec §27 family, and the P6 set includes every catalog code.)
+    assert!(!set.contains("SEC0107"), "P6 set must not hold SEC0107");
     assert!(set.len() >= 67, "P6 set has {} codes: {set:?}", set.len());
 }
 
@@ -302,10 +302,79 @@ fn every_p6_code_has_title_message_help_and_explain_in_three_languages() {
     assert!(gaps.is_empty(), "P6 gaps: {gaps:#?}");
 }
 
+// ---- M2 strict code set (FOUNDER-QUEUE Q24) -------------------------------------------
+
+/// The M2 strict denominator of D5.diag_completeness (Q24): every spec §27 code in every
+/// family, minus retired rows, plus every catalog code and every emitted code.
+fn m2_codes() -> BTreeSet<String> {
+    let spec = spec_codes(&spec_text());
+    let retired: BTreeSet<&str> = spec
+        .iter()
+        .filter(|(_, r)| *r)
+        .map(|(c, _)| c.as_str())
+        .collect();
+    let mut set: BTreeSet<String> = spec
+        .iter()
+        .filter(|(_, r)| !r)
+        .map(|(c, _)| c.clone())
+        .collect();
+    set.extend(catalog::CATALOG.iter().map(|e| e.code.to_string()));
+    set.extend(
+        emitted_codes()
+            .into_iter()
+            .filter(|c| !retired.contains(c.as_str())),
+    );
+    set
+}
+
+#[test]
+fn m2_code_set_is_every_spec_section_27_code_plus_the_catalog() {
+    let set = m2_codes();
+    for code in [
+        "K0601", "K1001", "K1202", "K1203", "K1601", "K1702", "W0114", "H0202", "L0114", "W0720",
+        "K0418",
+    ] {
+        assert!(set.contains(code), "M2 set misses {code}");
+    }
+    assert!(!set.contains("SEC0107"), "retired codes are dropped");
+    assert!(set.len() >= 136, "M2 set has {} codes", set.len());
+}
+
+#[test]
+fn every_m2_code_has_title_message_help_and_explain_in_three_languages() {
+    // D5.diag_completeness (strict, Q24): the goal is >= 90%; the catalog aims for all.
+    let set = m2_codes();
+    let mut gaps = Vec::new();
+    for code in &set {
+        let Some(e) = catalog::lookup(code) else {
+            gaps.push(format!("{code}: no catalog entry"));
+            continue;
+        };
+        for (field, texts) in [
+            ("title", e.title),
+            ("message", e.message),
+            ("help", e.help),
+            ("explain", e.explain),
+        ] {
+            for (lang, text) in ["en", "ar", "franco"].iter().zip(texts) {
+                if text.trim().is_empty() {
+                    gaps.push(format!("{code}.{field}.{lang}: empty"));
+                }
+            }
+        }
+    }
+    assert!(
+        gaps.is_empty(),
+        "M2 gaps ({} of {}): {gaps:#?}",
+        gaps.len(),
+        set.len()
+    );
+}
+
 // ---- Placeholders are supplied by the emitters ------------------------------------------
 
-/// The args that **every** emit site of a code supplies (read off kalam-lexer and
-/// kalam-parser; a site that supplies more is fine). A template may use only these names,
+/// The args that **every** emit site of a code supplies (read off kalam-lexer, kalam-parser,
+/// kalam-resolve and kalam-typeck; a site that supplies more is fine). A template may use only these names,
 /// plus keyword placeholders (`{kw_*}`, `{core_*}`, `{punct_*}`), which the renderer spells
 /// in the file's skin.
 const EMITTER_ARGS: &[(&str, &[&str])] = &[
@@ -390,13 +459,55 @@ const EMITTER_ARGS: &[(&str, &[&str])] = &[
     ("K0413", &["name"]),
     ("K0417", &[]),
     ("K1201", &["cycle"]),
+    // kalam-resolve, FOUNDER-QUEUE Q23: importing a private item, or reaching it through a
+    // module alias (both args come in backticks, like K0401's `name`).
+    ("K0418", &["name", "module"]),
+    // kalam-parser (`codes::MODULE_VAR`, `codes::GLOB_IMPORT`, through `mistake`): no args.
+    ("K1202", &[]),
+    ("K1203", &[]),
+    // kalam-typeck (`error.rs`, `TypeError::to_diagnostic`): the args every variant mapped to
+    // the code supplies. K0600 has none in common (Mismatch gives `expected`/`found`, the
+    // others `type`); K0603 only `type` (NoOperator adds `op`, MissingTrait `trait`).
+    // K0710 and K0731 are also emitted by the parser, with no args there either.
+    ("K0126", &["type"]),
+    ("K0416", &[]),
+    ("K0420", &["type", "name"]),
+    ("K0600", &[]),
+    ("K0601", &["left", "right"]),
+    ("K0602", &["left", "right"]),
+    ("K0603", &["type"]),
+    ("K0612", &[]),
+    ("K0650", &[]),
+    ("K0730", &["type"]),
+    ("K0801", &[]),
+    ("K0802", &[]),
+    ("K0803", &["name"]),
+    ("K0916", &[]),
+    ("K1001", &["missing"]),
+    ("K1003", &[]),
+    ("K1005", &[]),
+    ("K1101", &[]),
+    ("K1103", &["name"]),
+    ("K1105", &["detail"]),
+    ("K1106", &[]),
+    ("K1303", &[]),
+    ("K1601", &["expected", "found"]),
+    // kalam-typeck, M2 iteration 2: usefulness (K1002), or-pattern bindings (K1004), labels
+    // (K1104), var capture (K1110), `?` (K1301/K1302), path holes (K1641), and `f[T](x)`
+    // (K0922, emitted by the checker because it needs to know `f` is a function).
+    ("K0922", &[]),
+    ("K1002", &[]),
+    ("K1004", &["name"]),
+    ("K1104", &["names"]),
+    ("K1110", &["name"]),
+    ("K1301", &["found", "expected"]),
+    ("K1302", &[]),
+    ("K1641", &["found"]),
 ];
 
 /// Codes nobody emits yet: the args their future emitter must supply. Every other code with
 /// no emitter may use keyword placeholders only.
-const FUTURE_ARGS: &[(&str, &[&str])] = &[
-    ("K0126", &["literal", "type"]), // the type checker (spec §27, D18)
-];
+const FUTURE_ARGS: &[(&str, &[&str])] = &[];
 
 /// The crate directory under `crates/` that holds `file`.
 fn crate_of(file: &Path) -> String {

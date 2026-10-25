@@ -1,0 +1,11 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1005"
+  ],
+  "lines": [
+    4
+  ],
+  "stage": "parse",
+  "notes": "§11.0.6: \"**Literal patterns:** `Int`, `String` and `Bool` literals, and `Int` ranges (`case 1..=9:`). `Float` patterns are not allowed (K1005).\" Stage `parse`: a `Float` literal in a pattern is visible to the parser (§11.0.6 allows only `Int`, `String`, `Bool` literals and `Int` ranges)."
+}

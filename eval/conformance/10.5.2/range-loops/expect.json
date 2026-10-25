@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§10.5.2: \"**Ranges:** `a..b` excludes `b`, `a..=b` includes it (DR-24). Both are `Range[Int]`.\" §21.3 K0926: \"`for (let i = 0; i < n; i++)`, `for i in range(n)` | `for i in 0..n:`\". §10.5.3: \"`while cond:` loops while `cond` is `true`.\" Positive twin."
+}

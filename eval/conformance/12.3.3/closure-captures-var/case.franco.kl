@@ -1,0 +1,4 @@
+dala ra2isi():
+    motghayer count = 1
+    khali add = dala(x: adad) => x + count
+    ektb("{add(1)}")

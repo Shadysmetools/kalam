@@ -1,0 +1,5 @@
+دالة رئيسي():
+    ليكن name = "Sara"
+    ليكن ids = [1، 2]
+    ليكن _ = sql"SELECT id FROM users WHERE name = {name} AND id IN {ids} -- active users"
+    ليكن _ = sql"SELECT id FROM users WHERE note = 'a;b'"

@@ -32,6 +32,9 @@ uses the constants there) and this table. The test
 | K0720 | `CHAINED_COMPARISON` | `a < b < c`. |
 | K0731 | `IF_WITHOUT_ELSE` | An `if` used as a value without `else`. |
 | K0921 | `MULTI_LINE_LAMBDA` | A lambda body after `:` (multi-line lambda form). |
+| K0413 | `CORE_NAME_DECLARED` | The file's own core name declared where the AST keeps a plain identifier: a `var` name, a function or lambda parameter, a name after `as`, a list-rest name (§7.2). It is recovered as an identifier. Core names in item names and in `let`/`for`/`case` patterns are kept as names, and name resolution reports them. Another skin's core name is an ordinary identifier (FOUNDER-QUEUE Q21). |
+| K1202 | `MODULE_VAR` | A module-level `var` (§13.4). It is parsed as the constant `let`, with a suggested fix to `let`. |
+| K1203 | `GLOB_IMPORT` | A glob import `use a.*` (§13.1). It is parsed as `use a`. No fix. |
 
 ## Questions for the spec owner
 

@@ -1,0 +1,12 @@
+هيكل Job:
+    run: @sync دالة(عدد) -> عدد
+
+دالة رئيسي(world: عالم):
+    ليكن fs = world.fs
+    دالة step(x: عدد) -> عدد:
+        إذا fs.exists(path"flag.txt"):
+            أرجع x + 1
+        أرجع x
+    ليكن job = Job(run: step)
+    ليكن f = job.run
+    اطبع("{f(1)}")

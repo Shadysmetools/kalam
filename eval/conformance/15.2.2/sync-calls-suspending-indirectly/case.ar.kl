@@ -1,0 +1,7 @@
+دالة present(fs: Fs) -> منطقي => fs.exists(path"notes.txt")
+
+@sync
+دالة check(fs: Fs) -> منطقي => present(fs)
+
+دالة رئيسي(world: عالم):
+    اطبع("{check(world.fs)}")

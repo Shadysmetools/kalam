@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1611"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "§17.4.6: \"unquoted attribute `class={c}` | — | **K1611** (fix-it adds quotes)\"."
+}

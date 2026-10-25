@@ -1,0 +1,12 @@
+هيكل Money:
+    amount: عدد
+    currency: نص
+
+نفذ Money بصفة Show:
+    دالة show(ذات) -> نص => "{ذات.amount} {ذات.currency}"
+
+دالة رئيسي():
+    اطبع(Money(amount: 5، currency: "EGP"))
+
+نفذ Money:
+    دالة zero(currency: نص) -> Money => Money(amount: 0، currency: currency)

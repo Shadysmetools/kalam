@@ -1,0 +1,11 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0720"
+  ],
+  "lines": [
+    3
+  ],
+  "stage": "parse",
+  "notes": "§10.6.6: \"| 6 | `==` `!=` `<` `<=` `>` `>=` | none (chaining is K0720) |\". Stage `parse`: comparison operators have no associativity (§10.6 level 6), so the chain is a grammar matter."
+}

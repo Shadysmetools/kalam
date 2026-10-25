@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§10.4.7: \"The root of a place must be a `var` (K0710).\" §10.4.3: \"`p.x = e` | `p = p.with(x: e)`\". §10.4.2–§10.4.6: `x = e`, `p.x = e`, `xs[i] = e` and `x += e` rebind a `var`. Positive twin."
+}

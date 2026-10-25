@@ -1,0 +1,3 @@
+fn main():
+    let print = 1
+    assert(print == 1, "one")

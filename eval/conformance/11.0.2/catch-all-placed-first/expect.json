@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1002"
+  ],
+  "lines": [
+    11
+  ],
+  "notes": "§11.0.2: \"**An unreachable arm is an error** (K1002), not a warning. This catches the \"catch-all placed first\" bug.\" The unreachable arm is `case .Red:` on line 11."
+}

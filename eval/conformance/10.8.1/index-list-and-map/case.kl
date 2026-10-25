@@ -1,0 +1,8 @@
+fn main():
+    let xs = [10, 20, 30]
+    let a = xs[0]
+    let b = xs.get(5)
+    let m = {"one": 1}
+    let c = m["one"]
+    let d = m.get("two")
+    print("{a} {c}")

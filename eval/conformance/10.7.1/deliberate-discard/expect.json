@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§10.7.1: \"An expression statement whose type is not `()` is K0730 (\"value is unused\"). Write `let _ = expr` to discard deliberately.\" Positive twin."
+}

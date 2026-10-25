@@ -1,0 +1,7 @@
+dala ra2isi():
+    khali x = 1.5
+    hasab x:
+        lama 1.5:
+            ektb("one and a half")
+        lama _:
+            ektb("other")

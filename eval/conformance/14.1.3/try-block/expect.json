@@ -1,0 +1,11 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0908"
+  ],
+  "lines": [
+    2
+  ],
+  "stage": "parse",
+  "notes": "§14.1.3: \"There are no exceptions, no `try`/`catch`/`throw`, and no way to catch a panic inside Kalam code (04 L6).\" §21.3 K0908: \"`try:`, `catch`, `throw`, `raise` | `?` on a `Result`, or `return Err(…)`\". `try` is not a keyword (§7.1) and stays ASCII in every skin. Stage `parse`: §21.3 mistakes \"are detected only in the obvious syntactic position\"."
+}

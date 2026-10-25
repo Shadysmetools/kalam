@@ -1,25 +1,26 @@
 {
   "clock_rule": "crash_free_hours accumulates across runs only while `version` (SHA-256 of the fuzz target binary) is unchanged and no crash is open on it; it resets to 0 on a new binary or a crash",
   "corpus_seeds": 604,
-  "corpus_size": 3753,
-  "crash_free_hours": 2.7731,
-  "crash_free_secs": 9983.115,
+  "corpus_size": 3770,
+  "crash_free_hours": 5.0459,
+  "crash_free_secs": 18165.222,
   "crash_list": [],
   "crashes": 0,
-  "execs_per_sec": 1445.2,
-  "features": 3543,
+  "execs_per_sec": 1303.5,
+  "features": 3560,
   "jobs": 5,
-  "last_run": "2026-10-25T19:10:49Z",
-  "last_run_execs": 14427815,
-  "last_run_secs": 9983.1,
+  "last_run": "2026-10-25T21:27:11Z",
+  "last_run_execs": 23678486,
+  "last_run_secs": 18165.2,
   "metric": "D1.fuzz_crash_free_hours",
   "oracle_violations": {
     "convert_output_rejected": {
-      "count": 2,
+      "count": 3,
       "detail": "the ar conversion of a clean en file has errors [\"SEC0105\"]",
       "examples": [
         "oracle/convert_output_rejected-1.kl",
-        "oracle/convert_output_rejected-2.franco.kl"
+        "oracle/convert_output_rejected-2.franco.kl",
+        "oracle/convert_output_rejected-3.ar.kl"
       ]
     },
     "convert_roundtrip": {
@@ -41,9 +42,9 @@
     "fmt",
     "convert"
   ],
-  "total_execs": 15008068,
+  "total_execs": 24258739,
   "version": "b7e78029d3154a87274cc79176a7694fa528bca35f7299c9e33dcfb633981265",
-  "version_execs": 14427815,
-  "version_fuzz_hours": 2.7731,
-  "version_fuzz_secs": 9983.115
+  "version_execs": 23678486,
+  "version_fuzz_hours": 5.0459,
+  "version_fuzz_secs": 18165.222
 }

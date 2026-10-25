@@ -1,0 +1,5 @@
+dala ra2isi():
+    khali a = Secret.new("x")
+    khali b = Secret.new("x")
+    khali same = a == b
+    ektb("{same}")

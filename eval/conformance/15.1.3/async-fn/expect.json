@@ -1,0 +1,11 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0907"
+  ],
+  "lines": [
+    1
+  ],
+  "stage": "parse",
+  "notes": "§15.1.3: \"Source code looks synchronous. There are no `async` or `await` keywords, no promises and no callbacks in user code (K0907 removes `async`/`await` written by mistake).\" §21.3 K0907: \"`async fn`, `await x` | delete it: suspension is inferred (§15)\". `async` is not a keyword (§7.1) and stays ASCII in every skin. Stage `parse`: §21.3 mistakes \"are detected only in the obvious syntactic position\"."
+}

@@ -45,6 +45,9 @@ pub struct Options {
     /// Run `cargo test -p kalam-props --release` and read the report it writes, instead of
     /// reading `eval/props/report.json` (which must then carry the evaluated commit).
     pub run_props: bool,
+    /// Read the kalam-props report from this file instead of `eval/props/report.json`
+    /// (`--props-report`); its `commit` must still be the evaluated commit.
+    pub props_report: Option<PathBuf>,
     /// The `kalam` binary for the M2 checkpoints and interpreter cases (`--kalam`, else
     /// `KALAM_BIN`); never built by the harness.
     pub kalam: Option<PathBuf>,
@@ -138,6 +141,8 @@ struct Inputs {
     conformance: Option<FmtTally>,
     held: Held,
     props: Result<external::PropsReport, String>,
+    /// The Trojan Source suite is judged with its `[M2]` cases (target tier M2 or later).
+    trojan_m2: bool,
     fuzz: Observation,
     catalog: CatalogReport,
     p7: (usize, Vec<String>),
@@ -409,6 +414,11 @@ fn observe_m1(id: &str, i: &Inputs, c: &TierCheck) -> Observation {
                     return Err(format!("the held-out Trojan suite has {defects} defect(s)"));
                 }
                 let deferred = i.held.aggregate().map_or(0, |a| a["trojan"]["deferred_m2"].as_u64().unwrap_or(0));
+                if i.trojan_m2 && deferred > 0 {
+                    return Err(format!(
+                        "the held-out runner deferred {deferred} `[M2]` case(s), which count from M2 (FOUNDER-QUEUE Q10)"
+                    ));
+                }
                 Ok((
                     bp == bt && gp == gt,
                     format!("bad rejected {bp}/{bt}, good accepted {gp}/{gt}, deferred to M2 {deferred}"),
@@ -640,10 +650,13 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
 
     // --- the M1 runners: dev corpus, shared suites, held-out store, external reports
     let corpus = corpus_run::run(&root.join("eval/corpus"), hook)?;
+    // FOUNDER-QUEUE Q10: `[M2]` cases are checked from tier M2 on. The Trojan Source suite is
+    // judged with them (dev and held-out) whenever the target tier is M2 or ratchets from it.
+    let from_m2 = sc.tiers.chain(&tier).iter().any(|t| t.id == "M2");
     let trojan_rules = RejectRules {
         name_codepoints: true,
         out_of_scope: vec![],
-        include_m2: false,
+        include_m2: from_m2,
     };
     let reject = |name: &str, rules: &RejectRules| -> Result<Option<RejectResult>, String> {
         Ok(load_suite(root, name)?.map(|c| suites::run_reject(hook, &c, rules)))
@@ -652,7 +665,13 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
         None => Held::Missing(
             "the held-out runner was not started (library call without a runner)".into(),
         ),
-        Some(r) => holdout::run_child(r, root),
+        Some(r) => holdout::run_child(
+            &holdout::Runner {
+                include_m2: from_m2,
+                ..r.clone()
+            },
+            root,
+        ),
     };
     let holdout_store = opts
         .holdout
@@ -679,14 +698,15 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
         )?,
         recovery: load_suite(root, suites::SEEDED)?.map(|c| suites::run_recovery(hook, &c)),
         conformance: load_suite(root, suites::CONFORMANCE)?.map(|c| suites::run_fmt(hook, &c)),
-        props: if opts.run_props {
-            run_props(&root.join("compiler"))
-        } else {
-            external::load_props(root, opts.git_sha.as_deref())
+        props: match (&opts.props_report, opts.run_props) {
+            (Some(path), _) => external::load_props_at(path, opts.git_sha.as_deref()),
+            (None, true) => run_props(&root.join("compiler")),
+            (None, false) => external::load_props(root, opts.git_sha.as_deref()),
         },
         fuzz: external::fuzz(root),
         catalog: diagcat::measure(&spec_text, &diagcat::builtin_entries()),
         p7: p7_conflicts(&rows, &table_load),
+        trojan_m2: from_m2,
         held,
         corpus,
     };
@@ -757,7 +777,11 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
     // checks M2 widens are reported at the M2 scope, so a row never claims the narrower M1
     // value for the metric's full definition. An M1-target run is unchanged.
     if sc.tiers.chain(&tier).iter().any(|t| t.id == "M2") {
-        for id in ["D5.diag_completeness", "D2.lexing_hazard_suite"] {
+        for id in [
+            "D5.diag_completeness",
+            "D2.lexing_hazard_suite",
+            "D1.fuzz_crash_free_hours",
+        ] {
             let o = m2.observe_wider(id, obs.get(id), root);
             measures.insert(id, obs_to_measure(&o));
         }
@@ -1377,6 +1401,7 @@ mod tests {
                 git_sha: None,
                 holdout: None,
                 run_props: false,
+                props_report: None,
                 kalam: None,
             },
         )
@@ -1437,6 +1462,13 @@ mod tests {
     fn m1_target_reports_every_tier_check_and_is_not_met() {
         let v = run_with("M1", crate::parity::default_hook());
         assert_eq!(v["target_milestone"], "M1");
+        // at M1 the `[M2]` Trojan Source cases stay deferred (FOUNDER-QUEUE Q10)
+        assert!(
+            v["checks"]["suites"]["trojan-source"]["deferred_m2"]
+                .as_u64()
+                .unwrap()
+                > 0
+        );
         assert_eq!(v["normalized_against"], "mvp");
         assert_eq!(v["tier_mode"], "checklist");
         assert!(v["tier_score"].is_number());
@@ -1514,7 +1546,9 @@ mod tests {
         let checks = v["tier_checks"].as_array().unwrap();
         let m2: Vec<&Value> = checks.iter().filter(|c| c["tier"] == "M2").collect();
         assert_eq!(m2.len(), 8, "{m2:?}");
-        for c in &m2 {
+        // D5.diag_completeness is measured from the real diagnostic catalog, not through the
+        // fake compiler, so it may legitimately pass here
+        for c in m2.iter().filter(|c| c["id"] != "D5.diag_completeness") {
             assert_ne!(c["status"], "pass", "{c}");
         }
         let root = repo_root();
@@ -1558,9 +1592,24 @@ mod tests {
         );
         let cps = v["checkpoints"].as_array().unwrap();
         assert_eq!(cps.len(), 4, "{cps:?}");
-        for c in cps {
+        // spec clause coverage counts conformance cases, not compiler behaviour, so it may
+        // pass; every checkpoint that runs the compiler must not
+        for c in cps.iter().filter(|c| c["id"] != "D1.spec_clause_coverage") {
             assert_ne!(c["status"], "pass", "{c}");
         }
+        // without a binary, the K0301 part of P8 is not measured, so P8 at M2 cannot pass
+        let p8 = tier_check(&v, "G-PAR.P8", "M2");
+        assert_ne!(p8["status"], "pass", "{p8}");
+        assert!(
+            p8["evidence"].as_str().unwrap().contains("K0301 part"),
+            "{p8}"
+        );
+        // FOUNDER-QUEUE Q10: from M2 the `[M2]` Trojan Source cases are judged, not deferred
+        assert_eq!(
+            v["checks"]["suites"]["trojan-source"]["deferred_m2"], 0,
+            "{}",
+            v["checks"]["suites"]["trojan-source"]
+        );
         assert_eq!(v["milestone_met"], false);
     }
 

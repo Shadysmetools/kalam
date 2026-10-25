@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1303"
+  ],
+  "lines": [
+    7
+  ],
+  "notes": "§14.2.1: \"An unused `Result` is **K1303**, an error rather than a warning. `let _ = r` discards it explicitly\". §10.7.1: \"For `Result` the code is K1303 (§14.2).\""
+}

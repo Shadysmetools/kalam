@@ -1,0 +1,8 @@
+fn apply(f: @sync fn(Int) -> Int, x: Int) -> Int => f(x)
+
+fn main():
+    fn step(x: Int) -> Int:
+        let y = x * 2
+        return y + 1
+    print("{apply(step, 1)}")
+    print("{apply(fn(n) => n - 1, 1)}")

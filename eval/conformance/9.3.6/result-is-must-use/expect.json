@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1303"
+  ],
+  "lines": [
+    7
+  ],
+  "notes": "§9.3.6: \"`Result[T, E]` | `Ok(x)` or `Err(e)`. Must-use (§14.2).\" §14.2.1: \"An unused `Result` is **K1303**\"."
+}

@@ -1,0 +1,16 @@
+fn head_plus_one(xs: List[Int]) -> Option[Int]:
+    let n = xs.get(0)?
+    return Some(n + 1)
+
+fn head(xs: List[Int]) -> Result[Int, String]:
+    let n = xs.get(0).ok_or("empty")?
+    return Ok(n)
+
+fn main():
+    let a = head_plus_one([2])
+    let _ = head([2])
+    match a:
+        case Some(n):
+            print("{n}")
+        case None:
+            print("none")

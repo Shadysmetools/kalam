@@ -1,0 +1,5 @@
+dala ra2isi():
+    khali x = 5
+    khali inside = 1 < x we x < 10
+    khali edge = (x == 5) == sa7
+    ektb("{inside} {edge}")

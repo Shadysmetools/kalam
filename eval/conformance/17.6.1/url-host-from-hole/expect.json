@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1631"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "§17.6.1: \"`url\"https://api.example.com/users/{id}?q={term}\"`: the scheme and host must be literal (K1631).\""
+}

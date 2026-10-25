@@ -1,0 +1,9 @@
+type Job:
+    run: fn(Int) -> Int
+
+fn double(x: Int) -> Int => x * 2
+
+fn main():
+    let job = Job(run: double)
+    let f = job.run
+    print("{f(2)}")

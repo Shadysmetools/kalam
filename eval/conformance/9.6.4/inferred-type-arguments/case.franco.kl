@@ -1,0 +1,9 @@
+dala first[T](xs: qayma[T]) -> ekhtiyari[T] => xs.get(0)
+
+dala ra2isi():
+    khali head: ekhtiyari[adad] = first([1, 2, 3])
+    hasab head:
+        lama mawgood(n):
+            ektb("{n}")
+        lama mafeesh:
+            ektb("none")

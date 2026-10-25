@@ -1,0 +1,7 @@
+fn save(n: Int) -> Result[(), String]:
+    if n < 0:
+        return Err("negative")
+    return Ok(())
+
+fn main():
+    save(1)

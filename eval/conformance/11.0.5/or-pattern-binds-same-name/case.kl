@@ -1,0 +1,12 @@
+enum Payment:
+    Card(last4: String)
+    Wallet(id: String)
+    Cash
+
+fn main():
+    let p: Payment = .Cash
+    match p:
+        case .Card(code) | .Wallet(code):
+            print(code)
+        case .Cash:
+            print("cash")

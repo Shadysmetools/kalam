@@ -1,0 +1,11 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0915"
+  ],
+  "lines": [
+    3
+  ],
+  "stage": "parse",
+  "notes": "§14.4.2: \"There is no bare `.unwrap()`. `.expect(\"reason\")` requires a reason, so every forced unwrap documents its invariant (K0915 fixes `unwrap()`).\" §21.3 K0915: \"`x.unwrap()` | `x.expect(\"…\")`\". Stage `parse`: §21.3 mistakes \"are detected only in the obvious syntactic position\"."
+}

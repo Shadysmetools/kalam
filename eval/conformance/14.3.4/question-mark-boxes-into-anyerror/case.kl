@@ -1,0 +1,20 @@
+enum ParseFail:
+    Empty
+
+enum LoadFail:
+    Missing
+
+fn parse(text: String) -> Result[Int, ParseFail]:
+    if text == "":
+        return Err(.Empty)
+    return Ok(1)
+
+impl ParseFail as Error:
+    fn message(self) -> String => "empty"
+
+fn load(text: String) -> Result[Int, AnyError]:
+    let n = parse(text)?
+    return Ok(n)
+
+fn main():
+    let _ = load("1")

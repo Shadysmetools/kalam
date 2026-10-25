@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§16.1.1: \"Only `main` receives the root capability: `fn main(world: World)`. `World` cannot be constructed or decoded (K1501). A program that needs nothing declares `fn main():`.\" §16.1.12: capabilities \"can be passed, captured and stored in records … They show as `<Net>`.\" Positive twin."
+}

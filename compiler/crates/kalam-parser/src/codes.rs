@@ -2,9 +2,11 @@
 //!
 //! Spec §27 has no parse-error family (spec/CRITIQUE.md B4). These are **proposed** codes in
 //! a reserved sub-range `K0250–K0269` of K02xx, pending the spec owner's decision. Codes the
-//! spec already defines are used where they apply: K0120 (unexpected indent), K0710
-//! (assignment target is not a place), K0720 (chained comparison), K0731 (value-position
-//! `if` without `else`) and the §21.3 known-mistake codes K0901–K0926 ([`MISTAKES`]).
+//! spec already defines are used where they apply: K0120 (unexpected indent), K0413 (a core
+//! name bound where the AST keeps an identifier), K0710 (assignment target is not a place),
+//! K0720 (chained comparison), K0731 (value-position `if` without `else`), K1202
+//! (module-level `var`), K1203 (glob import) and the §21.3 known-mistake codes K0901–K0926
+//! ([`MISTAKES`]).
 
 /// Unexpected token: something else was expected (args: `expected`, `found`).
 pub const UNEXPECTED_TOKEN: &str = "K0250";
@@ -29,6 +31,14 @@ pub const NOT_A_PLACE: &str = "K0710";
 pub const CHAINED_COMPARISON: &str = "K0720";
 pub const IF_WITHOUT_ELSE: &str = "K0731";
 pub const MULTI_LINE_LAMBDA: &str = "K0921";
+/// The file's own core name declared where the AST keeps a plain identifier (a `var` name,
+/// a function or lambda parameter, a name after `as`, a list-rest name; spec §7.2). Core names
+/// in other declaring positions are kept as `Name`s, and name resolution reports them.
+pub const CORE_NAME_DECLARED: &str = "K0413";
+/// A module-level `var` (spec §13.4): parsed as a module constant.
+pub const MODULE_VAR: &str = "K1202";
+/// A glob import `use a.*` (spec §13.1): parsed as `use a`.
+pub const GLOB_IMPORT: &str = "K1203";
 
 // Known LLM mistakes (spec §21.3). Each is reported *instead of* a generic K0250/K0255 at
 // its site, with the fix the spec gives, and the parser recovers as if the canonical form
@@ -69,6 +79,9 @@ pub const ALL: &[&str] = &[
     CHAINED_COMPARISON,
     IF_WITHOUT_ELSE,
     MULTI_LINE_LAMBDA,
+    CORE_NAME_DECLARED,
+    MODULE_VAR,
+    GLOB_IMPORT,
 ];
 
 /// The §21.3 known-mistake codes this crate emits (K0921 is listed in [`ALL`] too). They are

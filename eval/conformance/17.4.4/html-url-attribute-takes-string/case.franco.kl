@@ -1,0 +1,3 @@
+dala ra2isi():
+    khali name = "Sara"
+    khali _ = html"""<a href="{name}">home</a>"""

@@ -19,8 +19,8 @@ use kalam_base::{FileSpan, Span};
 use kalam_resolve::DefId;
 use kalam_typeck::adt::AdtKind;
 use kalam_typeck::hir::{
-    self, Arg, AssignOp, BinOp, BodyValue, ExprKind as H, ItemKind, LangItem, PatKind,
-    ResolvedProgram, StmtKind, StrPart, UnOp,
+    self, Arg, AssignOp, BinOp, BodyValue, ExprKind as H, HirProgram, ItemKind, LangItem, PatKind,
+    StmtKind, StrPart, UnOp,
 };
 use kalam_typeck::{Ty, TypeckResults};
 
@@ -44,7 +44,7 @@ fn unsupported<T>(what: &'static str, span: Span) -> R<T> {
 }
 
 /// Lowers a whole type-checked program. `main` becomes the entry point.
-pub fn lower_program(prog: &dyn ResolvedProgram, tc: &TypeckResults, package: &str) -> R<Program> {
+pub fn lower_program(prog: &HirProgram, tc: &TypeckResults, package: &str) -> R<Program> {
     if !tc.errors.is_empty() {
         return Err(LowerError::TypeErrors(tc.errors.len()));
     }
@@ -79,6 +79,8 @@ pub fn lower_program(prog: &dyn ResolvedProgram, tc: &TypeckResults, package: &s
                     })
                     .collect(),
             }),
+            // An extern type has no structure to lower; its values come from the runtime.
+            AdtKind::Extern => {}
         }
     }
     let mut fn_ids: HashMap<DefId, FnId> = HashMap::new();
@@ -119,7 +121,7 @@ pub fn lower_program(prog: &dyn ResolvedProgram, tc: &TypeckResults, package: &s
 }
 
 struct FnLower<'a> {
-    prog: &'a dyn ResolvedProgram,
+    prog: &'a HirProgram,
     tc: &'a TypeckResults,
     owner: DefId,
     fn_ids: &'a HashMap<DefId, FnId>,
@@ -285,6 +287,7 @@ impl FnLower<'_> {
                     body: Block { stmts },
                 });
             }
+            StmtKind::LocalFn { .. } => return unsupported("local functions", s.span),
             StmtKind::For { pat, iter, body } => {
                 if let H::Range { lo, hi, inclusive } = &iter.kind {
                     let PatKind::Bind(l) = pat.kind else {
@@ -713,6 +716,11 @@ impl FnLower<'_> {
             H::MethodCall { .. } => return unsupported("method calls", sp),
             H::Range { .. } => return unsupported("ranges outside `for`", sp),
             H::Lambda { .. } => return unsupported("lambdas", sp),
+            H::Map(_) => return unsupported("map literals", sp),
+            H::Try(_) => return unsupported("`?`", sp),
+            H::AssocFn { .. } => return unsupported("associated functions", sp),
+            H::Unsafe(_) => return unsupported("`unsafe.*`", sp),
+            H::TypeName(_) => return unsupported("a type in value position", sp),
             H::Error => return unsupported("error expression", sp),
         };
         Ok(Expr::new(kind, ty, sp))

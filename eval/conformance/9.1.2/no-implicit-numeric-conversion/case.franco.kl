@@ -1,3 +1,5 @@
 dala ra2isi():
-    khali total = 1 + 2.5
+    khali count = 1
+    khali ratio = 2.5
+    khali total = count + ratio
     ektb("{total}")

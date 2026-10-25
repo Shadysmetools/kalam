@@ -1,0 +1,9 @@
+dala ra2isi():
+    khali n = 7
+    hasab n:
+        lama 0:
+            ektb("zero")
+        lama 1..=9:
+            ektb("digit")
+        lama _:
+            ektb("big")

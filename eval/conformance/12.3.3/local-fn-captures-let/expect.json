@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§12.3.3: \"**Capture is by value, of `let` bindings only.** Capturing a `var` is K1110, with the fix `let snapshot = v` inserted before the closure.\" §12.3.2: \"For a multi-statement callback, declare a **local `fn`**. It may capture `let` bindings\". Positive twin."
+}

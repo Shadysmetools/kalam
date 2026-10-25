@@ -1,0 +1,7 @@
+fn double(x: Int) -> Int => x * 2
+
+@sync
+fn quadruple(x: Int) -> Int => double(double(x))
+
+fn main():
+    print("{quadruple(2)}")

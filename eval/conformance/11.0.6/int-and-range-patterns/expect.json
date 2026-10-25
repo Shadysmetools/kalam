@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§11.0.6: \"**Literal patterns:** `Int`, `String` and `Bool` literals, and `Int` ranges (`case 1..=9:`). ... Matching on `Int`, `String` or `Decimal` needs a final `_` or binding arm.\" Positive twin."
+}

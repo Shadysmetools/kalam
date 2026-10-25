@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§14.3.6: \"`e?`, where `e: Option[T]`, inside a function returning `Option[U]` propagates `None`. Using an `Option` with `?` in a function that returns `Result` is K1302, with the fix `.ok_or(<error>)?`.\" Positive twin: `?` on an `Option` in an `Option` function, and the `.ok_or(…)?` fix in a `Result` function."
+}

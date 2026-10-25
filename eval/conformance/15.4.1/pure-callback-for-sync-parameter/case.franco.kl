@@ -1,0 +1,8 @@
+dala apply(f: @sync dala(adad) -> adad, x: adad) -> adad => f(x)
+
+dala ra2isi():
+    dala step(x: adad) -> adad:
+        khali y = x * 2
+        rag3 y + 1
+    ektb("{apply(step, 1)}")
+    ektb("{apply(dala(n) => n - 1, 1)}")

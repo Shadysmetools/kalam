@@ -1,0 +1,7 @@
+dala double(x: adad) -> adad => x * 2
+
+@sync
+dala quadruple(x: adad) -> adad => double(double(x))
+
+dala ra2isi():
+    ektb("{quadruple(2)}")

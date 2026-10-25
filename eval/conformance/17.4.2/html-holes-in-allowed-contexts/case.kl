@@ -1,0 +1,5 @@
+fn main():
+    let name = "Sara"
+    let count = 3
+    let home = url"https://example.com/home"
+    let _ = html"""<p class="{name}" title="{count}">{name}</p><a href="{home}">home</a>"""

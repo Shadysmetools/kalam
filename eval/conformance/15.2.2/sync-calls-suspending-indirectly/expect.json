@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1402"
+  ],
+  "lines": [
+    null
+  ],
+  "notes": "§15.2.2: \"A function is **suspending** if its body calls a suspending function, or calls a function-typed value whose suspension bit is set.\" §15.2.1: the base suspending functions are \"stdlib I/O primitives (network, filesystem, database, …)\". §15.4.2: \"`@sync` on a declaration (`@sync fn price(…)`) asserts that it does not suspend (K1402 if it does).\" `check` suspends through `present`, which calls the filesystem. The spec does not pin the line of K1402 (attribute or declaration), so it is not checked."
+}

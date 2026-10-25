@@ -45,6 +45,34 @@ fn name_resolution_pages_describe_names_not_characters() {
 }
 
 #[test]
+fn type_checker_pages_describe_types_and_members() {
+    // `{type}` and `{name}` in type-checker codes are a type and a member or item name, never
+    // "the literal's type" (K0126) or a character's Unicode name (SEC01xx).
+    let char_name = explain::describe("SEC0100", "name", Skin::En).unwrap();
+    let literal_type = explain::describe("K0126", "type", Skin::En).unwrap();
+    assert!(literal_type.contains("literal"), "{literal_type}");
+    for (code, name) in [
+        ("K0420", "type"),
+        ("K0420", "name"),
+        ("K0603", "type"),
+        ("K0730", "type"),
+        ("K0803", "name"),
+        ("K1103", "name"),
+        ("K0418", "name"),
+    ] {
+        for lang in Skin::ALL {
+            let d = explain::describe(code, name, lang).unwrap();
+            assert_ne!(d, explain::describe("SEC0100", "name", lang).unwrap());
+            assert_ne!(d, explain::describe("K0126", "type", lang).unwrap());
+        }
+        let en = explain::describe(code, name, Skin::En).unwrap();
+        assert!(en != char_name && en != literal_type, "{code} {name}: {en}");
+    }
+    let page = explain::page("K1601", Skin::En).unwrap();
+    assert!(page.contains("<the sink type"), "{page}");
+}
+
+#[test]
 fn k0201_page_describes_its_placeholders() {
     let page = explain::page("K0201", Skin::En).expect("K0201 has a page");
     assert!(!page.contains("{found}"), "{page}");

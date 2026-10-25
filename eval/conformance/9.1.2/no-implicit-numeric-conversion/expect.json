@@ -4,7 +4,7 @@
     "K0601"
   ],
   "lines": [
-    2
+    4
   ],
-  "notes": "§9.1.2: \"No implicit conversions (04 L3).\" §10.6 (operators): \"Mixing numeric types (`Int + Float`) is K0601, with a fix to `.to_float()`.\""
+  "notes": "§9.1.2: \"No implicit conversions (04 L3).\" §10.6.11: \"Mixing numeric types (`Int + Float`) is K0601, with a fix to `.to_float()`.\" FOUNDER-QUEUE Q25 (binding provisional): an integer *literal* takes the other operand's `Float` type, but \"Variables still never convert (K0601). Conformance case 9.1.2 is rewritten to use a variable operand.\" `count` is an `Int` variable, so `count + ratio` is K0601."
 }

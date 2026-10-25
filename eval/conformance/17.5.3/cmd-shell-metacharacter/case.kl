@@ -1,0 +1,2 @@
+fn main():
+    let _ = cmd"ls -la | wc -l"

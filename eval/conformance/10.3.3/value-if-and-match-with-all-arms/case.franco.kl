@@ -1,0 +1,11 @@
+dala ra2isi():
+    khali n = 2
+    khali short = law n == 1: "item" walla: "items"
+    khali label = law n == 1:
+        "one"
+    walla:
+        "many"
+    khali size = hasab n:
+        lama 0: "none"
+        lama _: "some"
+    ektb("{short} {label} {size}")

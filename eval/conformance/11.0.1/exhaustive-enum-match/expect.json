@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§11.0.1: \"**Exhaustiveness is mandatory** (04 L8). A non-exhaustive `match` is K1001.\" Positive twin: every variant has an arm."
+}

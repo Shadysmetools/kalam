@@ -3,7 +3,7 @@
 //! Phases (each over every module, so module items are visible in any order):
 //! 1. built-in symbols (core names, prelude);
 //! 2. modules and their items (K0301 for a second skin file of one module);
-//! 3. `export use` re-exports, to a fixpoint;
+//! 3. `export use` re-exports, to a fixpoint, then stand-ins for the failed ones (Q23);
 //! 4. module scopes: imports, then items (K0405, K0413, SEC0104, K0401 on bad imports);
 //! 5. inherent `impl` heads, so `Type.assoc_fn` resolves from any module;
 //! 6. bodies (locals, uses, undefined names, implicit members);
@@ -113,6 +113,9 @@ pub(crate) struct Builder<'s> {
     imports_of: BTreeMap<ModuleId, BTreeSet<ModuleId>>,
     /// Variant name → variants with that exact name, in id order.
     variant_index: BTreeMap<String, Vec<DefId>>,
+    /// Paths of missing modules that already have an opaque stand-in (made for a failed
+    /// `export use`): they still classify as [`Target::Missing`].
+    missing: BTreeSet<String>,
 }
 
 impl<'s> Builder<'s> {
@@ -137,6 +140,7 @@ impl<'s> Builder<'s> {
             edges: Vec::new(),
             imports_of: BTreeMap::new(),
             variant_index: BTreeMap::new(),
+            missing: BTreeSet::new(),
         };
         b.builtins();
         b.modules();
@@ -515,6 +519,9 @@ impl<'s> Builder<'s> {
     // ---- module graph -------------------------------------------------------------------
 
     fn classify(&self, path: &str) -> Target {
+        if self.missing.contains(path) {
+            return Target::Missing;
+        }
         if let Some(&m) = self.by_path.get(path) {
             if self.p.modules[m.0 as usize].loaded {
                 return Target::Loaded(m);
@@ -622,6 +629,114 @@ impl<'s> Builder<'s> {
                 break;
             }
         }
+        self.failed_reexports(&modules);
+    }
+
+    /// After the re-export fixpoint: a name an `export use` could not re-export (a private
+    /// item, a name the module does not have, or any name of a missing module) is still
+    /// exported, bound to the private item or to an opaque stand-in. The failure is reported
+    /// once, at the `export use` itself ([`Builder::import`]); modules that import the name
+    /// from here get no follow-on K0401 (FOUNDER-QUEUE Q23). This runs only after the
+    /// fixpoint, because a name missing in an early round may still arrive through a later
+    /// link of a re-export chain.
+    fn failed_reexports(&mut self, modules: &[(ModuleId, usize)]) {
+        for &(m, src) in modules {
+            for u in self.uses_of(src) {
+                if !u.export {
+                    continue;
+                }
+                let path = path_text(&u.path);
+                let target = match self.classify(&path) {
+                    Target::Loaded(t) => t,
+                    // Every name of an opaque module was re-exported already.
+                    Target::Opaque => continue,
+                    Target::Missing => {
+                        let t = self.opaque_module(&path);
+                        self.missing.insert(path);
+                        t
+                    }
+                };
+                let tm = &self.p.modules[target.0 as usize];
+                let (tdef, last) = (tm.def, tm.path.last_segment().to_string());
+                let mut add: Vec<(String, DefId)> = Vec::new();
+                match &u.tail {
+                    UseTail::None => add.push((last, tdef)),
+                    UseTail::Alias(a) => add.push((a.name.clone(), tdef)),
+                    UseTail::Items(items) => {
+                        for it in items {
+                            match it {
+                                UseItem::SelfModule(_) => add.push((last.clone(), tdef)),
+                                UseItem::Name { name, alias } => {
+                                    let bound = alias.as_ref().unwrap_or(name).name.clone();
+                                    if self.p.modules[m.0 as usize].exports.contains_key(&bound) {
+                                        continue;
+                                    }
+                                    let d = match self.private_item(target, &name.name) {
+                                        Some(d) => d,
+                                        None => self.opaque_import(target, &name.name),
+                                    };
+                                    add.push((bound, d));
+                                }
+                            }
+                        }
+                    }
+                }
+                let exports = &mut self.p.modules[m.0 as usize].exports;
+                for (name, d) in add {
+                    exports.entry(name).or_insert(d);
+                }
+            }
+        }
+    }
+
+    /// A module item of loaded module `target` named `name` that is not exported (what
+    /// K0418 reports when another module reaches for it).
+    fn private_item(&self, target: ModuleId, name: &str) -> Option<DefId> {
+        if !self.p.modules[target.0 as usize].loaded {
+            return None;
+        }
+        self.p
+            .defs
+            .iter()
+            .find(|d| {
+                d.module == Some(target)
+                    && d.parent.is_none()
+                    && !d.exported
+                    && d.name == name
+                    && matches!(
+                        d.kind,
+                        DefKind::Fn
+                            | DefKind::Record
+                            | DefKind::Enum
+                            | DefKind::Alias
+                            | DefKind::Trait
+                            | DefKind::Const
+                            | DefKind::ExternFn
+                            | DefKind::ExternType
+                    )
+            })
+            .map(|d| d.id)
+    }
+
+    /// K0418 (FOUNDER-QUEUE Q23): `name` at `span` in `file` reaches the private item
+    /// `item` of another module. The item's location travels as its module path (a label
+    /// can only point into the diagnostic's own file).
+    fn private_diag(&self, file: FileId, span: Span, name: &str, item: DefId) -> Diagnostic {
+        let def = &self.p.defs[item.0 as usize];
+        let module = def
+            .module
+            .map(|m| self.p.modules[m.0 as usize].path.0.clone())
+            .unwrap_or_default();
+        let mut d = Diagnostic::new("K0418", file, span)
+            .arg("name", format!("`{name}`"))
+            .arg("module", format!("`{module}`"));
+        if def.span.file == file {
+            d = d.label(
+                def.span.span,
+                format!("`{name}` is declared here without `export`"),
+            );
+        }
+        d
     }
 
     /// When the stdlib's `std/prelude` is loaded, its exports are the prelude (§13.1): they
@@ -772,6 +887,31 @@ impl<'s> Builder<'s> {
                             self.bind(&ctx, &last, *s, tdef, true, false);
                         }
                         UseItem::Name { name, alias } => {
+                            // A private item: K0418, and the name is bound to the item
+                            // itself, so its uses here resolve (the import site is the error).
+                            let exported = self.p.modules[target.0 as usize]
+                                .exports
+                                .contains_key(&name.name);
+                            let private = if exported {
+                                None
+                            } else {
+                                self.private_item(target, &name.name)
+                            };
+                            if let Some(item) = private {
+                                let d = self.private_diag(file, name.span, &name.name, item);
+                                self.diags.push(d);
+                                self.p
+                                    .uses
+                                    .insert(NameRef::new(file, name.span), Res::Error);
+                                let bound = alias.as_ref().unwrap_or(name);
+                                if alias.is_some() {
+                                    self.p
+                                        .uses
+                                        .insert(NameRef::new(file, bound.span), Res::Error);
+                                }
+                                self.bind(&ctx, &bound.name, bound.span, item, true, false);
+                                continue;
+                            }
                             let found = if loaded {
                                 let exports = &self.p.modules[target.0 as usize].exports;
                                 match exports.get(&name.name) {
@@ -1490,7 +1630,8 @@ impl Walker<'_, '_> {
         let def = &self.b.p.defs[target.0 as usize];
         match def.kind {
             DefKind::Module => {
-                let module = &self.b.p.modules[def.module?.0 as usize];
+                let module_id = def.module?;
+                let module = &self.b.p.modules[module_id.0 as usize];
                 if !module.loaded {
                     return None;
                 }
@@ -1502,6 +1643,11 @@ impl Walker<'_, '_> {
                     None => {
                         let names: Vec<String> = module.exports.keys().cloned().collect();
                         self.record(name.span, Res::Error);
+                        if let Some(item) = self.b.private_item(module_id, &name.name) {
+                            let d = self.b.private_diag(self.file, name.span, &name.name, item);
+                            self.b.diags.push(d);
+                            return None;
+                        }
                         let mut d = Diagnostic::new("K0401", self.file, name.span)
                             .arg("name", format!("`{}`", name.name));
                         if let Some(best) = closest(&name.name, names.iter().map(String::as_str)) {
@@ -1929,6 +2075,21 @@ impl Walker<'_, '_> {
                 self.pat_fields(fields);
             }
             PatKind::Path { path, fields } => {
+                if let ([first], None) = (path.as_slice(), fields) {
+                    if let NameKind::Core(c) = first.kind {
+                        // A bare name in a pattern binds it (§8.2 `prim_pat`): a core name
+                        // there (`let Int = 1`, `for print in xs`) is declared, so K0413
+                        // (§7.2). The parser keeps it as a path because a `Name` can hold a
+                        // core name; `Some`/`None`/`Ok`/`Err` are constructor patterns instead.
+                        let text = self.b.table.spelling(c, self.skin);
+                        self.b.diags.push(
+                            Diagnostic::new("K0413", self.file, first.span)
+                                .arg("name", format!("`{text}`")),
+                        );
+                        self.record(first.span, Res::Error);
+                        return;
+                    }
+                }
                 self.path_use(path, Ctx::Value);
                 self.pat_fields(fields);
             }

@@ -1,0 +1,6 @@
+fn main():
+    let ratio = 2.5
+    let total = 1 + ratio
+    let one = 1
+    let explicit = one.to_float() + ratio
+    print("{total} {explicit}")

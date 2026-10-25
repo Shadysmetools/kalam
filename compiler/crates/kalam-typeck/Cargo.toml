@@ -9,6 +9,12 @@ publish = false
 
 [dependencies]
 kalam-base.workspace = true
+kalam-skins.workspace = true
 kalam-resolve.workspace = true
 kalam-sinks.workspace = true
 kalam-diagnostics.workspace = true
+# Path dependency so the shared root Cargo.toml needs no edit (as in kalam-resolve).
+kalam-ast = { path = "../kalam-ast" }
+
+[dev-dependencies]
+kalam-parser.workspace = true

@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali xs = [1]
+    khali n = xs.get(0).unwrap()
+    ektb("{n}")

@@ -67,6 +67,7 @@ fn child_prints_aggregates_only() {
     let runner = Runner {
         exe: PathBuf::from(env!("CARGO_BIN_EXE_kalam-eval")),
         store: s.clone(),
+        include_m2: false,
     };
     let held = holdout::run_child(&runner, &repo_root());
     let text = held.to_json().to_string();
@@ -96,6 +97,7 @@ fn missing_and_encrypted_stores_measure_nothing() {
     let runner = Runner {
         exe: PathBuf::from(env!("CARGO_BIN_EXE_kalam-eval")),
         store: PathBuf::from("/no/such/store"),
+        include_m2: false,
     };
     assert!(matches!(
         holdout::run_child(&runner, &repo_root()),
@@ -106,6 +108,7 @@ fn missing_and_encrypted_stores_measure_nothing() {
     let runner = Runner {
         exe: PathBuf::from(env!("CARGO_BIN_EXE_kalam-eval")),
         store: s.clone(),
+        include_m2: false,
     };
     let held = holdout::run_child(&runner, &repo_root());
     let _ = fs::remove_dir_all(&s);
@@ -164,6 +167,7 @@ fn flat_store_feeds_trojan_and_recovery_not_the_corpus() {
     let runner = Runner {
         exe: PathBuf::from(env!("CARGO_BIN_EXE_kalam-eval")),
         store: s.clone(),
+        include_m2: false,
     };
     let held = holdout::run_child(&runner, &repo_root());
     let text = held.to_json().to_string();
@@ -186,4 +190,48 @@ fn flat_store_feeds_trojan_and_recovery_not_the_corpus() {
     assert_eq!(v["diag_recovery"]["files"], 2, "{text}");
     assert_eq!(v["diag_recovery"]["deferred_m2"], 1, "{text}");
     assert_eq!(v["diag_recovery"]["value"], 1.0, "{text}");
+}
+
+/// From tier M2 on (FOUNDER-QUEUE Q10) the parent asks the child to judge the `[M2]`
+/// Trojan Source cases instead of deferring them.
+#[test]
+fn from_m2_the_child_judges_m2_trojan_cases() {
+    let s = temp_dir("m2");
+    let en = format!("fn main():\n    print(\"{SECRET_TEXT}\")\n");
+    write(
+        &s,
+        "trojan-source/zebra-bad/expect.json",
+        r#"{"must_reject": true, "codes": ["SEC0110"], "lines": [2]}"#,
+    );
+    write(
+        &s,
+        "trojan-source/zebra-bad/main.kl",
+        "fn main():\n    let s = \"a\u{202E}b\"\n    print(s)\n",
+    );
+    write(
+        &s,
+        "trojan-source/zebra-m2/expect.json",
+        r#"{"must_reject": true, "codes": ["SEC0104"], "notes": "[M2] zebra"}"#,
+    );
+    write(&s, "trojan-source/zebra-m2/main.kl", &en);
+    let run = |include_m2: bool| {
+        let runner = Runner {
+            exe: PathBuf::from(env!("CARGO_BIN_EXE_kalam-eval")),
+            store: s.clone(),
+            include_m2,
+        };
+        match holdout::run_child(&runner, &repo_root()) {
+            Held::Ran(v) => v,
+            other => panic!("{other:?}"),
+        }
+    };
+    let (m1, m2) = (run(false), run(true));
+    let _ = fs::remove_dir_all(&s);
+    assert_eq!(m1["trojan"]["deferred_m2"], 1, "{m1}");
+    assert_eq!(m1["trojan"]["bad_total"], 1, "{m1}");
+    assert_eq!(m2["trojan"]["deferred_m2"], 0, "{m2}");
+    assert_eq!(m2["trojan"]["bad_total"], 2, "{m2}");
+    // a clean file is not a SEC0104 collision: the [M2] case is judged, and fails
+    assert_eq!(m2["trojan"]["bad_rejected"], 1, "{m2}");
+    assert!(!m2.to_string().contains("zebra"), "{m2}");
 }

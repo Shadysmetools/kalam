@@ -1,0 +1,5 @@
+دالة رئيسي():
+    ليكن a = Secret.new("x")
+    ليكن b = Secret.new("x")
+    ليكن same = a == b
+    اطبع("{same}")

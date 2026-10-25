@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1402"
+  ],
+  "lines": [
+    null
+  ],
+  "notes": "§15.4.2: \"`@sync` on a declaration (`@sync fn price(…)`) asserts that it does not suspend (K1402 if it does). It freezes an API promise.\" §15.2.1: the filesystem primitives suspend. The line of K1402 is not pinned by the spec."
+}

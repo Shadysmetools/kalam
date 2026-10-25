@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0602"
+  ],
+  "lines": [
+    4
+  ],
+  "notes": "§18.1.2: \"`Show` prints `[REDACTED]`. **There is no `Encode`**, so putting a secret into JSON is a compile error, not a redaction (K0612). **There is no `Eq`, `Ord` or `Hash`.** Compare with `crypto.equal(a, b)`\". §9.8.1: `==` on a non-`Eq` type is K0602."
+}

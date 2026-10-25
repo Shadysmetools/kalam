@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali count = 5
+    khali file = "notes.txt"
+    khali _ = cmd"git log --oneline -n {count} -- {file}"

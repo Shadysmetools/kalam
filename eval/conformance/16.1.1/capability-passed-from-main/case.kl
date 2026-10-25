@@ -1,0 +1,6 @@
+fn has_config(fs: Fs) -> Bool => fs.exists(path"config.toml")
+
+fn main(world: World):
+    let found = has_config(world.fs)
+    print("{found}")
+    print("{world.net}")

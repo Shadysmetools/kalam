@@ -1,0 +1,6 @@
+dala ra2isi():
+    khali ratio = 2.5
+    khali total = 1 + ratio
+    khali one = 1
+    khali explicit = one.to_float() + ratio
+    ektb("{total} {explicit}")

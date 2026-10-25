@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali total = 1
+    total = 2
+    ektb("{total}")

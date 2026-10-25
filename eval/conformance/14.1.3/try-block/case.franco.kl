@@ -1,0 +1,3 @@
+dala ra2isi():
+    try:
+        ektb("x")

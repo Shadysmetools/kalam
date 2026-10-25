@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1110"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "§12.3.3: \"**Capture is by value, of `let` bindings only.** Capturing a `var` is K1110, with the fix `let snapshot = v` inserted before the closure.\""
+}

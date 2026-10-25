@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§10.2.1: \"`let pattern [: T] = expr` binds immutably. The pattern must be irrefutable (K1003): `let (lat, lng) = point.coords()`.\" §10.2.2: \"`var name [: T] = expr` declares a rebindable local.\" Positive twin."
+}

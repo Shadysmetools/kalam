@@ -1,0 +1,7 @@
+دالة double(x: عدد) -> عدد => x * 2
+
+@sync
+دالة quadruple(x: عدد) -> عدد => double(double(x))
+
+دالة رئيسي():
+    اطبع("{quadruple(2)}")

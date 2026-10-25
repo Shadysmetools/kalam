@@ -1,0 +1,6 @@
+dala ra2isi():
+    khali pair = (1, "one")
+    khali (n, word) = pair
+    khali first = pair.0
+    khali same = pair == (1, "one")
+    ektb("{n} {word} {first} {same}")

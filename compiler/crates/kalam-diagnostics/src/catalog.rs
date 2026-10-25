@@ -19,9 +19,10 @@
 //! use no placeholders. `tests/catalog_completeness.rs` checks every placeholder against the
 //! args each emitter supplies.
 //!
-//! This inline table covers the whole P6 code set (FOUNDER-QUEUE Q11, strict reading): every
-//! spec §27 K01xx, K02xx, K09xx and SEC01xx code except retired ones, plus every code the
-//! compiler emits. It moves to `catalog/{en,ar,franco}.toml` plus `explain/` pages once it
+//! This inline table covers the M2 strict code set (FOUNDER-QUEUE Q24): every spec §27 code
+//! in every family except retired ones, plus every code the compiler emits, plus proposed
+//! codes §27 does not list yet (`proposed: true`: the type checker's provisional K0600,
+//! K0603, K1105 and K1106). That includes the M1 P6 set (Q11). It moves to `catalog/{en,ar,franco}.toml` plus `explain/` pages once it
 //! grows (ARCHITECTURE.md §12.2). CI parity rule (05 P6): every code has all three languages.
 //!
 //! ar/franco: pending native review. Every Arabic and Franco text in this table was
@@ -592,9 +593,9 @@ pub static CATALOG: &[Entry] = &[
         code: "K0126",
         title: ["NUMBER TOO BIG FOR ITS TYPE", "رقم أكبر من نوعه", "RAKAM AKBAR MEN NO3O"],
         message: [
-            "`{literal}` doesn't fit in `{type}`. For `{core_int}`, the range is the whole numbers from -9223372036854775808 to 9223372036854775807 (64 bits) on every platform.",
-            "`{literal}` لا يتسع له النوع `{type}`. مدى النوع `{core_int}` هو الأعداد الصحيحة من -9223372036854775808 إلى 9223372036854775807 (64 بت) على كل المنصات.",
-            "`{literal}` mesh hayeksa3 f `{type}`. Lel `{core_int}`, el mada howa el arqam el sa7ee7a men -9223372036854775808 l 9223372036854775807 (64 bit) 3ala kol platform.",
+            "This number doesn't fit in `{type}`. For `{core_int}`, the range is the whole numbers from -9223372036854775808 to 9223372036854775807 (64 bits) on every platform.",
+            "هذا الرقم لا يتسع له النوع `{type}`. مدى النوع `{core_int}` هو الأعداد الصحيحة من -9223372036854775808 إلى 9223372036854775807 (64 بت) على كل المنصات.",
+            "El rakam da mesh hayeksa3 f `{type}`. Lel `{core_int}`, el mada howa el arqam el sa7ee7a men -9223372036854775808 l 9223372036854775807 (64 bit) 3ala kol platform.",
         ],
         help: [
             "Use a smaller value, or give the value the type `BigInt` for numbers without a limit.",
@@ -1660,6 +1661,1350 @@ pub static CATALOG: &[Entry] = &[
             "Why: with a cycle there is no order in which every module's constants are ready before they are used, and neither module can be read without the other (spec §13.1).\n\nInstead of:\n    # app/orders.kl\n    use app/users\n    # app/users.kl\n    use app/orders\n\nwrite (app/model.kl holds what both need):\n    # app/orders.kl\n    use app/model\n    # app/users.kl\n    use app/model",
             "السبب: مع الدائرة لا يوجد ترتيب تكون فيه ثوابت كل وحدة جاهزة قبل استخدامها، ولا يمكن قراءة أي من الوحدتين دون الأخرى (المواصفة §13.1).\n\nبدلًا من:\n    # app/orders.ar.kl\n    استخدم app/users\n    # app/users.ar.kl\n    استخدم app/orders\n\nاكتب (والوحدة app/model.ar.kl فيها ما تحتاجه الوحدتان):\n    # app/orders.ar.kl\n    استخدم app/model\n    # app/users.ar.kl\n    استخدم app/model",
             "Leh: ma3 el dayra mafeesh tarteeb tekoon feeh el constants bta3et kol module gahza 2abl ma testa5demha, w mafeesh module yet2ere men gher el tany (el spec §13.1).\n\nBadal:\n    # app/orders.franco.kl\n    hat app/users\n    # app/users.franco.kl\n    hat app/orders\n\nEkteb (w app/model.franco.kl feeh elly el etnein me7tageeno):\n    # app/orders.franco.kl\n    hat app/model\n    # app/users.franco.kl\n    hat app/model",
+        ],
+        proposed: false,
+    },
+    // ---- Names, records and members found by the type checker (K04xx, spec §9.2, §12.2,
+    // §21.3; kalam-typeck) and private items (K0418, FOUNDER-QUEUE Q23; kalam-resolve).
+    // ar/franco: pending native review.
+    Entry {
+        code: "K0416",
+        title: ["RECORD NEEDS NAMED FIELDS", "السجل يحتاج أسماء الحقول", "EL RECORD 3AYEZ ASAMY EL FIELDS"],
+        message: [
+            "I can't build this record from positional arguments. A record is always built with every field named, so a value can never land in the wrong field.",
+            "لا أستطيع بناء هذا السجل من معاملات بالترتيب. يُبنى السجل دائمًا بتسمية كل حقل، حتى لا تذهب قيمة إلى الحقل الخطأ أبدًا.",
+            "Mesh ha2dar abni el record da men arguments bel tarteeb. El record dayman byetbene b esm kol field, 3ashan mafeesh qeema terou7 lel field el ghalat abadan.",
+        ],
+        help: [
+            "Name each field, for example `User(id: 1, name: \"Sara\")`. Fields with a default value may be left out.",
+            "سمِّ كل حقل، مثل `مستخدم(الرقم: 1، الاسم: \"سارة\")`. ويمكن ترك الحقول التي لها قيمة افتراضية.",
+            "Sammy kol field, zay `User(id: 1, esm: \"Sara\")`. W el fields elly leeha qeema default momken tesebha.",
+        ],
+        explain: [
+            "Why: positional arguments depend on the order of the fields in the declaration. If someone swaps two fields of the same type, every positional construction would silently swap their values too. With named fields, each construction stays correct when the declaration changes (spec §9.4).\n\nInstead of:\n    let u = User(1, \"Sara\", email)\n\nwrite:\n    let u = User(id: 1, name: \"Sara\", email: email)",
+            "السبب: المعاملات بالترتيب تعتمد على ترتيب الحقول في التعريف. فلو بدّل أحدهم حقلين من النوع نفسه لتبدلت قيمتاهما بصمت في كل بناء بالترتيب. أما مع تسمية الحقول فيبقى كل بناء صحيحًا حين يتغير التعريف (المواصفة §9.4).\n\nبدلًا من:\n    ليكن م = مستخدم(1، \"سارة\"، البريد)\n\nاكتب:\n    ليكن م = مستخدم(الرقم: 1، الاسم: \"سارة\"، البريد: البريد)",
+            "Leh: el arguments bel tarteeb mesh bteshtaghal ella b tarteeb el fields f el ta3reef. Law 7ad baddal field-ein men nafs el no3, kol bena2 bel tarteeb hayebaddel qeyamhom f el sekket. Laken b asamy el fields kol bena2 byefdal sa7 lamma el ta3reef yetghayar (el spec §9.4).\n\nBadal:\n    khali u = User(1, \"Sara\", email)\n\nEkteb:\n    khali u = User(id: 1, esm: \"Sara\", email: email)",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K0418",
+        title: ["ITEM IS PRIVATE", "العنصر خاص", "EL 7AGA DI PRIVATE"],
+        message: [
+            "{name} exists in {module}, but it is private to that module, so I can't use it from here. Only items marked `{kw_export}` can be imported or reached through a module name.",
+            "{name} موجود في {module}، لكنه خاص بتلك الوحدة، فلا أستطيع استخدامه من هنا. لا يمكن استيراد عنصر أو الوصول إليه عبر اسم وحدته إلا إذا كان معلَّمًا بـ `{kw_export}`.",
+            "{name} mawgood f {module}, bas howa private lel module di, fa mesh ha2dar asta5demo men hena. Mafeesh 7aga tet3amallaha import aw tewsalaha 3an taree2 esm el module ella law 3aleiha `{kw_export}`.",
+        ],
+        help: [
+            "Use something {module} exports instead, or, if {name} is meant to be public, mark it with `{kw_export}` in {module}.",
+            "استخدم بدلًا منه شيئًا تصدّره {module}، أو إن كان {name} مقصودًا أن يكون عامًا فعلّمه بـ `{kw_export}` في {module}.",
+            "Esta5dem badalo 7aga {module} bte3melaha export, aw law {name} el mafrood yeb2a public, 7ott 3aleih `{kw_export}` f {module}.",
+        ],
+        explain: [
+            "Why: private items are a module's implementation details, so the module can change them without breaking anyone. If other modules could import them, every internal change would become a breaking change. I say \"private\" rather than \"not found\" because the name is right: only its visibility stops you.\n\nInstead of:\n    # app/billing.kl\n    type Rate:\n        percent: Decimal\n    # app/main.kl\n    use app/billing.{Rate}\n\nwrite (in app/billing.kl):\n    export type Rate:\n        percent: Decimal",
+            "السبب: العناصر الخاصة تفاصيل داخلية للوحدة، فتستطيع الوحدة تغييرها دون أن تكسر شيئًا عند غيرها. ولو أمكن للوحدات الأخرى استيرادها لصار كل تغيير داخلي تغييرًا يكسر غيره. وأقول \"خاص\" لا \"غير موجود\" لأن الاسم صحيح، وإنما تمنعك رؤيته فقط.\n\nبدلًا من:\n    # app/billing.ar.kl\n    هيكل نسبة:\n        القيمة: عشري\n    # app/main.ar.kl\n    استخدم app/billing.{نسبة}\n\nاكتب (في app/billing.ar.kl):\n    علني هيكل نسبة:\n        القيمة: عشري",
+            "Leh: el 7agat el private tafaseel dakhleya lel module, fa el module te2dar tghayarha men gher ma tekassar 7aga 3and 7ad. Law el modules el tanya te2dar te3melaha import, kol taghyeer dakhly hayeb2a taghyeer bykassar. W ana ba2ool \"private\" mesh \"mesh mawgood\" 3ashan el esm sa7: el visibility bas heya elly mana3ak.\n\nBadal:\n    # app/billing.franco.kl\n    haykal Rate:\n        percent: ashri\n    # app/main.franco.kl\n    hat app/billing.{Rate}\n\nEkteb (f app/billing.franco.kl):\n    talla3 haykal Rate:\n        percent: ashri",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K0420",
+        title: ["UNKNOWN FIELD OR METHOD", "حقل أو دالة غير معروفة", "FIELD AW METHOD MESH MA3ROOFA"],
+        message: [
+            "`{type}` has no field or method named `{name}`. I check every call against the real API, so a guessed name stops here instead of failing while the program runs.",
+            "النوع `{type}` ليس فيه حقل أو دالة اسمها `{name}`. أتحقق من كل استدعاء مقابل الواجهة الحقيقية، فيتوقف الاسم المخمَّن هنا بدل أن يفشل أثناء تشغيل البرنامج.",
+            "`{type}` mafeehoosh field aw method esmaha `{name}`. Ana ba-check kol call 3ala el API el 7a2ee2y, fa el esm el mettakhammen beyo2af hena badal ma yo2a3 w el program shaghal.",
+        ],
+        help: [
+            "Check the spelling, or pick one of the names I suggest. Names from other languages map like this: `push` → `append`, `length` and `size` → `len`, `includes` → `contains`.",
+            "راجع الكتابة، أو اختر أحد الأسماء التي أقترحها. وهذه مقابلات أسماء من لغات أخرى: `push` ← `append`، و`length` و`size` ← `len`، و`includes` ← `contains`.",
+            "Raga3 el ketaba, aw ekhtar esm men elly ana ba2tare7ha. Asamy men loghat tanya: `push` → `append`, `length` w `size` → `len`, `includes` → `contains`.",
+        ],
+        explain: [
+            "Why: a method name that looks plausible but does not exist is one of the most common mistakes, from people and from code generators alike. I list the closest real names, by spelling and by a table of names from other languages. Collections are immutable, so a method such as `append` returns a new list instead of changing the old one (spec §21.3).\n\nInstead of:\n    items.push(x)\n\nwrite (with `items` declared as `var`):\n    items = items.append(x)",
+            "السبب: اسم الدالة الذي يبدو معقولًا لكنه غير موجود من أكثر الأخطاء شيوعًا، عند الناس وعند مولّدات الكود. لذلك أعرض أقرب الأسماء الحقيقية، حسب الكتابة وحسب جدول لأسماء من لغات أخرى. والمجموعات لا تتغير، فالدالة `append` مثلًا ترجع قائمة جديدة ولا تغيّر القديمة (المواصفة §21.3).\n\nبدلًا من:\n    العناصر.push(س)\n\nاكتب (مع تعريف `العناصر` بـ `متغير`):\n    العناصر = العناصر.append(س)",
+            "Leh: esm method shaklo ma3qool bas mesh mawgood men akter el aghlat, 3and el nas w 3and el code generators. 3ashan keda ba3red a2rab asamy 7a2ee2ya, bel ketaba w b gadwal asamy men loghat tanya. W el collections mabtetghayarsh, fa method zay `append` betraga3 list gedeeda w mesh betghayar el adeema (el spec §21.3).\n\nBadal:\n    items.push(x)\n\nEkteb (w `items` mota3arafa b `motghayer`):\n    items = items.append(x)",
+        ],
+        proposed: false,
+    },
+    // ---- Types and operators (K06xx, spec §9, §10.6, §18; kalam-typeck). K0600 and K0603 are
+    // provisional codes the type checker uses until the founder assigns them (spec erratum
+    // proposal). ar/franco: pending native review.
+    Entry {
+        code: "K0600",
+        title: ["TYPES DON'T MATCH", "الأنواع غير متوافقة", "EL TYPES MESH MAZBOOTA"],
+        message: [
+            "The type of this value doesn't fit the place where it is used. Kalam never converts between types by itself, so the two have to agree exactly.",
+            "نوع هذه القيمة لا يناسب المكان الذي استُخدمت فيه. لا يحوّل كلام بين الأنواع من تلقاء نفسه، فلا بد أن يتطابق النوعان تمامًا.",
+            "No3 el qeema di mesh mnaseb el makan elly etsta5demet feeh. Kalam 3omro ma by7awel ben el types lewa7do, fa lazem el etnein yetaba2o bel zabt.",
+        ],
+        help: [
+            "Check what this place needs (a parameter, a return type, an annotation, a function to call or something to loop over), then change the value or convert it explicitly, for example with `.to_float()`.",
+            "تحقق مما يحتاجه هذا المكان (معامل، أو نوع إرجاع، أو تعليق نوع، أو دالة تُستدعى، أو شيء يُكرَّر عليه)، ثم غيّر القيمة أو حوّلها صراحة، مثلًا بـ `.to_float()`.",
+            "Shoof el makan da me7tag eh (parameter, aw return type, aw annotation, aw dala tet3amalha call, aw 7aga te3mel 3aleiha loop), w ba3dein ghayar el qeema aw 7awelha sara7a, masalan b `.to_float()`.",
+        ],
+        explain: [
+            "Why: every value has exactly one type, and every place (a parameter, a variable with an annotation, a return) says which type it accepts. When the two differ, guessing a conversion could lose data or hide a bug, so I stop and show both.\n\nInstead of:\n    fn half(x: Float) -> Float:\n        return x / 2.0\n    let count: Int = 3\n    let h = half(count)\n\nwrite:\n    let h = half(count.to_float())",
+            "السبب: لكل قيمة نوع واحد بالضبط، وكل مكان (معامل، أو متغير بتعليق نوع، أو إرجاع) يحدد النوع الذي يقبله. فإذا اختلف النوعان فإن تخمين تحويل قد يضيّع بيانات أو يخفي خطأ، لذلك أتوقف وأعرض النوعين.\n\nبدلًا من:\n    دالة نصف(س: كسري) -> كسري:\n        أرجع س / 2.0\n    ليكن العدد: عدد = 3\n    ليكن ن = نصف(العدد)\n\nاكتب:\n    ليكن ن = نصف(العدد.to_float())",
+            "Leh: kol qeema leeha no3 wa7ed bel zabt, w kol makan (parameter, aw motghayer b annotation, aw return) bey2ool beyqbal anhy no3. Law el etnein mokhtalfeen, takhmeen ay ta7weel momken ydaya3 data aw ykhabby ghalta, 3ashan keda bawa2af w a3redlak el etnein.\n\nBadal:\n    dala nos(x: kasri) -> kasri:\n        rag3 x / 2.0\n    khali 3add: adad = 3\n    khali n = nos(3add)\n\nEkteb:\n    khali n = nos(3add.to_float())",
+        ],
+        proposed: true,
+    },
+    Entry {
+        code: "K0601",
+        title: ["NUMBER TYPES DON'T MIX", "أنواع الأرقام لا تختلط", "ANWA3 EL ARQAM MABTETKHALATSH"],
+        message: [
+            "I can't combine a `{left}` with a `{right}`. Kalam never converts numbers by itself, so you choose how.",
+            "لا أستطيع الجمع بين `{left}` و`{right}`. لا يحوّل كلام الأرقام من تلقاء نفسه، فأنت من يختار طريقة التحويل.",
+            "Mesh ha2dar agma3 ben `{left}` w `{right}`. Kalam 3omro ma by7awel el arqam lewa7do, fa enta elly tekhtar ezay.",
+        ],
+        help: [
+            "Convert one side explicitly: `.to_float()` keeps the fraction, `.round()` drops it.",
+            "حوّل أحد الطرفين صراحة: `.to_float()` تحتفظ بالكسر، و`.round()` تحذفه.",
+            "7awel taraf wa7ed sara7a: `.to_float()` bete7tafez bel kasr, w `.round()` betsheelo.",
+        ],
+        explain: [
+            "Why: silent numeric conversions lose information (a fraction, a large value, decimal exactness) without telling you. A plain number literal adapts to the other side, so `1 + 2.5` is a `Float`; variables never convert by themselves.\n\nInstead of:\n    let total = count + price\n\nwrite one of:\n    let total = count.to_float() + price     # keep the fraction\n    let total = count + price.round()        # drop the fraction",
+            "السبب: التحويل الصامت بين الأرقام يضيّع معلومات (كسرًا، أو قيمة كبيرة، أو دقة عشرية) دون أن يخبرك. والرقم المكتوب مباشرة يتكيف مع الطرف الآخر، فيكون `1 + 2.5` من النوع `كسري`، أما المتغيرات فلا تتحول من تلقاء نفسها أبدًا.\n\nبدلًا من:\n    ليكن المجموع = العدد + السعر\n\nاكتب أحد السطرين:\n    ليكن المجموع = العدد.to_float() + السعر     # تحتفظ بالكسر\n    ليكن المجموع = العدد + السعر.round()        # تحذف الكسر",
+            "Leh: el ta7weel el saket ben el arqam bydaya3 ma3lomat (kasr, aw qeema kebeera, aw da22a 3ashreya) men gher ma y2ollak. El rakam el maktoob 3ala tool beyetkayef ma3 el taraf el tany, fa `1 + 2.5` yeb2a `kasri`; laken el motghayerat 3omraha ma tet7awel lewa7daha.\n\nBadal:\n    khali magmoo3 = 3add + se3r\n\nEkteb wa7ed men dol:\n    khali magmoo3 = 3add.to_float() + se3r     # bte7tafez bel kasr\n    khali magmoo3 = 3add + se3r.round()        # betsheel el kasr",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K0602",
+        title: ["COMPARING DIFFERENT TYPES", "مقارنة أنواع مختلفة", "MOQARNA BEN TYPES MOKHTALFA"],
+        message: [
+            "I can't compare a `{left}` with a `{right}` using `==`. Equality needs two values of the same type, and that type must support equality (`Eq`).",
+            "لا أستطيع مقارنة `{left}` بـ `{right}` باستخدام `==`. المساواة تحتاج قيمتين من النوع نفسه، ويجب أن يدعم هذا النوع المساواة (`Eq`).",
+            "Mesh ha2dar a2aren `{left}` b `{right}` b `==`. El mosawah me7taga qeemtein men nafs el no3, w el no3 da lazem yed3am el mosawah (`Eq`).",
+        ],
+        help: [
+            "Convert one side so both have the same type, or compare fields that support equality. Compare secrets with `crypto.equal(a, b)`.",
+            "حوّل أحد الطرفين ليصبح للطرفين النوع نفسه، أو قارن حقولًا تدعم المساواة. وقارن الأسرار بـ `crypto.equal(a, b)`.",
+            "7awel taraf 3ashan el etnein yeb2o nafs el no3, aw qaren fields bted3am el mosawah. W qaren el asrar b `crypto.equal(a, b)`.",
+        ],
+        explain: [
+            "Why: in many languages `1 == \"1\"` quietly answers false, or true, and either way the comparison hides a bug. In Kalam, `==` only compares values of one type that supports equality. `Secret` values have no `==` at all: `crypto.equal` compares them in constant time.\n\nInstead of:\n    if order.id == input:\n\nwrite:\n    if order.id == input.to_int()?:",
+            "السبب: في لغات كثيرة يجيب `1 == \"1\"` بخطأ أو بصح دون أن ينبهك، وفي الحالتين تخفي المقارنة خطأً. أما في كلام فالعامل `==` يقارن فقط قيمًا من نوع واحد يدعم المساواة. وقيم `Secret` ليس لها `==` أصلًا، بل تقارنها `crypto.equal` في زمن ثابت.\n\nبدلًا من:\n    إذا الطلب.الرقم == المدخل:\n\nاكتب:\n    إذا الطلب.الرقم == المدخل.to_int()؟:",
+            "Leh: f loghat keteer `1 == \"1\"` betrod ghalat aw sa7 men gher ma tenabbahak, w f el 7altein el moqarna betkhabby ghalta. F Kalam, `==` bey2aren bas qeyam men no3 wa7ed byed3am el mosawah. W qeyam `Secret` malhash `==` aslan: `crypto.equal` bet2arenhom f wa2t sabet.\n\nBadal:\n    law order.id == input:\n\nEkteb:\n    law order.id == input.to_int()?:",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K0603",
+        title: ["OPERATION NOT DEFINED FOR TYPE", "عملية غير معرّفة لهذا النوع", "3AMALEYA MESH MAWGOODA LEL TYPE"],
+        message: [
+            "`{type}` doesn't support what this code asks of it: the operator or function here needs a trait (such as `Ord` for `<`, or `Show` for printing) that `{type}` doesn't have.",
+            "النوع `{type}` لا يدعم ما يطلبه هذا الكود: العامل أو الدالة هنا تحتاج سمة (مثل `Ord` للعامل `<`، أو `Show` للطباعة) ليست في `{type}`.",
+            "`{type}` mesh byed3am elly el code da 3ayzo: el operator aw el dala hena me7taga trait (zay `Ord` lel `<`, aw `Show` lel teba3a) mesh mawgooda f `{type}`.",
+        ],
+        help: [
+            "Use a value whose type supports it, or give `{type}` the trait: add it to `@derive(...)`, or write `{kw_impl} {type} {kw_as} Show:` with the methods.",
+            "استخدم قيمة يدعم نوعها ذلك، أو أعطِ `{type}` السمة: أضفها إلى `@derive(...)`، أو اكتب `{kw_impl} {type} {kw_as} Show:` مع دوالها.",
+            "Esta5dem qeema no3aha byed3am da, aw edy `{type}` el trait: zawedha f `@derive(...)`, aw ekteb `{kw_impl} {type} {kw_as} Show:` ma3 el methods bta3etha.",
+        ],
+        explain: [
+            "Why: an operator means something only for types that define it. `<` needs an order (`Ord`), printing needs a text form (`Show`), and `/` is not defined where it would silently round. Saying which trait is missing tells you exactly what to add.\n\nInstead of:\n    type Point:\n        x: Int\n        y: Int\n    print(\"{ p }\")\n\nwrite:\n    @derive(Show)\n    type Point:\n        x: Int\n        y: Int",
+            "السبب: للعامل معنى فقط في الأنواع التي تعرّفه. فالعامل `<` يحتاج ترتيبًا (`Ord`)، والطباعة تحتاج صورة نصية (`Show`)، والعامل `/` غير معرّف حيث كان سيقرّب بصمت. وذكر السمة الناقصة يخبرك بالضبط بما يجب إضافته.\n\nبدلًا من:\n    هيكل نقطة:\n        س: عدد\n        ص: عدد\n    اطبع(\"{ ن }\")\n\nاكتب:\n    @derive(Show)\n    هيكل نقطة:\n        س: عدد\n        ص: عدد",
+            "Leh: el operator leeh ma3na bas f el types elly bet3arrafo. `<` me7tag tarteeb (`Ord`), w el teba3a me7taga shakl nassy (`Show`), w `/` mesh mota3araf f el amaken elly kan hay2arrab feeha f el sekket. W lamma a2ollak anhy trait na2es, betb2a 3aref bel zabt te-zawed eh.\n\nBadal:\n    haykal No2ta:\n        x: adad\n        y: adad\n    ektb(\"{ p }\")\n\nEkteb:\n    @derive(Show)\n    haykal No2ta:\n        x: adad\n        y: adad",
+        ],
+        proposed: true,
+    },
+    Entry {
+        code: "K0612",
+        title: ["SECRET IN AN ENCODED TYPE", "سرّ في نوع قابل للترميز", "SECRET F TYPE BYET3AMALLO ENCODE"],
+        message: [
+            "This type derives `Encode`, but one of its fields is a `Secret`. Encoding it would write the secret into JSON or onto the wire, so I stop here rather than hide it behind a redaction.",
+            "هذا النوع يشتق `Encode`، لكن أحد حقوله `Secret`. وترميزه كان سيكتب السر في JSON أو يرسله عبر الشبكة، لذلك أتوقف هنا بدل أن أخفيه بتمويه.",
+            "El no3 da bey3mel derive l `Encode`, bas field menno `Secret`. W el encode kan hayekteb el secret f JSON aw yeb3ato 3al network, 3ashan keda bawa2af hena badal ma akhabbih b redaction.",
+        ],
+        help: [
+            "Remove `Encode` from the `@derive` list, or define a separate output type without the secret field and encode that one.",
+            "احذف `Encode` من قائمة `@derive`، أو عرّف نوع مخرجات منفصلًا بلا حقل السر ورمّزه هو.",
+            "Shil `Encode` men list el `@derive`, aw 3arraf no3 output monfasel men gher field el secret w e3mel encode leeh howa.",
+        ],
+        explain: [
+            "Why: a secret that reaches JSON is a leak, whether it lands in a log, an API response or a cache. `Secret` has no `Encode` on purpose, so the leak is a compile error instead of a value that is quietly blanked out (spec §18.1).\n\nInstead of:\n    @derive(Encode)\n    type Account:\n        email: String\n        api_key: Secret[String]\n\nwrite:\n    type Account:\n        email: String\n        api_key: Secret[String]\n    @derive(Encode)\n    type AccountView:\n        email: String",
+            "السبب: السر الذي يصل إلى JSON تسريب، سواء انتهى في سجل أو في رد واجهة أو في ذاكرة مؤقتة. وليس للنوع `Secret` ترميز `Encode` عن قصد، فيكون التسريب خطأ ترجمة لا قيمة تُمحى بصمت (المواصفة §18.1).\n\nبدلًا من:\n    @derive(Encode)\n    هيكل حساب:\n        البريد: نص\n        المفتاح: Secret[نص]\n\nاكتب:\n    هيكل حساب:\n        البريد: نص\n        المفتاح: Secret[نص]\n    @derive(Encode)\n    هيكل عرض_الحساب:\n        البريد: نص",
+            "Leh: el secret elly yewsal JSON yeb2a tasreeb, sawa2 khallas f log aw f response aw f cache. W `Secret` malosh `Encode` 3an 2asd, fa el tasreeb yeb2a compile error mesh qeema btetmese7 f el sekket (el spec §18.1).\n\nBadal:\n    @derive(Encode)\n    haykal Account:\n        email: nass\n        api_key: Secret[nass]\n\nEkteb:\n    haykal Account:\n        email: nass\n        api_key: Secret[nass]\n    @derive(Encode)\n    haykal AccountView:\n        email: nass",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K0650",
+        title: ["STRINGS CAN'T BE INDEXED", "النص لا يُفهرس", "EL STRING MABTET3AMALHASH INDEX"],
+        message: [
+            "I can't index a string with `[...]`. A position in text is ambiguous: bytes, code points and visible characters all count differently, and in Arabic text the difference shows.",
+            "لا أستطيع فهرسة نص بـ `[...]`. الموضع في النص غامض: البايتات ونقاط الترميز والحروف الظاهرة كلها تُعدّ بطرق مختلفة، ويظهر الفرق في النص العربي.",
+            "Mesh ha2dar a3mel index l string b `[...]`. El makan f el kalam mesh wade7: el bytes wel code points wel 7oroof el bayna kol wa7ed byet3ad b shakl, w f el kalam el 3araby el far2 bayen.",
+        ],
+        help: [
+            "Use `.chars()` or `.graphemes()` to go through the characters, or `.slice(from, to)` to take part of the string (positions count visible characters).",
+            "استخدم `.chars()` أو `.graphemes()` للمرور على الحروف، أو `.slice(from, to)` لأخذ جزء من النص (والمواضع تعدّ الحروف الظاهرة).",
+            "Esta5dem `.chars()` aw `.graphemes()` 3ashan temshy 3ala el 7oroof, aw `.slice(from, to)` 3ashan takhod 7etta men el string (el amaken bet3ed el 7oroof el bayna).",
+        ],
+        explain: [
+            "Why: `s[3]` means a different thing in every language: the fourth byte, the fourth UTF-16 unit or the fourth code point. With Arabic harakat or an emoji, none of these is the fourth character a reader sees. Kalam asks you to say which one you mean.\n\nInstead of:\n    let first = name[0]\n\nwrite:\n    let first = name.slice(0, 1)",
+            "السبب: `s[3]` يعني شيئًا مختلفًا في كل لغة: البايت الرابع، أو وحدة UTF-16 الرابعة، أو نقطة الترميز الرابعة. ومع الحركات العربية أو الرموز التعبيرية لا يكون أي منها الحرف الرابع الذي يراه القارئ. لذلك يطلب منك كلام أن تحدد ما تقصده.\n\nبدلًا من:\n    ليكن الأول = الاسم[0]\n\nاكتب:\n    ليكن الأول = الاسم.slice(0، 1)",
+            "Leh: `s[3]` ma3naha 7aga mokhtalfa f kol logha: el byte el rabe3, aw el UTF-16 unit el rab3a, aw el code point el rabe3. W ma3 el tashkeel el 3araby aw el emoji, wala wa7da menhom heya el 7arf el rabe3 elly el 2ari beyshoofo. 3ashan keda Kalam 3ayzak t2ool ana 2asdak anhy wa7da.\n\nBadal:\n    khali awel = esm[0]\n\nEkteb:\n    khali awel = esm.slice(0, 1)",
+        ],
+        proposed: false,
+    },
+    // ---- Statements and inference (K07xx, K08xx, spec §10; kalam-typeck). ar/franco: pending
+    // native review.
+    Entry {
+        code: "K0730",
+        title: ["UNUSED VALUE", "قيمة غير مستخدمة", "QEEMA MESH MOSTA5DAMA"],
+        message: [
+            "This expression gives a value of type `{type}`, and nothing uses it. A value that is computed and dropped is usually a mistake, such as calling `items.append(x)` and expecting `items` to change.",
+            "هذا التعبير يعطي قيمة من النوع `{type}`، ولا شيء يستخدمها. والقيمة التي تُحسب ثم تُترك غالبًا خطأ، مثل استدعاء `items.append(x)` وتوقّع أن تتغير `items`.",
+            "El expression da bydy qeema men no3 `{type}`, w mafeesh 7aga betesta5demha. W el qeema elly btet7seb w tetrmy ghaleban ghalta, zay ennak tenady `items.append(x)` w testanna `items` tetghayar.",
+        ],
+        help: [
+            "Use the value, for example keep it with `{kw_let}` or assign it back, or write `{kw_let} _ = ...` to drop it on purpose.",
+            "استخدم القيمة، مثلًا احفظها بـ `{kw_let}` أو أسندها من جديد، أو اكتب `{kw_let} _ = ...` لتتركها عن قصد.",
+            "Esta5dem el qeema, masalan e7fazha b `{kw_let}` aw raga3ha lel motghayer, aw ekteb `{kw_let} _ = ...` 3ashan tesebha 3an 2asd.",
+        ],
+        explain: [
+            "Why: values in Kalam are immutable, so methods such as `append` or `trim` return a new value instead of changing the old one. Calling one and ignoring the result does nothing, and that is almost never what was meant.\n\nInstead of:\n    items.append(x)\n\nwrite (with `items` declared as `var`):\n    items = items.append(x)\n\nor, to drop a value on purpose:\n    let _ = compute_total(cart)",
+            "السبب: القيم في كلام لا تتغير، فالدوال مثل `append` أو `trim` ترجع قيمة جديدة ولا تغيّر القديمة. واستدعاء إحداها مع تجاهل النتيجة لا يفعل شيئًا، ونادرًا ما يكون هذا هو المقصود.\n\nبدلًا من:\n    العناصر.append(س)\n\nاكتب (مع تعريف `العناصر` بـ `متغير`):\n    العناصر = العناصر.append(س)\n\nأو لترك قيمة عن قصد:\n    ليكن _ = احسب_المجموع(السلة)",
+            "Leh: el qeyam f Kalam mabtetghayarsh, fa methods zay `append` aw `trim` betraga3 qeema gedeeda w mesh betghayar el adeema. W ennak tenady wa7da w tetgahel el natiga mesh bey3mel 7aga, w nadran ma yeb2a da el ma2sood.\n\nBadal:\n    items.append(x)\n\nEkteb (w `items` mota3arafa b `motghayer`):\n    items = items.append(x)\n\naw, 3ashan tesseb qeema 3an 2asd:\n    khali _ = compute_total(cart)",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K0801",
+        title: ["LAMBDA PARAMETER TYPES UNKNOWN", "أنواع معاملات الدالة المجهولة غير معروفة", "TYPES EL LAMBDA MESH MA3ROOFA"],
+        message: [
+            "I can't tell the types of this lambda's parameters. A lambda takes its parameter types from the place it is passed to, and nothing here says what they are.",
+            "لا أستطيع معرفة أنواع معاملات هذه الدالة المجهولة. تأخذ الدالة المجهولة أنواع معاملاتها من المكان الذي تُمرَّر إليه، ولا شيء هنا يحددها.",
+            "Mesh 3aref a7added types el parameters bta3et el lambda di. El lambda betakhod types parameters-ha men el makan elly etba3atet leeh, w mafeesh 7aga hena bet2ool homa eh.",
+        ],
+        help: [
+            "Write the parameter types, for example `{kw_fn}(x: {core_int}) => x + 1`, or pass the lambda directly to a function that expects one.",
+            "اكتب أنواع المعاملات، مثل `{kw_fn}(x: {core_int}) => x + 1`، أو مرّر الدالة المجهولة مباشرة إلى دالة تنتظرها.",
+            "Ekteb types el parameters, zay `{kw_fn}(x: {core_int}) => x + 1`, aw ba3at el lambda 3ala tool l dala mestanyaha.",
+        ],
+        explain: [
+            "Why: Kalam infers types inside a function body, but only from what is known at each point. A lambda stored in a variable has no expected function type to learn from, and guessing would make the meaning of the code depend on its later uses.\n\nInstead of:\n    let double = fn(x) => x * 2\n\nwrite:\n    let double = fn(x: Int) => x * 2\n\nor pass it where its type is known:\n    let doubled = numbers.map(fn(x) => x * 2)",
+            "السبب: يستنتج كلام الأنواع داخل جسم الدالة، لكن فقط مما هو معروف عند كل نقطة. والدالة المجهولة المحفوظة في متغير ليس لها نوع دالة متوقع تتعلم منه، والتخمين كان سيجعل معنى الكود معتمدًا على استخداماته اللاحقة.\n\nبدلًا من:\n    ليكن ضعف = دالة(س) => س * 2\n\nاكتب:\n    ليكن ضعف = دالة(س: عدد) => س * 2\n\nأو مرّرها حيث يكون نوعها معروفًا:\n    ليكن المضاعف = الأرقام.map(دالة(س) => س * 2)",
+            "Leh: Kalam byestantag el types gowa gesm el dala, bas men elly ma3roof 3and kol no2ta. W el lambda el mat7oota f motghayer malhash no3 dala mestanny tet3allem menno, wel takhmeen kan hayekhalli ma3na el code mo3tamed 3ala esta5damato ba3dein.\n\nBadal:\n    khali do3f = dala(x) => x * 2\n\nEkteb:\n    khali do3f = dala(x: adad) => x * 2\n\naw ba3atha f makan no3aha ma3roof feeh:\n    khali mod3af = numbers.map(dala(x) => x * 2)",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K0802",
+        title: ["EMPTY COLLECTION NEEDS A TYPE", "مجموعة فارغة تحتاج نوعًا", "COLLECTION FADYA ME7TAGA TYPE"],
+        message: [
+            "I can't tell what this empty collection will hold. An empty `[]` or `{}` has no element type of its own, and nothing around it says what it should be.",
+            "لا أستطيع معرفة ما ستحويه هذه المجموعة الفارغة. فالمجموعة الفارغة `[]` أو `{}` ليس لها نوع عناصر في ذاتها، ولا شيء حولها يحدده.",
+            "Mesh 3aref el collection el fadya di hatsheel eh. `[]` aw `{}` el fadyeen malhomsh no3 3anaser lewa7dohom, w mafeesh 7aga 7awaleihom bet2ool lazem yeb2o eh.",
+        ],
+        help: [
+            "Add a type, for example `{kw_let} names: {core_list}[{core_string}] = []`.",
+            "أضف نوعًا، مثل `{kw_let} الأسماء: {core_list}[{core_string}] = []`.",
+            "Zawed type, zay `{kw_let} asamy: {core_list}[{core_string}] = []`.",
+        ],
+        explain: [
+            "Why: the element type decides what you may add later and which methods exist. If I guessed it from later lines, moving one line could change the type of the whole collection. One annotation keeps it fixed.\n\nInstead of:\n    var names = []\n\nwrite:\n    var names: List[String] = []",
+            "السبب: نوع العناصر يحدد ما يمكنك إضافته لاحقًا وما الدوال المتاحة. ولو خمّنته من الأسطر اللاحقة لأمكن أن يغيّر نقلُ سطر واحد نوعَ المجموعة كلها. وتعليق نوع واحد يثبّته.\n\nبدلًا من:\n    متغير الأسماء = []\n\nاكتب:\n    متغير الأسماء: قائمة[نص] = []",
+            "Leh: no3 el 3anaser howa elly bey7added te2dar tzawed eh ba3dein w anhy methods mawgooda. W law khammanto men el sotoor elly ba3d, na2l satr wa7ed momken yghayar no3 el collection kollaha. W annotation wa7da betsabbeto.\n\nBadal:\n    motghayer asamy = []\n\nEkteb:\n    motghayer asamy: qayma[nass] = []",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K0803",
+        title: ["SHORT MEMBER NEEDS A TYPE", "اختصار العضو يحتاج نوعًا", "EL MEMBER EL MOKHTASAR ME7TAG TYPE"],
+        message: [
+            "I can't tell which type `.{name}` belongs to. A short member such as `.{name}` is looked up in the type expected at this place, and nothing here says which type that is.",
+            "لا أستطيع معرفة النوع الذي ينتمي إليه `.{name}`. يُبحث عن العضو المختصر مثل `.{name}` في النوع المتوقع في هذا المكان، ولا شيء هنا يحدد هذا النوع.",
+            "Mesh 3aref `.{name}` tab3a anhy type. El member el mokhtasar zay `.{name}` byetdawar 3aleih f el type el mestanny f el makan da, w mafeesh 7aga hena bet2ool howa anhy type.",
+        ],
+        help: [
+            "Write the type in front, `TypeName.{name}`, or add a type annotation so the expected type is known.",
+            "اكتب النوع قبله، `اسم_النوع.{name}`، أو أضف تعليق نوع ليصبح النوع المتوقع معروفًا.",
+            "Ekteb el type 2oddamo, `EsmElType.{name}`, aw zawed annotation 3ashan el type el mestanny yeb2a ma3roof.",
+        ],
+        explain: [
+            "Why: the leading dot is a shortcut that works because the expected type is known, as in a `match` arm or an annotated variable. Without one, several enums could have a variant with that name, and picking one would be a guess.\n\nInstead of:\n    let s = .Circle(radius: 1.0)\n\nwrite:\n    let s: Shape = .Circle(radius: 1.0)\n\nor:\n    let s = Shape.Circle(radius: 1.0)",
+            "السبب: النقطة في البداية اختصار يعمل لأن النوع المتوقع معروف، كما في فرع `حسب` أو متغير بتعليق نوع. وبدونه قد يكون في عدة تعدادات عضو بهذا الاسم، واختيار أحدها تخمين.\n\nبدلًا من:\n    ليكن ش = .دائرة(نصف_القطر: 1.0)\n\nاكتب:\n    ليكن ش: شكل = .دائرة(نصف_القطر: 1.0)\n\nأو:\n    ليكن ش = شكل.دائرة(نصف_القطر: 1.0)",
+            "Leh: el no2ta f el awel ekhtesar byeshtaghal 3ashan el type el mestanny ma3roof, zay f far3 `hasab` aw motghayer b annotation. Men gheiro momken kaza enum yeb2a feehom variant bel esm da, w ekhtiyar wa7ed yeb2a takhmeen.\n\nBadal:\n    khali s = .Circle(radius: 1.0)\n\nEkteb:\n    khali s: Shape = .Circle(radius: 1.0)\n\naw:\n    khali s = Shape.Circle(radius: 1.0)",
+        ],
+        proposed: false,
+    },
+    // ---- Patterns (K10xx, spec §11; kalam-typeck). ar/franco: pending native review.
+    Entry {
+        code: "K1001",
+        title: ["MATCH DOESN'T COVER EVERY CASE", "المطابقة لا تغطي كل الحالات", "EL MATCH MESH GAYEB KOL EL 7ALAT"],
+        message: [
+            "This `{kw_match}` doesn't handle every possible value. Missing: {missing}.",
+            "هذه `{kw_match}` لا تعالج كل القيم الممكنة. الناقص: {missing}.",
+            "El `{kw_match}` da mesh bey3alag kol el qeyam el momkena. El na2es: {missing}.",
+        ],
+        help: [
+            "Add a `{kw_case}` for each missing value. Listing them is better than a catch-all `_`: a variant added later is then reported here instead of slipping into the catch-all.",
+            "أضف `{kw_case}` لكل قيمة ناقصة. وذكرها أفضل من فرع عام `_`، فالعضو الذي يضاف لاحقًا يُبلَّغ عنه هنا بدل أن يذهب بصمت إلى الفرع العام.",
+            "Zawed `{kw_case}` l kol qeema na2sa. W enak tektebhom a7san men far3 3am `_`: el variant elly yetzad ba3dein yetballagh 3anno hena badal ma yerou7 lel far3 el 3am f el sekket.",
+        ],
+        explain: [
+            "Why: a value that no arm handles would have nowhere to go at run time. Checking every variant at compile time also means that adding a variant to an enum shows you every `match` that must now handle it (spec §11).\n\nInstead of:\n    match shape:\n        case .Circle(r): 3.14159 * r * r\n\nwrite:\n    match shape:\n        case .Circle(r): 3.14159 * r * r\n        case .Rect(w, h): w * h",
+            "السبب: القيمة التي لا يعالجها أي فرع لن يكون لها مكان تذهب إليه وقت التشغيل. والتحقق من كل عضو وقت الترجمة يعني أيضًا أن إضافة عضو إلى تعداد تريك كل `حسب` يجب أن تعالجه الآن (المواصفة §11).\n\nبدلًا من:\n    حسب الشكل:\n        عندما .دائرة(ن): 3.14159 * ن * ن\n\nاكتب:\n    حسب الشكل:\n        عندما .دائرة(ن): 3.14159 * ن * ن\n        عندما .مستطيل(ع، ط): ع * ط",
+            "Leh: el qeema elly mafeesh far3 bey3alagha mesh hayeb2a leeha makan terou7lo w el program shaghal. W el check 3ala kol variant w2t el compile ma3nah kaman en lamma tzawed variant l enum, hatshoof kol `hasab` lazem t3alego delwa2ty (el spec §11).\n\nBadal:\n    hasab shape:\n        lama .Circle(r): 3.14159 * r * r\n\nEkteb:\n    hasab shape:\n        lama .Circle(r): 3.14159 * r * r\n        lama .Rect(w, h): w * h",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1003",
+        title: ["PATTERN CAN FAIL HERE", "النمط قد لا يطابق هنا", "EL PATTERN MOMKEN MAYETABE2SH HENA"],
+        message: [
+            "This pattern doesn't match every value, but `{kw_let}` and `{kw_for}` have nowhere to go when a pattern fails.",
+            "هذا النمط لا يطابق كل القيم، لكن `{kw_let}` و`{kw_for}` ليس لهما مكان يذهبان إليه حين لا يطابق النمط.",
+            "El pattern da mesh byetabe2 kol el qeyam, bas `{kw_let}` w `{kw_for}` malhomsh makan yerou7olo lamma el pattern mayetabe2sh.",
+        ],
+        help: [
+            "Use `{kw_match}` with a `{kw_case}` for each possibility.",
+            "استخدم `{kw_match}` مع `{kw_case}` لكل احتمال.",
+            "Esta5dem `{kw_match}` ma3 `{kw_case}` l kol e7temal.",
+        ],
+        explain: [
+            "Why: a pattern such as `Some(x)` only matches some values. In a `match`, the other arms say what happens otherwise; in a `let` there is no otherwise, so a failed match would have to crash.\n\nInstead of:\n    let Some(user) = find(id)\n\nwrite:\n    match find(id):\n        case Some(user): greet(user)\n        case None: print(\"no such user\")",
+            "السبب: النمط مثل `موجود(س)` يطابق بعض القيم فقط. وفي `حسب` تقول الفروع الأخرى ما يحدث في غير ذلك، أما في `ليكن` فلا يوجد غير ذلك، فكان عدم المطابقة سيوقف البرنامج.\n\nبدلًا من:\n    ليكن موجود(المستخدم) = ابحث(الرقم)\n\nاكتب:\n    حسب ابحث(الرقم):\n        عندما موجود(المستخدم): رحب(المستخدم)\n        عندما لا_شيء: اطبع(\"لا يوجد مستخدم\")",
+            "Leh: pattern zay `mawgood(x)` byetabe2 ba3d el qeyam bas. F `hasab` el foroo3 el tanya bet2ool eh elly ye7sal gher keda; laken f `khali` mafeesh gher keda, fa 3adam el mutab2a kan hayewa22a3 el program.\n\nBadal:\n    khali mawgood(user) = dawar(id)\n\nEkteb:\n    hasab dawar(id):\n        lama mawgood(user): rahhab(user)\n        lama mafeesh: ektb(\"mafeesh user\")",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1005",
+        title: ["FLOAT LITERAL PATTERN", "نمط برقم كسري", "PATTERN B RAKAM KASRI"],
+        message: [
+            "I can't match on a `{core_float}` literal. Floating-point arithmetic rounds, so `0.1 + 0.2` is not exactly `0.3`, and an arm for `0.3` would quietly never match.",
+            "لا أستطيع المطابقة على رقم `{core_float}` مكتوب. حساب الأرقام الكسرية يقرّب، فلا يساوي `0.1 + 0.2` القيمة `0.3` بالضبط، وكان فرع `0.3` لن يطابق أبدًا دون أن تلاحظ.",
+            "Mesh ha2dar a3mel match 3ala rakam `{core_float}` maktoob. 7esab el arqam el kasreya bey2arrab, fa `0.1 + 0.2` mesh `0.3` bel zabt, w far3 l `0.3` 3omro ma kan hayetabe2 men gher ma takhod balak.",
+        ],
+        help: [
+            "Compare with a tolerance in a guard, such as `{kw_case} x {kw_if} x.near(0.3, tol: 0.0001):`, or use `{core_decimal}` for exact values.",
+            "قارن بهامش سماح في شرط الفرع، مثل `{kw_case} x {kw_if} x.near(0.3, tol: 0.0001):`، أو استخدم `{core_decimal}` للقيم الدقيقة.",
+            "Qaren b hamesh sama7 f shart el far3, zay `{kw_case} x {kw_if} x.near(0.3, tol: 0.0001):`, aw esta5dem `{core_decimal}` lel qeyam el daqee2a.",
+        ],
+        explain: [
+            "Why: two `Float` values that print the same can differ in their last bit, so an exact pattern for a `Float` would match by luck. `Decimal` is exact and can be matched; a `Float` is compared with `.near(other, tol:)`.\n\nInstead of:\n    match ratio:\n        case 0.5: \"half\"\n        case _: \"other\"\n\nwrite:\n    match ratio:\n        case r if r.near(0.5, tol: 0.0001): \"half\"\n        case _: \"other\"",
+            "السبب: قيمتان من النوع `كسري` تُطبعان بالشكل نفسه قد تختلفان في آخر بت، فكان النمط الدقيق لقيمة كسرية سيطابق بالصدفة. أما `عشري` فدقيق ويمكن المطابقة عليه، والقيمة الكسرية تُقارن بهامش سماح.\n\nبدلًا من:\n    حسب النسبة:\n        عندما 0.5: \"نصف\"\n        عندما _: \"غير ذلك\"\n\nاكتب:\n    حسب النسبة:\n        عندما ن إذا ن.near(0.5، tol: 0.0001): \"نصف\"\n        عندما _: \"غير ذلك\"",
+            "Leh: qeemtein `kasri` byetteb3o b nafs el shakl momken yekhtelfo f akher bit, fa pattern da2ee2 l qeema kasreya kan hayetabe2 bel sodfa. Laken `ashri` da2ee2 w momken te3mel 3aleih match; wel `kasri` byet2aren b hamesh sama7.\n\nBadal:\n    hasab nesba:\n        lama 0.5: \"nos\"\n        lama _: \"tany\"\n\nEkteb:\n    hasab nesba:\n        lama r law r.near(0.5, tol: 0.0001): \"nos\"\n        lama _: \"tany\"",
+        ],
+        proposed: false,
+    },
+    // ---- Functions (K11xx, spec §12; kalam-typeck). K1105 and K1106 are provisional codes
+    // (spec erratum proposal). ar/franco: pending native review.
+    Entry {
+        code: "K1101",
+        title: ["MISSING RETURN", "إرجاع ناقص", "RETURN NA2ES"],
+        message: [
+            "This function promises to return a value, but at least one path through its body reaches the end without `{kw_return}`.",
+            "هذه الدالة تَعِد بإرجاع قيمة، لكن مسارًا واحدًا على الأقل في جسمها يصل إلى النهاية دون `{kw_return}`.",
+            "El dala di bet-wa3ed enaha traga3 qeema, bas fe masar wa7ed 3ala el a2al f gesmaha byewsal lel akher men gher `{kw_return}`.",
+        ],
+        help: [
+            "End every path with `{kw_return}`, for example add the missing `{kw_else}` branch, or a `{kw_return}` after the last block.",
+            "أنهِ كل مسار بـ `{kw_return}`، مثلًا أضف فرع `{kw_else}` الناقص، أو `{kw_return}` بعد آخر كتلة.",
+            "Khalles kol masar b `{kw_return}`, masalan zawed far3 `{kw_else}` el na2es, aw `{kw_return}` ba3d akher block.",
+        ],
+        explain: [
+            "Why: a function body made of statements has no value of its own at the end. If some path falls off the end, the caller would receive nothing where it was promised a value. Kalam never returns a default value silently.\n\nInstead of:\n    fn sign(x: Int) -> String:\n        if x < 0:\n            return \"negative\"\n        else if x > 0:\n            return \"positive\"\n\nwrite:\n    fn sign(x: Int) -> String:\n        if x < 0:\n            return \"negative\"\n        else if x > 0:\n            return \"positive\"\n        return \"zero\"",
+            "السبب: جسم الدالة المكوّن من جمل ليست له قيمة خاصة به عند نهايته. فلو وصل مسار إلى النهاية لاستلم المستدعي لا شيء حيث وُعد بقيمة. ولا يرجع كلام قيمة افتراضية بصمت أبدًا.\n\nبدلًا من:\n    دالة الإشارة(س: عدد) -> نص:\n        إذا س < 0:\n            أرجع \"سالب\"\n        وإلا إذا س > 0:\n            أرجع \"موجب\"\n\nاكتب:\n    دالة الإشارة(س: عدد) -> نص:\n        إذا س < 0:\n            أرجع \"سالب\"\n        وإلا إذا س > 0:\n            أرجع \"موجب\"\n        أرجع \"صفر\"",
+            "Leh: gesm el dala elly kollo statements malosh qeema lewa7do f el akher. Law fe masar wesel lel akher, elly nada el dala mesh hayestalem 7aga f makan et-wa3ad feeh b qeema. W Kalam 3omro ma beyraga3 qeema default f el sekket.\n\nBadal:\n    dala eshara(x: adad) -> nass:\n        law x < 0:\n            rag3 \"saleb\"\n        walla law x > 0:\n            rag3 \"mogab\"\n\nEkteb:\n    dala eshara(x: adad) -> nass:\n        law x < 0:\n            rag3 \"saleb\"\n        walla law x > 0:\n            rag3 \"mogab\"\n        rag3 \"sefr\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1103",
+        title: ["AMBIGUOUS METHOD", "دالة ملتبسة", "METHOD MESH WADE7A"],
+        message: [
+            "More than one method named `{name}` applies here: the type itself, or several of its traits, define one. I won't pick one for you.",
+            "تنطبق هنا أكثر من دالة اسمها `{name}`: يعرّفها النوع نفسه أو أكثر من سمة من سماته. ولن أختار إحداها نيابة عنك.",
+            "Fe aktar men method esmaha `{name}` tenfa3 hena: el type nafso aw kaza trait men el traits bta3to bey3arrafoha. W ana mesh ha5tar wa7da badalak.",
+        ],
+        help: [
+            "Name the trait you mean: write `Trait.{name}(x)` instead of `x.{name}()`.",
+            "سمِّ السمة التي تقصدها: اكتب `السمة.{name}(x)` بدل `x.{name}()`.",
+            "Sammy el trait elly 2asdak 3aleiha: ekteb `Trait.{name}(x)` badal `x.{name}()`.",
+        ],
+        explain: [
+            "Why: method lookup in Kalam does not depend on imports, so the set of candidates is the same everywhere in the program. When two traits define the same name for one type, any choice I made could change meaning after a dependency upgrade. Naming the trait makes the call exact (spec §12.2).\n\nInstead of:\n    let text = price.show()\n\nwrite:\n    let text = Show.show(price)",
+            "السبب: البحث عن الدوال في كلام لا يعتمد على الاستيرادات، فمجموعة المرشحين واحدة في كل البرنامج. وحين تعرّف سمتان الاسم نفسه لنوع واحد، فإن أي اختيار مني قد يغيّر المعنى بعد تحديث مكتبة. وتسمية السمة تجعل الاستدعاء محددًا تمامًا (المواصفة §12.2).\n\nبدلًا من:\n    ليكن النص = السعر.show()\n\nاكتب:\n    ليكن النص = Show.show(السعر)",
+            "Leh: el dawar 3ala el methods f Kalam mesh mo3tamed 3ala el imports, fa magmoo3et el morasha7een wa7da f kol el program. W lamma traitein y3arrafo nafs el esm l type wa7ed, ay ekhtiyar menni momken yghayar el ma3na ba3d update l library. W lamma tesammy el trait el call yeb2a m7added bel zabt (el spec §12.2).\n\nBadal:\n    khali text = price.show()\n\nEkteb:\n    khali text = Show.show(price)",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1105",
+        title: ["ARGUMENTS DON'T MATCH", "المعاملات غير متطابقة", "EL ARGUMENTS MESH MAZBOOTA"],
+        message: [
+            "The arguments of this call don't match the function's parameters: {detail}.",
+            "معاملات هذا الاستدعاء لا تطابق معاملات الدالة: {detail}.",
+            "El arguments bta3et el call da mesh mtab2a ma3 parameters el dala: {detail}.",
+        ],
+        help: [
+            "Pass one argument for each parameter, in order or by name, and use the parameter names as labels where the function requires them.",
+            "مرّر معاملًا واحدًا لكل معامل في التعريف، بالترتيب أو بالاسم، واستخدم أسماء المعاملات كعناوين حيث تشترطها الدالة.",
+            "Ba3at argument wa7ed l kol parameter, bel tarteeb aw bel esm, w esta5dem asamy el parameters ka labels f el amaken elly el dala 3ayzaha feeha.",
+        ],
+        explain: [
+            "Why: Kalam has no overloading, no variadic functions and no hidden default arguments, so a call must match the declaration exactly: one argument per parameter, each label a real parameter name, and no parameter given twice.\n\nInstead of:\n    fn area(width: Float, height: Float) -> Float:\n        return width * height\n    let a = area(2.0)\n\nwrite:\n    let a = area(width: 2.0, height: 3.0)",
+            "السبب: لا يوجد في كلام تحميل زائد للدوال، ولا دوال بعدد معاملات متغير، ولا قيم افتراضية خفية، فيجب أن يطابق الاستدعاء التعريف تمامًا: معامل واحد لكل معامل، وكل عنوان اسم معامل حقيقي، ولا يُعطى معامل مرتين.\n\nبدلًا من:\n    دالة المساحة(العرض: كسري، الطول: كسري) -> كسري:\n        أرجع العرض * الطول\n    ليكن م = المساحة(2.0)\n\nاكتب:\n    ليكن م = المساحة(العرض: 2.0، الطول: 3.0)",
+            "Leh: Kalam mafeehoosh overloading, wala dawal b 3adad arguments motghayer, wala qeyam default mestakhabeya, fa el call lazem yetabe2 el ta3reef bel zabt: argument wa7ed l kol parameter, w kol label esm parameter 7a2ee2y, w mafeesh parameter yetedy marratein.\n\nBadal:\n    dala mesa7a(3ard: kasri, tool: kasri) -> kasri:\n        rag3 3ard * tool\n    khali m = mesa7a(2.0)\n\nEkteb:\n    khali m = mesa7a(3ard: 2.0, tool: 3.0)",
+        ],
+        proposed: true,
+    },
+    Entry {
+        code: "K1106",
+        title: ["IMPLEMENTATION IN THE WRONG PLACE", "تنفيذ في غير مكانه", "IMPL F MAKAN GHALAT"],
+        message: [
+            "I can't accept this `{kw_impl}`: either another implementation of the same trait for the same type already exists, or it lives outside both the trait's module and the type's module (the orphan rule).",
+            "لا أستطيع قبول هذا الـ `{kw_impl}`: فإما أن تنفيذًا آخر للسمة نفسها للنوع نفسه موجود بالفعل، وإما أنه خارج وحدة السمة ووحدة النوع كلتيهما (قاعدة اليتيم).",
+            "Mesh ha2dar a2bal el `{kw_impl}` da: ya ema fe implementation tany l nafs el trait l nafs el type mawgood aslan, ya ema howa bara module el trait w module el type el etnein (orphan rule).",
+        ],
+        help: [
+            "Keep one implementation per trait and type, in the module that defines the trait or the one that defines the type. To add behavior to another package's type, wrap it in a type of your own.",
+            "أبقِ تنفيذًا واحدًا لكل سمة ونوع، في الوحدة التي تعرّف السمة أو التي تعرّف النوع. ولإضافة سلوك إلى نوع من حزمة أخرى، غلّفه في نوع خاص بك.",
+            "Khalli implementation wa7ed l kol trait w type, f el module elly bet3arraf el trait aw elly bet3arraf el type. W 3ashan tzawed behavior l type men package tanya, laffo f type bta3ak.",
+        ],
+        explain: [
+            "Why: with at most one implementation in the whole program, `x.show()` means the same thing everywhere, whatever is imported. The orphan rule keeps it that way when packages are combined: two libraries can never both implement a third library's trait for a fourth library's type (spec §9.7).\n\nInstead of (in your package):\n    impl Url as Show:\n        ...\n\nwrite:\n    type Link:\n        url: Url\n    impl Link as Show:\n        ...",
+            "السبب: مع تنفيذ واحد على الأكثر في البرنامج كله، يعني `x.show()` الشيء نفسه في كل مكان مهما كانت الاستيرادات. وقاعدة اليتيم تحفظ ذلك عند جمع الحزم، فلا يمكن لمكتبتين أن تنفّذا كلتاهما سمة مكتبة ثالثة لنوع مكتبة رابعة (المواصفة §9.7).\n\nبدلًا من (في حزمتك):\n    نفذ Url بصفة Show:\n        ...\n\nاكتب:\n    هيكل رابط:\n        العنوان: Url\n    نفذ رابط بصفة Show:\n        ...",
+            "Leh: ma3 implementation wa7ed bel aktar f el program kollo, `x.show()` ma3naha nafs el 7aga f kol makan mahma kanet el imports. W el orphan rule bete7fez da lamma el packages tetgeme3: mafeesh libraryein y2daro y3melo implement l trait men library talta l type men library rab3a (el spec §9.7).\n\nBadal (f el package bta3ak):\n    naffez Url ka Show:\n        ...\n\nEkteb:\n    haykal Link:\n        url: Url\n    naffez Link ka Show:\n        ...",
+        ],
+        proposed: true,
+    },
+    // ---- Modules and globals (K12xx, spec §13; the parser). ar/franco: pending native review.
+    Entry {
+        code: "K1202",
+        title: ["MODULE-LEVEL VAR", "متغير على مستوى الوحدة", "MOTGHAYER 3ALA MOSTAWA EL MODULE"],
+        message: [
+            "`{kw_var}` can't be declared at module level. Kalam has no global mutable state: a module-level value is a constant.",
+            "لا يمكن تعريف `{kw_var}` على مستوى الوحدة. ليس في كلام حالة عامة قابلة للتغيير: القيمة على مستوى الوحدة ثابتة.",
+            "Mayenfa3sh tet3arraf `{kw_var}` 3ala mostawa el module. Kalam mafeehoosh state 3am byetghayar: el qeema 3ala mostawa el module sabta.",
+        ],
+        help: [
+            "Use `{kw_let}` for a constant. For state that changes, create a `Cell` in `{core_main}` and pass it to the functions that need it.",
+            "استخدم `{kw_let}` للثابت. وللحالة التي تتغير، أنشئ `Cell` في `{core_main}` ومرّرها إلى الدوال التي تحتاجها.",
+            "Esta5dem `{kw_let}` lel sabet. W lel state elly btetghayar, e3mel `Cell` f `{core_main}` w ba3atha lel dawal elly me7tagaha.",
+        ],
+        explain: [
+            "Why: a global variable can be changed by any function, so you can never tell from a call what it touches, and two tasks could change it at once. Passing a `Cell` down makes shared state visible in every signature that uses it (spec §15.6).\n\nInstead of:\n    var hits = 0\n\nwrite:\n    fn main():\n        let hits = Cell.new(0)\n        serve(hits)",
+            "السبب: المتغير العام يمكن لأي دالة أن تغيّره، فلا تعرف أبدًا من الاستدعاء ما الذي يمسّه، وقد تغيّره مهمتان في الوقت نفسه. وتمرير `Cell` يجعل الحالة المشتركة ظاهرة في توقيع كل دالة تستخدمها (المواصفة §15.6).\n\nبدلًا من:\n    متغير الزيارات = 0\n\nاكتب:\n    دالة رئيسي():\n        ليكن الزيارات = Cell.new(0)\n        اخدم(الزيارات)",
+            "Leh: el motghayer el 3am ay dala te2dar tghayaro, fa 3omrak ma hate3raf men el call howa byelmes eh, w momken etnein tasks yghayaroh f nafs el wa2t. W lamma teba3at `Cell` lta7t, el state el moshtarak byeb2a bayen f signature kol dala betesta5demo (el spec §15.6).\n\nBadal:\n    motghayer ziyarat = 0\n\nEkteb:\n    dala ra2isi():\n        khali ziyarat = Cell.new(0)\n        ekhdem(ziyarat)",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1203",
+        title: ["GLOB IMPORT", "استيراد بالجملة", "IMPORT BEL GOMLA"],
+        message: [
+            "I don't accept glob imports (`*`). A glob hides where each name comes from, and a new export upstream could silently change what a name in this file means.",
+            "لا أقبل الاستيراد بالجملة (`*`). فهو يخفي مصدر كل اسم، وقد يغيّر تصديرٌ جديد في الوحدة المستورَدة معنى اسم في هذا الملف دون أن تلاحظ.",
+            "Mesh ba2bal el import bel gomla (`*`). Howa bykhabby kol esm gay menein, w export gedeed f el module el tanya momken yghayar ma3na esm f el file da men gher ma takhod balak.",
+        ],
+        help: [
+            "List the names you use, for example `{kw_use} std/http.{Request, Response}`.",
+            "اذكر الأسماء التي تستخدمها، مثل `{kw_use} std/http.{Request، Response}`.",
+            "Ekteb el asamy elly betesta5demha, zay `{kw_use} std/http.{Request, Response}`.",
+        ],
+        explain: [
+            "Why: with explicit imports, every name in a file can be traced to its module by reading the file alone, by you, a reviewer or a tool. Globs also invite guessed names: a name that seems to come from a glob may not exist at all.\n\nInstead of:\n    use std/http.*\n\nwrite:\n    use std/http.{Request, Response}",
+            "السبب: مع الاستيراد الصريح يمكن تتبع كل اسم في الملف إلى وحدته بقراءة الملف وحده، سواء قرأته أنت أو مراجع أو أداة. والاستيراد بالجملة يشجع على تخمين الأسماء أيضًا: فاسم يبدو أنه آتٍ منه قد لا يكون موجودًا أصلًا.\n\nبدلًا من:\n    استخدم std/http.*\n\nاكتب:\n    استخدم std/http.{Request، Response}",
+            "Leh: ma3 el import el sare7, kol esm f el file momken tet-tabba3o lel module bta3o men 2erayet el file lewa7do, sawa2 enta aw reviewer aw tool. W el import bel gomla bysha33a3 3ala takhmeen el asamy: esm shaklo gay menno momken mayeb2ash mawgood aslan.\n\nBadal:\n    hat std/http.*\n\nEkteb:\n    hat std/http.{Request, Response}",
+        ],
+        proposed: false,
+    },
+    // ---- Errors (K13xx, spec §14; kalam-typeck). ar/franco: pending native review.
+    Entry {
+        code: "K1303",
+        title: ["UNUSED RESULT", "نتيجة غير مستخدمة", "NATIGA MESH MOSTA5DAMA"],
+        message: [
+            "This call returns a `{core_result}`, and nothing checks it. An ignored error is a silent failure: the program carries on as if the call had worked.",
+            "هذا الاستدعاء يرجع `{core_result}`، ولا شيء يفحصها. والخطأ المتجاهَل فشل صامت: يكمل البرنامج كأن الاستدعاء نجح.",
+            "El call da beyraga3 `{core_result}`, w mafeesh 7aga bet-check-ha. W el error elly etgahel fashal saket: el program bykammel ka2en el call nege7.",
+        ],
+        help: [
+            "Handle it with `{kw_match}`, pass the error on with `{punct_try}`, or write `{kw_let} _ = ...` to drop it on purpose (`kalam audit` counts those).",
+            "عالجها بـ `{kw_match}`، أو مرّر الخطأ إلى أعلى بـ `{punct_try}`، أو اكتب `{kw_let} _ = ...` لتتركها عن قصد (والأمر `kalam audit` يعدّ هذه الحالات).",
+            "3algha b `{kw_match}`, aw ba3at el error lfo2 b `{punct_try}`, aw ekteb `{kw_let} _ = ...` 3ashan tesebha 3an 2asd (w `kalam audit` bey3ed el 7alat di).",
+        ],
+        explain: [
+            "Why: errors in Kalam are values, not exceptions, so a dropped `Result` is a dropped error. That is why it is an error rather than a warning (spec §14.2).\n\nInstead of:\n    db.exec(sql\"DELETE FROM sessions\")\n\nwrite:\n    db.exec(sql\"DELETE FROM sessions\")?",
+            "السبب: الأخطاء في كلام قيم وليست استثناءات، فالنتيجة `نتيجة` المتروكة خطأ متروك. لهذا كان هذا خطأ لا تحذيرًا (المواصفة §14.2).\n\nبدلًا من:\n    db.exec(sql\"DELETE FROM sessions\")\n\nاكتب:\n    db.exec(sql\"DELETE FROM sessions\")؟",
+            "Leh: el errors f Kalam qeyam mesh exceptions, fa el `natiga` elly etsabet error etsab. 3ashan keda di error mesh warning (el spec §14.2).\n\nBadal:\n    db.exec(sql\"DELETE FROM sessions\")\n\nEkteb:\n    db.exec(sql\"DELETE FROM sessions\")?",
+        ],
+        proposed: false,
+    },
+    // ---- Sinks (K16xx, spec §17; kalam-typeck for K1601). ar/franco: pending native review.
+    Entry {
+        code: "K1601",
+        title: ["STRING PASSED TO A SINK", "نص مُمرَّر إلى مصبّ", "STRING RAYEH L SINK"],
+        message: [
+            "This place expects `{expected}`, but this is `{found}`. A plain string here is how injection happens, so a sink never takes one.",
+            "هذا المكان ينتظر `{expected}`، لكن هذه القيمة `{found}`. والنص العادي هنا هو باب الحقن، لذلك لا يقبل المصبّ نصًا أبدًا.",
+            "El makan da mestanny `{expected}`, bas di `{found}`. W el string el 3adi hena howa bab el injection, 3ashan keda el sink 3omro ma bey2bal string.",
+        ],
+        help: [
+            "Write the text as a tagged literal (`sql\"...\"`, `html\"...\"` or `cmd\"...\"`) and put the values in holes: each hole is escaped for its context.",
+            "اكتب النص كقيمة حرفية موسومة (`sql\"...\"` أو `html\"...\"` أو `cmd\"...\"`) وضع القيم في فجوات: كل فجوة تُهرَّب حسب سياقها.",
+            "Ekteb el kalam ka tagged literal (`sql\"...\"` aw `html\"...\"` aw `cmd\"...\"`) w 7ott el qeyam f holes: kol hole byet3amallaha escape 7asab makanha.",
+        ],
+        explain: [
+            "Why: SQL, HTML and shell injection all start with a string built by concatenation. Sinks such as `db.all` take `Sql`, `Html` or `Command`, never `String`, and the only way to build those is a tagged literal whose holes are escaped by the compiler (spec §17).\n\nInstead of:\n    db.all(\"SELECT * FROM users WHERE name = '\" + name + \"'\")\n\nwrite:\n    db.all(sql\"SELECT * FROM users WHERE name = { name }\")",
+            "السبب: حقن SQL وHTML والطرفية كلها تبدأ بنص مبني بالوصل. والمصبّات مثل `db.all` تأخذ `Sql` أو `Html` أو `Command` ولا تأخذ `نص` أبدًا، والطريقة الوحيدة لبناء هذه الأنواع قيمة حرفية موسومة يهرّب المترجم فجواتها (المواصفة §17).\n\nبدلًا من:\n    db.all(\"SELECT * FROM users WHERE name = '\" + الاسم + \"'\")\n\nاكتب:\n    db.all(sql\"SELECT * FROM users WHERE name = { الاسم }\")",
+            "Leh: el SQL injection wel HTML injection wel shell injection kollohom byebda2o b string mabny bel wasl. W el sinks zay `db.all` betakhod `Sql` aw `Html` aw `Command`, w 3omraha ma betakhod `nass`, w el taree2a el wa7eeda tebnihom tagged literal el compiler bey3mel escape l holes-ha (el spec §17).\n\nBadal:\n    db.all(\"SELECT * FROM users WHERE name = '\" + esm + \"'\")\n\nEkteb:\n    db.all(sql\"SELECT * FROM users WHERE name = { esm }\")",
+        ],
+        proposed: false,
+    },
+    // ---- Patterns and functions not yet emitted (K10xx, K11xx, spec §11, §12). ar/franco:
+    // pending native review.
+    Entry {
+        code: "K1002",
+        title: ["UNREACHABLE ARM", "فرع لا يُوصل إليه", "FAR3 MESH HAYETWESEL LEEH"],
+        message: [
+            "This `{kw_case}` can never run: the arms above it already match every value it would match.",
+            "هذا الـ `{kw_case}` لن يعمل أبدًا: الفروع التي فوقه تطابق بالفعل كل قيمة كان سيطابقها.",
+            "El `{kw_case}` da 3omro ma hayeshtaghal: el foroo3 elly fo2o betetabe2 aslan kol qeema kan hayetabe2ha.",
+        ],
+        help: [
+            "Move this arm above the arm that covers it (often a catch-all `_` placed too early), or delete it.",
+            "انقل هذا الفرع فوق الفرع الذي يغطيه (وغالبًا يكون فرعًا عامًا `_` وُضع مبكرًا)، أو احذفه.",
+            "Na2al el far3 da fo2 el far3 elly byghatih (ghaleban far3 3am `_` et7att badry), aw emsa7o.",
+        ],
+        explain: [
+            "Why: arms are tried from top to bottom. An arm that can never be reached is almost always a catch-all placed first, so the specific case you wrote is silently ignored. That is why this is an error, not a warning (spec §11).\n\nInstead of:\n    match role:\n        case _: \"user\"\n        case .Admin: \"admin\"\n\nwrite:\n    match role:\n        case .Admin: \"admin\"\n        case _: \"user\"",
+            "السبب: تُجرَّب الفروع من أعلى إلى أسفل. والفرع الذي لا يمكن الوصول إليه يكون في الغالب فرعًا عامًا وُضع أولًا، فتُهمل الحالة المحددة التي كتبتها بصمت. لهذا كان هذا خطأ لا تحذيرًا (المواصفة §11).\n\nبدلًا من:\n    حسب الدور:\n        عندما _: \"مستخدم\"\n        عندما .مدير: \"مدير\"\n\nاكتب:\n    حسب الدور:\n        عندما .مدير: \"مدير\"\n        عندما _: \"مستخدم\"",
+            "Leh: el foroo3 bettegarrab men fo2 l ta7t. W el far3 elly mayetweselsh leeh ghaleban far3 3am et7att el awel, fa el 7ala el m7addada elly katabtaha btetgahel f el sekket. 3ashan keda di error mesh warning (el spec §11).\n\nBadal:\n    hasab role:\n        lama _: \"user\"\n        lama .Admin: \"admin\"\n\nEkteb:\n    hasab role:\n        lama .Admin: \"admin\"\n        lama _: \"user\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1004",
+        title: ["OR-PATTERN BINDS DIFFERENT NAMES", "بدائل النمط تربط أسماء مختلفة", "EL BADAYEL BTERBOT ASAMY MOKHTALFA"],
+        message: [
+            "The alternatives of this `|` pattern don't bind the same names with the same types, so after the match some names would have no value.",
+            "بدائل النمط `|` هذا لا تربط الأسماء نفسها بالأنواع نفسها، فكانت بعض الأسماء ستبقى بلا قيمة بعد المطابقة.",
+            "Badayel el pattern `|` da mesh berbot nafs el asamy b nafs el types, fa ba3d el asamy kanet hatefdal men gher qeema ba3d el match.",
+        ],
+        help: [
+            "Bind the same names, with the same types, in every alternative, or split the alternatives into separate `{kw_case}` arms.",
+            "اربط الأسماء نفسها بالأنواع نفسها في كل بديل، أو افصل البدائل في فروع `{kw_case}` مستقلة.",
+            "Orbot nafs el asamy b nafs el types f kol badeel, aw efsel el badayel f foroo3 `{kw_case}` monfasla.",
+        ],
+        explain: [
+            "Why: the body of an arm runs whichever alternative matched, so every name it uses must have a value in every alternative.\n\nInstead of:\n    case .Card(number) | .Wallet: charge(number)\n\nwrite:\n    case .Card(number): charge(number)\n    case .Wallet: charge_wallet()",
+            "السبب: جسم الفرع يعمل أيًّا كان البديل الذي طابق، فيجب أن يكون لكل اسم يستخدمه قيمة في كل بديل.\n\nبدلًا من:\n    عندما .بطاقة(الرقم) | .محفظة: ادفع(الرقم)\n\nاكتب:\n    عندما .بطاقة(الرقم): ادفع(الرقم)\n    عندما .محفظة: ادفع_بالمحفظة()",
+            "Leh: gesm el far3 byeshtaghal ayan kan el badeel elly etaba2, fa kol esm byesta5demo lazem yeb2a leeh qeema f kol badeel.\n\nBadal:\n    lama .Card(number) | .Wallet: edfa3(number)\n\nEkteb:\n    lama .Card(number): edfa3(number)\n    lama .Wallet: edfa3_bel_wallet()",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1104",
+        title: ["LABELS NEEDED FOR SAME-TYPE PARAMETERS", "عناوين مطلوبة لمعاملات من النوع نفسه", "LABELS LAZMA L PARAMETERS NAFS EL TYPE"],
+        message: [
+            "This exported function has two neighbouring parameters of the same type, so a call by position could swap them without any error. Their arguments need labels.",
+            "لهذه الدالة المصدَّرة معاملان متجاوران من النوع نفسه، فقد يبدّلهما استدعاء بالترتيب دون أي خطأ. لذلك تحتاج معاملاتهما إلى عناوين.",
+            "El dala el exported di leeha parameterein gamb ba3d men nafs el type, fa call bel tarteeb momken ybaddelhom men gher ay error. 3ashan keda arguments-hom me7taga labels.",
+        ],
+        help: [
+            "Label the arguments with the parameter names, for example `transfer(from: a, to: b)`. `kalam fix` inserts the labels.",
+            "سمِّ المعاملات بأسماء معاملات الدالة، مثل `حوّل(من: أ، إلى: ب)`. والأمر `kalam fix` يضيف العناوين.",
+            "Sammy el arguments b asamy el parameters, zay `7awel(men: a, le: b)`. W `kalam fix` byzawed el labels.",
+        ],
+        explain: [
+            "Why: `transfer(a, b)` and `transfer(b, a)` both type-check when `from` and `to` are both `Account`, and one of them moves money the wrong way. With labels, the reader and the compiler both see which is which (spec §12.1).\n\nInstead of:\n    transfer(db, alice, bob, amount)\n\nwrite:\n    transfer(db, from: alice, to: bob, amount: amount)",
+            "السبب: يجتاز `حوّل(أ، ب)` و`حوّل(ب، أ)` فحص الأنواع كلاهما حين يكون `من` و`إلى` من النوع `حساب`، وأحدهما ينقل المال في الاتجاه الخطأ. ومع العناوين يرى القارئ والمترجم أيهما أيهما (المواصفة §12.1).\n\nبدلًا من:\n    حوّل(القاعدة، علياء، باسم، المبلغ)\n\nاكتب:\n    حوّل(القاعدة، من: علياء، إلى: باسم، المبلغ: المبلغ)",
+            "Leh: `7awel(a, b)` w `7awel(b, a)` el etnein bey3addo el type check lamma `men` w `le` el etnein `Account`, w wa7ed menhom bey7awel el flous f el etgah el ghalat. Ma3 el labels el 2ari wel compiler el etnein byshoofo meen meen (el spec §12.1).\n\nBadal:\n    7awel(db, alice, bob, mablagh)\n\nEkteb:\n    7awel(db, men: alice, le: bob, mablagh: mablagh)",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1110",
+        title: ["CLOSURE CAPTURES A VAR", "دالة مجهولة تلتقط متغيرًا", "LAMBDA BTEMSEK MOTGHAYER"],
+        message: [
+            "This lambda uses a `{kw_var}` from the enclosing function. Closures capture values, never variables that may change later.",
+            "هذه الدالة المجهولة تستخدم `{kw_var}` من الدالة المحيطة بها. والدوال المجهولة تلتقط قيمًا، ولا تلتقط أبدًا متغيرات قد تتغير لاحقًا.",
+            "El lambda di betesta5dem `{kw_var}` men el dala elly 7awaleiha. El lambdas betemsek qeyam, w 3omraha ma betemsek motghayerat momken tetghayar ba3dein.",
+        ],
+        help: [
+            "Copy the current value into a constant first, `{kw_let} snapshot = v`, and use `snapshot` inside the lambda. `kalam fix` inserts the copy.",
+            "انسخ القيمة الحالية في ثابت أولًا، `{kw_let} لقطة = v`، واستخدم `لقطة` داخل الدالة المجهولة. والأمر `kalam fix` يضيف النسخة.",
+            "Ensakh el qeema el 7alya f sabet el awel, `{kw_let} snapshot = v`, w esta5dem `snapshot` gowa el lambda. W `kalam fix` byzawed el noskha.",
+        ],
+        explain: [
+            "Why: if a closure could see a `var`, it could observe the variable change after the closure was created, and two tasks running the closure could race. Capturing only `let` values keeps closures predictable and makes concurrency race-free (spec §12.3, §15.6).\n\nInstead of:\n    var total = 0\n    let report = fn() => print(\"{ total }\")\n\nwrite:\n    var total = 0\n    let snapshot = total\n    let report = fn() => print(\"{ snapshot }\")",
+            "السبب: لو استطاعت الدالة المجهولة رؤية `متغير` لأمكنها ملاحظة تغيّره بعد إنشائها، ولتسابقت مهمتان تشغّلانها. والتقاط قيم `ليكن` فقط يجعل سلوك الدوال المجهولة متوقعًا ويمنع السباقات في التزامن (المواصفة §12.3، §15.6).\n\nبدلًا من:\n    متغير المجموع = 0\n    ليكن التقرير = دالة() => اطبع(\"{ المجموع }\")\n\nاكتب:\n    متغير المجموع = 0\n    ليكن لقطة = المجموع\n    ليكن التقرير = دالة() => اطبع(\"{ لقطة }\")",
+            "Leh: law el lambda te2dar tshoof `motghayer`, kanet hatla7ez taghayyoro ba3d ma et3amalet, w etnein tasks beyshaghalo el lambda kano momken yetsaba2o. W lamma temsek qeyam `khali` bas, el lambdas btfdal motawa22a3a wel concurrency men gher races (el spec §12.3, §15.6).\n\nBadal:\n    motghayer total = 0\n    khali report = dala() => ektb(\"{ total }\")\n\nEkteb:\n    motghayer total = 0\n    khali snapshot = total\n    khali report = dala() => ektb(\"{ snapshot }\")",
+        ],
+        proposed: false,
+    },
+    // ---- Errors not yet emitted (K13xx, spec §14.3). ar/franco: pending native review.
+    Entry {
+        code: "K1301",
+        title: ["? CAN'T CONVERT THE ERROR", "؟ لا تستطيع تحويل الخطأ", "? MESH HA2DAR Y7AWEL EL ERROR"],
+        message: [
+            "`{punct_try}` would pass this error up, but its error type is not the one this function returns, and I know no conversion between the two.",
+            "كانت `{punct_try}` ستمرر هذا الخطأ إلى أعلى، لكن نوع خطئه ليس النوع الذي ترجعه هذه الدالة، ولا أعرف تحويلًا بين النوعين.",
+            "`{punct_try}` kan hayba3at el error da lfo2, bas no3 el error bta3o mesh howa elly el dala di betraga3o, w ana mesh 3aref ay ta7weel ben el etnein.",
+        ],
+        help: [
+            "Convert the error at the call, for example `.map_err({kw_fn}(e) => ...){punct_try}`, or add `{kw_impl} F {kw_as} From[E]` for your error type `F`.",
+            "حوّل الخطأ عند الاستدعاء، مثل `.map_err({kw_fn}(e) => ...){punct_try}`، أو أضف `{kw_impl} F {kw_as} From[E]` لنوع الخطأ `F` الخاص بك.",
+            "7awel el error 3and el call, zay `.map_err({kw_fn}(e) => ...){punct_try}`, aw zawed `{kw_impl} F {kw_as} From[E]` l no3 el error bta3ak `F`.",
+        ],
+        explain: [
+            "Why: `?` is the only hidden control flow in Kalam, so it stays simple: it passes the error unchanged, converts it with a `From` implementation you wrote, or boxes it into `AnyError`. Anything else must be written out, so you can see how each error changes on its way up (spec §14.3).\n\nInstead of:\n    fn load(id: Int) -> Result[Note, AppError]:\n        return db.one(sql\"SELECT * FROM notes WHERE id = { id }\")?\n\nwrite:\n    fn load(id: Int) -> Result[Note, AppError]:\n        return db.one(sql\"SELECT * FROM notes WHERE id = { id }\").map_err(fn(e) => AppError.Db(e))?",
+            "السبب: `؟` هي التحكم الخفي الوحيد في كلام، لذلك تبقى بسيطة: تمرر الخطأ دون تغيير، أو تحوّله بتنفيذ `From` كتبته أنت، أو تغلّفه في `AnyError`. وأي شيء آخر يجب أن يُكتب صراحة، لترى كيف يتغير كل خطأ في طريقه إلى أعلى (المواصفة §14.3).\n\nبدلًا من:\n    دالة حمّل(الرقم: عدد) -> نتيجة[ملاحظة، خطأ_التطبيق]:\n        أرجع db.one(sql\"SELECT * FROM notes WHERE id = { الرقم }\")؟\n\nاكتب:\n    دالة حمّل(الرقم: عدد) -> نتيجة[ملاحظة، خطأ_التطبيق]:\n        أرجع db.one(sql\"SELECT * FROM notes WHERE id = { الرقم }\").map_err(دالة(خ) => خطأ_التطبيق.قاعدة(خ))؟",
+            "Leh: `?` howa el control flow el mestakhabby el wa7eed f Kalam, 3ashan keda byfdal baseet: bey3addy el error zay ma howa, aw y7awelo b `From` implementation enta katabto, aw y7otto f `AnyError`. W ay 7aga tanya lazem tetketeb sara7a, 3ashan tshoof kol error byetghayar ezay f taree2o lfo2 (el spec §14.3).\n\nBadal:\n    dala 7ammel(id: adad) -> natiga[Note, AppError]:\n        rag3 db.one(sql\"SELECT * FROM notes WHERE id = { id }\")?\n\nEkteb:\n    dala 7ammel(id: adad) -> natiga[Note, AppError]:\n        rag3 db.one(sql\"SELECT * FROM notes WHERE id = { id }\").map_err(dala(e) => AppError.Db(e))?",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1302",
+        title: ["? ON OPTION IN A RESULT FUNCTION", "؟ على اختياري في دالة ترجع نتيجة", "? 3ALA OPTION F DALA BTRAGA3 RESULT"],
+        message: [
+            "This `{punct_try}` is applied to an `{core_option}`, but the function returns a `{core_result}`. A missing value has no error to pass up, so you need to say which error it is.",
+            "هذه `{punct_try}` مطبّقة على `{core_option}`، لكن الدالة ترجع `{core_result}`. والقيمة الغائبة ليس لها خطأ يُمرَّر إلى أعلى، فعليك أن تحدد أي خطأ هو.",
+            "El `{punct_try}` di 3ala `{core_option}`, bas el dala betraga3 `{core_result}`. W el qeema el msh mawgooda malhash error yetba3at lfo2, fa lazem t2ool howa anhy error.",
+        ],
+        help: [
+            "Turn the missing value into an error first: `.ok_or(error){punct_try}`.",
+            "حوّل القيمة الغائبة إلى خطأ أولًا: `.ok_or(error){punct_try}`.",
+            "7awel el qeema el msh mawgooda l error el awel: `.ok_or(error){punct_try}`.",
+        ],
+        explain: [
+            "Why: `None` only says that something is missing. The caller of a `Result` function expects to learn why it failed, and only you know which error fits (spec §14.3).\n\nInstead of:\n    let user = users.get(id)?\n\nwrite:\n    let user = users.get(id).ok_or(AppError.NotFound)?",
+            "السبب: `لا_شيء` تقول فقط إن شيئًا غائب. ومن يستدعي دالة ترجع `نتيجة` ينتظر أن يعرف سبب الفشل، وأنت وحدك تعرف أي خطأ يناسب (المواصفة §14.3).\n\nبدلًا من:\n    ليكن المستخدم = المستخدمون.get(الرقم)؟\n\nاكتب:\n    ليكن المستخدم = المستخدمون.get(الرقم).ok_or(خطأ_التطبيق.غير_موجود)؟",
+            "Leh: `mafeesh` bet2ool bas en fe 7aga na2sa. W elly bynady dala betraga3 `natiga` mestanny ye3raf leh fashlet, w enta bas elly 3aref anhy error yenfa3 (el spec §14.3).\n\nBadal:\n    khali user = users.get(id)?\n\nEkteb:\n    khali user = users.get(id).ok_or(AppError.NotFound)?",
+        ],
+        proposed: false,
+    },
+    // ---- Concurrency (K14xx, W0421, spec §15). ar/franco: pending native review.
+    Entry {
+        code: "K1401",
+        title: ["SUSPENDING FUNCTION WHERE @sync IS REQUIRED", "دالة معلِّقة حيث يُشترط @sync", "DALA BTE3MEL SUSPEND MAKAN @sync"],
+        message: [
+            "This function is passed where a `@sync` function is required, but it can suspend: somewhere in its calls it waits for I/O or a timer. The chain of calls shows where.",
+            "تُمرَّر هذه الدالة حيث تُشترط دالة `@sync`، لكنها قد تتعلق: في مكان ما من استدعاءاتها تنتظر إدخالًا وإخراجًا أو مؤقتًا. وسلسلة الاستدعاءات تبيّن أين.",
+            "El dala di metba3ata f makan 3ayez dala `@sync`, bas heya momken te3mel suspend: f 7etta men el calls bta3etha btestanna I/O aw timer. W selselet el calls bet-warrik fein.",
+        ],
+        help: [
+            "Move the waiting call out of this function (do the I/O before or after, and pass the result in), or pass a function that doesn't suspend.",
+            "انقل الاستدعاء المنتظِر خارج هذه الدالة (نفّذ الإدخال والإخراج قبلها أو بعدها ومرّر النتيجة إليها)، أو مرّر دالة لا تتعلق.",
+            "Na2al el call elly bystanna bara el dala di (e3mel el I/O 2ablaha aw ba3daha w ba3at el natiga leeha), aw ba3at dala mabte3melsh suspend.",
+        ],
+        explain: [
+            "Why: some callbacks must finish without waiting: a game's `update`, the function given to `Cell.update`, a sort comparator. If one of them waited for a database, other code could run in the middle and see half-updated state. Kalam infers which functions suspend, so the error can name the exact chain (spec §15.4).\n\nInstead of:\n    fn update(s: State, input: Input, dt: Float) -> State:\n        save_score(s.score)\n        return s\n\nwrite:\n    fn update(s: State, input: Input, dt: Float) -> State:\n        return s.with(pending_save: true)\n\nand save the score outside `update`.",
+            "السبب: بعض الدوال يجب أن تنتهي دون انتظار: `update` في لعبة، والدالة الممرّرة إلى `Cell.update`، ودالة المقارنة في الترتيب. ولو انتظرت إحداها قاعدة بيانات لأمكن لكود آخر أن يعمل في المنتصف فيرى حالة نصف محدّثة. ويستنتج كلام أي الدوال تتعلق، فيستطيع الخطأ تسمية السلسلة بالضبط (المواصفة §15.4).\n\nبدلًا من:\n    دالة update(ح: حالة، م: مدخل، ز: كسري) -> حالة:\n        احفظ_النتيجة(ح.النتيجة)\n        أرجع ح\n\nاكتب:\n    دالة update(ح: حالة، م: مدخل، ز: كسري) -> حالة:\n        أرجع ح.with(حفظ_معلق: صح)\n\nواحفظ النتيجة خارج `update`.",
+            "Leh: fe dawal lazem tekhallas men gher ma testanna: `update` f le3ba, wel dala elly betetba3at l `Cell.update`, w dala el moqarna f el tarteeb. Law wa7da menhom estannet database, code tany momken yeshtaghal f el nos w yshoof state metghayara nosaha. W Kalam byestantag anhy dawal bte3mel suspend, fa el error ye2dar yesammy el selsela bel zabt (el spec §15.4).\n\nBadal:\n    dala update(s: State, input: Input, dt: kasri) -> State:\n        save_score(s.score)\n        rag3 s\n\nEkteb:\n    dala update(s: State, input: Input, dt: kasri) -> State:\n        rag3 s.with(pending_save: sa7)\n\nw e7faz el score bara `update`.",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1402",
+        title: ["@sync FUNCTION SUSPENDS", "دالة @sync تتعلق", "DALA @sync BTE3MEL SUSPEND"],
+        message: [
+            "This function is marked `@sync`, a promise that it never waits, but it calls something that can suspend. The chain of calls shows where.",
+            "هذه الدالة معلَّمة بـ `@sync`، وهذا وعد بأنها لا تنتظر أبدًا، لكنها تستدعي شيئًا قد يتعلق. وسلسلة الاستدعاءات تبيّن أين.",
+            "El dala di 3aleiha `@sync`, ya3ny wa3d enaha 3omraha ma testanna, bas heya btenady 7aga momken te3mel suspend. W selselet el calls bet-warrik fein.",
+        ],
+        help: [
+            "Remove the waiting call from this function, or remove `@sync` if the function really needs to wait (callers that rely on it will then be reported).",
+            "احذف الاستدعاء المنتظِر من هذه الدالة، أو احذف `@sync` إن كانت الدالة تحتاج فعلًا إلى الانتظار (وسيُبلَّغ حينها عن المستدعين الذين يعتمدون عليها).",
+            "Shil el call elly bystanna men el dala di, aw shil `@sync` law el dala fe3lan me7taga testanna (w saa3etha el amaken elly mo3tamda 3aleiha hatetballagh).",
+        ],
+        explain: [
+            "Why: `@sync` on a declaration freezes an API promise: callers may use the function where waiting is not allowed. Breaking the promise inside the function is caught here, at its source, instead of at every caller (spec §15.4).\n\nInstead of:\n    @sync\n    fn price(item: Item) -> Decimal:\n        return load_rate(item.currency)? * item.amount\n\nwrite:\n    @sync\n    fn price(item: Item, rate: Decimal) -> Decimal:\n        return rate * item.amount",
+            "السبب: `@sync` على تعريف دالة يثبّت وعدًا في واجهتها: يمكن للمستدعين استخدامها حيث لا يُسمح بالانتظار. وكسر هذا الوعد داخل الدالة يُكتشف هنا عند مصدره، لا عند كل مستدعٍ (المواصفة §15.4).\n\nبدلًا من:\n    @sync\n    دالة السعر(البند: بند) -> عشري:\n        أرجع حمّل_المعدل(البند.العملة)؟ * البند.الكمية\n\nاكتب:\n    @sync\n    دالة السعر(البند: بند، المعدل: عشري) -> عشري:\n        أرجع المعدل * البند.الكمية",
+            "Leh: `@sync` 3ala ta3reef dala bysabbet wa3d f el API: elly bynadoha y2daro yesta5demoha f amaken mamnoo3 feeha el estenna. W kasr el wa3d da gowa el dala byetmesek hena 3and masdaro, mesh 3and kol makan bynadeeha (el spec §15.4).\n\nBadal:\n    @sync\n    dala se3r(item: Item) -> ashri:\n        rag3 load_rate(item.currency)? * item.amount\n\nEkteb:\n    @sync\n    dala se3r(item: Item, rate: ashri) -> ashri:\n        rag3 rate * item.amount",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "W0421",
+        title: ["CELL VALUE USED ACROSS A WAIT", "قيمة خلية مستخدمة عبر انتظار", "QEEMET CELL MOSTA5DAMA BA3D ESTENNA"],
+        message: [
+            "This value was read from a `Cell` before a call that waits, and it is used after that call. While this task waited, another task may have changed the `Cell`.",
+            "قُرئت هذه القيمة من `Cell` قبل استدعاء ينتظر، وتُستخدم بعده. وأثناء انتظار هذه المهمة ربما غيّرت مهمة أخرى الـ `Cell`.",
+            "El qeema di et2araet men `Cell` 2abl call bystanna, w btesta5dem ba3do. W f w2t ma el task di kanet mestanya, momken task tany ykoon ghayar el `Cell`.",
+        ],
+        help: [
+            "Read the `Cell` again after the wait, or do the whole read-and-change in one `.update(...)`, which never waits.",
+            "اقرأ الـ `Cell` من جديد بعد الانتظار، أو نفّذ القراءة والتغيير كليهما في `.update(...)` واحدة، فهي لا تنتظر أبدًا.",
+            "E2ra el `Cell` tany ba3d el estenna, aw e3mel el 2eraya wel taghyeer el etnein f `.update(...)` wa7da, 3ashan heya 3omraha ma btestanna.",
+        ],
+        explain: [
+            "Why: between two waits a task runs alone, so reading and writing a `Cell` without waiting in between is safe. A wait in the middle opens a gap where the value can go stale: the classic check-then-act race (spec §15.6).\n\nInstead of:\n    let n = stock.get()\n    notify(order)\n    stock.set(n - 1)\n\nwrite:\n    stock.update(fn(n) => n - 1)\n    notify(order)",
+            "السبب: بين انتظارين تعمل المهمة وحدها، فقراءة `Cell` والكتابة فيها دون انتظار بينهما آمنة. أما الانتظار في المنتصف فيفتح فجوة قد تصبح فيها القيمة قديمة: وهو سباق \"افحص ثم نفّذ\" المعروف (المواصفة §15.6).\n\nبدلًا من:\n    ليكن ن = المخزون.get()\n    نبّه(الطلب)\n    المخزون.set(ن - 1)\n\nاكتب:\n    المخزون.update(دالة(ن) => ن - 1)\n    نبّه(الطلب)",
+            "Leh: ben estennaein el task byeshtaghal lewa7do, fa enak te2ra w tekteb f `Cell` men gher estenna f el nos amaan. Laken estenna f el nos byefta7 fagwa el qeema momken teb2a adeema feeha: el race el ma3roof \"check ba3dein e3mel\" (el spec §15.6).\n\nBadal:\n    khali n = stock.get()\n    nabbeh(order)\n    stock.set(n - 1)\n\nEkteb:\n    stock.update(dala(n) => n - 1)\n    nabbeh(order)",
+        ],
+        proposed: false,
+    },
+    // ---- Capabilities (K15xx, spec §16). ar/franco: pending native review.
+    Entry {
+        code: "K1501",
+        title: ["WORLD CAN'T BE CREATED", "لا يمكن إنشاء عالم", "DONYA MATET3AMALSH"],
+        message: [
+            "I can't let this code construct or decode a `{core_world}`. Only `{core_main}` receives the `{core_world}`, so every power a program has can be traced back to it.",
+            "لا أستطيع السماح لهذا الكود بإنشاء `{core_world}` أو فك ترميزه. وحدها `{core_main}` تستلم `{core_world}`، حتى يمكن تتبع كل صلاحية في البرنامج إليها.",
+            "Mesh ha2dar asma7 lel code da ye3mel aw ye3mel decode l `{core_world}`. `{core_main}` bas heya elly btestelem el `{core_world}`, 3ashan kol salaheya f el program yet-tabba3 leeha.",
+        ],
+        help: [
+            "Take the capability you need as a parameter (`net: Net`, `fs: Fs`), and pass it down from `{core_main}`.",
+            "خذ الصلاحية التي تحتاجها كمعامل (`net: Net`، `fs: Fs`)، ومرّرها إليك من `{core_main}`.",
+            "Khod el salaheya elly me7tagha ka parameter (`net: Net`, `fs: Fs`), w ba3atha men `{core_main}` lta7t.",
+        ],
+        explain: [
+            "Why: in Kalam, a function can reach the network, the files or the environment only if it was handed that capability. If any code could make a `World`, a library deep in your dependencies could grant itself everything (spec §16.1).\n\nInstead of:\n    fn fetch_rates() -> Result[Rates, HttpError]:\n        let world = World()\n        ...\n\nwrite:\n    fn fetch_rates(net: Net) -> Result[Rates, HttpError]:\n        ...",
+            "السبب: في كلام لا تصل الدالة إلى الشبكة أو الملفات أو البيئة إلا إذا أُعطيت هذه الصلاحية. ولو أمكن لأي كود أن ينشئ `عالم` لاستطاعت مكتبة عميقة في اعتمادياتك أن تمنح نفسها كل شيء (المواصفة §16.1).\n\nبدلًا من:\n    دالة اجلب_الأسعار() -> نتيجة[أسعار، HttpError]:\n        ليكن ع = عالم()\n        ...\n\nاكتب:\n    دالة اجلب_الأسعار(net: Net) -> نتيجة[أسعار، HttpError]:\n        ...",
+            "Leh: f Kalam el dala mabtewsalsh lel network aw el files aw el environment ella law et-ad-dalha el salaheya di. W law ay code ye2dar ye3mel `donya`, library ba3eeda f el dependencies bta3tak te2dar tedy nafsaha kol 7aga (el spec §16.1).\n\nBadal:\n    dala hat_rates() -> natiga[Rates, HttpError]:\n        khali w = donya()\n        ...\n\nEkteb:\n    dala hat_rates(net: Net) -> natiga[Rates, HttpError]:\n        ...",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1502",
+        title: ["SCREEN NEEDS THE BROWSER TARGET", "الشاشة تحتاج هدف المتصفح", "EL SCREEN ME7TAGA EL BROWSER"],
+        message: [
+            "This code uses `Screen`, which exists only when the program runs in a browser (the `js-browser` target), and this build targets something else.",
+            "هذا الكود يستخدم `Screen`، وهي موجودة فقط حين يعمل البرنامج في متصفح (الهدف `js-browser`)، وهذا البناء لهدف آخر.",
+            "El code da besta5dem `Screen`, w di mawgooda bas lamma el program yeshtaghal f browser (el target `js-browser`), w el build da l target tany.",
+        ],
+        help: [
+            "Build this program for the `js-browser` target (`targets` in `kalam.toml`), or move the drawing code to a package that is built only for the browser.",
+            "ابنِ هذا البرنامج للهدف `js-browser` (الحقل `targets` في `kalam.toml`)، أو انقل كود الرسم إلى حزمة لا تُبنى إلا للمتصفح.",
+            "E3mel build lel program da lel target `js-browser` (`targets` f `kalam.toml`), aw na2al code el rasm l package btetbene lel browser bas.",
+        ],
+        explain: [
+            "Why: a server or a command-line program has no canvas and no mouse. Checking the target at compile time turns a crash at start-up into a message that names the line (spec §16.1).\n\nA game is built for the browser. In kalam.toml:\n    [package]\n    targets = [\"js-browser\"]",
+            "السبب: البرنامج الذي يعمل على خادم أو في سطر الأوامر ليس له لوحة رسم ولا فأرة. والتحقق من الهدف وقت الترجمة يحوّل انهيارًا عند التشغيل إلى رسالة تسمّي السطر (المواصفة §16.1).\n\nاللعبة تُبنى للمتصفح. في kalam.toml:\n    [package]\n    targets = [\"js-browser\"]",
+            "Leh: el program elly byeshtaghal 3ala server aw f command line malosh canvas wala mouse. W el check 3ala el target w2t el compile by7awel crash 3and el tashgheel l resala betsammy el satr (el spec §16.1).\n\nEl le3ba btetbene lel browser. F kalam.toml:\n    [package]\n    targets = [\"js-browser\"]",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1503",
+        title: ["SECRET READ AS PLAIN TEXT", "سرّ يُقرأ كنص عادي", "SECRET BYET2ERI KA NASS 3ADI"],
+        message: [
+            "This key looks like a secret (it ends in `_KEY`, `_SECRET` or `_TOKEN`, or names a password), but `env.get` returns plain text, which can end up in logs or JSON.",
+            "هذا المفتاح يبدو سرًا (ينتهي بـ `_KEY` أو `_SECRET` أو `_TOKEN`، أو يسمّي كلمة مرور)، لكن `env.get` ترجع نصًا عاديًا قد ينتهي في السجلات أو في JSON.",
+            "El key da shaklo secret (byekhlas b `_KEY` aw `_SECRET` aw `_TOKEN`, aw fe esmo password), bas `env.get` betraga3 nass 3adi momken yekhlas f el logs aw f JSON.",
+        ],
+        help: [
+            "Use `env.secret(key)`, which returns `Secret[String]`: it prints as `[REDACTED]` and can never be encoded.",
+            "استخدم `env.secret(key)`، فهي ترجع `Secret[String]`: تُطبع `[REDACTED]` ولا يمكن ترميزها أبدًا.",
+            "Esta5dem `env.secret(key)`, 3ashan betraga3 `Secret[String]`: btetteba3 `[REDACTED]` w 3omraha ma tet3amallaha encode.",
+        ],
+        explain: [
+            "Why: secrets leak through ordinary code paths: a debug print, an error message, a JSON response. Keeping them in `Secret` from the moment they are read means every one of those paths is closed by the type system (spec §16.1, §18.1).\n\nInstead of:\n    let key = env.get(\"STRIPE_API_KEY\")\n\nwrite:\n    let key = env.secret(\"STRIPE_API_KEY\")",
+            "السبب: تتسرب الأسرار عبر مسارات كود عادية: طباعة للتصحيح، أو رسالة خطأ، أو رد JSON. وحفظها في `Secret` من لحظة قراءتها يعني أن نظام الأنواع يغلق كل هذه المسارات (المواصفة §16.1، §18.1).\n\nبدلًا من:\n    ليكن المفتاح = env.get(\"STRIPE_API_KEY\")\n\nاكتب:\n    ليكن المفتاح = env.secret(\"STRIPE_API_KEY\")",
+            "Leh: el asrar betetsarrab men masarat code 3adeya: print lel debug, aw resalet error, aw response JSON. W lamma te7fazha f `Secret` men awel ma tet2ery, el type system bye2fel kol el masarat di (el spec §16.1, §18.1).\n\nBadal:\n    khali key = env.get(\"STRIPE_API_KEY\")\n\nEkteb:\n    khali key = env.secret(\"STRIPE_API_KEY\")",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1504",
+        title: ["LIBRARY PRINTS WITHOUT CONSOLE", "مكتبة تطبع دون console", "LIBRARY BTETBA3 MEN GHER CONSOLE"],
+        message: [
+            "This library package calls `{core_print}` or `log.*`, but its manifest doesn't declare `console = true`. Apps that use a library need to know it writes to their output.",
+            "حزمة المكتبة هذه تستدعي `{core_print}` أو `log.*`، لكن ملف تعريفها لا يعلن `console = true`. والتطبيقات التي تستخدم مكتبة تحتاج أن تعرف أنها تكتب في مخرجاتها.",
+            "El library package di btenady `{core_print}` aw `log.*`, bas el manifest bta3ha mesh m3allen `console = true`. W el apps elly betesta5dem library me7taga te3raf enaha btekteb f el output bta3hom.",
+        ],
+        help: [
+            "Add `console = true` to the package manifest, or return the text to the caller instead of printing it.",
+            "أضف `console = true` إلى ملف تعريف الحزمة، أو أرجع النص إلى المستدعي بدل طباعته.",
+            "Zawed `console = true` lel manifest bta3 el package, aw raga3 el kalam lelly bynady badal ma tetba3o.",
+        ],
+        explain: [
+            "Why: `print` and `log.*` need no capability, which keeps small programs simple. For a library that is a hidden side effect, so the manifest has to declare it, and `kalam audit` shows it to the people who depend on the package (spec §16.4).\n\nIn kalam.toml:\n    [capabilities]\n    console = true",
+            "السبب: لا تحتاج `اطبع` و`log.*` إلى صلاحية، وهذا يبقي البرامج الصغيرة بسيطة. لكنها في المكتبة أثر جانبي خفي، فيجب أن يعلنه ملف التعريف، ويعرضه `kalam audit` لمن يعتمدون على الحزمة (المواصفة §16.4).\n\nفي kalam.toml:\n    [capabilities]\n    console = true",
+            "Leh: `ektb` w `log.*` mesh me7tageen salaheya, w da bykhalli el programs el soghayara baseeta. Laken f el library da side effect mestakhabby, fa lazem el manifest y3allen 3anno, w `kalam audit` bey3redo lel nas elly mo3tamdeen 3ala el package (el spec §16.4).\n\nF kalam.toml:\n    [capabilities]\n    console = true",
+        ],
+        proposed: false,
+    },
+    // ---- SQL, HTML, command, URL and path literals (K16xx, W1606, W1622, spec §17).
+    // ar/franco: pending native review.
+    Entry {
+        code: "K1602",
+        title: ["SQL HOLE INSIDE QUOTES", "فجوة SQL داخل علامات اقتباس", "HOLE SQL GOWA QUOTES"],
+        message: [
+            "This hole is inside SQL quotes. Values in holes are sent to the database as parameters, never pasted into the text, so the quotes would make it a literal string.",
+            "هذه الفجوة داخل علامات اقتباس SQL. تُرسل قيم الفجوات إلى قاعدة البيانات كمعاملات ولا تُلصق في النص أبدًا، فكانت علامات الاقتباس ستجعلها نصًا ثابتًا.",
+            "El hole di gowa quotes SQL. Qeyam el holes betetba3at lel database ka parameters, 3omraha ma betetlezze2 f el nass, fa el quotes kanet hatkhalleeha string sabet.",
+        ],
+        help: [
+            "Remove the quotes around the hole: write `name = { name }`, not `name = '{ name }'`.",
+            "احذف علامتي الاقتباس حول الفجوة: اكتب `name = { name }` لا `name = '{ name }'`.",
+            "Shil el quotes elly 7awalen el hole: ekteb `name = { name }`, mesh `name = '{ name }'`.",
+        ],
+        explain: [
+            "Why: a `sql\"…\"` literal turns each hole into a query parameter, which is what makes it immune to injection. Quotes around a hole come from habits with string-built SQL and would turn the parameter into fixed text (spec §17.3).\n\nInstead of:\n    sql\"SELECT * FROM users WHERE name = '{ name }'\"\n\nwrite:\n    sql\"SELECT * FROM users WHERE name = { name }\"",
+            "السبب: القيمة الحرفية `sql\"…\"` تحوّل كل فجوة إلى معامل في الاستعلام، وهذا ما يحميها من الحقن. وعلامات الاقتباس حول الفجوة عادة من بناء SQL بالنصوص، وكانت ستحوّل المعامل إلى نص ثابت (المواصفة §17.3).\n\nبدلًا من:\n    sql\"SELECT * FROM users WHERE name = '{ الاسم }'\"\n\nاكتب:\n    sql\"SELECT * FROM users WHERE name = { الاسم }\"",
+            "Leh: el literal `sql\"…\"` by7awel kol hole l parameter f el query, w da elly bey7meeh men el injection. W el quotes 7awalen el hole 3ada men bena2 SQL bel strings, w kanet hat7awel el parameter l nass sabet (el spec §17.3).\n\nBadal:\n    sql\"SELECT * FROM users WHERE name = '{ esm }'\"\n\nEkteb:\n    sql\"SELECT * FROM users WHERE name = { esm }\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1603",
+        title: ["SQL HOLE AS A NAME", "فجوة SQL في موضع اسم", "HOLE SQL MAKAN ESM"],
+        message: [
+            "This hole is where SQL expects a name (a table, a column, `ASC` or `DESC`), not a value. A query parameter can't fill a name, and pasting text there would open the door to injection.",
+            "هذه الفجوة في موضع ينتظر فيه SQL اسمًا (جدولًا أو عمودًا أو `ASC` أو `DESC`) لا قيمة. ولا يمكن لمعامل الاستعلام أن يملأ اسمًا، ولصق نص هناك كان سيفتح باب الحقن.",
+            "El hole di f makan SQL mestanny feeh esm (table aw column aw `ASC` aw `DESC`), mesh qeema. W parameter el query mayenfa3sh yemla esm, w lez2 nass hena kan hayefta7 bab el injection.",
+        ],
+        help: [
+            "Build the name with `sql.ident(name, allowed: [...])`, which checks it against a fixed list, or use an enum whose cases return fixed names.",
+            "ابنِ الاسم بـ `sql.ident(name, allowed: [...])` التي تتحقق منه مقابل قائمة ثابتة، أو استخدم تعدادًا ترجع حالاته أسماء ثابتة.",
+            "Ebny el esm b `sql.ident(name, allowed: [...])` elly bet-check-o 3ala list sabta, aw esta5dem enum el 7alat bta3to betraga3 asamy sabta.",
+        ],
+        explain: [
+            "Why: sorting by a column the user picked is a common need, and the usual shortcut pastes the user's text into the query. Here the user picks among names you listed, and the name itself always comes from your code (spec §17.3).\n\nInstead of:\n    sql\"SELECT * FROM notes ORDER BY { column }\"\n\nwrite:\n    let col = sql.ident(column, allowed: [\"title\", \"created_at\"])?\n    sql\"SELECT * FROM notes ORDER BY { col }\"",
+            "السبب: الترتيب حسب عمود يختاره المستخدم حاجة شائعة، والاختصار المعتاد يلصق نص المستخدم في الاستعلام. أما هنا فيختار المستخدم من أسماء حددتها أنت، ويأتي الاسم نفسه دائمًا من كودك (المواصفة §17.3).\n\nبدلًا من:\n    sql\"SELECT * FROM notes ORDER BY { العمود }\"\n\nاكتب:\n    ليكن ع = sql.ident(العمود، allowed: [\"title\"، \"created_at\"])؟\n    sql\"SELECT * FROM notes ORDER BY { ع }\"",
+            "Leh: el tarteeb b column el user ekhtaro 7aga mentashra, wel ekhtesar el 3adi byelze2 kalam el user f el query. Laken hena el user byekhtar men asamy enta 7addedtaha, wel esm nafso dayman gay men el code bta3ak (el spec §17.3).\n\nBadal:\n    sql\"SELECT * FROM notes ORDER BY { column }\"\n\nEkteb:\n    khali col = sql.ident(column, allowed: [\"title\", \"created_at\"])?\n    sql\"SELECT * FROM notes ORDER BY { col }\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1604",
+        title: ["SEVERAL SQL STATEMENTS", "عدة جمل SQL", "KAZA STATEMENT SQL"],
+        message: [
+            "This SQL literal holds more than one statement (a `;` outside quotes). Each `Sql` value is exactly one statement.",
+            "هذه القيمة الحرفية لـ SQL فيها أكثر من جملة (`;` خارج علامات الاقتباس). وكل قيمة `Sql` جملة واحدة بالضبط.",
+            "El SQL literal da feeh aktar men statement (`;` bara el quotes). W kol qeema `Sql` statement wa7ed bel zabt.",
+        ],
+        help: [
+            "Split it into one `sql\"...\"` per statement, and run them inside a transaction if they must succeed together.",
+            "قسّمها إلى `sql\"...\"` لكل جملة، ونفّذها داخل معاملة إن كان يجب أن تنجح معًا.",
+            "Qassemha l `sql\"...\"` l kol statement, w shaghalhom gowa transaction law lazem yenga7o ma3 ba3d.",
+        ],
+        explain: [
+            "Why: stacked statements are how one injected `;` turns a lookup into a `DROP TABLE`. With one statement per value, that attack shape cannot exist, and `unsafe.raw_sql` rejects a top-level `;` at run time too (spec §17.3).\n\nInstead of:\n    db.exec(sql\"DELETE FROM carts WHERE id = { id }; DELETE FROM items WHERE cart = { id }\")?\n\nwrite:\n    db.exec(sql\"DELETE FROM items WHERE cart = { id }\")?\n    db.exec(sql\"DELETE FROM carts WHERE id = { id }\")?",
+            "السبب: الجمل المتتالية هي الطريقة التي يحوّل بها `;` محقون استعلامًا إلى `DROP TABLE`. ومع جملة واحدة لكل قيمة لا يمكن أن يوجد هذا الشكل من الهجوم، و`unsafe.raw_sql` ترفض `;` في المستوى الأعلى وقت التشغيل أيضًا (المواصفة §17.3).\n\nبدلًا من:\n    db.exec(sql\"DELETE FROM carts WHERE id = { الرقم }; DELETE FROM items WHERE cart = { الرقم }\")؟\n\nاكتب:\n    db.exec(sql\"DELETE FROM items WHERE cart = { الرقم }\")؟\n    db.exec(sql\"DELETE FROM carts WHERE id = { الرقم }\")؟",
+            "Leh: el statements el wara ba3d heya el taree2a elly `;` ma73oon by7awel beeha query l `DROP TABLE`. Ma3 statement wa7ed l kol qeema, shakl el hagma da mayenfa3sh yeb2a mawgood, w `unsafe.raw_sql` bterfod `;` f el mostawa el a3la w2t el tashgheel kaman (el spec §17.3).\n\nBadal:\n    db.exec(sql\"DELETE FROM carts WHERE id = { id }; DELETE FROM items WHERE cart = { id }\")?\n\nEkteb:\n    db.exec(sql\"DELETE FROM items WHERE cart = { id }\")?\n    db.exec(sql\"DELETE FROM carts WHERE id = { id }\")?",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1605",
+        title: ["SQL HOLE INSIDE A COMMENT", "فجوة SQL داخل تعليق", "HOLE SQL GOWA COMMENT"],
+        message: [
+            "This hole is inside an SQL comment, so the database would never see its value. It is almost always a leftover from editing the query.",
+            "هذه الفجوة داخل تعليق SQL، فلن ترى قاعدة البيانات قيمتها أبدًا. وغالبًا ما تكون بقية من تعديل الاستعلام.",
+            "El hole di gowa comment SQL, fa el database 3omraha ma hatshoof qeemetha. W ghaleban btekoon ba2eya men ta3deel el query.",
+        ],
+        help: [
+            "Move the hole out of the comment, or delete it.",
+            "انقل الفجوة خارج التعليق، أو احذفها.",
+            "Talla3 el hole bara el comment, aw emsa7ha.",
+        ],
+        explain: [
+            "Why: a hole the database ignores means the query does something other than what the code seems to say. Comments themselves are fine in a `sql\"…\"` literal (spec §17.3).\n\nInstead of:\n    sql\"SELECT * FROM notes -- WHERE owner = { user.id }\"\n\nwrite:\n    sql\"SELECT * FROM notes WHERE owner = { user.id }\"",
+            "السبب: الفجوة التي تتجاهلها قاعدة البيانات تعني أن الاستعلام يفعل غير ما يبدو أن الكود يقوله. أما التعليقات نفسها فمسموحة في `sql\"…\"` (المواصفة §17.3).\n\nبدلًا من:\n    sql\"SELECT * FROM notes -- WHERE owner = { المستخدم.الرقم }\"\n\nاكتب:\n    sql\"SELECT * FROM notes WHERE owner = { المستخدم.الرقم }\"",
+            "Leh: el hole elly el database betetgahelha ma3naha en el query bey3mel 7aga gher elly el code shaklo bey2oolha. Laken el comments nafsaha masmoo7a f `sql\"…\"` (el spec §17.3).\n\nBadal:\n    sql\"SELECT * FROM notes -- WHERE owner = { user.id }\"\n\nEkteb:\n    sql\"SELECT * FROM notes WHERE owner = { user.id }\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "W1606",
+        title: ["RAW STRING IN A LIKE PATTERN", "نص خام في نمط LIKE", "STRING KHAM F PATTERN LIKE"],
+        message: [
+            "A plain `{core_string}` fills this `LIKE` hole, so any `%` or `_` the user types acts as a wildcard and matches more than they asked for.",
+            "يملأ هذه الفجوة في `LIKE` نصٌّ `{core_string}` عادي، فيعمل أي `%` أو `_` يكتبه المستخدم كحرف بدل ويطابق أكثر مما طلب.",
+            "`{core_string}` 3adi byemla el hole di f `LIKE`, fa ay `%` aw `_` el user yekteboh beyshtaghal ka wildcard w yetabe2 aktar men elly talabo.",
+        ],
+        help: [
+            "Escape the text with `sql.like_contains(s)`, `sql.like_prefix(s)` or `sql.like_suffix(s)`.",
+            "هرّب النص بـ `sql.like_contains(s)` أو `sql.like_prefix(s)` أو `sql.like_suffix(s)`.",
+            "E3mel escape lel nass b `sql.like_contains(s)` aw `sql.like_prefix(s)` aw `sql.like_suffix(s)`.",
+        ],
+        explain: [
+            "Why: a hole is safe from injection, but `LIKE` gives `%` and `_` their own meaning inside the value. A search for `100%` would also match `1000`, and a lone `%` matches every row (spec §17.3).\n\nInstead of:\n    sql\"SELECT * FROM notes WHERE title LIKE { term }\"\n\nwrite:\n    sql\"SELECT * FROM notes WHERE title LIKE { sql.like_contains(term) }\"",
+            "السبب: الفجوة آمنة من الحقن، لكن `LIKE` يعطي `%` و`_` معنى خاصًا داخل القيمة. فالبحث عن `100%` يطابق `1000` أيضًا، و`%` وحدها تطابق كل الصفوف (المواصفة §17.3).\n\nبدلًا من:\n    sql\"SELECT * FROM notes WHERE title LIKE { البحث }\"\n\nاكتب:\n    sql\"SELECT * FROM notes WHERE title LIKE { sql.like_contains(البحث) }\"",
+            "Leh: el hole amna men el injection, bas `LIKE` bey-edy `%` w `_` ma3na khas gowa el qeema. Fa el ba7s 3an `100%` hayetabe2 `1000` kaman, w `%` lewa7daha btetabe2 kol el rows (el spec §17.3).\n\nBadal:\n    sql\"SELECT * FROM notes WHERE title LIKE { term }\"\n\nEkteb:\n    sql\"SELECT * FROM notes WHERE title LIKE { sql.like_contains(term) }\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1610",
+        title: ["HTML LITERAL NOT WELL-FORMED", "قيمة HTML غير سليمة البناء", "HTML LITERAL MESH SALEEM"],
+        message: [
+            "I can't read this `html\"...\"` literal as a well-formed HTML fragment: a tag is unclosed or wrongly nested, or an attribute value is unquoted.",
+            "لا أستطيع قراءة القيمة الحرفية `html\"...\"` هذه كجزء HTML سليم البناء: هناك وسم غير مغلق أو متداخل بشكل خاطئ، أو قيمة سمة بلا علامات اقتباس.",
+            "Mesh ha2dar a2ra el `html\"...\"` da ka 7etta HTML saleema: fe tag mesh ma2fool aw metdakhel ghalat, aw qeemet attribute men gher quotes.",
+        ],
+        help: [
+            "Close every tag in the order it was opened, and quote every attribute value.",
+            "أغلق كل وسم بعكس ترتيب فتحه، وضع كل قيمة سمة بين علامتي اقتباس.",
+            "E2fel kol tag bel tarteeb el ma3koos lel fat7, w 7ott kol qeemet attribute ben quotes.",
+        ],
+        explain: [
+            "Why: I escape each hole according to where it sits in the HTML. That only works if I can parse the fragment at compile time; a browser would silently repair broken markup in a way that can move a hole into a different context (spec §17.4).\n\nInstead of:\n    html\"<p><b>{ name }</p></b>\"\n\nwrite:\n    html\"<p><b>{ name }</b></p>\"",
+            "السبب: أهرّب كل فجوة حسب موضعها في HTML. وهذا لا يعمل إلا إذا استطعت تحليل الجزء وقت الترجمة، أما المتصفح فيصلح الوسوم المكسورة بصمت بطريقة قد تنقل فجوة إلى سياق مختلف (المواصفة §17.4).\n\nبدلًا من:\n    html\"<p><b>{ الاسم }</p></b>\"\n\nاكتب:\n    html\"<p><b>{ الاسم }</b></p>\"",
+            "Leh: ana ba3mel escape l kol hole 7asab makanha f el HTML. W da mayenfa3sh ella law 2dert a7allel el 7etta w2t el compile; el browser bysalla7 el tags el maksoora f el sekket b taree2a momken tenaql hole l context tany (el spec §17.4).\n\nBadal:\n    html\"<p><b>{ esm }</p></b>\"\n\nEkteb:\n    html\"<p><b>{ esm }</b></p>\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1611",
+        title: ["UNQUOTED ATTRIBUTE HOLE", "فجوة سمة بلا اقتباس", "HOLE ATTRIBUTE MEN GHER QUOTES"],
+        message: [
+            "This attribute's value is a hole without quotes. A value with a space or a `>` would end the attribute early and could add attributes of its own.",
+            "قيمة هذه السمة فجوة بلا علامات اقتباس. والقيمة التي فيها مسافة أو `>` كانت ستنهي السمة مبكرًا وقد تضيف سمات من عندها.",
+            "Qeemet el attribute da hole men gher quotes. W qeema feeha masafa aw `>` kanet hatkhallas el attribute badry w momken tzawed attributes men 3andaha.",
+        ],
+        help: [
+            "Put quotes around the hole: `class=\"{ c }\"`. `kalam fix` adds them.",
+            "ضع علامتي اقتباس حول الفجوة: `class=\"{ c }\"`. والأمر `kalam fix` يضيفهما.",
+            "7ott quotes 7awalen el hole: `class=\"{ c }\"`. W `kalam fix` byzawedhom.",
+        ],
+        explain: [
+            "Why: inside quotes I only need to escape the quote character; without them, many more characters change the meaning of the tag. Requiring quotes keeps escaping simple and complete (spec §17.4).\n\nInstead of:\n    html\"<div class={ c }>\"\n\nwrite:\n    html\"<div class=\\\"{ c }\\\">\"",
+            "السبب: داخل علامات الاقتباس أحتاج فقط إلى تهريب علامة الاقتباس، وبدونها تغيّر حروف أكثر بكثير معنى الوسم. واشتراط علامات الاقتباس يبقي التهريب بسيطًا وكاملًا (المواصفة §17.4).\n\nبدلًا من:\n    html\"<div class={ ص }>\"\n\nاكتب:\n    html\"<div class=\\\"{ ص }\\\">\"",
+            "Leh: gowa el quotes ana me7tag a3mel escape l 3alamet el quote bas; men gherha 7oroof keteer tanya betghayar ma3na el tag. W en el quotes tekoon lazma bykhalli el escape baseet w kamel (el spec §17.4).\n\nBadal:\n    html\"<div class={ c }>\"\n\nEkteb:\n    html\"<div class=\\\"{ c }\\\">\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1612",
+        title: ["HOLE IN SCRIPT OR STYLE", "فجوة في سكربت أو نمط", "HOLE F SCRIPT AW STYLE"],
+        message: [
+            "This hole is in a place that runs as code: an `on*` attribute, a `style` attribute, or `<script>` or `<style>` content. No escaping makes a value safe there.",
+            "هذه الفجوة في مكان يُنفَّذ ككود: سمة `on*`، أو سمة `style`، أو محتوى `<script>` أو `<style>`. ولا يوجد تهريب يجعل القيمة آمنة هناك.",
+            "El hole di f makan byeshtaghal ka code: attribute `on*`, aw attribute `style`, aw gowa `<script>` aw `<style>`. W mafeesh escape yekhalli el qeema amna henak.",
+        ],
+        help: [
+            "Pass data to scripts with `{ json(x) }` inside `<script type=\"application/json\">`, and choose styles with a class instead of a style hole.",
+            "مرّر البيانات إلى السكربتات بـ `{ json(x) }` داخل `<script type=\"application/json\">`، واختر الأنماط بصنف class بدل فجوة في style.",
+            "Ba3at el data lel scripts b `{ json(x) }` gowa `<script type=\"application/json\">`, w ekhtar el styles b class badal hole f style.",
+        ],
+        explain: [
+            "Why: JavaScript and CSS each have their own quoting rules, nested inside HTML's. Values in those places are the classic source of cross-site scripting, so they get no holes at all; the one exception is JSON data, which is escaped for that exact context (spec §17.4).\n\nInstead of:\n    html\"<button onclick=\\\"buy({ id })\\\">Buy</button>\"\n\nwrite (a live component):\n    html\"<button k-click=\\\"{ Msg.Buy(id) }\\\">Buy</button>\"",
+            "السبب: لكل من JavaScript وCSS قواعد اقتباس خاصة به، متداخلة داخل قواعد HTML. والقيم في هذه المواضع هي المصدر التقليدي لهجمات XSS، لذلك لا فجوات فيها أصلًا، والاستثناء الوحيد بيانات JSON التي تُهرَّب لهذا السياق تحديدًا (المواصفة §17.4).\n\nبدلًا من:\n    html\"<button onclick=\\\"buy({ الرقم })\\\">اشترِ</button>\"\n\nاكتب (في مكوّن حي):\n    html\"<button k-click=\\\"{ رسالة.اشترِ(الرقم) }\\\">اشترِ</button>\"",
+            "Leh: JavaScript w CSS kol wa7ed leeh qawa3ed quotes khassa, metdakhla gowa qawa3ed el HTML. W el qeyam f el amaken di heya el masdar el ma3roof l XSS, 3ashan keda mafeehash holes khales; el estesna2 el wa7eed data JSON elly beyet3amallaha escape lel context da bel zabt (el spec §17.4).\n\nBadal:\n    html\"<button onclick=\\\"buy({ id })\\\">Buy</button>\"\n\nEkteb (f live component):\n    html\"<button k-click=\\\"{ Msg.Buy(id) }\\\">Buy</button>\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1613",
+        title: ["URL ATTRIBUTE NEEDS A URL", "سمة الرابط تحتاج Url", "ATTRIBUTE EL LINK ME7TAG URL"],
+        message: [
+            "This hole fills a URL attribute (such as `href` or `src`), so its value must be a `Url`, not a `{core_string}`. A string could be a `javascript:` link.",
+            "هذه الفجوة تملأ سمة رابط (مثل `href` أو `src`)، فيجب أن تكون قيمتها `Url` لا `{core_string}`. فالنص قد يكون رابط `javascript:`.",
+            "El hole di betemla attribute link (zay `href` aw `src`), fa qeemetha lazem teb2a `Url`, mesh `{core_string}`. El string momken yeb2a link `javascript:`.",
+        ],
+        help: [
+            "Build the link with a `url\"...\"` literal, or parse text with `Url.parse(s)`, which refuses `javascript:`, `data:` and `vbscript:`.",
+            "ابنِ الرابط بقيمة حرفية `url\"...\"`، أو حلّل النص بـ `Url.parse(s)` التي ترفض `javascript:` و`data:` و`vbscript:`.",
+            "Ebny el link b literal `url\"...\"`, aw 7allel el nass b `Url.parse(s)` elly bterfod `javascript:` w `data:` w `vbscript:`.",
+        ],
+        explain: [
+            "Why: HTML-escaping a link does not make it safe: `javascript:alert(1)` contains nothing to escape. The `Url` type can only hold safe schemes, so checking the type is enough (spec §17.4).\n\nInstead of:\n    html\"<a href=\\\"{ link }\\\">profile</a>\"\n\nwrite:\n    let link = Url.parse(text)?\n    html\"<a href=\\\"{ link }\\\">profile</a>\"",
+            "السبب: تهريب الرابط في HTML لا يجعله آمنًا، فالرابط `javascript:alert(1)` ليس فيه ما يُهرَّب. والنوع `Url` لا يحمل إلا مخططات آمنة، فيكفي التحقق من النوع (المواصفة §17.4).\n\nبدلًا من:\n    html\"<a href=\\\"{ الرابط }\\\">الملف</a>\"\n\nاكتب:\n    ليكن الرابط = Url.parse(النص)؟\n    html\"<a href=\\\"{ الرابط }\\\">الملف</a>\"",
+            "Leh: el escape bta3 el link f HTML mesh bykhalleeh amn: `javascript:alert(1)` mafeehoosh 7aga tet3amallaha escape. W no3 `Url` mayesh-shelsh ella schemes amna, fa el check 3ala el type kefaya (el spec §17.4).\n\nBadal:\n    html\"<a href=\\\"{ link }\\\">profile</a>\"\n\nEkteb:\n    khali link = Url.parse(text)?\n    html\"<a href=\\\"{ link }\\\">profile</a>\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1614",
+        title: ["HOLE IN A TAG OR ATTRIBUTE NAME", "فجوة في اسم وسم أو سمة", "HOLE F ESM TAG AW ATTRIBUTE"],
+        message: [
+            "This hole is in a tag name or an attribute name. Names decide what the markup does, so they must be written in the literal.",
+            "هذه الفجوة في اسم وسم أو اسم سمة. والأسماء تحدد ما تفعله الوسوم، فيجب أن تُكتب في القيمة الحرفية نفسها.",
+            "El hole di f esm tag aw esm attribute. W el asamy heya elly bet7added el markup bey3mel eh, fa lazem tetketeb f el literal nafso.",
+        ],
+        help: [
+            "Write the name literally. For a changing set of attributes, use `Attrs`, whose names are a fixed list.",
+            "اكتب الاسم حرفيًا. ولمجموعة سمات تتغير، استخدم `Attrs` التي أسماؤها قائمة ثابتة.",
+            "Ekteb el esm zay ma howa. W l magmoo3et attributes btetghayar, esta5dem `Attrs` elly asameeha list sabta.",
+        ],
+        explain: [
+            "Why: a hole that names a tag could produce `<script>`, and one that names an attribute could produce `onclick`. Neither can be made safe by escaping the value (spec §17.4).\n\nInstead of:\n    html\"<{ tag }>{ text }</{ tag }>\"\n\nwrite:\n    match level:\n        case .Title: html\"<h1>{ text }</h1>\"\n        case .Body: html\"<p>{ text }</p>\"",
+            "السبب: الفجوة التي تسمّي وسمًا قد تنتج `<script>`، والتي تسمّي سمة قد تنتج `onclick`. ولا يمكن جعل أي منهما آمنًا بتهريب القيمة (المواصفة §17.4).\n\nبدلًا من:\n    html\"<{ الوسم }>{ النص }</{ الوسم }>\"\n\nاكتب:\n    حسب المستوى:\n        عندما .عنوان: html\"<h1>{ النص }</h1>\"\n        عندما .فقرة: html\"<p>{ النص }</p>\"",
+            "Leh: el hole elly betsammy tag momken tetla3 `<script>`, w elly betsammy attribute momken tetla3 `onclick`. W mafeesh wa7da menhom te2dar tetkhalla amna b escape lel qeema (el spec §17.4).\n\nBadal:\n    html\"<{ tag }>{ text }</{ tag }>\"\n\nEkteb:\n    hasab level:\n        lama .Title: html\"<h1>{ text }</h1>\"\n        lama .Body: html\"<p>{ text }</p>\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1615",
+        title: ["HOLE IN AN HTML COMMENT", "فجوة في تعليق HTML", "HOLE F COMMENT HTML"],
+        message: [
+            "This hole is inside an HTML comment. Comments are sent to the browser, and a value containing `-->` would end the comment and become markup.",
+            "هذه الفجوة داخل تعليق HTML. والتعليقات تُرسل إلى المتصفح، والقيمة التي فيها `-->` كانت ستنهي التعليق وتصبح وسومًا.",
+            "El hole di gowa comment HTML. W el comments betetba3at lel browser, w qeema feeha `-->` kanet hatkhallas el comment w teb2a markup.",
+        ],
+        help: [
+            "Move the value out of the comment, or use a Kalam `#` comment, which is never sent.",
+            "انقل القيمة خارج التعليق، أو استخدم تعليق كلام `#` الذي لا يُرسل أبدًا.",
+            "Talla3 el qeema bara el comment, aw esta5dem comment Kalam `#` elly 3omro ma byetba3at.",
+        ],
+        explain: [
+            "Why: there is no safe way to escape a value inside an HTML comment, and a comment that echoes user data also leaks it into the page source (spec §17.4).\n\nInstead of:\n    html\"<!-- user { user.id } --><p>{ text }</p>\"\n\nwrite:\n    html\"<p>{ text }</p>\"",
+            "السبب: لا توجد طريقة آمنة لتهريب قيمة داخل تعليق HTML، والتعليق الذي يكرر بيانات المستخدم يسرّبها أيضًا إلى مصدر الصفحة (المواصفة §17.4).\n\nبدلًا من:\n    html\"<!-- user { المستخدم.الرقم } --><p>{ النص }</p>\"\n\nاكتب:\n    html\"<p>{ النص }</p>\"",
+            "Leh: mafeesh taree2a amna te3mel escape l qeema gowa comment HTML, wel comment elly beyraded data el user bysarrabha kaman f source el page (el spec §17.4).\n\nBadal:\n    html\"<!-- user { user.id } --><p>{ text }</p>\"\n\nEkteb:\n    html\"<p>{ text }</p>\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1616",
+        title: ["EVENT HOLE NEEDS A MESSAGE", "فجوة الحدث تحتاج رسالة", "HOLE EL EVENT ME7TAGA MESSAGE"],
+        message: [
+            "This `k-click`, `k-submit`, `k-input` or `k-change` hole must hold a value whose type derives `Message`. Only those values can be sent to the browser as a signed token.",
+            "فجوة `k-click` أو `k-submit` أو `k-input` أو `k-change` هذه يجب أن تحمل قيمة يشتق نوعها `Message`. فهذه القيم وحدها يمكن إرسالها إلى المتصفح كرمز موقَّع.",
+            "El hole bta3et `k-click` aw `k-submit` aw `k-input` aw `k-change` di lazem tsheel qeema no3aha bey3mel derive l `Message`. El qeyam di bas elly momken tetba3at lel browser ka token mewa22a3.",
+        ],
+        help: [
+            "Use a case of your message enum, for example `k-click=\"{ Msg.Save }\"`, and add `@derive(Message)` to that enum.",
+            "استخدم حالة من تعداد رسائلك، مثل `k-click=\"{ Msg.Save }\"`، وأضف `@derive(Message)` إلى هذا التعداد.",
+            "Esta5dem 7ala men el enum bta3 el messages, zay `k-click=\"{ Msg.Save }\"`, w zawed `@derive(Message)` lel enum da.",
+        ],
+        explain: [
+            "Why: an event in a live component comes back from the browser. Encoding it as a signed, opaque message means a user can only send messages your `update` already handles, never forge new ones (spec §20.3).\n\nInstead of:\n    html\"<button k-click=\\\"{ item.id }\\\">Remove</button>\"\n\nwrite:\n    html\"<button k-click=\\\"{ Msg.Remove(item.id) }\\\">Remove</button>\"",
+            "السبب: الحدث في المكوّن الحي يعود من المتصفح. وترميزه كرسالة موقّعة ومغلقة يعني أن المستخدم لا يستطيع إلا إرسال رسائل يعالجها `update` لديك، ولا يستطيع أبدًا تزوير رسائل جديدة (المواصفة §20.3).\n\nبدلًا من:\n    html\"<button k-click=\\\"{ البند.الرقم }\\\">احذف</button>\"\n\nاكتب:\n    html\"<button k-click=\\\"{ رسالة.احذف(البند.الرقم) }\\\">احذف</button>\"",
+            "Leh: el event f el live component byerga3 men el browser. W lamma yet3amallo encode ka message mewa22a3a w ma2foola, el user mayet2darsh yeba3at ella messages el `update` bta3ak bey3alegha aslan, w 3omro ma ye2dar yezawar messages gedeeda (el spec §20.3).\n\nBadal:\n    html\"<button k-click=\\\"{ item.id }\\\">Remove</button>\"\n\nEkteb:\n    html\"<button k-click=\\\"{ Msg.Remove(item.id) }\\\">Remove</button>\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1617",
+        title: ["UNKNOWN k-* ATTRIBUTE", "سمة k-* غير معروفة", "ATTRIBUTE k-* MESH MA3ROOF"],
+        message: [
+            "I don't know this `k-` attribute. The `k-` prefix is reserved for Kalam's own directives, so a misspelled one would otherwise do nothing at all.",
+            "لا أعرف سمة `k-` هذه. البادئة `k-` محجوزة لتوجيهات كلام نفسها، والتوجيه المكتوب خطأً كان لن يفعل شيئًا أبدًا.",
+            "Mesh 3aref el attribute `k-` da. El bedaya `k-` ma7gooza lel directives bta3et Kalam, w el directive el maktooba ghalat kanet mesh hate3mel ay 7aga.",
+        ],
+        help: [
+            "Check the spelling against the known directives: `k-click`, `k-submit`, `k-input`, `k-change`, `k-get`, `k-post`, `k-target` and `k-swap`.",
+            "راجع الكتابة مقابل التوجيهات المعروفة: `k-click` و`k-submit` و`k-input` و`k-change` و`k-get` و`k-post` و`k-target` و`k-swap`.",
+            "Raga3 el ketaba 3ala el directives el ma3roofa: `k-click`, `k-submit`, `k-input`, `k-change`, `k-get`, `k-post`, `k-target` w `k-swap`.",
+        ],
+        explain: [
+            "Why: the browser ignores attributes it does not know, so `k-clik` would leave a button that silently does nothing. Reserving the prefix lets me catch the typo at compile time (spec §20.3).\n\nInstead of:\n    html\"<button k-clik=\\\"{ Msg.Save }\\\">Save</button>\"\n\nwrite:\n    html\"<button k-click=\\\"{ Msg.Save }\\\">Save</button>\"",
+            "السبب: يتجاهل المتصفح السمات التي لا يعرفها، فكانت `k-clik` ستترك زرًا لا يفعل شيئًا دون أي تنبيه. وحجز البادئة يتيح لي اكتشاف الخطأ الإملائي وقت الترجمة (المواصفة §20.3).\n\nبدلًا من:\n    html\"<button k-clik=\\\"{ رسالة.احفظ }\\\">احفظ</button>\"\n\nاكتب:\n    html\"<button k-click=\\\"{ رسالة.احفظ }\\\">احفظ</button>\"",
+            "Leh: el browser byetgahel el attributes elly mesh 3arefha, fa `k-clik` kanet hatseeb zorar mesh bey3mel 7aga men gher ay tanbeeh. W 7agz el bedaya byekhallini amsek el ghalta el emla2eya w2t el compile (el spec §20.3).\n\nBadal:\n    html\"<button k-clik=\\\"{ Msg.Save }\\\">Save</button>\"\n\nEkteb:\n    html\"<button k-click=\\\"{ Msg.Save }\\\">Save</button>\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1618",
+        title: ["VIEW MESSAGE TYPE DIFFERS FROM UPDATE", "نوع رسالة العرض يختلف عن update", "NO3 MESSAGE EL VIEW MESH ZAY UPDATE"],
+        message: [
+            "This live view sends a message type that is not the one its `update` function handles, so these events would arrive at a function that can't read them.",
+            "يرسل هذا العرض الحي نوع رسالة غير الذي تعالجه دالة `update` الخاصة به، فكانت هذه الأحداث ستصل إلى دالة لا تستطيع قراءتها.",
+            "El live view da bayba3at no3 message mesh howa elly el `update` bta3to bey3alego, fa el events di kanet hatewsal l dala mesh 3arfa te2raha.",
+        ],
+        help: [
+            "Use the cases of the message enum that `update` takes in every `k-*` hole of the view.",
+            "استخدم حالات تعداد الرسائل الذي تأخذه `update` في كل فجوة `k-*` في العرض.",
+            "Esta5dem 7alat el enum bta3 el messages elly `update` betakhdo f kol hole `k-*` f el view.",
+        ],
+        explain: [
+            "Why: the component is registered with its `state`, `update` and `view` together. Every event the view can send must be a message `update` understands, or a click would reach code that has no case for it (spec §20.3).\n\nInstead of:\n    # update takes CartMsg\n    html\"<button k-click=\\\"{ MenuMsg.Open }\\\">Open</button>\"\n\nwrite:\n    html\"<button k-click=\\\"{ CartMsg.Open }\\\">Open</button>\"",
+            "السبب: يُسجَّل المكوّن مع `state` و`update` و`view` معًا. وكل حدث يمكن للعرض إرساله يجب أن يكون رسالة تفهمها `update`، وإلا وصلت نقرة إلى كود ليس فيه حالة لها (المواصفة §20.3).\n\nبدلًا من:\n    # update تأخذ رسالة_السلة\n    html\"<button k-click=\\\"{ رسالة_القائمة.افتح }\\\">افتح</button>\"\n\nاكتب:\n    html\"<button k-click=\\\"{ رسالة_السلة.افتح }\\\">افتح</button>\"",
+            "Leh: el component byetsaggel ma3 `state` w `update` w `view` ma3 ba3d. W kol event el view te2dar teba3ato lazem yeb2a message `update` fahmaha, walla click hatewsal l code mafeehoosh 7ala leeha (el spec §20.3).\n\nBadal:\n    # update betakhod CartMsg\n    html\"<button k-click=\\\"{ MenuMsg.Open }\\\">Open</button>\"\n\nEkteb:\n    html\"<button k-click=\\\"{ CartMsg.Open }\\\">Open</button>\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1620",
+        title: ["SHELL CHARACTER IN A COMMAND", "حرف طرفية في أمر", "7ARF SHELL F COMMAND"],
+        message: [
+            "This `cmd\"...\"` literal contains a shell character such as `|`, `;`, `&`, `>` or `$(` outside quotes. Kalam never runs a shell, so the character would reach the program as plain text.",
+            "هذه القيمة الحرفية `cmd\"...\"` فيها حرف طرفية مثل `|` أو `;` أو `&` أو `>` أو `$(` خارج علامات الاقتباس. ولا يشغّل كلام طرفية أبدًا، فكان الحرف سيصل إلى البرنامج كنص عادي.",
+            "El literal `cmd\"...\"` da feeh 7arf shell zay `|` aw `;` aw `&` aw `>` aw `$(` bara el quotes. W Kalam 3omro ma beyshaghal shell, fa el 7arf kan hayewsal lel program ka nass 3adi.",
+        ],
+        help: [
+            "Use `proc.pipe([...])` for pipelines, and the `stdin:` and `stdout:` options for files.",
+            "استخدم `proc.pipe([...])` لسلاسل الأوامر، والخيارين `stdin:` و`stdout:` للملفات.",
+            "Esta5dem `proc.pipe([...])` lel pipelines, wel options `stdin:` w `stdout:` lel files.",
+        ],
+        explain: [
+            "Why: a command runs one program with a list of arguments, so values in holes can never become shell syntax. A pipe or a redirect written in the literal would silently become an argument instead of doing what it looks like (spec §17.5).\n\nInstead of:\n    cmd\"git log | head -n 5\"\n\nwrite:\n    proc.pipe([cmd\"git log\", cmd\"head -n 5\"])",
+            "السبب: الأمر يشغّل برنامجًا واحدًا مع قائمة معاملات، فلا يمكن لقيم الفجوات أن تصبح صياغة طرفية أبدًا. والأنبوب أو إعادة التوجيه المكتوب في القيمة الحرفية كان سيصبح معاملًا بصمت بدل أن يفعل ما يبدو أنه يفعله (المواصفة §17.5).\n\nبدلًا من:\n    cmd\"git log | head -n 5\"\n\nاكتب:\n    proc.pipe([cmd\"git log\"، cmd\"head -n 5\"])",
+            "Leh: el command beyshaghal program wa7ed ma3 list arguments, fa qeyam el holes 3omraha ma teb2a syntax shell. W el pipe aw el redirect el maktoob f el literal kan hayeb2a argument f el sekket badal ma ye3mel elly shaklo bey3melo (el spec §17.5).\n\nBadal:\n    cmd\"git log | head -n 5\"\n\nEkteb:\n    proc.pipe([cmd\"git log\", cmd\"head -n 5\"])",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1621",
+        title: ["COMMAND PROGRAM IS NOT LITERAL", "برنامج الأمر ليس حرفيًا", "PROGRAM EL COMMAND MESH LITERAL"],
+        message: [
+            "The first word of this `cmd\"...\"` literal, the program to run, comes from a hole. The program must be written in the literal, so a value can never choose what runs.",
+            "الكلمة الأولى في القيمة الحرفية `cmd\"...\"` هذه، أي البرنامج الذي سيعمل، تأتي من فجوة. ويجب أن يُكتب البرنامج في القيمة الحرفية، حتى لا تختار قيمةٌ ما الذي يعمل أبدًا.",
+            "Awel kelma f el literal `cmd\"...\"` da, ya3ny el program elly hayeshtaghal, gaya men hole. W el program lazem yetketeb f el literal, 3ashan 3omr ma qeema tekhtar eh elly yeshtaghal.",
+        ],
+        help: [
+            "Write the program name literally. To choose between a few programs, use `{kw_match}` with one `cmd\"...\"` per case.",
+            "اكتب اسم البرنامج حرفيًا. وللاختيار بين بضعة برامج، استخدم `{kw_match}` مع `cmd\"...\"` لكل حالة.",
+            "Ekteb esm el program zay ma howa. W 3ashan tekhtar ben kaza program, esta5dem `{kw_match}` ma3 `cmd\"...\"` l kol 7ala.",
+        ],
+        explain: [
+            "Why: if a value can pick the program, an attacker who controls the value can run anything the process may run. With a literal program, a reviewer sees every program the code can start, and `Proc.only` can restrict it further (spec §17.5).\n\nInstead of:\n    cmd\"{ tool } --version\"\n\nwrite:\n    match tool:\n        case .Git: cmd\"git --version\"\n        case .Node: cmd\"node --version\"",
+            "السبب: لو استطاعت قيمة أن تختار البرنامج لاستطاع مهاجم يتحكم في القيمة أن يشغّل أي شيء مسموح للعملية. ومع برنامج حرفي يرى المراجع كل برنامج يمكن للكود تشغيله، ويمكن لـ `Proc.only` تقييده أكثر (المواصفة §17.5).\n\nبدلًا من:\n    cmd\"{ الأداة } --version\"\n\nاكتب:\n    حسب الأداة:\n        عندما .جيت: cmd\"git --version\"\n        عندما .نود: cmd\"node --version\"",
+            "Leh: law qeema te2dar tekhtar el program, el mohagem elly mesayter 3ala el qeema ye2dar yeshaghal ay 7aga el process masmoo7laha. Ma3 program literal, el reviewer byshoof kol program el code ye2dar yeshaghalo, w `Proc.only` te2dar t2ayyedo aktar (el spec §17.5).\n\nBadal:\n    cmd\"{ tool } --version\"\n\nEkteb:\n    hasab tool:\n        lama .Git: cmd\"git --version\"\n        lama .Node: cmd\"node --version\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "W1622",
+        title: ["OPTION-LIKE ARGUMENT WITHOUT --", "معامل يشبه خيارًا دون --", "ARGUMENT SHABAH OPTION MEN GHER --"],
+        message: [
+            "This hole is a whole argument with no `--` before it. If its value starts with `-`, the program would read it as an option, so the run stops with an error instead.",
+            "هذه الفجوة معامل كامل ليس قبله `--`. فإن بدأت قيمتها بـ `-` كان البرنامج سيقرؤها كخيار، لذلك يتوقف التشغيل بخطأ بدلًا من ذلك.",
+            "El hole di argument kamel mafeesh 2ablo `--`. Law qeemetha bada2et b `-`, el program kan haye2raha ka option, 3ashan keda el tashgheel beyo2af b error badal keda.",
+        ],
+        help: [
+            "Put `--` before the first hole that is a file or a name, for example `cmd\"git log -- { file }\"`.",
+            "ضع `--` قبل أول فجوة تمثل ملفًا أو اسمًا، مثل `cmd\"git log -- { file }\"`.",
+            "7ott `--` 2abl awel hole betmassel file aw esm, zay `cmd\"git log -- { file }\"`.",
+        ],
+        explain: [
+            "Why: a file named `--upload-pack=evil` passed to `git` is an option, not a file. `--` tells the program that everything after it is an argument. Without it, `proc.run` refuses a value starting with `-`, which is safe but fails at run time; this warning moves the problem to compile time (spec §17.5).\n\nInstead of:\n    cmd\"git log { file }\"\n\nwrite:\n    cmd\"git log -- { file }\"",
+            "السبب: ملف اسمه `--upload-pack=evil` يُمرَّر إلى `git` يصبح خيارًا لا ملفًا. و`--` تخبر البرنامج أن كل ما بعدها معاملات. وبدونها ترفض `proc.run` القيمة التي تبدأ بـ `-`، وهذا آمن لكنه يفشل وقت التشغيل، وهذا التحذير ينقل المشكلة إلى وقت الترجمة (المواصفة §17.5).\n\nبدلًا من:\n    cmd\"git log { الملف }\"\n\nاكتب:\n    cmd\"git log -- { الملف }\"",
+            "Leh: file esmo `--upload-pack=evil` byetba3at l `git` byeb2a option mesh file. W `--` bet2ool lel program en kol elly ba3daha arguments. Men gherha, `proc.run` bterfod el qeema elly btebda2 b `-`, w da amn bas byo2a3 w2t el tashgheel; wel warning da byenqel el moshkela l w2t el compile (el spec §17.5).\n\nBadal:\n    cmd\"git log { file }\"\n\nEkteb:\n    cmd\"git log -- { file }\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1631",
+        title: ["URL SCHEME OR HOST FROM A HOLE", "مخطط الرابط أو مضيفه من فجوة", "SCHEME AW HOST EL URL MEN HOLE"],
+        message: [
+            "In this `url\"...\"` literal, the scheme or the host comes from a hole. Both must be written in the literal, so a value can never send a request to another server.",
+            "في القيمة الحرفية `url\"...\"` هذه يأتي المخطط أو المضيف من فجوة. ويجب أن يُكتب الاثنان في القيمة الحرفية، حتى لا تستطيع قيمةٌ أبدًا إرسال طلب إلى خادم آخر.",
+            "F el literal `url\"...\"` da, el scheme aw el host gay men hole. W el etnein lazem yetketbo f el literal, 3ashan 3omr ma qeema teb3at request l server tany.",
+        ],
+        help: [
+            "Write the scheme and host literally and keep holes for the path and query. For a URL that really comes from input, use `Url.parse(s)`.",
+            "اكتب المخطط والمضيف حرفيًا واترك الفجوات للمسار والاستعلام. وللرابط الذي يأتي فعلًا من المدخلات، استخدم `Url.parse(s)`.",
+            "Ekteb el scheme wel host zay ma homa w khalli el holes lel path wel query. W lel URL elly fe3lan gay men el input, esta5dem `Url.parse(s)`.",
+        ],
+        explain: [
+            "Why: a host taken from input is how server-side request forgery (SSRF) starts: the server is tricked into calling an internal address. Holes in the path and query are percent-encoded and safe (spec §17.6).\n\nInstead of:\n    url\"https://{ host }/users/{ id }\"\n\nwrite:\n    url\"https://api.example.com/users/{ id }\"",
+            "السبب: المضيف المأخوذ من المدخلات هو بداية تزوير الطلبات من جهة الخادم (SSRF)، حيث يُخدع الخادم ليستدعي عنوانًا داخليًا. أما الفجوات في المسار والاستعلام فتُرمَّز بالنسبة المئوية وهي آمنة (المواصفة §17.6).\n\nبدلًا من:\n    url\"https://{ المضيف }/users/{ الرقم }\"\n\nاكتب:\n    url\"https://api.example.com/users/{ الرقم }\"",
+            "Leh: el host elly gay men el input howa bedayet el SSRF: el server byetde7ek 3aleih w ynady 3enwan dakhly. Laken el holes f el path wel query btet3amallaha percent-encoding w amna (el spec §17.6).\n\nBadal:\n    url\"https://{ host }/users/{ id }\"\n\nEkteb:\n    url\"https://api.example.com/users/{ id }\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1641",
+        title: ["PATH HOLE NEEDS A PATHSEGMENT", "فجوة المسار تحتاج PathSegment", "HOLE EL PATH ME7TAGA PATHSEGMENT"],
+        message: [
+            "This `path\"...\"` hole holds a `{core_string}`, but a path hole must be a `PathSegment`. A string could contain `..` or `/` and escape the folder you meant.",
+            "هذه الفجوة في `path\"...\"` تحمل `{core_string}`، لكن فجوة المسار يجب أن تكون `PathSegment`. فالنص قد يحتوي `..` أو `/` ويخرج من المجلد الذي قصدته.",
+            "El hole di f `path\"...\"` shayla `{core_string}`, bas hole el path lazem teb2a `PathSegment`. El string momken yeb2a feeh `..` aw `/` w yetla3 bara el folder elly 2asdak 3aleih.",
+        ],
+        help: [
+            "Check the text first: `PathSegment.parse(name){punct_try}`. `kalam fix` inserts it.",
+            "تحقق من النص أولًا: `PathSegment.parse(name){punct_try}`. والأمر `kalam fix` يضيفها.",
+            "Check el nass el awel: `PathSegment.parse(name){punct_try}`. W `kalam fix` byzawedha.",
+        ],
+        explain: [
+            "Why: `uploads/{ name }` with a name of `../../etc/passwd` leaves the uploads folder. `PathSegment.parse` rejects empty names, `.`, `..`, slashes, NUL, drive letters and reserved Windows names, so every hole stays one level inside the folder (spec §17.6).\n\nInstead of:\n    let p = path\"uploads/{ name }\"\n\nwrite:\n    let seg = PathSegment.parse(name)?\n    let p = path\"uploads/{ seg }\"",
+            "السبب: المسار `uploads/{ الاسم }` مع اسم مثل `../../etc/passwd` يخرج من مجلد الرفع. و`PathSegment.parse` ترفض الأسماء الفارغة و`.` و`..` والشرطات المائلة وNUL وأحرف الأقراص وأسماء Windows المحجوزة، فتبقى كل فجوة مستوى واحدًا داخل المجلد (المواصفة §17.6).\n\nبدلًا من:\n    ليكن م = path\"uploads/{ الاسم }\"\n\nاكتب:\n    ليكن الجزء = PathSegment.parse(الاسم)؟\n    ليكن م = path\"uploads/{ الجزء }\"",
+            "Leh: `uploads/{ name }` b esm zay `../../etc/passwd` byetla3 bara folder el uploads. W `PathSegment.parse` bterfod el asamy el fadya w `.` w `..` wel slashes w NUL w 7oroof el drives w asamy Windows el ma7gooza, fa kol hole btefdal mostawa wa7ed gowa el folder (el spec §17.6).\n\nBadal:\n    khali p = path\"uploads/{ name }\"\n\nEkteb:\n    khali seg = PathSegment.parse(name)?\n    khali p = path\"uploads/{ seg }\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1650",
+        title: ["TWO TAGS WITH ONE NAME", "وسمان باسم واحد", "ETNEIN TAGS B ESM WA7ED"],
+        message: [
+            "Two literal tags with this name are in scope here, from two imports, so I can't tell which one this literal uses.",
+            "يوجد هنا وسمان حرفيان بهذا الاسم من استيرادين مختلفين، فلا أستطيع معرفة أيهما تستخدمه هذه القيمة الحرفية.",
+            "Fe hena etnein tags literal b el esm da men etnein imports, fa mesh 3aref el literal da besta5dem anhy wa7ed.",
+        ],
+        help: [
+            "Import only one of the two modules that define the tag in this file, or move the code that needs the other tag to its own module.",
+            "استورد في هذا الملف واحدة فقط من الوحدتين اللتين تعرّفان الوسم، أو انقل الكود الذي يحتاج الوسم الآخر إلى وحدة خاصة به.",
+            "E3mel import l module wa7da bas men el etnein elly bey3arrafo el tag f el file da, aw na2al el code elly me7tag el tag el tany l module lewa7do.",
+        ],
+        explain: [
+            "Why: a tag such as `sql` decides how every hole in its literal is escaped. If two tags shared a name, the escaping of a query could depend on import order, which nobody reviewing the line would notice (spec §17.1).\n\nInstead of importing two packages that both define `graphql` in one module, keep each one in its own module.",
+            "السبب: الوسم مثل `sql` يحدد كيف تُهرَّب كل فجوة في قيمته الحرفية. ولو تشارك وسمان في اسم واحد لأمكن أن يعتمد تهريب استعلام على ترتيب الاستيراد، وهذا لن يلاحظه أي مراجع للسطر (المواصفة §17.1).\n\nبدل استيراد حزمتين تعرّف كلتاهما `graphql` في وحدة واحدة، اجعل كل واحدة في وحدة خاصة بها.",
+            "Leh: el tag zay `sql` howa elly bey7added kol hole f el literal bta3o byet3amallaha escape ezay. W law etnein tags leehom nafs el esm, el escape bta3 query momken ye3tamed 3ala tarteeb el imports, w da mafeesh reviewer hayakhod balo meno (el spec §17.1).\n\nBadal ma te3mel import l etnein packages kol wa7da fehom bet3arraf `graphql` f module wa7da, khalli kol wa7da f module lewa7daha.",
+        ],
+        proposed: false,
+    },
+    // ---- Interop (K17xx, spec §19). ar/franco: pending native review.
+    Entry {
+        code: "K1701",
+        title: ["NPM MODULE NOT DECLARED", "وحدة npm غير معلنة", "MODULE NPM MESH MET3ALLEN"],
+        message: [
+            "This `{kw_extern}` imports a JavaScript module that the package manifest doesn't list under `[npm]`.",
+            "هذا الـ `{kw_extern}` يستورد وحدة JavaScript لا يذكرها ملف تعريف الحزمة تحت `[npm]`.",
+            "El `{kw_extern}` da bey3mel import l module JavaScript el manifest bta3 el package mesh zakerha ta7t `[npm]`.",
+        ],
+        help: [
+            "Add the module with a pinned version and its capabilities to `[npm]` in `kalam.toml` (`kalam add` does this and shows the capability diff).",
+            "أضف الوحدة بإصدار محدد وصلاحياتها إلى `[npm]` في `kalam.toml` (والأمر `kalam add` يفعل ذلك ويعرض فرق الصلاحيات).",
+            "Zawed el module b version mazboota w el salaheyat bta3etha f `[npm]` f `kalam.toml` (w `kalam add` bey3mel keda w by3red farq el salaheyat).",
+        ],
+        explain: [
+            "Why: every piece of JavaScript a Kalam program loads must be visible in one place, with a fixed version and the capabilities it may use. That is what `kalam audit` and the capability diff read (spec §13.5, §19).\n\nIn kalam.toml:\n    [npm]\n    stripe = { version = \"17.5.0\", caps = [\"net:api.stripe.com\"] }",
+            "السبب: كل جزء JavaScript يحمّله برنامج كلام يجب أن يكون ظاهرًا في مكان واحد، بإصدار ثابت والصلاحيات التي قد يستخدمها. وهذا ما يقرؤه `kalam audit` وفرق الصلاحيات (المواصفة §13.5، §19).\n\nفي kalam.toml:\n    [npm]\n    stripe = { version = \"17.5.0\", caps = [\"net:api.stripe.com\"] }",
+            "Leh: kol 7etta JavaScript program Kalam bey7ammelha lazem teb2a bayna f makan wa7ed, b version sabta wel salaheyat elly momken testa5demha. W da elly `kalam audit` w farq el salaheyat bey2rooh (el spec §13.5, §19).\n\nF kalam.toml:\n    [npm]\n    stripe = { version = \"17.5.0\", caps = [\"net:api.stripe.com\"] }",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "K1702",
+        title: ["CAPABILITY CROSSING INTO JAVASCRIPT", "صلاحية تعبر إلى JavaScript", "SALAHEYA BTE3DY L JAVASCRIPT"],
+        message: [
+            "A capability (such as `Net` or `Fs`) can't be passed into JavaScript. JavaScript code doesn't follow Kalam's rules, so it could use or store the capability without limits.",
+            "لا يمكن تمرير صلاحية (مثل `Net` أو `Fs`) إلى JavaScript. فكود JavaScript لا يتبع قواعد كلام، وقد يستخدم الصلاحية أو يخزنها بلا حدود.",
+            "Mayenfa3sh teba3at salaheya (zay `Net` aw `Fs`) l JavaScript. Code el JavaScript mesh mashy 3ala qawa3ed Kalam, w momken yesta5dem el salaheya aw yekhazzenha men gher 7edood.",
+        ],
+        help: [
+            "Keep the capability as a parameter of the `{kw_extern}` function: it then works as a token that Kalam callers must hold, and the glue never passes it to JavaScript.",
+            "أبقِ الصلاحية معاملًا في دالة `{kw_extern}`: فتعمل كرمز يجب أن يملكه مستدعو كلام، ولا يمررها كود الربط إلى JavaScript أبدًا.",
+            "Khalli el salaheya parameter f dalet el `{kw_extern}`: keda btshtaghal ka token lazem elly bynady men Kalam ykoon me3ah, w el glue 3omro ma beyba3atha l JavaScript.",
+        ],
+        explain: [
+            "Why: capabilities are how Kalam limits what code can reach. Inside JavaScript there is no such limit, so a capability that crossed the boundary would be a hole in the whole model. As a parameter of an `extern` declaration, it stays on the Kalam side and still documents what the call needs (spec §19.2).\n\nDeclare what the JavaScript side may reach in `[npm]` capabilities, and keep the capability as a token parameter:\n    @js(module: \"stripe\", name: \"charge\", async: true, throws: true)\n    extern fn charge(net: Net, req: ChargeRequest) -> Result[Charge, JsError]",
+            "السبب: الصلاحيات هي طريقة كلام في تحديد ما يمكن للكود الوصول إليه. وداخل JavaScript لا يوجد هذا الحد، فكانت الصلاحية التي تعبر الحدود ستصبح ثغرة في النموذج كله. أما كمعامل في تعريف `extern` فتبقى في جانب كلام وتوثّق ما يحتاجه الاستدعاء (المواصفة §19.2).\n\nأعلن ما يصل إليه جانب JavaScript في صلاحيات `[npm]`، وأبقِ الصلاحية معاملًا رمزيًا:\n    @js(module: \"stripe\", name: \"charge\", async: true, throws: true)\n    extern دالة ادفع(net: Net، الطلب: ChargeRequest) -> نتيجة[Charge، JsError]",
+            "Leh: el salaheyat heya taree2et Kalam f ta7deed el code ye2dar yewsal l eh. W gowa JavaScript mafeesh 7add zay da, fa el salaheya elly te3dy el 7edood kanet hateb2a soghra f el model kollo. Laken ka parameter f ta3reef `extern` btefdal f naheyet Kalam w betwassa2 el call me7tag eh (el spec §19.2).\n\nA3len 3an elly naheyet el JavaScript te2dar tewsalo f salaheyat `[npm]`, w khalli el salaheya parameter token:\n    @js(module: \"stripe\", name: \"charge\", async: true, throws: true)\n    extern dala edfa3(net: Net, req: ChargeRequest) -> natiga[Charge, JsError]",
+        ],
+        proposed: false,
+    },
+    // ---- Lints, warnings and hints from the lexer and names (W01xx, L01xx, H02xx, W04xx,
+    // spec §5, §6, §11). ar/franco: pending native review.
+    Entry {
+        code: "W0114",
+        title: ["UNUSUAL SPACE IN A STRING", "مسافة غير معتادة في نص", "MASAFA MESH 3ADEYA F STRING"],
+        message: [
+            "This string contains a space that is not the ordinary ASCII space (for example a no-break space, U+00A0). It looks the same but compares as different text.",
+            "هذا النص فيه مسافة غير المسافة العادية في ASCII (مثل المسافة غير القابلة للكسر U+00A0). تبدو مثلها لكنها تُقارن كنص مختلف.",
+            "El string da feeh masafa mesh el masafa el 3adeya bta3et ASCII (zay el no-break space U+00A0). Shaklaha zayaha bas fel moqarna btetle3 nass mokhtalef.",
+        ],
+        help: [
+            "Replace it with an ordinary space, or write it as an escape such as `\\u{00A0}` if you really need it.",
+            "استبدلها بمسافة عادية، أو اكتبها كتسلسل هروب مثل `\\u{00A0}` إن كنت تحتاجها فعلًا.",
+            "Baddelha b masafa 3adeya, aw ektebha ka escape zay `\\u{00A0}` law fe3lan me7tagha.",
+        ],
+        explain: [
+            "Why: text copied from documents and web pages often carries no-break or thin spaces. Inside a string they change comparisons, splits and lookups without anything visible. An escape makes the intent explicit (spec §5.1).\n\nInstead of a string containing an invisible U+00A0 between two words, write:\n    \"10\\u{00A0}km\"",
+            "السبب: النصوص المنسوخة من المستندات وصفحات الويب كثيرًا ما تحمل مسافات غير قابلة للكسر أو رفيعة. وداخل النص تغيّر المقارنات والتقسيم والبحث دون أي شيء ظاهر. وتسلسل الهروب يجعل القصد صريحًا (المواصفة §5.1).\n\nبدل نص فيه U+00A0 خفية بين كلمتين، اكتب:\n    \"10\\u{00A0}km\"",
+            "Leh: el kalam el mansookh men documents w safa7at web keteer beyeb2a feeh no-break aw thin spaces. W gowa el string betghayar el moqarnat wel ta2seem wel ba7s men gher ay 7aga bayna. W el escape bykhalli el 2asd wade7 (el spec §5.1).\n\nBadal string feeh U+00A0 mestakhabbeya ben kelmetein, ekteb:\n    \"10\\u{00A0}km\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "W0133",
+        title: ["UNUSUAL CHARACTER IN A STRING", "حرف غير معتاد في نص", "7ARF MESH 3ADI F STRING"],
+        message: [
+            "This string contains an unusual code point, such as an invisible or look-alike character. Readers can't see it, but it changes what the text is.",
+            "هذا النص فيه نقطة ترميز غير معتادة، مثل حرف خفي أو حرف شبيه بآخر. لا يراه القراء لكنه يغيّر حقيقة النص.",
+            "El string da feeh code point mesh 3adi, zay 7arf mestakhabby aw 7arf shabah 7arf tany. El nas mesh shayfeeno bas howa byghayar el nass fe3lan.",
+        ],
+        help: [
+            "Delete the character, or write it as an escape such as `\\u{200B}` so readers can see it is there.",
+            "احذف الحرف، أو اكتبه كتسلسل هروب مثل `\\u{200B}` حتى يرى القراء أنه موجود.",
+            "Emsa7 el 7arf, aw ekteboh ka escape zay `\\u{200B}` 3ashan el nas yshoofo enno mawgood.",
+        ],
+        explain: [
+            "Why: a string is data your program compares and stores, and the reviewer reads it in the source. An invisible character in it means the reviewed text and the real text differ, which is how look-alike keys, names and URLs slip through (spec §5.7).\n\nInstead of a string with a hidden U+200B, write:\n    \"admin\"\n\nor, if it is intended:\n    \"admin\\u{200B}\"",
+            "السبب: النص بيانات يقارنها برنامجك ويخزنها، ويقرؤها المراجع في الكود. والحرف الخفي فيه يعني أن النص المراجَع غير النص الحقيقي، وهكذا تمر المفاتيح والأسماء والروابط الشبيهة (المواصفة §5.7).\n\nبدل نص فيه U+200B خفية، اكتب:\n    \"admin\"\n\nأو إن كانت مقصودة:\n    \"admin\\u{200B}\"",
+            "Leh: el string data el program bta3ak bey2aren-ha w yekhazzenha, wel reviewer bye2raha f el code. W el 7arf el mestakhabby feeha ma3nah en el nass elly etraga3 gher el nass el 7a2ee2y, w keda el keys wel asamy wel links el shabah ba3d bt3addy (el spec §5.7).\n\nBadal string feeh U+200B mestakhabbeya, ekteb:\n    \"admin\"\n\naw, law ma2soda:\n    \"admin\\u{200B}\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "L0114",
+        title: ["MIXED AND/OR WITHOUT PARENTHESES", "خلط و/أو دون أقواس", "KHALT WE/AW MEN GHER AQWAS"],
+        message: [
+            "This condition mixes `{kw_and}` and `{kw_or}` without parentheses. In Arabic, `و` and `أو` differ by one letter, so the grouping is easy to misread.",
+            "هذا الشرط يخلط `{kw_and}` و`{kw_or}` دون أقواس. وفي العربية يختلف `و` عن `أو` بحرف واحد، فيسهل أن يُقرأ التجميع خطأً.",
+            "El shart da bykhallat `{kw_and}` w `{kw_or}` men gher aqwas. W bel 3araby `و` w `أو` el far2 benhom 7arf wa7ed, fa sahl el tagmee3 yet2ery ghalat.",
+        ],
+        help: [
+            "Add parentheses to show the grouping you mean, for example `(a {kw_and} b) {kw_or} c`. `kalam fmt` keeps them.",
+            "أضف أقواسًا لتبيّن التجميع الذي تقصده، مثل `(a {kw_and} b) {kw_or} c`. والأمر `kalam fmt` يُبقي عليها.",
+            "Zawed aqwas t-warry el tagmee3 elly 2asdak 3aleih, zay `(a {kw_and} b) {kw_or} c`. W `kalam fmt` byseebhom.",
+        ],
+        explain: [
+            "Why: `and` binds tighter than `or`, as in most languages, but the Arabic keywords `و` and `أو` are one letter apart, so a reader can easily take one for the other. Parentheses make the meaning visible in every skin (spec §7.4, exception E1).\n\nInstead of:\n    if admin or owner and active:\n\nwrite:\n    if admin or (owner and active):",
+            "السبب: يرتبط `و` أقوى من `أو` كما في معظم اللغات، لكن الكلمتين `و` و`أو` يفصلهما حرف واحد، فيسهل أن يحسب القارئ إحداهما الأخرى. والأقواس تجعل المعنى ظاهرًا في كل واجهة (المواصفة §7.4، الاستثناء E1).\n\nبدلًا من:\n    إذا مدير أو مالك و نشط:\n\nاكتب:\n    إذا مدير أو (مالك و نشط):",
+            "Leh: `we` btertebet aqwa men `aw` zay mo3zam el loghat, bas el kelmetein el 3arabi `و` w `أو` el far2 benhom 7arf wa7ed, fa sahl el 2ari ye7seb wa7da el tanya. W el aqwas betkhalli el ma3na bayen f kol skin (el spec §7.4, el estesna2 E1).\n\nBadal:\n    law admin aw owner we active:\n\nEkteb:\n    law admin aw (owner we active):",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "H0202",
+        title: ["NAME IS A KEYWORD IN ANOTHER SKIN", "الاسم كلمة محجوزة في واجهة أخرى", "EL ESM KEYWORD F SKIN TANY"],
+        message: [
+            "This name is a reserved word in another skin. It works here, but when the file is shown in that skin, the name will appear in backticks so it can't be read as the keyword.",
+            "هذا الاسم كلمة محجوزة في واجهة أخرى. وهو يعمل هنا، لكن حين يُعرض الملف بتلك الواجهة سيظهر الاسم بين علامتي `` ` `` حتى لا يُقرأ ككلمة محجوزة.",
+            "El esm da keyword ma7gooza f skin tany. Howa shaghal hena, bas lamma el file yetshaf bel skin da, el esm hayezhar ben backticks 3ashan mayet2resh ka keyword.",
+        ],
+        help: [
+            "Nothing needs to change. To avoid the backticks, pick a name that is not a keyword in any skin.",
+            "لا يلزم أي تغيير. ولتجنّب علامتي الاقتباس الخلفيتين، اختر اسمًا ليس كلمة محجوزة في أي واجهة.",
+            "Mafeesh 7aga lazem tetghayar. W 3ashan teb3ed 3an el backticks, ekhtar esm mesh keyword f ay skin.",
+        ],
+        explain: [
+            "Why: every Kalam file can be shown in all three skins. A name such as `law` is fine in an English file, but `law` means `if` in Franco, so the Franco view writes it as `` `law` ``. This hint tells you that ahead of time; it is never an error (spec §5.4).\n\nFor example, in an English file:\n    let law = \"contract\"\n\nis shown in Franco as:\n    khali `law` = \"contract\"",
+            "السبب: كل ملف كلام يمكن عرضه بالواجهات الثلاث. والاسم مثل `law` لا بأس به في ملف إنجليزي، لكن `law` تعني `إذا` في الفرانكو، فيكتبه عرض الفرانكو بين علامتين `` ` ``. وهذا التلميح يخبرك بذلك مسبقًا، وليس خطأً أبدًا (المواصفة §5.4).\n\nمثلًا في ملف إنجليزي:\n    let law = \"contract\"\n\nيُعرض بالفرانكو هكذا:\n    khali `law` = \"contract\"",
+            "Leh: kol file Kalam momken yetshaf bel talat skins. W esm zay `law` mafeesh moshkela feeh f file English, bas `law` ma3naha `if` bel Franco, fa el Franco view btektebo `` `law` ``. W el hint da by2ollak keda men badry; w 3omro ma byeb2a error (el spec §5.4).\n\nMasalan f file English:\n    let law = \"contract\"\n\nbyetshaf bel Franco keda:\n    khali `law` = \"contract\"",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "W0403",
+        title: ["CATCH-ALL OVER ANOTHER PACKAGE'S ENUM", "فرع عام على تعداد من حزمة أخرى", "FAR3 3AM 3ALA ENUM MEN PACKAGE TANYA"],
+        message: [
+            "This `_` arm matches an enum from another package. When that package adds a variant, it will silently go to this arm instead of being reported.",
+            "هذا الفرع `_` يطابق تعدادًا من حزمة أخرى. فحين تضيف تلك الحزمة عضوًا جديدًا سيذهب بصمت إلى هذا الفرع بدل أن يُبلَّغ عنه.",
+            "El far3 `_` da byetabe2 enum men package tanya. Lamma el package di tzawed variant, hayerou7 lel far3 da f el sekket badal ma yetballagh 3anno.",
+        ],
+        help: [
+            "List the variants you handle instead of `_`, or add `@allow(W0403)` to the item if the catch-all is deliberate (`kalam audit` counts it).",
+            "اذكر الأعضاء التي تعالجها بدل `_`، أو أضف `@allow(W0403)` إلى العنصر إن كان الفرع العام مقصودًا (والأمر `kalam audit` يعدّه).",
+            "Ekteb el variants elly bet3alegha badal `_`, aw zawed `@allow(W0403)` lel 7aga law el far3 el 3am ma2sood (w `kalam audit` bey3edo).",
+        ],
+        explain: [
+            "Why: for your own enums, the compiler shows every `match` to update when you add a variant. For another package's enum, a `_` arm hides the new variant after an upgrade, which matters most for roles and states. An enum marked `@exhaustive_strict` makes this an error (spec §11).\n\nInstead of:\n    match role:\n        case .Admin: allow()\n        case _: deny()\n\nwrite:\n    match role:\n        case .Admin: allow()\n        case .Member: deny()\n        case .Guest: deny()",
+            "السبب: في تعداداتك أنت يعرض المترجم كل `حسب` يجب تحديثها حين تضيف عضوًا. أما في تعداد حزمة أخرى فالفرع `_` يخفي العضو الجديد بعد التحديث، وهذا أهم ما يكون في الأدوار والحالات. والتعداد المعلَّم بـ `@exhaustive_strict` يجعل هذا خطأً (المواصفة §11).\n\nبدلًا من:\n    حسب الدور:\n        عندما .مدير: اسمح()\n        عندما _: ارفض()\n\nاكتب:\n    حسب الدور:\n        عندما .مدير: اسمح()\n        عندما .عضو: ارفض()\n        عندما .زائر: ارفض()",
+            "Leh: f el enums bta3tak el compiler bywarrik kol `hasab` lazem tet7addes lamma tzawed variant. Laken f enum men package tanya, el far3 `_` bykhabby el variant el gedeed ba3d el update, w da ahamm 7aga f el roles wel states. W el enum elly 3aleih `@exhaustive_strict` bykhalli da error (el spec §11).\n\nBadal:\n    hasab role:\n        lama .Admin: esma7()\n        lama _: erfod()\n\nEkteb:\n    hasab role:\n        lama .Admin: esma7()\n        lama .Member: erfod()\n        lama .Guest: erfod()",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "W0710",
+        title: ["REQUEST DECODED INTO A ROW TYPE", "طلب يُفك ترميزه إلى نوع صف", "REQUEST BYET3AMALLO DECODE L ROW TYPE"],
+        message: [
+            "Request data is decoded straight into a type that also derives `Row`, a database row. A client could then set any field of the row, such as `role` or `owner_id`.",
+            "تُفك بيانات الطلب مباشرة إلى نوع يشتق `Row` أيضًا، أي صف في قاعدة البيانات. فيستطيع العميل حينها ضبط أي حقل في الصف، مثل `role` أو `owner_id`.",
+            "Data el request btet3amallaha decode 3ala tool l type bey3mel derive l `Row` kaman, ya3ny row f el database. Fa el client ye2dar yezbot ay field f el row, zay `role` aw `owner_id`.",
+        ],
+        help: [
+            "Decode into a separate input type with only the fields a client may set, then build the row from it.",
+            "فك الترميز إلى نوع مدخلات منفصل فيه فقط الحقول التي يحق للعميل ضبطها، ثم ابنِ الصف منه.",
+            "E3mel decode l type input monfasel feeh bas el fields elly el client mesmoo7lo yezbotha, w ba3dein ebny el row menno.",
+        ],
+        explain: [
+            "Why: this is the mass-assignment bug: a form that should change a title can also change `is_admin` if the request is bound to the whole row. A separate input type lists exactly what a request may touch (spec §18.3).\n\nInstead of:\n    let note: Note = req.json()?\n\nwrite:\n    @derive(Decode)\n    type NewNote:\n        title: String\n    let input: NewNote = req.json()?\n    let note = Note(id: next_id, title: input.title, owner: user.id)",
+            "السبب: هذا خطأ الإسناد الجماعي: النموذج الذي يجب أن يغيّر عنوانًا يستطيع أيضًا تغيير `is_admin` إذا رُبط الطلب بالصف كله. ونوع المدخلات المنفصل يحدد بالضبط ما يحق للطلب أن يمسّه (المواصفة §18.3).\n\nبدلًا من:\n    ليكن الملاحظة: ملاحظة = الطلب.json()؟\n\nاكتب:\n    @derive(Decode)\n    هيكل ملاحظة_جديدة:\n        العنوان: نص\n    ليكن المدخل: ملاحظة_جديدة = الطلب.json()؟\n    ليكن الملاحظة = ملاحظة(الرقم: الرقم_التالي، العنوان: المدخل.العنوان، المالك: المستخدم.الرقم)",
+            "Leh: di ghaltet el mass assignment: el form elly el mafrood tghayar title te2dar kaman tghayar `is_admin` law el request etrabat bel row kollo. W el input type el monfasel bey7added bel zabt el request mesmoo7lo yelmes eh (el spec §18.3).\n\nBadal:\n    khali note: Note = req.json()?\n\nEkteb:\n    @derive(Decode)\n    haykal NewNote:\n        title: nass\n    khali input: NewNote = req.json()?\n    khali note = Note(id: next_id, title: input.title, owner: user.id)",
+        ],
+        proposed: false,
+    },
+    Entry {
+        code: "W0720",
+        title: ["LEGACY CRYPTO IMPORTED", "استيراد تشفير قديم", "IMPORT CRYPTO ADEEM"],
+        message: [
+            "This module imports `std/crypto/legacy` (MD5, SHA-1, raw RSA). These are only for talking to old systems: they are not safe for new passwords, signatures or secrets.",
+            "هذه الوحدة تستورد `std/crypto/legacy` (MD5 وSHA-1 وRSA الخام). وهذه للتعامل مع الأنظمة القديمة فقط، وليست آمنة لكلمات مرور أو توقيعات أو أسرار جديدة.",
+            "El module di bte3mel import l `std/crypto/legacy` (MD5 w SHA-1 w RSA kham). Dol bas lel ta3amol ma3 systems adeema: mesh amneen l passwords aw signatures aw asrar gedeeda.",
+        ],
+        help: [
+            "Use the high-level APIs in `std/crypto`: `password.hash` and `verify`, `aead.seal` and `open`, or `sign` and `verify`. Keep the legacy import only where an old format requires it.",
+            "استخدم الواجهات عالية المستوى في `std/crypto`: `password.hash` و`verify`، أو `aead.seal` و`open`، أو `sign` و`verify`. وأبقِ الاستيراد القديم فقط حيث يفرضه تنسيق قديم.",
+            "Esta5dem el APIs el 3alya f `std/crypto`: `password.hash` w `verify`, aw `aead.seal` w `open`, aw `sign` w `verify`. W khalli el import el adeem bas f el amaken elly format adeem byfrodo.",
+        ],
+        explain: [
+            "Why: MD5 and SHA-1 are broken for security, and raw RSA is easy to misuse. They live under `legacy` so every use is visible, and `kalam audit` counts them (spec §18.4).\n\nTo store a password, use `password.hash` from `std/crypto` (Argon2id) instead of an MD5 or SHA-1 hash from `std/crypto/legacy`. Keep the legacy import for reading an old format only.",
+            "السبب: MD5 وSHA-1 مكسوران أمنيًا، وRSA الخام سهل الاستخدام الخاطئ. لذلك تقع تحت `legacy` ليظهر كل استخدام لها، ويعدّها `kalam audit` (المواصفة §18.4).\n\nلتخزين كلمة مرور استخدم `password.hash` من `std/crypto` (Argon2id) بدل تجزئة MD5 أو SHA-1 من `std/crypto/legacy`. وأبقِ الاستيراد القديم لقراءة تنسيق قديم فقط.",
+            "Leh: MD5 w SHA-1 maksoreen amneyan, w RSA el kham sahl yetsta5dem ghalat. 3ashan keda homa ta7t `legacy` 3ashan kol esta5dam yeb2a bayen, w `kalam audit` bey3edhom (el spec §18.4).\n\n3ashan te5zen password esta5dem `password.hash` men `std/crypto` (Argon2id) badal hash MD5 aw SHA-1 men `std/crypto/legacy`. W khalli el import el adeem bas 3ashan te2ra format adeem.",
         ],
         proposed: false,
     },

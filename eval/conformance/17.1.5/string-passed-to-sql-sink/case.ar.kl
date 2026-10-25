@@ -1,0 +1,7 @@
+استخدم std/sql.{Db، DbError}
+
+دالة purge(db: Db) -> نتيجة[عدد، DbError]:
+    أرجع db.exec("DELETE FROM notes")
+
+دالة رئيسي():
+    اطبع("x")

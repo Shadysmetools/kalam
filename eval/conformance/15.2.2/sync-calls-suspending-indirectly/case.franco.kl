@@ -1,0 +1,7 @@
+dala present(fs: Fs) -> mante2i => fs.exists(path"notes.txt")
+
+@sync
+dala check(fs: Fs) -> mante2i => present(fs)
+
+dala ra2isi(world: donya):
+    ektb("{check(world.fs)}")

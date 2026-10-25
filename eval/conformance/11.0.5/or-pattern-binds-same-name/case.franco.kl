@@ -1,0 +1,12 @@
+ta3dad Payment:
+    Card(last4: nass)
+    Wallet(id: nass)
+    Cash
+
+dala ra2isi():
+    khali p: Payment = .Cash
+    hasab p:
+        lama .Card(code) | .Wallet(code):
+            ektb(code)
+        lama .Cash:
+            ektb("cash")

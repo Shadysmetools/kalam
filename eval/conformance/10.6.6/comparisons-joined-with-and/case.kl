@@ -1,0 +1,5 @@
+fn main():
+    let x = 5
+    let inside = 1 < x and x < 10
+    let edge = (x == 5) == true
+    print("{inside} {edge}")

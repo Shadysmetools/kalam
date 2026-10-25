@@ -11,7 +11,9 @@
 //! splits (the shared suite format, `<case>/` files + `expect.json`) under
 //! `S/suites/<suite>/` or `S/<suite>/`: `trojan-source` feeds `trojan`, `seeded-errors`
 //! feeds `diag_recovery` (`null` when the split does not exist). Cases marked `[M2]` are
-//! counted as `deferred_m2`, never judged (FOUNDER-QUEUE Q10). Files ending in `.age` mean the store is encrypted;
+//! counted as `deferred_m2`, never judged (FOUNDER-QUEUE Q10), except Trojan Source cases
+//! when the parent passes `--include-m2` (a target tier at or after M2, [`Runner::include_m2`]):
+//! those are then judged like every other case. Files ending in `.age` mean the store is encrypted;
 //! this runner has no decryption, so it reports `encrypted` and measures nothing.
 //!
 //! Aggregate (`kalam-holdout-aggregate/1`): the LOOP.md §6.2.4 keys, with pass counts so dev
@@ -55,7 +57,13 @@ fn suite_dir(store: &Path, name: &str) -> Option<PathBuf> {
 }
 
 /// The aggregate for one store (runs inside the child process).
-pub fn aggregate(store: &Path, root: &Path, hook: &dyn ParseHook, m1_scope: &[u32]) -> Value {
+pub fn aggregate(
+    store: &Path,
+    root: &Path,
+    hook: &dyn ParseHook,
+    m1_scope: &[u32],
+    include_m2: bool,
+) -> Value {
     let manifest = tree_hash(store);
     let files = integrity::walk(store, &["."]);
     if files.is_empty() {
@@ -118,7 +126,7 @@ pub fn aggregate(store: &Path, root: &Path, hook: &dyn ParseHook, m1_scope: &[u3
         let rules = RejectRules {
             name_codepoints: true,
             out_of_scope: vec![],
-            include_m2: false,
+            include_m2,
         };
         let r = suites::run_reject(hook, &cases, &rules);
         json!({
@@ -158,6 +166,9 @@ pub struct Runner {
     pub exe: PathBuf,
     /// The store, relative to the repository root or absolute.
     pub store: PathBuf,
+    /// Judge the `[M2]` Trojan Source cases (target tier M2 or later, FOUNDER-QUEUE Q10);
+    /// passed to the child as `--include-m2`.
+    pub include_m2: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -201,13 +212,16 @@ pub fn run_child(runner: &Runner, root: &Path) -> Held {
             runner.store.display()
         ));
     }
-    let out = Command::new(&runner.exe)
-        .arg("holdout")
+    let mut cmd = Command::new(&runner.exe);
+    cmd.arg("holdout")
         .arg("--root")
         .arg(root)
         .arg("--store")
-        .arg(&store)
-        .output();
+        .arg(&store);
+    if runner.include_m2 {
+        cmd.arg("--include-m2");
+    }
+    let out = cmd.output();
     let out = match out {
         Ok(o) => o,
         Err(e) => return Held::Failed(format!("could not start the held-out runner: {e}")),

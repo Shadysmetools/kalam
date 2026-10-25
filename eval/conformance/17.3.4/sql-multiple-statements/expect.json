@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1604"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "§17.3.4: \"**Multiple statements** (a `;` outside quotes) are **K1604**. Each `Sql` value is exactly one statement.\""
+}

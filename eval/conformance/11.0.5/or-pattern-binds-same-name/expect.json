@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§11.0.5: \"**Or-patterns** (`case .Card | .Wallet:`) must bind the same names with the same types in every alternative (K1004).\" Positive twin: both alternatives bind `code: String`."
+}

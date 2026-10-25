@@ -1,0 +1,9 @@
+@derive(Encode)
+هيكل Profile:
+    user: نص
+
+دالة رئيسي():
+    ليكن a = Secret.new("x")
+    ليكن b = Secret.new("x")
+    ليكن same = a.expose() == b.expose()
+    اطبع("{a} {same}")

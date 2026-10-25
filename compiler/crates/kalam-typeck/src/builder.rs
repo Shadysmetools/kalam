@@ -1,5 +1,5 @@
-//! A small builder for hand-written HIR programs: unit tests here, and tests of later
-//! passes (lowering, the reference interpreter) until `kalam-resolve` produces HIR.
+//! A small builder for hand-written HIR programs: unit tests here and tests of later
+//! passes (lowering, the reference interpreter) that do not start from source text.
 //!
 //! Every expression gets a fresh [`ExprId`] and a distinct one-byte span, so tests can
 //! tell nodes apart by span.
@@ -292,6 +292,7 @@ impl Builder {
             name: name.into(),
             mutable,
             span: Span::default(),
+            closure: 0,
         });
         LocalId(self.locals.len() as u32 - 1)
     }
@@ -351,6 +352,7 @@ impl Builder {
                 params,
                 ret,
                 sync_attr: false,
+                positional: false,
                 parent: None,
                 body: Some(Body {
                     locals,
@@ -394,8 +396,8 @@ impl Builder {
     }
 }
 
-/// Spec §28 example programs hand-built as HIR (the M2 subset), for tests of every later
-/// pass until `kalam-resolve` produces HIR from source.
+/// Spec §28 example programs hand-built as HIR (the M2 subset), for tests of later passes
+/// that do not start from source text.
 pub mod fixtures {
     use super::Builder;
     use crate::hir::*;

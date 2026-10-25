@@ -1,0 +1,4 @@
+fn main():
+    let count = 5
+    let file = "notes.txt"
+    let _ = cmd"git log --oneline -n {count} -- {file}"

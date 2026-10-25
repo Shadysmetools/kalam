@@ -1,0 +1,6 @@
+type Choice:
+    value: Int
+
+fn main():
+    let count = Choice(value: 1)
+    print("{count.value}")

@@ -1,0 +1,5 @@
+fn main():
+    let xs = [1]
+    let n = xs.get(0).expect("xs has one element")
+    assert(n == 1, "n is one")
+    print("{n}")

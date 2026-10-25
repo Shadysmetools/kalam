@@ -1,0 +1,6 @@
+fn main():
+    let point = (3, 4)
+    let (x, y) = point
+    var total = x + y
+    total += 1
+    print("{total}")

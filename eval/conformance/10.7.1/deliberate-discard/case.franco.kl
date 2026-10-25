@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali n = 2
+    khali _ = n + 1
+    ektb("{n}")

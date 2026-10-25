@@ -1,0 +1,7 @@
+use std/sql.{Db, DbError}
+
+fn purge(db: Db) -> Result[Int, DbError]:
+    return db.exec(sql"DELETE FROM notes")
+
+fn main():
+    print("x")

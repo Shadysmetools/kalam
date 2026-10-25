@@ -1,0 +1,11 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0919"
+  ],
+  "lines": [
+    5
+  ],
+  "stage": "parse",
+  "notes": "§9.7.1: \"Inherent methods are written `impl Type:`. A trait implementation is written **`impl Type as Trait:`** (DR-10).\" §21.3 K0919: \"`impl Show for Money:` | `impl Money as Show:` (DR-10)\". The Rust-style `for` form is detected in its obvious syntactic position. The Arabic and Franco files put the same hazard back with their own `impl`/`for` keywords (`نفذ Show لكل Money:`, `naffez Show lekol Money:`)."
+}

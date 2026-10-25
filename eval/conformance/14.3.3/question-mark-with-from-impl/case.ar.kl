@@ -1,0 +1,25 @@
+تعداد ParseFail:
+    Empty
+
+تعداد LoadFail:
+    Missing
+
+دالة parse(text: نص) -> نتيجة[عدد، ParseFail]:
+    إذا text == "":
+        أرجع فشل(.Empty)
+    أرجع نجاح(1)
+
+نفذ LoadFail بصفة From[ParseFail]:
+    دالة from(value: ParseFail) -> LoadFail => LoadFail.Missing
+
+دالة load(text: نص) -> نتيجة[عدد، LoadFail]:
+    ليكن n = parse(text)؟
+    أرجع نجاح(n)
+
+دالة reparse(text: نص) -> نتيجة[عدد، ParseFail]:
+    ليكن n = parse(text)؟
+    أرجع نجاح(n + 1)
+
+دالة رئيسي():
+    ليكن _ = load("1")
+    ليكن _ = reparse("1")

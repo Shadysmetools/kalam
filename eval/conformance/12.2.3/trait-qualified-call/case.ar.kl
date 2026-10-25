@@ -1,0 +1,23 @@
+سمة Named:
+    دالة label(ذات) -> نص
+
+سمة Tagged:
+    دالة label(ذات) -> نص
+
+هيكل Item:
+    id: عدد
+
+نفذ Item بصفة Named:
+    دالة label(ذات) -> نص => "named"
+
+نفذ Item بصفة Tagged:
+    دالة label(ذات) -> نص => "tagged"
+
+نفذ Item:
+    دالة code(ذات) -> عدد => ذات.id
+
+دالة رئيسي():
+    ليكن item = Item(id: 1)
+    اطبع(Named.label(item))
+    اطبع(Tagged.label(item))
+    اطبع("{item.code()}")

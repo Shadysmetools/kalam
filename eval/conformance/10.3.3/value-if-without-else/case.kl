@@ -1,0 +1,5 @@
+fn main():
+    let n = 2
+    let label = if n == 1:
+        "item"
+    print(label)

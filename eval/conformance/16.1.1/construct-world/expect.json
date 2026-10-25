@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1501"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "§16.1.1: \"Only `main` receives the root capability: `fn main(world: World)`. `World` cannot be constructed or decoded (K1501). A program that needs nothing declares `fn main():`.\""
+}

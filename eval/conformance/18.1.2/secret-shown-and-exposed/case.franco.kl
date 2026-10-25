@@ -1,0 +1,9 @@
+@derive(Encode)
+haykal Profile:
+    user: nass
+
+dala ra2isi():
+    khali a = Secret.new("x")
+    khali b = Secret.new("x")
+    khali same = a.expose() == b.expose()
+    ektb("{a} {same}")

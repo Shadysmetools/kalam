@@ -1,0 +1,16 @@
+dala head_plus_one(xs: qayma[adad]) -> ekhtiyari[adad]:
+    khali n = xs.get(0)?
+    rag3 mawgood(n + 1)
+
+dala head(xs: qayma[adad]) -> natiga[adad, nass]:
+    khali n = xs.get(0).ok_or("empty")?
+    rag3 naga7(n)
+
+dala ra2isi():
+    khali a = head_plus_one([2])
+    khali _ = head([2])
+    hasab a:
+        lama mawgood(n):
+            ektb("{n}")
+        lama mafeesh:
+            ektb("none")

@@ -1,0 +1,8 @@
+dala ra2isi():
+    lekol i fi 0..3:
+        ektb("{i}")
+    lekol j fi 1..=2:
+        ektb("{j}")
+    motghayer n = 0
+    tool_ma n < 2:
+        n += 1

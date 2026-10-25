@@ -166,7 +166,73 @@ impl<'t> Parser<'t> {
             };
         }
         self.height = self.height.saturating_sub(links);
+        if min <= AND {
+            self.glued_and();
+        }
         lhs
+    }
+
+    /// Spec §5.4 last bullet (FOUNDER-QUEUE Q22): in an Arabic file, `و` written against
+    /// the next word (`إذا أ وب:`) lexes as one identifier, which is a parse error where an
+    /// `and` could continue the expression. It is reported here, as the K0250 the caller
+    /// would report, with a machine fix that inserts the space. The fix is offered only when
+    /// the rest after `و` lexes as one clean name, core name, `صح`, `خطأ`, `ليس` or `ذات`, so
+    /// the fixed line parses. The caller's own error at this token is then suppressed.
+    fn glued_and(&mut self) {
+        if self.skin != kalam_base::Skin::Ar
+            || self.peek() != TokenKind::Ident
+            || self.last_error_pos == Some(self.pos)
+        {
+            return;
+        }
+        let t = self.cur();
+        let text = self.tok_text(t);
+        let Some(rest) = text.strip_prefix('و') else {
+            return;
+        };
+        if !self.lexes_as_operand(rest) {
+            return;
+        }
+        let fixed = format!("و {rest}");
+        let found = self.describe(t);
+        let span = mk_span(t.span.start, t.span.end);
+        self.last_error_pos = Some(self.pos);
+        self.diags.push(
+            Diagnostic::new(codes::UNEXPECTED_TOKEN, self.file, span)
+                .arg("expected", format!("`{fixed}`"))
+                .arg("found", found)
+                .fix(kalam_diagnostics::Fix::machine(
+                    format!("write `{fixed}`"),
+                    span,
+                    fixed,
+                )),
+        );
+    }
+
+    /// `word` (Arabic skin) is exactly one clean token that can start the operand of `and`.
+    fn lexes_as_operand(&self, word: &str) -> bool {
+        if word.is_empty() {
+            return false;
+        }
+        let lexed = kalam_lexer::lex_fragment(word, kalam_base::Skin::Ar, self.file);
+        if lexed.diagnostics.iter().any(|d| d.is_error()) {
+            return false;
+        }
+        let mut toks = lexed.tokens.iter().filter(|t| !crate::is_layout(t.kind));
+        let one = match (toks.next(), toks.next()) {
+            (Some(t), None) => t,
+            _ => return false,
+        };
+        one.span.start == 0
+            && one.span.end as usize == word.len()
+            && matches!(
+                one.kind,
+                TokenKind::Ident
+                    | TokenKind::Core(_)
+                    | TokenKind::Keyword(
+                        Concept::KwTrue | Concept::KwFalse | Concept::KwNot | Concept::KwSelf
+                    )
+            )
     }
 
     /// `unary = "-" unary | postfix` (iterative, so long `- - -` chains cannot overflow).
@@ -462,12 +528,11 @@ impl<'t> Parser<'t> {
         let fn_span = self.bump().span; // fn
         let open = self.bump().span; // (
         let params = self.delimited(Op::RParen, open, "`)`", |p| {
-            if p.peek() != TokenKind::Ident {
+            if !p.at_binding_name() {
                 p.expected("a parameter name");
                 return None;
             }
-            let t = p.bump();
-            let name = p.word_ident(t);
+            let name = p.binding_ident("a parameter name");
             let ty = if p.eat_op(Op::Colon) {
                 Some(p.ty())
             } else {
@@ -604,7 +669,7 @@ impl<'t> Parser<'t> {
         let start = self.start();
         let p = self.prim_pat();
         if self.eat_kw(Concept::KwAs) {
-            let name = self.ident("a name after `as`");
+            let name = self.binding_ident("a name after `as`");
             Pat {
                 kind: PatKind::As {
                     pat: Box::new(p),
@@ -645,6 +710,10 @@ impl<'t> Parser<'t> {
                 };
                 PatKind::Ctor { ctor: c, inner }
             }
+            // A bare core name of the file's skin (`let Int = 1`, `for print in xs`) is kept
+            // as a one-segment path: a `Name` holds the core name skin-free, so every skin
+            // gives the same AST, and name resolution reports K0413 for it (§7.2). Another
+            // skin's core name lexes as an identifier and binds (FOUNDER-QUEUE Q21).
             TokenKind::Ident | TokenKind::Core(_) => {
                 let t = self.bump();
                 let mut path = vec![self.name_of(t)];
@@ -696,9 +765,8 @@ impl<'t> Parser<'t> {
                 let open = self.bump().span;
                 let elems = self.delimited(Op::RBracket, open, "`]`", |p| {
                     if p.eat_op(Op::DotDot) {
-                        let name = if p.peek() == TokenKind::Ident {
-                            let t = p.bump();
-                            Some(p.word_ident(t))
+                        let name = if p.at_binding_name() {
+                            Some(p.binding_ident("a name"))
                         } else {
                             None
                         };

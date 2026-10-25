@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§15.4.1: \"`@sync` on a function type (`update: @sync fn(State, Input, Float) -> State`) means the argument must not suspend. Passing a suspending function is **K1401**\". Positive twin: a pure local `fn` and a pure lambda (its parameter type comes from the expected type, §9.9.3)."
+}

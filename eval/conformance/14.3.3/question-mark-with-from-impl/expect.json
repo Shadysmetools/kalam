@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§14.3.1–§14.3.5: \"`e?`, where `e: Result[T, E]`, inside a function returning `Result[U, F]` (DR-12): 1. if `E == F`, it propagates `Err(e)` unchanged; 2. otherwise, if `impl F as From[E]` exists, it propagates `Err(F.from(e))`; 3. otherwise, if `F == AnyError` and `E: Error`, it boxes the error; 4. otherwise it is K1301\". Positive twin for rules 1 (`reparse`, same error type) and 2 (`load`, through `From`)."
+}

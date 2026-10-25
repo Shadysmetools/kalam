@@ -1,0 +1,7 @@
+hat std/sql.{Db, DbError}
+
+dala purge(db: Db) -> natiga[adad, DbError]:
+    rag3 db.exec("DELETE FROM notes")
+
+dala ra2isi():
+    ektb("x")

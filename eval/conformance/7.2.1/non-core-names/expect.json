@@ -1,0 +1,6 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "stage": "resolve",
+  "notes": "§7.2.1: \"Core names are prelude items whose *spelling* comes from the skin table. They cannot be declared, redefined or shadowed (K0413), so translating them never changes meaning.\" Positive twin: a type and a binding whose names are not core names."
+}

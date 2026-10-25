@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1103"
+  ],
+  "lines": [
+    18
+  ],
+  "notes": "§12.2.3: \"**Resolution (DR-27):** the candidates for `x.m` are the inherent methods of `x`'s type plus the methods of every trait implemented for that type. **Exactly one candidate must exist**, otherwise it is K1103 (disambiguate with `Trait.m(x)`).\""
+}

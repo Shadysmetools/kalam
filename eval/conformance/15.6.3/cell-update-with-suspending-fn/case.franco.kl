@@ -1,0 +1,9 @@
+dala ra2isi(world: donya):
+    khali counter = Cell.new(0)
+    khali fs = world.fs
+    dala step(x: adad) -> adad:
+        law fs.exists(path"flag.txt"):
+            rag3 x + 1
+        rag3 x
+    counter.update(step)
+    ektb("{counter.get()}")

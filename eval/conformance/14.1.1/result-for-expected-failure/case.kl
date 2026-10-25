@@ -1,0 +1,11 @@
+fn parse_age(n: Int) -> Result[Int, String]:
+    if n < 0:
+        return Err("negative")
+    return Ok(n)
+
+fn main():
+    match parse_age(3):
+        case Ok(age):
+            print("{age}")
+        case Err(message):
+            print(message)

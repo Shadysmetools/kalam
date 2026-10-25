@@ -1,0 +1,6 @@
+fn main():
+    let pair = (1, "one")
+    let (n, word) = pair
+    let first = pair.0
+    let same = pair == (1, "one")
+    print("{n} {word} {first} {same}")

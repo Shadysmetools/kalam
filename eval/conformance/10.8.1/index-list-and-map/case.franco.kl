@@ -1,0 +1,8 @@
+dala ra2isi():
+    khali xs = [10, 20, 30]
+    khali a = xs[0]
+    khali b = xs.get(5)
+    khali m = {"one": 1}
+    khali c = m["one"]
+    khali d = m.get("two")
+    ektb("{a} {c}")

@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§9.3.1: \"Tuples with 2–8 elements, accessed with `.0`, `.1`, …, or destructured with `let (a, b) = t`.\" §9.7.5: tuples whose components are all `Eq` are `Eq`. Positive twin."
+}

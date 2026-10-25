@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1401"
+  ],
+  "lines": [
+    null
+  ],
+  "notes": "§15.6.3: \"`Cell[T]`: `Cell.new(v)`, `.get()`, `.set(v)`, `.update(@sync fn(T) -> T)`. The update function cannot suspend, so **`update` is atomic**.\" §15.4.1: passing a suspending function where `@sync` is required is K1401. `step` suspends (filesystem). The line is not pinned by the spec."
+}

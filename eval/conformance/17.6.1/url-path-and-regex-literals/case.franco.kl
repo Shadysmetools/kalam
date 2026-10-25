@@ -1,0 +1,7 @@
+dala upload(name: PathSegment) -> Path => path"uploads/{name}"
+
+dala ra2isi():
+    khali id = 7
+    khali term = "kalam"
+    khali _ = url"https://api.example.com/users/{id}?q={term}"
+    khali _ = regex"^[a-z0-9_]\{3,20\}$"

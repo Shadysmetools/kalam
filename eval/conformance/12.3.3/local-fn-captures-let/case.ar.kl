@@ -1,0 +1,9 @@
+دالة رئيسي():
+    متغير count = 1
+    count += 1
+    ليكن snapshot = count
+    ليكن add = دالة(x: عدد) => x + snapshot
+    دالة twice(x: عدد) -> عدد:
+        ليكن once = add(x)
+        أرجع add(once)
+    اطبع("{twice(1)}")

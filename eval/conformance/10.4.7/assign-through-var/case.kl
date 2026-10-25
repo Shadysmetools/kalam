@@ -1,0 +1,12 @@
+type Point:
+    x: Int
+    y: Int
+
+fn main():
+    var p = Point(x: 1, y: 2)
+    p.x = 5
+    var xs = [1, 2, 3]
+    xs[0] = 9
+    var total = 1
+    total += 2
+    print("{p.x} {total}")

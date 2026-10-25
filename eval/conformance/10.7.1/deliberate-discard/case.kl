@@ -1,0 +1,4 @@
+fn main():
+    let n = 2
+    let _ = n + 1
+    print("{n}")

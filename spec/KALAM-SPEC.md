@@ -1986,6 +1986,7 @@ That is **10 concepts**, within the MVP limit of 12, with no `async`, no classes
 | K0413 | core name declared or shadowed |
 | K0416 | record construction without named arguments |
 | K0417 | record field named `with` |
+| K0418 | item is private: a module item without `export` imported (`use m.{x}`, including through `export use`) or reached through a module name or alias (`m.x`); reported with the item's module |
 | K0420 | unknown method (hallucinated-API guard) |
 | W0403 | `_` arm over an enum from another package |
 | K0601 | mixed numeric types |
@@ -2905,3 +2906,4 @@ Spec errata are recorded here with a date, as ROADMAP M0 requires. Each erratum 
 | 2026-10-25 | header, §30 | §30 "Founder questions" replaced by "Founder decisions (resolved)"; binding inputs are now D1–D25 | `DECISIONS.md` D18–D25 |
 | 2026-10-25 | §4.4 | KCF no longer keeps blank lines "byte for byte" (that contradicted §21.1 rules 1, 2 and 4, so `kcf(fmt(x)) == kcf(x)` could not hold). KCF2 records a blank-line run as one blank line, and only where `fmt` keeps blank lines. It drops trailing commas except in `(x,)`, and serializes a one-line block like its indented form. The header is bumped to `KCF2`. Provisional | `FOUNDER-QUEUE.md` Q8; `eval/suites/conformance` |
 | 2026-10-25 | §5.3 rule 4, §5.8 rule 3, §27 | Security codes made unambiguous: Arabic presentation forms (U+FB50–FDFF, U+FE70–FEFF) inside an identifier or keyword are SEC0106; ZWJ/ZWNJ inside an identifier are SEC0111 (the §5.1 invisible-character row), no longer listed under SEC0106; a dedent to a column that no open block uses is K0122, not K0120. Provisional | `FOUNDER-QUEUE.md` Q12; `eval/suites/trojan-source` (`sec0106-presentation-form-*`, `invisible-zwj-ident-ar`) |
+| 2026-10-25 | §27 | New code K0418 "item is private" for importing a module item that has no `export` (directly or through `export use`) or reaching it as `module.name`, replacing the misleading K0401 "not found". The diagnostic names the item's module. A failed `export use` is reported once, at the `export use`, and does not cascade into the modules that import the name from there. Provisional | `FOUNDER-QUEUE.md` Q23; `compiler/crates/kalam-resolve/tests/resolve.rs` |

@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§9.7.1: \"Inherent methods are written `impl Type:`. A trait implementation is written **`impl Type as Trait:`** (DR-10).\" §21.3 K0919: \"`impl Show for Money:` | `impl Money as Show:` (DR-10)\". Positive twin: the spec's own example (a trait impl and an inherent impl)."
+}

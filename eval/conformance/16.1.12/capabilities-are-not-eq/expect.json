@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0602"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "§16.1.12: \"**Capabilities are ordinary values** with no public constructor, no `Decode`, no `Eq` and no `Hash`.\" §9.8.1: `==` on a non-`Eq` type is K0602."
+}

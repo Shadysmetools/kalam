@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§9.6.4: \"Call sites never write type arguments (DR-25). They come from inference or the expected type.\" §21.3 K0922: \"`f[T](x)` (explicit type arguments) | an annotated `let` (`let r: T = f(x)`) (DR-25)\". Positive twin: `T` comes from the argument and the expected type."
+}

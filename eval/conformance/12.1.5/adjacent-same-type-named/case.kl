@@ -1,0 +1,9 @@
+export fn transfer(from: Int, to: Int, amount: Int) -> Int => from + to + amount
+
+fn fee(amount: Int, rate: Int = 2) -> Int => amount * rate
+
+fn main():
+    let r = transfer(from: 3, to: 2, amount: 1)
+    let s = transfer(from: 1, to: 2, amount: 3)
+    let f = fee(10)
+    print("{r} {s} {f}")

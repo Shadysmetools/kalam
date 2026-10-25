@@ -1,0 +1,6 @@
+هيكل Choice:
+    value: عدد
+
+دالة رئيسي():
+    ليكن count = Choice(value: 1)
+    اطبع("{count.value}")

@@ -1,0 +1,25 @@
+ta3dad ParseFail:
+    Empty
+
+ta3dad LoadFail:
+    Missing
+
+dala parse(text: nass) -> natiga[adad, ParseFail]:
+    law text == "":
+        rag3 fashal(.Empty)
+    rag3 naga7(1)
+
+naffez LoadFail ka From[ParseFail]:
+    dala from(value: ParseFail) -> LoadFail => LoadFail.Missing
+
+dala load(text: nass) -> natiga[adad, LoadFail]:
+    khali n = parse(text)?
+    rag3 naga7(n)
+
+dala reparse(text: nass) -> natiga[adad, ParseFail]:
+    khali n = parse(text)?
+    rag3 naga7(n + 1)
+
+dala ra2isi():
+    khali _ = load("1")
+    khali _ = reparse("1")

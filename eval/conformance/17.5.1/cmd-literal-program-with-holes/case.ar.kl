@@ -1,0 +1,4 @@
+دالة رئيسي():
+    ليكن count = 5
+    ليكن file = "notes.txt"
+    ليكن _ = cmd"git log --oneline -n {count} -- {file}"

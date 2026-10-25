@@ -1,0 +1,12 @@
+haykal Point:
+    x: adad
+    y: adad
+
+dala ra2isi():
+    motghayer p = Point(x: 1, y: 2)
+    p.x = 5
+    motghayer xs = [1, 2, 3]
+    xs[0] = 9
+    motghayer total = 1
+    total += 2
+    ektb("{p.x} {total}")

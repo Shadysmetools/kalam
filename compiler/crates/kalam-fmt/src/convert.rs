@@ -5,8 +5,8 @@
 //! - keywords and core names → the target's canonical spelling (variants are canonicalized);
 //! - identifiers keep their exact text, with backticks added when the name would lex as a
 //!   reserved word of the target skin, or is reserved in some skin and not declared in the
-//!   file (Q16), and the position is not a §5.3 rule 8 position; removed otherwise
-//!   ([`crate::roles`]);
+//!   file (Q16), and the position is not a §5.3 rule 8 position, or when it touches another
+//!   word with no space between them (Q26, [`glued`]); removed otherwise ([`crate::roles`]);
 //! - `,`/`?` ↔ `،`/`؟` (always `،`/`؟` in `ar`);
 //! - number digit glyphs (`ar` target only, per `[skin.ar] digits`);
 //! - string and tagged-literal text is copied, but each interpolation hole is code and is
@@ -39,7 +39,7 @@ impl Rewriter<'_> {
         out: &mut String,
     ) {
         let mut copied = range.start;
-        for tok in tokens {
+        for (i, tok) in tokens.iter().enumerate() {
             let (s, e) = (tok.span.start as usize, tok.span.end as usize);
             if s < range.start || e > range.end || s >= e {
                 continue;
@@ -47,7 +47,7 @@ impl Rewriter<'_> {
             let original = &text[s..e];
             let replacement = match tok.kind {
                 TokenKind::Ident | TokenKind::Keyword(_) | TokenKind::Core(_) => {
-                    Some(self.word(tok, original, base))
+                    Some(self.word(tok, original, base, glued(tokens, i)))
                 }
                 TokenKind::Op(Op::Comma) => Some(self.punct(Concept::PunctComma)),
                 TokenKind::Op(Op::Question) => Some(self.punct(Concept::PunctTry)),
@@ -73,8 +73,8 @@ impl Rewriter<'_> {
         self.table.spelling(c, self.to).to_string()
     }
 
-    /// An identifier, keyword or core-name token.
-    fn word(&self, tok: &Token, original: &str, base: u32) -> String {
+    /// An identifier, keyword or core-name token. `glued`: see [`glued`].
+    fn word(&self, tok: &Token, original: &str, base: u32, glued: bool) -> String {
         let role = self.roles.get(base + tok.span.start);
         match (role, tok.kind) {
             (None, TokenKind::Keyword(c) | TokenKind::Core(c)) => {
@@ -82,8 +82,14 @@ impl Rewriter<'_> {
             }
             (role, _) => {
                 let name = strip_backticks(original);
-                self.roles
-                    .spell(name, role.unwrap_or(Role::Bound), self.to, self.table)
+                let spelled =
+                    self.roles
+                        .spell(name, role.unwrap_or(Role::Bound), self.to, self.table);
+                if glued && !spelled.starts_with('`') {
+                    format!("`{name}`")
+                } else {
+                    spelled
+                }
             }
         }
     }
@@ -171,6 +177,36 @@ impl Rewriter<'_> {
         out.push_str(&body[inner_end..]);
         out
     }
+}
+
+/// The word token `tokens[i]` touches another word or number token, or a string literal
+/// right after it, with no byte between them. That only happens next to a backticked name
+/// (`` return`Some` ``, `` `fe`ka ``): such a name keeps its backticks in every skin, or the two
+/// words would glue into one (`أرجعSome` is SEC0105, `rag3Some` a different name) and the round
+/// trip would break (FOUNDER-QUEUE Q26). The test depends only on the token layout, which
+/// conversion keeps, so the decision is the same in every skin (spec §4.3 G2).
+fn glued(tokens: &[Token], i: usize) -> bool {
+    let Some(tok) = tokens.get(i) else {
+        return false;
+    };
+    let solid = |t: &&Token| t.span.end > t.span.start;
+    let wordish = |k: TokenKind| {
+        matches!(
+            k,
+            TokenKind::Ident
+                | TokenKind::Keyword(_)
+                | TokenKind::Core(_)
+                | TokenKind::Int
+                | TokenKind::Float
+        )
+    };
+    let before = tokens[..i].iter().rev().find(solid);
+    let after = tokens[i + 1..].iter().find(solid);
+    before.is_some_and(|p| p.span.end == tok.span.start && wordish(p.kind))
+        || after.is_some_and(|n| {
+            n.span.start == tok.span.end
+                && (wordish(n.kind) || matches!(n.kind, TokenKind::Str | TokenKind::TaggedStr))
+        })
 }
 
 pub(crate) fn strip_backticks(word: &str) -> &str {

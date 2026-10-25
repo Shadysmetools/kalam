@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§17.1.5: \"There is no implicit or explicit `String → Sql` cast. Passing a `String` gives K1601: *\"`db.all` expects `Sql`, but this is `String`. Write the query as `sql\"…\"` and put values in `{…}`.\"*\" §17.3.7: \"`db.exec(q) -> Result[Int, DbError]`\". Positive twin."
+}

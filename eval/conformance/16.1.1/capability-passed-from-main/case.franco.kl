@@ -1,0 +1,6 @@
+dala has_config(fs: Fs) -> mante2i => fs.exists(path"config.toml")
+
+dala ra2isi(world: donya):
+    khali found = has_config(world.fs)
+    ektb("{found}")
+    ektb("{world.net}")

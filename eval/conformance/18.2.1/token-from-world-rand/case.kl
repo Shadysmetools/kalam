@@ -1,0 +1,5 @@
+fn main(world: World):
+    let t = world.rand.token(bytes: 32)
+    let n = world.rand.int(0..10)
+    let id = world.rand.uuid_v4()
+    print("{t} {n} {id}")

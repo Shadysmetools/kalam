@@ -11,12 +11,21 @@
 //!   but does not (an in-package path in a whole-package check, or a `std/…` path when the
 //!   stdlib is loaded) is K0401 on the path.
 //! - **Visibility** (§13.2): only `export`ed items (and `export use` re-exports) can be
-//!   imported or reached as `module.name`; anything else is K0401 there. An exported
-//!   signature that names a private type of its own module is K0303.
+//!   imported or reached as `module.name`. A module item without `export` reached that way
+//!   is K0418 "item is private", with the item's module path (FOUNDER-QUEUE Q23); the
+//!   imported name is still bound to the item, so its uses do not cascade. A name the module
+//!   does not have at all is K0401. A failed `export use` (a private item, a missing name, a
+//!   missing module) is reported once, at the `export use`; the name is still exported (as
+//!   the private item or an opaque stand-in), so modules importing it from there get nothing
+//!   more. An exported signature that names a private type of its own module is K0303.
 //! - **One namespace per scope** (DR-11) and **no shadowing** (DR-28, §10.1): a declaration
 //!   that reuses a name visible at that point (an enclosing local or parameter, a module
 //!   item, an import or a prelude name) is K0405; declaring a core name (§7.2) is K0413
-//!   (`fn main` at module level is the one allowed core-name declaration). A backticked
+//!   (`fn main` at module level is the one allowed core-name declaration). That covers item
+//!   names, local `fn`s and bare core names in `let`/`for`/`case` patterns (`let Int = 1`);
+//!   the positions where the AST keeps a plain identifier (`var`, parameters, `as`, list
+//!   rest) are the parser's K0413. Only the file's own skin spelling is a core name: another
+//!   skin's (`let عدد = 1` in an English file) is an ordinary name (FOUNDER-QUEUE Q21). A backticked
 //!   word spelled like a core name (`` `print` `` in an English file) is an ordinary
 //!   identifier: the same AST in another skin has it without backticks, and every check
 //!   here gives the same verdict in every skin (parity P1). For the same reason the
@@ -46,8 +55,9 @@
 //!   opaque modules) and no enum has such a variant, it reports K0401 and records an empty
 //!   candidate list, so typeck must not report the name again.
 //!
-//! Not done here: glob imports (`use a.*`) do not parse, so K1203 belongs to the parser;
-//! `internal/` visibility needs dependency packages, which are opaque for now.
+//! Not done here: glob imports (`use a.*`, K1203) and module-level `var` (K1202) are the
+//! parser's (it reads them as `use a` and `let`); `internal/` visibility needs dependency
+//! packages, which are opaque for now.
 //!
 //! # Opaque modules
 //!

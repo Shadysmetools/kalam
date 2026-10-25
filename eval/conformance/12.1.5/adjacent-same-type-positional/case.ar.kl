@@ -1,0 +1,5 @@
+علني دالة transfer(from: عدد، to: عدد، amount: عدد) -> عدد => from + to + amount
+
+دالة رئيسي():
+    ليكن r = transfer(1، 2، 3)
+    اطبع("{r}")

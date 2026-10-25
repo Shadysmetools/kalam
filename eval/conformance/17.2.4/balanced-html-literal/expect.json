@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§17.2.4: \"The stdlib tags parse their literal text **at compile time**. Malformed SQL quoting, unbalanced HTML and shell metacharacters are compile errors (Security 16.2).\" §17.4.1: \"It must be well-formed (balanced tags, valid nesting, quoted attributes), or it is K1610.\" Positive twin."
+}

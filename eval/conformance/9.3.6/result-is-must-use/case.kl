@@ -1,0 +1,7 @@
+fn check(n: Int) -> Result[Int, String]:
+    if n < 0:
+        return Err("negative")
+    return Ok(n)
+
+fn main():
+    check(1)

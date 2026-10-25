@@ -1,0 +1,5 @@
+fn main():
+    let name = "Sara"
+    let ids = [1, 2]
+    let _ = sql"SELECT id FROM users WHERE name = {name} AND id IN {ids} -- active users"
+    let _ = sql"SELECT id FROM users WHERE note = 'a;b'"

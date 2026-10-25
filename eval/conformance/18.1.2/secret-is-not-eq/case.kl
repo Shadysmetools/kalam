@@ -1,0 +1,5 @@
+fn main():
+    let a = Secret.new("x")
+    let b = Secret.new("x")
+    let same = a == b
+    print("{same}")

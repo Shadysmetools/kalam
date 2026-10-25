@@ -1,0 +1,11 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0413"
+  ],
+  "lines": [
+    1
+  ],
+  "stage": "resolve",
+  "notes": "§7.2.1: \"Core names are prelude items whose *spelling* comes from the skin table. They cannot be declared, redefined or shadowed (K0413), so translating them never changes meaning.\" Declaring a record named `Option` (`اختياري`, `ekhtiyari`) declares a core name."
+}

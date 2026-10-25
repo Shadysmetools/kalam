@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1615"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "§17.4.9: \"inside an HTML comment | — | **K1615**\"."
+}

@@ -1,0 +1,3 @@
+fn main():
+    let root = World()
+    print("x")

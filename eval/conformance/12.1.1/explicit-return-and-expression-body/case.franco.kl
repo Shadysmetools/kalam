@@ -1,0 +1,7 @@
+dala double(x: adad) -> adad:
+    rag3 x * 2
+
+dala triple(x: adad) -> adad => x * 3
+
+dala ra2isi():
+    ektb("{double(2)} {triple(2)}")

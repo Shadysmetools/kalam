@@ -5,44 +5,98 @@
 //! lowered to [`Ty`]/[`Scheme`] first, so bodies may refer to any item (mutual recursion
 //! needs no ordering). Coherence and the orphan rule are checked here.
 //!
-//! **Pass 2 (bodies).** Each body gets its own [`InferCtx`]. `check(e, expected)` pushes
-//! the expected type down (literals, empty collections, implicit members, lambdas,
-//! `Some`/`Ok`/`Err`, value-form `if`/`match`); everything else is synthesized and then
-//! coerced (`Never` coerces to anything, §9.1). Trait requirements whose type is still a
-//! variable are deferred to the end of the body.
+//! **Pass 2 (bodies).** Constants first, in dependency order, then every function body,
+//! record field default and test. Each body gets its own [`InferCtx`]. `check(e,
+//! expected)` pushes the expected type down (literals, empty collections, implicit members,
+//! lambdas, `Some`/`Ok`/`Err`, value-form `if`/`match`, the result of generic calls);
+//! everything else is synthesized and then coerced (`Never` coerces to anything, §9.1).
+//! Trait requirements whose type is still a variable are deferred to the end of the body.
 //!
-//! What is implemented: literals with expected-type typing and K0126; `let`/`var` and
-//! assignment (K0710); functions, generic calls, record and variant construction; `if` and
-//! `match` in statement and value form (K0731) with a shallow exhaustiveness check (K1001)
-//! for `Bool`, `Option`, `Result`, enums and the "final `_` arm" rule for `Int`/`String`;
-//! `for` over ranges and collections, `while`; operators with `Float`'s IEEE equality,
-//! K0601/K0602; interpolation (`Show`); tagged literals typed as sinks; K0730/K1303;
-//! K1101; method calls with DR-27's exactly-one rule.
+//! Spec clauses implemented here (the ones of the M2 v0.1 surface; see also
+//! [`crate::exhaust`] and [`crate::lower`]):
+//! - §5.6 literal typing from the expected type and K0126 (64-bit `Int`, D18), and
+//!   FOUNDER-QUEUE Q25: in an arithmetic operator an integer literal takes the other
+//!   operand's `Float`/`Decimal`/`BigInt` type (`1 + 2.5` is `Float`); comparisons keep
+//!   §9.8 (`1 == 1.0` is K0602); variables never convert (K0601, with a `.to_float()` fix).
+//! - §9.2–§9.3 primitives and composites: `Int / Int → Float`, no `/` on `Decimal`, string
+//!   `+`, no string indexing (K0650), `List`/`Map` indexing, map literals, K0802.
+//! - §9.4 records: named construction (K0416), defaults, fields, `.with` update, `export
+//!   opaque` privacy outside the defining module (K0418).
+//! - §9.5 enums: leading-dot and qualified variants, implicit members against the expected
+//!   type (K0803), positional or labelled payloads.
+//! - §9.6 generics with bounds; §9.7 traits, coherence and the orphan rule, built-in trait
+//!   facts and derivation, `impl T as Trait`; §9.8 `Float`'s IEEE `==`/`<` (DR-23), K0602.
+//! - §9.9 inference rules 1–6 (return-type inference from the expected type included).
+//! - §10.2–§10.8: `let` patterns (K1003), `var`, value-form `if`/`match` (K0731),
+//!   assignment through a `var` place (K0710), loops over ranges, lists, sets, maps,
+//!   discarded values (K0730).
+//! - §11 rules 1–10: exhaustiveness and usefulness (K1001 with the missing cases, K1002),
+//!   or-patterns (K1004), literal patterns (K1005), list, record and `as` patterns.
+//! - §12.1 named/default arguments, K1101, K1104 (adjacent same-type parameters of an
+//!   exported function, with a machine fix inserting the labels); §12.2 DR-27 method
+//!   resolution over inherent and trait methods (K0420, K1103), `Type.f` associated
+//!   functions, `Trait.m(x)`; §12.3 lambdas (K0801), local `fn`s, capture of a `var` (K1110).
+//! - §14.2 must-use `Result` (K1303); §14.3 `?` with its four rules (`Same`, `From`, boxing
+//!   into `AnyError`, K1301) and the `Option` form (K1302).
+//! - §17.1 sinks never accept `String` (K1601, with a machine fix that turns `"…" + x`
+//!   into a tagged literal), §17.6 `path"…"` holes are `PathSegment` (K1641).
 //!
-//! Not yet: Maranget usefulness (K1002 and nested exhaustiveness), `?` (§14.3), hole
-//! requirements of tagged literals (`kalam-sinks`), record update `.with`, closures'
-//! capture rules (K1110), local `fn` items, and stdlib member typing beyond declared stubs.
+//! Typed hooks left for the next iteration: suspension (`SuspFlow` records, §15),
+//! capability rules (K1501–K1504, §16), the context-dependent hole types of `sql`/`html`/
+//! `cmd`/`url` literals (§17.3–§17.6 via `kalam-sinks`), `Secret` rules beyond the trait
+//! facts (§18), and `unsafe.*` (typed as poison).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use kalam_base::{FileId, Span};
-use kalam_resolve::DefId;
+use kalam_diagnostics::{Applicability, Diagnostic, Edit, Fix};
+use kalam_resolve::{DefId, ModulePath};
 
 use crate::adt::{AdtDef, AdtKind, FieldDef, VariantDef, VariantField};
-use crate::error::{TypeError, TypeErrorKind};
+use crate::error::{tag_of, TypeError, TypeErrorKind};
+use crate::exhaust;
 use crate::hir::{
     self, Arg, Arm, AssignOp, BinOp, Block, BodyValue, BuiltinType, Expr, ExprId, ExprKind, FnDecl,
-    GenericParamDecl, IfBranch, ItemKind, LangItem, LocalId, Pat, PatKind, ResolvedProgram, Stmt,
+    GenericParamDecl, HirProgram, IfBranch, ItemKind, LangItem, LocalId, Pat, PatKind, Stmt,
     StmtKind, StrPart, TraitBound, TypeKind, UnOp,
 };
 use crate::traits::{
-    Answer, BuiltinTrait, CoherenceError, ImplDecl, TraitDecl, TraitEnv, TraitId, TraitRef,
+    erase_vars, Answer, BuiltinTrait, CoherenceError, ImplDecl, MethodCandidate, TraitDecl,
+    TraitEnv, TraitId, TraitRef,
 };
-use crate::ty::{GenericParam, Scheme, SinkType, Suspension, Ty};
+use crate::ty::{Capability, GenericParam, Scheme, SinkType, Suspension, Ty};
 use crate::unify::{InferCtx, SuspFlow, UnifyError};
 
+/// How `e?` turns the error it propagates into the function's error (§14.3), recorded for
+/// lowering.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TryConversion {
+    /// Rule 1: `E == F`, the error propagates unchanged.
+    Same,
+    /// Rule 2: `impl F as From[E]`, the error becomes `F.from(e)` (the impl's method).
+    From { method: Option<DefId> },
+    /// Rule 3: `F == AnyError` and `E: Error`, the error is boxed.
+    BoxAnyError,
+    /// `Option` in an `Option` function: `None` propagates.
+    OptionNone,
+}
+
+/// A tagged literal (`sql"…"`, §17) as the checker saw it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TaggedLiteral {
+    /// The body that holds it.
+    pub owner: DefId,
+    pub expr: ExprId,
+    pub file: FileId,
+    pub tag: kalam_sinks::Tag,
+    /// The literal text between the holes, escapes decoded (`holes.len() + 1` parts).
+    pub parts: Vec<String>,
+    /// Each hole's span and type (zonked at the end of its body).
+    pub holes: Vec<(Span, Ty)>,
+}
+
 /// Everything the later passes need. Keys `(owner, …)` name the body an expression or
-/// local belongs to (the function or constant that owns it).
+/// local belongs to (the function, constant, record or test that owns it).
 #[derive(Debug, Default)]
 pub struct TypeckResults {
     pub names: HashMap<DefId, String>,
@@ -55,10 +109,17 @@ pub struct TypeckResults {
     pub local_types: HashMap<(DefId, LocalId), Ty>,
     /// Type arguments chosen at each use of a generic function, record or variant.
     pub instantiations: HashMap<(DefId, ExprId), Vec<Ty>>,
-    /// The method each `MethodCall` resolved to (DR-27).
+    /// The method each `MethodCall` (and each `Type.f` associated-function use) resolved
+    /// to (DR-27).
     pub method_picks: HashMap<(DefId, ExprId), DefId>,
     /// The variant an implicit member (`.Circle`) or qualified variant resolved to.
     pub variant_picks: HashMap<(DefId, ExprId), DefId>,
+    /// The conversion each `?` uses (§14.3).
+    pub try_conversions: HashMap<(DefId, ExprId), TryConversion>,
+    /// Every tagged literal with its hole types: the typed hook for the sink checks of the
+    /// next iteration (`kalam-sinks::check_template` classifies each hole's context and
+    /// returns the type it requires, §17.3–§17.6; K1641 is already checked here).
+    pub tagged: Vec<TaggedLiteral>,
     /// Suspension constraints `from ≤ to` for `kalam-effects`, by owning body.
     pub flows: Vec<(DefId, SuspFlow)>,
     pub errors: Vec<TypeError>,
@@ -80,17 +141,36 @@ impl TypeckResults {
         self.expr_types.get(&(owner, e.id))
     }
 
-    /// The `(code, span)` of every error, for compact assertions.
+    /// The code of every error, for compact assertions.
     pub fn codes(&self) -> Vec<&'static str> {
         self.errors.iter().map(TypeError::code).collect()
     }
+
+    /// Every error as a diagnostic, in source order per file; an error that repeats another
+    /// one (same code, same place) is dropped.
+    pub fn diagnostics(&self) -> Vec<Diagnostic> {
+        let mut errors: Vec<&TypeError> = self.errors.iter().collect();
+        errors.sort_by_key(|e| (e.file, e.span.start, e.span.end));
+        let mut seen = HashSet::new();
+        errors
+            .into_iter()
+            .filter(|e| seen.insert((e.file, e.span, e.code())))
+            .map(|e| e.to_diagnostic(&|d| self.name_of(d)))
+            .collect()
+    }
 }
 
-/// Type-checks a whole resolved program.
-pub fn check_program(prog: &dyn ResolvedProgram) -> TypeckResults {
+/// Type-checks a whole program.
+pub fn check_program(prog: &HirProgram) -> TypeckResults {
+    crate::on_big_stack(|| check_program_here(prog))
+}
+
+fn check_program_here(prog: &HirProgram) -> TypeckResults {
     let mut cx = Collector {
         prog,
         res: TypeckResults::default(),
+        trait_ids: HashMap::new(),
+        method_impl: HashMap::new(),
     };
     cx.collect();
     cx.check_bodies();
@@ -113,8 +193,12 @@ enum Pos {
 }
 
 struct Collector<'p> {
-    prog: &'p dyn ResolvedProgram,
+    prog: &'p HirProgram,
     res: TypeckResults,
+    /// Trait items → their trait (a built-in trait for the stdlib's declarations of one).
+    trait_ids: HashMap<DefId, TraitId>,
+    /// Method → index of its impl in `res.traits.impls`.
+    method_impl: HashMap<DefId, usize>,
 }
 
 /// State for lowering one written type.
@@ -127,7 +211,7 @@ struct Lower<'a> {
 
 impl Collector<'_> {
     fn err(&mut self, file: FileId, span: Span, kind: TypeErrorKind) {
-        self.res.errors.push(TypeError { kind, file, span });
+        self.res.errors.push(TypeError::new(kind, file, span));
     }
 
     fn collect(&mut self) {
@@ -137,10 +221,17 @@ impl Collector<'_> {
                 continue;
             };
             self.res.names.insert(id, item.name.clone());
-            if let ItemKind::Enum(e) = &item.kind {
-                for v in &e.variants {
-                    self.res.names.insert(v.def, v.name.clone());
+            match &item.kind {
+                ItemKind::Enum(e) => {
+                    for v in &e.variants {
+                        self.res.names.insert(v.def, v.name.clone());
+                    }
                 }
+                ItemKind::Trait(t) => {
+                    let tid = t.builtin.map_or(TraitId::User(id), TraitId::Builtin);
+                    self.trait_ids.insert(id, tid);
+                }
+                _ => {}
             }
         }
         // ADT skeletons first, so field types can name any ADT.
@@ -148,21 +239,41 @@ impl Collector<'_> {
             let Some(item) = self.prog.item(id) else {
                 continue;
             };
-            let (kind, derives, opaque) = match &item.kind {
-                ItemKind::Record(r) => (AdtKind::Record(Vec::new()), &r.derives, r.opaque),
-                ItemKind::Enum(e) => (AdtKind::Enum(Vec::new()), &e.derives, e.opaque),
+            let (kind, derives, opaque, gdecls) = match &item.kind {
+                ItemKind::Record(r) => (
+                    AdtKind::Record(Vec::new()),
+                    r.derives.clone(),
+                    r.opaque,
+                    &r.generics,
+                ),
+                ItemKind::Enum(e) => (
+                    AdtKind::Enum(Vec::new()),
+                    e.derives.clone(),
+                    e.opaque,
+                    &e.generics,
+                ),
+                ItemKind::Extern(x) => (AdtKind::Extern, Vec::new(), false, &x.generics),
                 _ => continue,
             };
+            // The generic parameters' count is known now, so a field written in any
+            // module can be arity-checked; their bounds come with the fields below.
+            let generics = gdecls
+                .iter()
+                .map(|g| GenericParam {
+                    name: g.name.clone(),
+                    bounds: Vec::new(),
+                })
+                .collect();
             self.res.adts.insert(
                 id,
                 AdtDef {
                     def: id,
                     name: item.name.clone(),
                     module: item.module.clone(),
-                    generics: Vec::new(),
+                    generics,
                     kind,
                     opaque,
-                    derives: derives.clone(),
+                    derives,
                 },
             );
         }
@@ -181,6 +292,20 @@ impl Collector<'_> {
             {
                 let scheme = self.fn_scheme(id, f);
                 self.res.signatures.insert(id, scheme);
+            }
+        }
+        // Annotated constants are known before any body is checked.
+        for &id in &ids {
+            if let Some(hir::Item {
+                kind: ItemKind::Const(c),
+                file,
+                ..
+            }) = self.prog.item(id)
+            {
+                if let Some(t) = &c.ty {
+                    let ty = self.data_ty(*file, t, None);
+                    self.res.consts.insert(id, ty);
+                }
             }
         }
         for err in self.res.traits.check_coherence(&self.res.adts) {
@@ -291,16 +416,20 @@ impl Collector<'_> {
                     .collect();
                 (generics, AdtKind::Enum(variants))
             }
+            ItemKind::Extern(x) => (self.generics(file, &x.generics), AdtKind::Extern),
             _ => return,
         };
-        let adt = self.res.adts.get_mut(&id).expect("skeleton");
+        let Some(adt) = self.res.adts.get_mut(&id) else {
+            return;
+        };
         adt.generics = generics;
         adt.kind = kind;
         // K0612: `@derive(Encode)` on a type with a `Secret` field (§9.7, §18.1).
-        let adt = &self.res.adts[&id];
-        if adt.derives.contains(&BuiltinTrait::Encode)
-            && adt.component_types(&[]).iter().any(|t| t.contains_secret())
-        {
+        let encodes_secret = self.res.adts.get(&id).is_some_and(|adt| {
+            adt.derives.contains(&BuiltinTrait::Encode)
+                && adt.component_types(&[]).iter().any(|t| t.contains_secret())
+        });
+        if encodes_secret {
             let span = item.span;
             self.err(file, span, TypeErrorKind::EncodeSecret);
         }
@@ -320,12 +449,21 @@ impl Collector<'_> {
             ItemKind::Trait(t) => {
                 let methods = methods(&t.methods);
                 let generics = self.generics(file, &t.generics);
-                let tid = TraitId::User(id);
+                let tid = self
+                    .trait_ids
+                    .get(&id)
+                    .copied()
+                    .unwrap_or(TraitId::User(id));
+                // A built-in trait is defined by the core, wherever the stdlib declares it.
+                let module = match tid {
+                    TraitId::Builtin(_) => None,
+                    TraitId::User(_) => Some(item.module.clone()),
+                };
                 self.res.traits.traits.insert(
                     tid,
                     TraitDecl {
                         id: tid,
-                        module: Some(item.module.clone()),
+                        module,
                         generics,
                         methods,
                     },
@@ -339,6 +477,10 @@ impl Collector<'_> {
                     .as_trait
                     .as_ref()
                     .map(|b| self.bound(file, b, Some(self_ty.clone())));
+                let index = self.res.traits.impls.len();
+                for (_, m) in &methods {
+                    self.method_impl.insert(*m, index);
+                }
                 self.res.traits.impls.push(ImplDecl {
                     def: id,
                     module: item.module.clone(),
@@ -347,6 +489,7 @@ impl Collector<'_> {
                     trait_ref,
                     methods,
                     span: kalam_base::FileSpan::new(file, item.span),
+                    privileged: is_std(&item.module),
                 });
             }
             _ => {}
@@ -378,19 +521,22 @@ impl Collector<'_> {
     fn fn_scheme(&mut self, id: DefId, f: &FnDecl) -> Scheme {
         let file = self.prog.item(id).map_or(FileId::default(), |i| i.file);
         let (mut generics, mut self_ty) = self.parent_context(f);
+        let outer = generics.len() as u32;
         generics.extend(self.generics(file, &f.generics));
         if let Some(parent) = f.parent {
-            if matches!(
-                self.prog.item(parent).map(|i| &i.kind),
-                Some(ItemKind::Trait(_))
-            ) {
+            if let Some(ItemKind::Trait(t)) = self.prog.item(parent).map(|i| &i.kind) {
+                let tid = self
+                    .trait_ids
+                    .get(&parent)
+                    .copied()
+                    .unwrap_or(TraitId::User(parent));
+                let args = (0..t.generics.len().min(outer as usize) as u32)
+                    .map(Ty::Param)
+                    .collect();
                 self_ty = Some(Ty::Param(generics.len() as u32));
                 generics.push(GenericParam {
                     name: "Self".into(),
-                    bounds: vec![TraitRef {
-                        id: TraitId::User(parent),
-                        args: Vec::new(),
-                    }],
+                    bounds: vec![TraitRef { id: tid, args }],
                 });
             }
         }
@@ -440,72 +586,159 @@ impl Collector<'_> {
 
     fn check_bodies(&mut self) {
         let ids = self.prog.item_ids();
-        // Constants first, in the order resolve lists them (dependency order, §8.1).
-        for &id in &ids {
+        // Constants first, in dependency order (§13.1: "evaluated once, in dependency
+        // order"); a cycle keeps item order.
+        for id in self.const_order(&ids) {
             let Some(item) = self.prog.item(id) else {
                 continue;
             };
-            if let ItemKind::Const(c) = &item.kind {
-                let file = item.file;
-                let declared = c.ty.as_ref().map(|t| self.data_ty(file, t, None));
-                let mut b = BodyCx::new(self, file, Vec::new(), Ty::Unit, &[]);
-                let ty = match &declared {
-                    Some(t) => {
-                        b.check(&c.value, t);
-                        t.clone()
-                    }
-                    None => b.synth(&c.value),
-                };
-                let ty = b.infer.resolve(&ty);
-                let out = b.finish();
-                self.absorb(id, out);
-                self.res.consts.insert(id, ty);
-            }
-        }
-        for &id in &ids {
-            let Some(item) = self.prog.item(id) else {
+            let ItemKind::Const(c) = &item.kind else {
                 continue;
             };
-            let ItemKind::Fn(f) = &item.kind else {
-                continue;
-            };
-            let Some(body) = &f.body else { continue };
             let file = item.file;
-            let scheme = self.res.signatures[&id].clone();
-            let Ty::Fn { params, ret, .. } = &scheme.ty else {
-                continue;
+            let module = item.module.clone();
+            let declared = self.res.consts.get(&id).cloned();
+            let mut b = BodyCx::new(self, id, file, module, Vec::new(), Ty::Unit, &[]);
+            let ty = match &declared {
+                Some(t) => {
+                    b.check(&c.value, t);
+                    t.clone()
+                }
+                None => b.synth(&c.value),
             };
-            let mut b = BodyCx::new(
-                self,
-                file,
-                scheme.generics.clone(),
-                (**ret).clone(),
-                &body.locals,
-            );
-            for (p, ty) in f.params.iter().zip(params) {
-                b.locals.insert(p.local, ty.clone());
-            }
-            // Defaults are checked against their parameter's type (§12.1, DR-35).
-            for (p, ty) in f.params.iter().zip(params) {
-                if let Some(d) = &p.default {
-                    b.check(d, ty);
-                }
-            }
-            match &body.value {
-                BodyValue::Expr(e) => {
-                    b.check(e, ret);
-                }
-                BodyValue::Block(block) => {
-                    b.check_stmts(block);
-                    let needs_return = !matches!(**ret, Ty::Unit | Ty::Error);
-                    if needs_return && !b.block_diverges(block) {
-                        b.err(block.span, TypeErrorKind::MissingReturn);
-                    }
-                }
-            }
+            let ty = b.infer.resolve(&ty);
             let out = b.finish();
             self.absorb(id, out);
+            let ty = ty.map(&mut |t| matches!(t, Ty::Var(_)).then_some(Ty::Error));
+            self.res.consts.insert(id, ty);
         }
+        for &id in &ids {
+            let Some(item) = self.prog.item(id) else {
+                continue;
+            };
+            match &item.kind {
+                ItemKind::Fn(f) => self.check_fn(id, item, f),
+                ItemKind::Record(r) => {
+                    let file = item.file;
+                    let module = item.module.clone();
+                    let generics = self.generics(file, &r.generics);
+                    let Some(AdtKind::Record(fields)) =
+                        self.res.adts.get(&id).map(|a| a.kind.clone())
+                    else {
+                        continue;
+                    };
+                    if r.fields.iter().all(|f| f.default.is_none()) {
+                        continue;
+                    }
+                    let mut b = BodyCx::new(self, id, file, module, generics, Ty::Unit, &[]);
+                    for (decl, field) in r.fields.iter().zip(&fields) {
+                        if let Some(d) = &decl.default {
+                            b.check(d, &field.ty);
+                        }
+                    }
+                    let out = b.finish();
+                    self.absorb(id, out);
+                }
+                ItemKind::Test(body) => {
+                    let file = item.file;
+                    let module = item.module.clone();
+                    let mut b =
+                        BodyCx::new(self, id, file, module, Vec::new(), Ty::Unit, &body.locals);
+                    match &body.value {
+                        BodyValue::Block(block) => b.check_stmts(block),
+                        BodyValue::Expr(e) => {
+                            b.check(e, &Ty::Unit);
+                        }
+                    }
+                    let out = b.finish();
+                    self.absorb(id, out);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn check_fn(&mut self, id: DefId, item: &hir::Item, f: &FnDecl) {
+        let Some(body) = &f.body else { return };
+        let file = item.file;
+        let Some(scheme) = self.res.signatures.get(&id).cloned() else {
+            return;
+        };
+        let Ty::Fn { params, ret, .. } = &scheme.ty else {
+            return;
+        };
+        let mut b = BodyCx::new(
+            self,
+            id,
+            file,
+            item.module.clone(),
+            scheme.generics.clone(),
+            (**ret).clone(),
+            &body.locals,
+        );
+        for (p, ty) in f.params.iter().zip(params) {
+            b.locals.insert(p.local, ty.clone());
+        }
+        // Defaults are checked against their parameter's type (§12.1, DR-35).
+        for (p, ty) in f.params.iter().zip(params) {
+            if let Some(d) = &p.default {
+                b.check(d, ty);
+            }
+        }
+        b.fn_body(&body.value, ret);
+        let out = b.finish();
+        self.absorb(id, out);
+    }
+
+    /// Constants ordered so each comes after the constants its initializer names.
+    fn const_order(&self, ids: &[DefId]) -> Vec<DefId> {
+        let consts: Vec<DefId> = ids
+            .iter()
+            .copied()
+            .filter(|d| {
+                matches!(
+                    self.prog.item(*d).map(|i| &i.kind),
+                    Some(ItemKind::Const(_))
+                )
+            })
+            .collect();
+        let set: HashSet<DefId> = consts.iter().copied().collect();
+        let mut deps: HashMap<DefId, Vec<DefId>> = HashMap::new();
+        for &c in &consts {
+            if let Some(ItemKind::Const(decl)) = self.prog.item(c).map(|i| &i.kind) {
+                let mut found = Vec::new();
+                walk_expr(&decl.value, &mut |e| {
+                    if let ExprKind::Def(d) = e.kind {
+                        if set.contains(&d) {
+                            found.push(d);
+                        }
+                    }
+                });
+                deps.insert(c, found);
+            }
+        }
+        let mut out = Vec::new();
+        let mut state: HashMap<DefId, u8> = HashMap::new();
+        fn visit(
+            c: DefId,
+            deps: &HashMap<DefId, Vec<DefId>>,
+            state: &mut HashMap<DefId, u8>,
+            out: &mut Vec<DefId>,
+        ) {
+            if state.get(&c).is_some() {
+                return;
+            }
+            state.insert(c, 1);
+            for &d in deps.get(&c).map(|v| v.as_slice()).unwrap_or(&[]) {
+                visit(d, deps, state, out);
+            }
+            state.insert(c, 2);
+            out.push(c);
+        }
+        for &c in &consts {
+            visit(c, &deps, &mut state, &mut out);
+        }
+        out
     }
 
     fn absorb(&mut self, owner: DefId, out: BodyOut) {
@@ -524,6 +757,13 @@ impl Collector<'_> {
         for (e, d) in out.variants {
             self.res.variant_picks.insert((owner, e), d);
         }
+        for (e, c) in out.tries {
+            self.res.try_conversions.insert((owner, e), c);
+        }
+        for mut t in out.tagged {
+            t.owner = owner;
+            self.res.tagged.push(t);
+        }
         self.res
             .flows
             .extend(out.flows.into_iter().map(|f| (owner, f)));
@@ -531,32 +771,109 @@ impl Collector<'_> {
     }
 }
 
+/// The stdlib package (`std/…` modules) is privileged (stdlib/README.md).
+fn is_std(m: &ModulePath) -> bool {
+    m.0.starts_with("std/")
+}
+
+/// Calls `f` on `e` and every expression inside it (not inside nested blocks' statements
+/// other than expressions they contain).
+///
+/// Iterative, so a deeply nested expression cannot overflow the stack (typeck is a fuzz
+/// target).
+fn walk_expr(e: &Expr, f: &mut dyn FnMut(&Expr)) {
+    let mut stack: Vec<&Expr> = vec![e];
+    while let Some(e) = stack.pop() {
+        f(e);
+        match &e.kind {
+            ExprKind::Interp(parts) => {
+                for p in parts {
+                    if let StrPart::Hole(h) = p {
+                        stack.push(h);
+                    }
+                }
+            }
+            ExprKind::Tagged { holes, .. } => stack.extend(holes.iter()),
+            ExprKind::Call { callee, args } => {
+                stack.push(callee);
+                stack.extend(args.iter().map(|a| &a.value));
+            }
+            ExprKind::MethodCall { receiver, args, .. } => {
+                stack.push(receiver);
+                stack.extend(args.iter().map(|a| &a.value));
+            }
+            ExprKind::Field { base, .. } | ExprKind::TupleField { base, .. } => stack.push(base),
+            ExprKind::Index { base, index } => {
+                stack.push(base);
+                stack.push(index);
+            }
+            ExprKind::Unary { operand, .. } => stack.push(operand),
+            ExprKind::Binary { lhs, rhs, .. } => {
+                stack.push(lhs);
+                stack.push(rhs);
+            }
+            ExprKind::Range { lo, hi, .. } => {
+                stack.push(lo);
+                stack.push(hi);
+            }
+            ExprKind::Tuple(xs) | ExprKind::List(xs) => stack.extend(xs.iter()),
+            ExprKind::Map(pairs) => {
+                for (k, v) in pairs {
+                    stack.push(k);
+                    stack.push(v);
+                }
+            }
+            ExprKind::Try(x) => stack.push(x),
+            ExprKind::Lambda { body, .. } => stack.push(body),
+            ExprKind::If { branches, .. } => stack.extend(branches.iter().map(|b| &b.cond)),
+            ExprKind::Match { scrutinee, .. } => stack.push(scrutinee),
+            _ => {}
+        }
+    }
+}
+
 /// Lowers written type syntax. Aliases are expanded here (`type UserId = Int` is the same
 /// type as `Int`, §9.4).
 fn lower_type(
-    prog: &dyn ResolvedProgram,
+    prog: &HirProgram,
     adts: &HashMap<DefId, AdtDef>,
     errors: &mut Vec<TypeError>,
     file: FileId,
     t: &hir::Type,
     l: &mut Lower,
 ) -> Ty {
+    lower_type_depth(prog, adts, errors, file, t, l, 0)
+}
+
+fn lower_type_depth(
+    prog: &HirProgram,
+    adts: &HashMap<DefId, AdtDef>,
+    errors: &mut Vec<TypeError>,
+    file: FileId,
+    t: &hir::Type,
+    l: &mut Lower,
+    depth: u32,
+) -> Ty {
+    // An alias chain deeper than this is a cycle resolve did not catch: poison it.
+    if depth > 64 {
+        return Ty::Error;
+    }
     let top = l.pos;
     let mut nested = |t: &hir::Type, l: &mut Lower| {
         let saved = l.pos;
         l.pos = Pos::Data;
-        let ty = lower_type(prog, adts, errors, file, t, l);
+        let ty = lower_type_depth(prog, adts, errors, file, t, l, depth + 1);
         l.pos = saved;
         ty
     };
     let arity_error = |errors: &mut Vec<TypeError>, want: usize, got: usize| {
-        errors.push(TypeError {
-            kind: TypeErrorKind::BadArguments {
+        errors.push(TypeError::new(
+            TypeErrorKind::BadArguments {
                 detail: format!("expected {want} type argument(s), found {got}"),
             },
             file,
-            span: t.span,
-        });
+            t.span,
+        ));
         Ty::Error
     };
     match &t.kind {
@@ -587,45 +904,16 @@ fn lower_type(
         }
         TypeKind::Builtin(b, args) => {
             let args: Vec<Ty> = args.iter().map(|t| nested(t, l)).collect();
-            let want = match b {
-                BuiltinType::List
-                | BuiltinType::Set
-                | BuiltinType::Option
-                | BuiltinType::Range
-                | BuiltinType::Secret => 1,
-                BuiltinType::Map | BuiltinType::Result => 2,
-                _ => 0,
-            };
+            let want = builtin_arity(*b);
             if args.len() != want {
                 return arity_error(errors, want, args.len());
             }
-            let a = |i: usize| Box::new(args[i].clone());
-            match b {
-                BuiltinType::Int => Ty::Int,
-                BuiltinType::BigInt => Ty::BigInt,
-                BuiltinType::Float => Ty::Float,
-                BuiltinType::Decimal => Ty::Decimal,
-                BuiltinType::Bool => Ty::Bool,
-                BuiltinType::String => Ty::String,
-                BuiltinType::Bytes => Ty::Bytes,
-                BuiltinType::Never => Ty::Never,
-                BuiltinType::AnyError => Ty::AnyError,
-                BuiltinType::JsValue => Ty::JsValue,
-                BuiltinType::Capability(c) => Ty::Capability(*c),
-                BuiltinType::Sink(s) => Ty::Sink(*s),
-                BuiltinType::List => Ty::List(a(0)),
-                BuiltinType::Set => Ty::Set(a(0)),
-                BuiltinType::Option => Ty::Option(a(0)),
-                BuiltinType::Range => Ty::Range(a(0)),
-                BuiltinType::Secret => Ty::Secret(a(0)),
-                BuiltinType::Map => Ty::Map(a(0), a(1)),
-                BuiltinType::Result => Ty::Result(a(0), a(1)),
-            }
+            builtin_ty(*b, args)
         }
         TypeKind::Def(d, args) => {
             let args: Vec<Ty> = args.iter().map(|t| nested(t, l)).collect();
             if let Some(adt) = adts.get(d) {
-                if adt.generics.len() != args.len() && !adt.generics.is_empty() {
+                if adt.generics.len() != args.len() {
                     return arity_error(errors, adt.generics.len(), args.len());
                 }
                 return Ty::Adt(*d, args);
@@ -635,14 +923,50 @@ fn lower_type(
                     if a.generics.len() != args.len() {
                         return arity_error(errors, a.generics.len(), args.len());
                     }
-                    // Alias targets are data positions; a cycle (`type A = A`) is resolve's
-                    // error, so depth is bounded by the alias chain.
                     let target = nested(&a.target, l);
                     target.subst(&args)
                 }
                 _ => Ty::Error,
             }
         }
+    }
+}
+
+fn builtin_arity(b: BuiltinType) -> usize {
+    match b {
+        BuiltinType::List
+        | BuiltinType::Set
+        | BuiltinType::Option
+        | BuiltinType::Range
+        | BuiltinType::Secret => 1,
+        BuiltinType::Map | BuiltinType::Result => 2,
+        _ => 0,
+    }
+}
+
+/// The type a built-in constructor builds from `args` (which must have its arity).
+fn builtin_ty(b: BuiltinType, args: Vec<Ty>) -> Ty {
+    let a = |i: usize| Box::new(args.get(i).cloned().unwrap_or(Ty::Error));
+    match b {
+        BuiltinType::Int => Ty::Int,
+        BuiltinType::BigInt => Ty::BigInt,
+        BuiltinType::Float => Ty::Float,
+        BuiltinType::Decimal => Ty::Decimal,
+        BuiltinType::Bool => Ty::Bool,
+        BuiltinType::String => Ty::String,
+        BuiltinType::Bytes => Ty::Bytes,
+        BuiltinType::Never => Ty::Never,
+        BuiltinType::AnyError => Ty::AnyError,
+        BuiltinType::JsValue => Ty::JsValue,
+        BuiltinType::Capability(c) => Ty::Capability(c),
+        BuiltinType::Sink(s) => Ty::Sink(s),
+        BuiltinType::List => Ty::List(a(0)),
+        BuiltinType::Set => Ty::Set(a(0)),
+        BuiltinType::Option => Ty::Option(a(0)),
+        BuiltinType::Range => Ty::Range(a(0)),
+        BuiltinType::Secret => Ty::Secret(a(0)),
+        BuiltinType::Map => Ty::Map(a(0), a(1)),
+        BuiltinType::Result => Ty::Result(a(0), a(1)),
     }
 }
 
@@ -657,6 +981,8 @@ struct BodyOut {
     insts: Vec<(ExprId, Vec<Ty>)>,
     methods: Vec<(ExprId, DefId)>,
     variants: Vec<(ExprId, DefId)>,
+    tries: Vec<(ExprId, TryConversion)>,
+    tagged: Vec<TaggedLiteral>,
     flows: Vec<SuspFlow>,
     errors: Vec<TypeError>,
 }
@@ -677,14 +1003,29 @@ struct Obligation {
     origin: Origin,
 }
 
+/// A piece of a `"…" + x + "…"` chain (K1601's fix).
+enum Piece {
+    /// A plain one-line string literal: its text between the quotes.
+    Lit(String),
+    /// Any other operand: its source text stays where it is.
+    Hole(Span),
+}
+
 struct BodyCx<'c, 'p> {
     cx: &'c Collector<'p>,
+    owner: DefId,
     file: FileId,
+    module: ModulePath,
     generics: Vec<GenericParam>,
-    ret: Ty,
+    /// Return types of the function, local `fn` or lambda being checked (innermost last).
+    rets: Vec<Ty>,
     infer: InferCtx,
     locals: HashMap<LocalId, Ty>,
-    mutable: Vec<bool>,
+    decls: Vec<hir::LocalDecl>,
+    /// Closures being checked, innermost last (0 is the item's own body).
+    closures: Vec<u32>,
+    /// Initializers of `let x = …` with a plain binding (K1601's fix).
+    let_inits: HashMap<LocalId, Expr>,
     out: BodyOut,
     obligations: Vec<Obligation>,
 }
@@ -692,19 +1033,25 @@ struct BodyCx<'c, 'p> {
 impl<'c, 'p> BodyCx<'c, 'p> {
     fn new(
         cx: &'c Collector<'p>,
+        owner: DefId,
         file: FileId,
+        module: ModulePath,
         generics: Vec<GenericParam>,
         ret: Ty,
         locals: &[hir::LocalDecl],
     ) -> BodyCx<'c, 'p> {
         BodyCx {
             cx,
+            owner,
             file,
+            module,
             generics,
-            ret,
+            rets: vec![ret],
             infer: InferCtx::new(),
             locals: HashMap::new(),
-            mutable: locals.iter().map(|l| l.mutable).collect(),
+            decls: locals.to_vec(),
+            closures: vec![0],
+            let_inits: HashMap::new(),
             out: BodyOut::default(),
             obligations: Vec::new(),
         }
@@ -714,12 +1061,18 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         &self.cx.res
     }
 
+    fn prog(&self) -> &'p HirProgram {
+        self.cx.prog
+    }
+
     fn err(&mut self, span: Span, kind: TypeErrorKind) {
-        self.out.errors.push(TypeError {
-            kind,
-            file: self.file,
-            span,
-        });
+        self.out.errors.push(TypeError::new(kind, self.file, span));
+    }
+
+    fn err_fix(&mut self, span: Span, kind: TypeErrorKind, fixes: Vec<Fix>) {
+        let mut e = TypeError::new(kind, self.file, span);
+        e.fixes = fixes;
+        self.out.errors.push(e);
     }
 
     fn record(&mut self, e: &Expr, ty: Ty) -> Ty {
@@ -731,6 +1084,10 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         self.infer.resolve(t)
     }
 
+    fn ret(&self) -> Ty {
+        self.rets.last().cloned().unwrap_or(Ty::Unit)
+    }
+
     /// Solves the deferred obligations and zonks every recorded type. Variables nobody
     /// constrained become `Error` (they can only come from already-reported errors or from
     /// values that are never used, such as an unused `None`).
@@ -738,9 +1095,12 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         let obligations = std::mem::take(&mut self.obligations);
         for o in obligations {
             let ty = self.resolve(&o.ty);
-            let answer = self.answer(&ty, &o.tr);
-            if answer == Answer::No {
-                self.trait_error(&ty, &o.tr, o.span, o.origin);
+            let tr = TraitRef {
+                id: o.tr.id,
+                args: o.tr.args.iter().map(|t| self.infer.resolve(t)).collect(),
+            };
+            if self.answer(&ty, &tr) == Answer::No {
+                self.trait_error(&ty, &tr, o.span, o.origin);
             }
         }
         let mut out = std::mem::take(&mut self.out);
@@ -760,6 +1120,11 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         for (_, ts) in out.insts.iter_mut() {
             for t in ts.iter_mut() {
                 *t = zonk(t, &mut self.infer);
+            }
+        }
+        for t in out.tagged.iter_mut() {
+            for (_, ty) in t.holes.iter_mut() {
+                *ty = zonk(ty, &mut self.infer);
             }
         }
         out.flows = std::mem::take(&mut self.infer.flows);
@@ -790,6 +1155,10 @@ impl<'c, 'p> BodyCx<'c, 'p> {
     /// Requires `ty: tr` now, or at the end of the body if `ty` is still unknown.
     fn require(&mut self, ty: &Ty, tr: TraitRef, span: Span, origin: Origin) {
         let ty = self.resolve(ty);
+        let tr = TraitRef {
+            id: tr.id,
+            args: tr.args.iter().map(|t| self.infer.resolve(t)).collect(),
+        };
         match self.answer(&ty, &tr) {
             Answer::Yes => {}
             Answer::No => self.trait_error(&ty, &tr, span, origin),
@@ -804,6 +1173,15 @@ impl<'c, 'p> BodyCx<'c, 'p> {
 
     /// `found` flows where `expected` is required. `Never` coerces to anything (§9.1).
     fn coerce(&mut self, found: &Ty, expected: &Ty, span: Span) {
+        self.coerce_at(None, found, expected, span);
+    }
+
+    /// Like [`Self::coerce`], with the expression for the fixes of K0601 and K1601.
+    fn coerce_expr(&mut self, e: &Expr, found: &Ty, expected: &Ty) {
+        self.coerce_at(Some(e), found, expected, e.span);
+    }
+
+    fn coerce_at(&mut self, e: Option<&Expr>, found: &Ty, expected: &Ty, span: Span) {
         if matches!(self.infer.shallow(found), Ty::Never) {
             return;
         }
@@ -816,17 +1194,38 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             }
             Err(UnifyError::Mismatch { .. }) => {
                 let (found, expected) = (self.resolve(found), self.resolve(expected));
-                let kind = if found.is_numeric() && expected.is_numeric() {
-                    TypeErrorKind::MixedNumeric {
-                        left: expected,
-                        right: found,
-                    }
-                } else {
-                    TypeErrorKind::Mismatch { expected, found }
-                };
-                self.err(span, kind);
+                if found.is_numeric() && expected.is_numeric() {
+                    let fixes = e
+                        .and_then(|e| numeric_fix(e, &found, &expected))
+                        .into_iter()
+                        .collect();
+                    self.err_fix(
+                        span,
+                        TypeErrorKind::MixedNumeric {
+                            left: expected,
+                            right: found,
+                        },
+                        fixes,
+                    );
+                    return;
+                }
+                let mut fixes = Vec::new();
+                if let (Ty::Sink(s), Ty::String, Some(e)) = (&expected, &found, e) {
+                    fixes.extend(self.sink_fix(e, *s));
+                }
+                self.err_fix(span, TypeErrorKind::Mismatch { expected, found }, fixes);
             }
         }
+    }
+
+    /// A keyword as this file spells it (for fixes that insert one).
+    fn keyword(&self, c: kalam_skins::Concept) -> Option<String> {
+        let skin = self.prog().skins.get(&self.file).copied()?;
+        Some(
+            kalam_skins::KeywordTable::builtin()
+                .spelling(c, skin)
+                .to_string(),
+        )
     }
 
     fn lower_local_type(&mut self, t: &hir::Type) -> Ty {
@@ -847,15 +1246,139 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         )
     }
 
+    /// Lowers the type of `Type.f`: a generic type written without arguments gets fresh
+    /// variables for them.
+    fn head_type(&mut self, t: &hir::Type) -> Ty {
+        match &t.kind {
+            TypeKind::Builtin(b, args) if args.is_empty() && builtin_arity(*b) > 0 => {
+                let fresh: Vec<Ty> = (0..builtin_arity(*b)).map(|_| self.infer.fresh()).collect();
+                builtin_ty(*b, fresh)
+            }
+            TypeKind::Def(d, args) if args.is_empty() => {
+                match self.res().adts.get(d).map(|a| a.generics.len()) {
+                    Some(n) if n > 0 => {
+                        let fresh = (0..n).map(|_| self.infer.fresh()).collect();
+                        Ty::Adt(*d, fresh)
+                    }
+                    _ => self.lower_local_type(t),
+                }
+            }
+            _ => self.lower_local_type(t),
+        }
+    }
+
+    /// The members of `ty` are fully known, so a missing one is K0420 (built-in types need
+    /// the stdlib stubs).
+    fn members_known(&self, ty: &Ty) -> bool {
+        match ty {
+            Ty::Adt(d, _) => self.res().adts.contains_key(d) || self.prog().api_complete,
+            Ty::Error | Ty::Var(_) | Ty::Never => false,
+            _ => self.prog().api_complete,
+        }
+    }
+
+    fn unknown_member(&mut self, span: Span, ty: Ty, name: &str) {
+        if self.members_known(&ty) {
+            self.err(
+                span,
+                TypeErrorKind::UnknownMember {
+                    ty,
+                    name: name.into(),
+                },
+            );
+        }
+    }
+
+    /// K0418 when an `export opaque` type's internals are used outside its module.
+    fn check_private(&mut self, adt: DefId, span: Span, name: &str) {
+        let private = self
+            .res()
+            .adts
+            .get(&adt)
+            .filter(|a| a.opaque && a.module != self.module)
+            .map(|a| a.module.0.clone());
+        if let Some(module) = private {
+            self.err(
+                span,
+                TypeErrorKind::PrivateMember {
+                    name: name.into(),
+                    module,
+                },
+            );
+        }
+    }
+
+    // -- bodies -------------------------------------------------------------------------
+
+    fn fn_body(&mut self, value: &BodyValue, ret: &Ty) {
+        match value {
+            BodyValue::Expr(e) => {
+                self.check(e, ret);
+            }
+            BodyValue::Block(block) => {
+                let resolved = self.resolve(ret);
+                let needs_return = !matches!(resolved, Ty::Unit | Ty::Error);
+                // §12.1 (DR-08): a final expression is a missing `return`, not an unused
+                // value; the fix inserts `return` before it when its type fits.
+                let tail = match block.stmts.split_last() {
+                    Some((last, init)) if needs_return => match &last.kind {
+                        StmtKind::Expr(e)
+                            if !matches!(e.kind, ExprKind::If { .. } | ExprKind::Match { .. }) =>
+                        {
+                            Some((e, init))
+                        }
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                let Some((e, init)) = tail else {
+                    self.check_stmts(block);
+                    if needs_return && !self.block_diverges(block) {
+                        self.err(block.span, TypeErrorKind::MissingReturn);
+                    }
+                    return;
+                };
+                for s in init {
+                    self.stmt(s);
+                }
+                let t = self.synth(e);
+                let diverges = init.iter().any(|s| self.stmt_diverges(s))
+                    || matches!(self.infer.shallow(&t), Ty::Never);
+                if !diverges {
+                    let fits = self.infer.try_unify(&t, ret);
+                    let fixes = if fits {
+                        self.keyword(kalam_skins::Concept::KwReturn)
+                            .map(|kw| {
+                                Fix::machine(
+                                    "return the final value",
+                                    Span::new(e.span.start, e.span.start),
+                                    format!("{kw} "),
+                                )
+                            })
+                            .into_iter()
+                            .collect()
+                    } else {
+                        Vec::new()
+                    };
+                    self.err_fix(e.span, TypeErrorKind::MissingReturn, fixes);
+                }
+            }
+        }
+    }
+
     // -- expressions --------------------------------------------------------------------
 
     /// Checks `e` against `expected` and returns the type recorded for `e`.
     fn check(&mut self, e: &Expr, expected: &Ty) -> Ty {
+        kalam_ast::stack::deeper(|| self.check_inner(e, expected))
+    }
+
+    fn check_inner(&mut self, e: &Expr, expected: &Ty) -> Ty {
         let exp = self.infer.shallow(expected);
         match &e.kind {
             ExprKind::Int(v) => {
                 let t = self.int_literal(*v, false, &exp, e.span);
-                self.coerce(&t, &exp, e.span);
+                self.coerce_expr(e, &t, &exp);
                 self.record(e, t)
             }
             ExprKind::Float(_) => {
@@ -864,20 +1387,16 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 } else {
                     Ty::Float
                 };
-                self.coerce(&t, &exp, e.span);
+                self.coerce_expr(e, &t, &exp);
                 self.record(e, t)
             }
             ExprKind::Unary {
                 op: UnOp::Neg,
                 operand,
-            } if matches!(operand.kind, ExprKind::Int(_)) => {
-                let ExprKind::Int(v) = operand.kind else {
-                    unreachable!()
-                };
-                let t = self.int_literal(v, true, &exp, e.span);
-                self.record(operand, t.clone());
-                self.coerce(&t, &exp, e.span);
-                self.record(e, t)
+            } if matches!(operand.kind, ExprKind::Int(_) | ExprKind::Float(_)) => {
+                let t = self.literal_operand(e, &exp);
+                self.coerce_expr(e, &t, &exp);
+                t
             }
             ExprKind::List(items) => match &exp {
                 Ty::List(elem) => {
@@ -889,7 +1408,22 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 }
                 _ => {
                     let t = self.synth(e);
-                    self.coerce(&t, &exp, e.span);
+                    self.coerce_expr(e, &t, &exp);
+                    t
+                }
+            },
+            ExprKind::Map(pairs) => match &exp {
+                Ty::Map(k, v) => {
+                    let (k, v) = ((**k).clone(), (**v).clone());
+                    for (ke, ve) in pairs {
+                        self.check(ke, &k);
+                        self.check(ve, &v);
+                    }
+                    self.record(e, exp.clone())
+                }
+                _ => {
+                    let t = self.synth(e);
+                    self.coerce_expr(e, &t, &exp);
                     t
                 }
             },
@@ -903,18 +1437,32 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 }
                 _ => {
                     let t = self.synth(e);
-                    self.coerce(&t, &exp, e.span);
+                    self.coerce_expr(e, &t, &exp);
                     t
                 }
             },
             ExprKind::ImplicitMember(name) => {
                 let t = self.variant_value(e, None, name, &[], Some(&exp));
-                self.coerce(&t, &exp, e.span);
+                self.coerce_expr(e, &t, &exp);
                 self.record(e, t)
             }
             ExprKind::Call { callee, args } => {
                 let t = self.call(e, callee, args, Some(&exp));
-                self.coerce(&t, &exp, e.span);
+                self.coerce_expr(e, &t, &exp);
+                self.record(e, t)
+            }
+            ExprKind::MethodCall {
+                receiver,
+                name,
+                args,
+            } => {
+                let t = self.method_call(e, receiver, name, args, Some(&exp));
+                self.coerce_expr(e, &t, &exp);
+                self.record(e, t)
+            }
+            ExprKind::Try(inner) => {
+                let t = self.try_expr(e, inner, Some(&exp));
+                self.coerce_expr(e, &t, &exp);
                 self.record(e, t)
             }
             ExprKind::If {
@@ -928,14 +1476,25 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 let t = self.match_expr(e, scrutinee, arms, Some(&exp), true);
                 self.record(e, t)
             }
-            ExprKind::Lambda { params, body } => {
-                let t = self.lambda(e, params, body, Some(&exp));
-                self.coerce(&t, &exp, e.span);
+            ExprKind::Lambda {
+                params,
+                ret,
+                body,
+                closure,
+            } => {
+                let t = self.lambda(e, params, ret.as_ref(), body, *closure, Some(&exp));
+                self.coerce_expr(e, &t, &exp);
                 self.record(e, t)
+            }
+            ExprKind::Binary { op, lhs, rhs } if op.is_arithmetic() => {
+                let t = self.binary(e, *op, lhs, rhs, Some(&exp));
+                let t = self.record(e, t);
+                self.coerce_expr(e, &t, &exp);
+                t
             }
             _ => {
                 let t = self.synth(e);
-                self.coerce(&t, &exp, e.span);
+                self.coerce_expr(e, &t, &exp);
                 t
             }
         }
@@ -943,8 +1502,12 @@ impl<'c, 'p> BodyCx<'c, 'p> {
 
     /// Infers the type of `e` with no expectation.
     fn synth(&mut self, e: &Expr) -> Ty {
+        kalam_ast::stack::deeper(|| self.synth_inner(e))
+    }
+
+    fn synth_inner(&mut self, e: &Expr) -> Ty {
         let t = match &e.kind {
-            ExprKind::Error => Ty::Error,
+            ExprKind::Error | ExprKind::Unsafe(_) | ExprKind::TypeName(_) => Ty::Error,
             ExprKind::Int(v) => self.int_literal(*v, false, &Ty::Int, e.span),
             ExprKind::Float(_) => Ty::Float,
             ExprKind::Str(_) => Ty::String,
@@ -964,15 +1527,8 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 }
                 Ty::String
             }
-            ExprKind::Tagged { tag, holes, .. } => {
-                // Hole requirements come from `kalam-sinks::check_template` (Phase 1 there);
-                // until then holes are only type-checked.
-                for h in holes {
-                    self.synth(h);
-                }
-                Ty::Sink(SinkType::of_tag(*tag))
-            }
-            ExprKind::Local(l) => self.locals.get(l).cloned().unwrap_or(Ty::Error),
+            ExprKind::Tagged { tag, parts, holes } => self.tagged(e, *tag, parts, holes),
+            ExprKind::Local(l) => self.local_use(*l, e.span),
             ExprKind::Def(d) => self.def_value(e, *d),
             ExprKind::Lang(item) => self.lang_value(*item),
             ExprKind::ImplicitMember(name) => {
@@ -982,18 +1538,22 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 );
                 Ty::Error
             }
+            ExprKind::AssocFn { ty, name } => match self.assoc_fn(e, ty, name) {
+                Some((method, self_ty)) => self.method_value(e, method, self_ty.as_ref()),
+                None => Ty::Error,
+            },
             ExprKind::Call { callee, args } => self.call(e, callee, args, None),
             ExprKind::MethodCall {
                 receiver,
                 name,
                 args,
-            } => self.method_call(e, receiver, name, args),
-            ExprKind::Field { base, name } => self.field(base, name, e.span),
+            } => self.method_call(e, receiver, name, args, None),
+            ExprKind::Field { base, name } => self.field(e, base, name),
             ExprKind::TupleField { base, index } => {
                 let bt = self.synth(base);
                 match self.resolve(&bt) {
                     Ty::Tuple(ts) if (*index as usize) < ts.len() => ts[*index as usize].clone(),
-                    Ty::Error => Ty::Error,
+                    Ty::Error | Ty::Var(_) => Ty::Error,
                     other => {
                         self.err(
                             e.span,
@@ -1018,22 +1578,19 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 op: UnOp::Neg,
                 operand,
             } => {
-                if let ExprKind::Int(v) = operand.kind {
-                    let t = self.int_literal(v, true, &Ty::Int, e.span);
-                    self.record(operand, t.clone());
-                    t
+                if matches!(operand.kind, ExprKind::Int(_) | ExprKind::Float(_)) {
+                    return self.literal_operand(e, &Ty::Int);
+                }
+                let t = self.synth(operand);
+                let r = self.resolve(&t);
+                if !(r.is_numeric() || matches!(r, Ty::Error | Ty::Var(_))) {
+                    self.err(e.span, TypeErrorKind::NoOperator { op: "-", ty: r });
+                    Ty::Error
                 } else {
-                    let t = self.synth(operand);
-                    let r = self.resolve(&t);
-                    if !(r.is_numeric() || matches!(r, Ty::Error | Ty::Var(_))) {
-                        self.err(e.span, TypeErrorKind::NoOperator { op: "-", ty: r });
-                        Ty::Error
-                    } else {
-                        t
-                    }
+                    t
                 }
             }
-            ExprKind::Binary { op, lhs, rhs } => self.binary(*op, lhs, rhs, e.span),
+            ExprKind::Binary { op, lhs, rhs } => self.binary(e, *op, lhs, rhs, None),
             ExprKind::Range { lo, hi, .. } => {
                 self.check(lo, &Ty::Int);
                 self.check(hi, &Ty::Int);
@@ -1053,14 +1610,47 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                     Ty::list(t)
                 }
             },
+            ExprKind::Map(pairs) => match pairs.split_first() {
+                None => {
+                    self.err(e.span, TypeErrorKind::EmptyCollectionNeedsType);
+                    Ty::Map(Box::new(Ty::Error), Box::new(Ty::Error))
+                }
+                Some(((k0, v0), rest)) => {
+                    let k = self.synth(k0);
+                    let v = self.synth(v0);
+                    for (ke, ve) in rest {
+                        self.check(ke, &k);
+                        self.check(ve, &v);
+                    }
+                    Ty::Map(Box::new(k), Box::new(v))
+                }
+            },
+            ExprKind::Try(inner) => self.try_expr(e, inner, None),
             ExprKind::If {
                 branches,
                 else_body,
             } => self.if_value(e, branches, else_body.as_ref(), None),
             ExprKind::Match { scrutinee, arms } => self.match_expr(e, scrutinee, arms, None, true),
-            ExprKind::Lambda { params, body } => self.lambda(e, params, body, None),
+            ExprKind::Lambda {
+                params,
+                ret,
+                body,
+                closure,
+            } => self.lambda(e, params, ret.as_ref(), body, *closure, None),
         };
         self.record(e, t)
+    }
+
+    /// A use of a local: K1110 when a closure uses a `var` of an enclosing scope (§12.3).
+    fn local_use(&mut self, l: LocalId, span: Span) -> Ty {
+        if let Some(decl) = self.decls.get(l.0 as usize) {
+            let here = self.closures.last().copied().unwrap_or(0);
+            if decl.mutable && decl.closure != here {
+                let name = decl.name.clone();
+                self.err(span, TypeErrorKind::CapturesVar { name });
+            }
+        }
+        self.locals.get(&l).cloned().unwrap_or(Ty::Error)
     }
 
     /// Spec §5.6: an integer literal is `Int` unless the expected type is `Float`,
@@ -1078,18 +1668,60 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 (1u128 << 63) - 1
             };
             if value.map_or(true, |v| v > limit) {
-                self.err(span, TypeErrorKind::LiteralOutOfRange { ty: Ty::Int });
+                let digits = value.map_or_else(|| "…".to_string(), |v| v.to_string());
+                let literal = if negative {
+                    format!("-{digits}")
+                } else {
+                    digits
+                };
+                self.err(
+                    span,
+                    TypeErrorKind::LiteralOutOfRange {
+                        literal,
+                        ty: Ty::Int,
+                    },
+                );
             }
         }
         t
     }
 
+    /// A numeric literal (or a negated one) typed from `hint` without coercion; both the
+    /// literal and the negation are recorded.
+    fn literal_operand(&mut self, e: &Expr, hint: &Ty) -> Ty {
+        let hint = self.resolve(hint);
+        match &e.kind {
+            ExprKind::Int(v) => {
+                let t = self.int_literal(*v, false, &hint, e.span);
+                self.record(e, t)
+            }
+            ExprKind::Float(_) => {
+                let t = if hint == Ty::Decimal {
+                    Ty::Decimal
+                } else {
+                    Ty::Float
+                };
+                self.record(e, t)
+            }
+            ExprKind::Unary {
+                op: UnOp::Neg,
+                operand,
+            } => {
+                let t = match &operand.kind {
+                    ExprKind::Int(v) => self.int_literal(*v, true, &hint, e.span),
+                    ExprKind::Float(_) if hint == Ty::Decimal => Ty::Decimal,
+                    _ => Ty::Float,
+                };
+                self.record(operand, t.clone());
+                self.record(e, t)
+            }
+            _ => self.synth(e),
+        }
+    }
+
     fn def_value(&mut self, e: &Expr, d: DefId) -> Ty {
-        if let Some(scheme) = self.res().signatures.get(&d).cloned() {
-            let (ty, args) = self.infer.instantiate(&scheme);
-            self.require_bounds(&scheme, &args, e.span);
-            self.out.insts.push((e.id, args));
-            return ty;
+        if self.res().signatures.contains_key(&d) {
+            return self.method_value(e, d, None);
         }
         if let Some(t) = self.res().consts.get(&d) {
             return t.clone();
@@ -1097,11 +1729,29 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         if let Some((adt, idx)) = self.variant_owner(d) {
             let name = match &self.res().adts[&adt].kind {
                 AdtKind::Enum(vs) => vs[idx].name.clone(),
-                AdtKind::Record(_) => String::new(),
+                _ => String::new(),
             };
             return self.variant_value(e, Some(adt), &name, &[], None);
         }
         Ty::Error
+    }
+
+    /// The instantiated type of a function or method used as a value (or called).
+    /// `self_ty`, for `Type.f`, is unified with the impl's self type.
+    fn method_value(&mut self, e: &Expr, d: DefId, self_ty: Option<&Ty>) -> Ty {
+        let Some(scheme) = self.res().signatures.get(&d).cloned() else {
+            return Ty::Error;
+        };
+        let (ty, args) = self.infer.instantiate(&scheme);
+        if let Some(st) = self_ty {
+            if let Some(&i) = self.cx.method_impl.get(&d) {
+                let imp_self = self.res().traits.impls[i].self_ty.subst(&args);
+                let _ = self.infer.try_unify(&imp_self, st);
+            }
+        }
+        self.require_bounds(&scheme, &args, e.span);
+        self.out.insts.push((e.id, args));
+        ty
     }
 
     fn require_bounds(&mut self, scheme: &Scheme, args: &[Ty], span: Span) {
@@ -1149,6 +1799,8 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         }
     }
 
+    // -- calls ----------------------------------------------------------------------------
+
     fn call(&mut self, e: &Expr, callee: &Expr, args: &[Arg], exp: Option<&Ty>) -> Ty {
         let exp = exp.map(|t| self.infer.shallow(t));
         match &callee.kind {
@@ -1158,41 +1810,57 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 self.record(callee, t.clone());
                 t
             }
-            ExprKind::Def(d) if self.res().adts.contains_key(d) => {
+            ExprKind::Def(d)
+                if matches!(
+                    self.res().adts.get(d).map(|a| &a.kind),
+                    Some(AdtKind::Record(_))
+                ) =>
+            {
                 let t = self.construct_record(e, *d, args, exp.as_ref());
                 self.record(callee, t.clone());
                 t
             }
             ExprKind::Def(d) if self.variant_owner(*d).is_some() => {
-                let (adt, idx) = self.variant_owner(*d).expect("checked");
+                let Some((adt, idx)) = self.variant_owner(*d) else {
+                    return Ty::Error;
+                };
                 let name = match &self.res().adts[&adt].kind {
                     AdtKind::Enum(vs) => vs[idx].name.clone(),
-                    AdtKind::Record(_) => String::new(),
+                    _ => String::new(),
                 };
                 let t = self.variant_value(e, Some(adt), &name, args, exp.as_ref());
                 self.record(callee, t.clone());
                 t
             }
             ExprKind::Def(d) if self.res().signatures.contains_key(d) => {
-                let ft = self.synth(callee);
-                let Ty::Fn { params, ret, .. } = ft else {
-                    return Ty::Error;
-                };
-                // Return-type inference from the expected type (§9.9 rule 5).
-                if let Some(x) = &exp {
-                    let _ = self.infer.try_unify(&ret, x);
-                }
-                let decl = match self.cx.prog.item(*d).map(|i| &i.kind) {
-                    Some(ItemKind::Fn(f)) => f
-                        .params
-                        .iter()
-                        .map(|p| (p.name.clone(), p.default.is_some()))
-                        .collect::<Vec<_>>(),
-                    _ => Vec::new(),
-                };
-                self.args_by_name(e.span, &decl, &params, args);
-                *ret
+                self.fn_call(e, callee, *d, None, args, exp.as_ref())
             }
+            // K0922 (§21.3, DR-25): `f[T](x)` writes type arguments at a call site; they
+            // come from inference or the expected type. The call is checked without them.
+            ExprKind::Index { base, index } if self.is_type_expr(index) => {
+                let fix = Fix::machine(
+                    "remove the type arguments",
+                    Span::new(base.span.end, callee.span.end),
+                    "",
+                );
+                self.err_fix(callee.span, TypeErrorKind::ExplicitTypeArgs, vec![fix]);
+                self.record(callee, Ty::Error);
+                let t = self.call(e, base, args, exp.as_ref());
+                self.record(e, t.clone());
+                t
+            }
+            ExprKind::AssocFn { ty, name } => match self.assoc_fn(callee, ty, name) {
+                Some((method, self_ty)) => {
+                    self.fn_call(e, callee, method, self_ty.as_ref(), args, exp.as_ref())
+                }
+                None => {
+                    self.record(callee, Ty::Error);
+                    for a in args {
+                        self.synth(&a.value);
+                    }
+                    Ty::Error
+                }
+            },
             _ => {
                 let ft = self.synth(callee);
                 match self.infer.shallow(&ft) {
@@ -1205,6 +1873,9 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                         }
                         for (a, p) in args.iter().zip(&params) {
                             self.check(&a.value, p);
+                        }
+                        for a in args.iter().skip(params.len()) {
+                            self.synth(&a.value);
                         }
                         *ret
                     }
@@ -1224,10 +1895,125 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                     }
                     other => {
                         self.err(callee.span, TypeErrorKind::NotCallable { ty: other });
+                        for a in args {
+                            self.synth(&a.value);
+                        }
                         Ty::Error
                     }
                 }
             }
+        }
+    }
+
+    /// A written type in value position: a type name, a record name, or a tuple of them
+    /// (`f[Int, String]`).
+    fn is_type_expr(&self, e: &Expr) -> bool {
+        let mut stack: Vec<&Expr> = vec![e];
+        while let Some(e) = stack.pop() {
+            match &e.kind {
+                ExprKind::TypeName(_) => {}
+                ExprKind::Def(d)
+                    if matches!(
+                        self.res().adts.get(d).map(|a| &a.kind),
+                        Some(AdtKind::Record(_))
+                    ) => {}
+                ExprKind::Tuple(xs) if !xs.is_empty() => stack.extend(xs.iter()),
+                _ => return false,
+            }
+        }
+        true
+    }
+
+    /// A call of a declared function or method by name (`f(…)`, `Type.f(…)`, `Trait.m(x)`).
+    fn fn_call(
+        &mut self,
+        e: &Expr,
+        callee: &Expr,
+        d: DefId,
+        self_ty: Option<&Ty>,
+        args: &[Arg],
+        exp: Option<&Ty>,
+    ) -> Ty {
+        let ft = self.method_value(callee, d, self_ty);
+        self.record(callee, ft.clone());
+        let Ty::Fn { params, ret, .. } = ft else {
+            for a in args {
+                self.synth(&a.value);
+            }
+            return Ty::Error;
+        };
+        // Return-type inference from the expected type (§9.9 rule 5).
+        if let Some(x) = exp {
+            let _ = self.infer.try_unify(&ret, x);
+        }
+        let decl = self.param_decls(d, 0);
+        self.check_labels(e.span, d, 0, args);
+        self.args_by_name(e.span, &decl, &params, args);
+        *ret
+    }
+
+    /// `(name, has default)` of each declared parameter of `d`, from `skip` on.
+    fn param_decls(&self, d: DefId, skip: usize) -> Vec<(String, bool)> {
+        match self.prog().item(d).map(|i| &i.kind) {
+            Some(ItemKind::Fn(f)) => f
+                .params
+                .iter()
+                .skip(skip)
+                .map(|p| (p.name.clone(), p.default.is_some()))
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    /// K1104 (§12.1): an exported function with two adjacent parameters of one type must
+    /// get at least one of them by name. `skip` is 1 for a method's `self`, which never
+    /// counts.
+    fn check_labels(&mut self, span: Span, d: DefId, skip: usize, args: &[Arg]) {
+        let Some(item) = self.prog().item(d) else {
+            return;
+        };
+        let ItemKind::Fn(f) = &item.kind else {
+            return;
+        };
+        if !item.exported || f.positional {
+            return;
+        }
+        let Some(Ty::Fn { params, .. }) = self.res().signatures.get(&d).map(|s| s.ty.clone())
+        else {
+            return;
+        };
+        let positional = args.iter().take_while(|a| a.label.is_none()).count();
+        for i in skip..params.len().saturating_sub(1) {
+            if params[i] != params[i + 1] {
+                continue;
+            }
+            let second = i + 1 - skip;
+            if second >= positional {
+                continue;
+            }
+            let names = format!(
+                "`{}`, `{}`",
+                f.params.get(i).map_or("", |p| p.name.as_str()),
+                f.params.get(i + 1).map_or("", |p| p.name.as_str())
+            );
+            // Label every positional argument from the second of the pair on, so no
+            // positional argument follows a named one.
+            let edits: Vec<Edit> = (second..positional)
+                .filter_map(|j| {
+                    let name = f.params.get(j + skip)?.name.clone();
+                    Some(Edit {
+                        span: Span::new(args[j].span.start, args[j].span.start),
+                        insert: format!("{name}: "),
+                    })
+                })
+                .collect();
+            let fix = Fix {
+                title: "name the arguments".into(),
+                applicability: Applicability::Machine,
+                edits,
+            };
+            self.err_fix(span, TypeErrorKind::NeedsLabels { names }, vec![fix]);
+            return;
         }
     }
 
@@ -1252,12 +2038,14 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                     if found.is_none() {
                         self.bad_args(a.span, format!("no parameter named `{l}`"));
                     }
-                    found
+                    found.filter(|&f| f < params.len())
                 }
             };
             match slot {
                 Some(s) if slots[s].is_some() => {
                     self.bad_args(a.span, "argument given twice".into());
+                    self.synth(&a.value);
+                    continue;
                 }
                 Some(s) => slots[s] = Some(a),
                 None if a.label.is_none() && !seen_named => {
@@ -1328,12 +2116,18 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 for a in args.iter().take(1) {
                     self.check(&a.value, &Ty::String);
                 }
+                for a in args.iter().skip(1) {
+                    self.synth(&a.value);
+                }
                 Ty::Never
             }
             LangItem::Assert => {
                 arity(self, 2);
                 for (a, t) in args.iter().zip([Ty::Bool, Ty::String]) {
                     self.check(&a.value, &t);
+                }
+                for a in args.iter().skip(2) {
+                    self.synth(&a.value);
                 }
                 Ty::Unit
             }
@@ -1344,6 +2138,9 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                         ty: Ty::option(Ty::Error),
                     },
                 );
+                for a in args {
+                    self.synth(&a.value);
+                }
                 Ty::Error
             }
             LangItem::Some | LangItem::Ok | LangItem::Err => {
@@ -1372,6 +2169,9 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 if let Some(a) = args.first() {
                     self.check(&a.value, &inner);
                 }
+                for a in args.iter().skip(1) {
+                    self.synth(&a.value);
+                }
                 whole
             }
         }
@@ -1379,7 +2179,9 @@ impl<'c, 'p> BodyCx<'c, 'p> {
 
     /// Record construction: named arguments only (K0416); defaulted fields may be omitted.
     fn construct_record(&mut self, e: &Expr, def: DefId, args: &[Arg], exp: Option<&Ty>) -> Ty {
-        let adt = self.res().adts[&def].clone();
+        let Some(adt) = self.res().adts.get(&def).cloned() else {
+            return Ty::Error;
+        };
         let AdtKind::Record(fields) = &adt.kind else {
             // An enum name called like a function.
             self.err(
@@ -1390,6 +2192,7 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             );
             return Ty::Error;
         };
+        self.check_private(def, e.span, &adt.name);
         let targs: Vec<Ty> = adt.generics.iter().map(|_| self.infer.fresh()).collect();
         let ty = Ty::Adt(def, targs.clone());
         if let Some(x) = exp {
@@ -1397,7 +2200,8 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         }
         self.out.insts.push((e.id, targs.clone()));
         if args.iter().any(|a| a.label.is_none()) {
-            self.err(e.span, TypeErrorKind::RecordNeedsNamedArgs);
+            let fixes = record_label_fix(fields, args).into_iter().collect();
+            self.err_fix(e.span, TypeErrorKind::RecordNeedsNamedArgs, fixes);
         }
         let mut given = vec![false; fields.len()];
         for (i, a) in args.iter().enumerate() {
@@ -1433,6 +2237,44 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         ty
     }
 
+    /// `r.with(field: value, …)` (§9.4): a copy with some fields replaced.
+    fn record_update(&mut self, e: &Expr, rt: &Ty, args: &[Arg]) -> Ty {
+        let Ty::Adt(d, targs) = rt else {
+            return Ty::Error;
+        };
+        let Some(adt) = self.res().adts.get(d).cloned() else {
+            return Ty::Error;
+        };
+        let AdtKind::Record(fields) = &adt.kind else {
+            return Ty::Error;
+        };
+        self.check_private(*d, e.span, "with");
+        let mut given = vec![false; fields.len()];
+        for a in args {
+            let Some(l) = &a.label else {
+                self.err(a.span, TypeErrorKind::RecordNeedsNamedArgs);
+                self.synth(&a.value);
+                continue;
+            };
+            match fields.iter().position(|f| &f.name == l) {
+                Some(i) if given[i] => {
+                    self.bad_args(a.span, "field given twice".into());
+                    self.synth(&a.value);
+                }
+                Some(i) => {
+                    given[i] = true;
+                    let ft = fields[i].ty.subst(targs);
+                    self.check(&a.value, &ft);
+                }
+                None => {
+                    self.unknown_member(a.span, rt.clone(), l);
+                    self.synth(&a.value);
+                }
+            }
+        }
+        rt.clone()
+    }
+
     /// A variant value or construction: `.Circle(radius: 2.0)`, `Shape.Empty`. With
     /// `adt = None` the enum comes from the expected type (K0803 without one).
     fn variant_value(
@@ -1447,7 +2289,12 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         let adt = match (adt, &exp) {
             (Some(a), _) => a,
             (None, Some(Ty::Adt(a, _))) if self.res().adts.contains_key(a) => *a,
-            (None, Some(Ty::Error)) => return Ty::Error,
+            (None, Some(Ty::Error)) => {
+                for a in args {
+                    self.synth(&a.value);
+                }
+                return Ty::Error;
+            }
             _ => {
                 self.err(
                     e.span,
@@ -1459,22 +2306,22 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 return Ty::Error;
             }
         };
-        let def = self.res().adts[&adt].clone();
+        let Some(def) = self.res().adts.get(&adt).cloned() else {
+            return Ty::Error;
+        };
         let targs: Vec<Ty> = def.generics.iter().map(|_| self.infer.fresh()).collect();
         let ty = Ty::Adt(adt, targs.clone());
         if let Some(x) = &exp {
             let _ = self.infer.try_unify(&ty, x);
         }
         let Some((_, variant)) = def.variant(name) else {
-            self.err(
-                e.span,
-                TypeErrorKind::UnknownMember {
-                    ty: ty.clone(),
-                    name: name.into(),
-                },
-            );
+            self.unknown_member(e.span, ty.clone(), name);
+            for a in args {
+                self.synth(&a.value);
+            }
             return Ty::Error;
         };
+        self.check_private(adt, e.span, name);
         self.out.variants.push((e.id, variant.def));
         self.out.insts.push((e.id, targs.clone()));
         let fields = variant.fields.clone();
@@ -1510,7 +2357,59 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         ty
     }
 
-    fn method_call(&mut self, e: &Expr, receiver: &Expr, name: &str, args: &[Arg]) -> Ty {
+    // -- methods (DR-27) ------------------------------------------------------------------
+
+    /// The methods named `name` that apply to `ty`: inherent methods, trait methods some
+    /// impl writes out, and the methods of traits `ty` implements by derivation, by a
+    /// built-in fact or by a bound of a generic parameter (DR-27).
+    fn method_candidates(&self, ty: &Ty, name: &str) -> Vec<MethodCandidate> {
+        let res = self.res();
+        let mut out = res.traits.method_candidates(ty, name);
+        let mut traits: Vec<(&TraitId, &TraitDecl)> = res.traits.traits.iter().collect();
+        traits.sort_by_key(|(id, _)| format!("{id:?}"));
+        for (tid, decl) in traits {
+            let Some((_, method)) = decl.methods.iter().find(|(n, _)| n == name) else {
+                continue;
+            };
+            if out.iter().any(|c| c.trait_id == Some(*tid)) || !decl.generics.is_empty() {
+                continue;
+            }
+            let tr = TraitRef {
+                id: *tid,
+                args: Vec::new(),
+            };
+            let applies = match ty {
+                Ty::Param(i) => self
+                    .generics
+                    .get(*i as usize)
+                    .is_some_and(|g| g.bounds.contains(&tr)),
+                _ => {
+                    res.traits
+                        .implements(&res.adts, &self.generics, &erase_vars(ty), &tr)
+                        == Answer::Yes
+                }
+            };
+            if applies {
+                out.push(MethodCandidate {
+                    impl_def: *method,
+                    method: *method,
+                    trait_id: Some(*tid),
+                });
+            }
+        }
+        let mut seen = HashSet::new();
+        out.retain(|c| seen.insert(c.method));
+        out
+    }
+
+    fn method_call(
+        &mut self,
+        e: &Expr,
+        receiver: &Expr,
+        name: &str,
+        args: &[Arg],
+        exp: Option<&Ty>,
+    ) -> Ty {
         let rt = self.synth(receiver);
         let rt = self.resolve(&rt);
         if matches!(rt, Ty::Error | Ty::Var(_)) {
@@ -1519,17 +2418,16 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             }
             return Ty::Error;
         }
-        let candidates = self.res().traits.method_candidates(&rt, name);
+        if name == "with"
+            && matches!(&rt, Ty::Adt(d, _) if matches!(self.res().adts.get(d).map(|a| &a.kind), Some(AdtKind::Record(_))))
+        {
+            return self.record_update(e, &rt, args);
+        }
+        let candidates = self.method_candidates(&rt, name);
         let method = match candidates.as_slice() {
             [one] => one.method,
             [] => {
-                self.err(
-                    e.span,
-                    TypeErrorKind::UnknownMember {
-                        ty: rt,
-                        name: name.into(),
-                    },
-                );
+                self.unknown_member(e.span, rt, name);
                 for a in args {
                     self.synth(&a.value);
                 }
@@ -1544,6 +2442,9 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                         candidates,
                     },
                 );
+                for a in args {
+                    self.synth(&a.value);
+                }
                 return Ty::Error;
             }
         };
@@ -1558,7 +2459,7 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             return Ty::Error;
         };
         let has_self = matches!(
-            self.cx.prog.item(method).map(|i| &i.kind),
+            self.prog().item(method).map(|i| &i.kind),
             Some(ItemKind::Fn(f)) if f.has_self
         );
         if !has_self || params.is_empty() {
@@ -1566,39 +2467,84 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 e.span,
                 format!("`{name}` is not a method; call it on the type"),
             );
+            for a in args {
+                self.synth(&a.value);
+            }
             return *ret;
         }
         self.coerce(&rt, &params[0], receiver.span);
-        let decl = match self.cx.prog.item(method).map(|i| &i.kind) {
-            Some(ItemKind::Fn(f)) => f
-                .params
-                .iter()
-                .skip(1)
-                .map(|p| (p.name.clone(), p.default.is_some()))
-                .collect::<Vec<_>>(),
-            _ => Vec::new(),
-        };
+        if let Some(x) = exp {
+            let x = self.infer.shallow(x);
+            let _ = self.infer.try_unify(&ret, &x);
+        }
+        let decl = self.param_decls(method, 1);
+        self.check_labels(e.span, method, 1, args);
         self.args_by_name(e.span, &decl, &params[1..], args);
         *ret
     }
 
-    fn field(&mut self, base: &Expr, name: &str, span: Span) -> Ty {
-        let bt = self.synth(base);
-        let bt = self.resolve(&bt);
-        if let Ty::Adt(d, targs) = &bt {
-            if let Some((_, f)) = self.res().adts.get(d).and_then(|a| a.field(name)) {
-                return f.ty.subst(targs);
+    /// `Type.name` that resolve left open: an associated function (or a method used as a
+    /// function value) of an inherent or trait impl of the written type. Returns the
+    /// method and the type to unify with the impl's self type.
+    fn assoc_fn(&mut self, e: &Expr, ty: &hir::Type, name: &str) -> Option<(DefId, Option<Ty>)> {
+        let t = self.head_type(ty);
+        let t = self.resolve(&t);
+        if matches!(t, Ty::Error) {
+            return None;
+        }
+        let candidates = self.res().traits.method_candidates(&t, name);
+        match candidates.as_slice() {
+            [one] => {
+                self.out.methods.push((e.id, one.method));
+                Some((one.method, Some(t)))
+            }
+            [] => {
+                self.unknown_member(e.span, t, name);
+                None
+            }
+            many => {
+                let candidates = many.iter().map(|c| c.method).collect();
+                self.err(
+                    e.span,
+                    TypeErrorKind::AmbiguousMethod {
+                        name: name.into(),
+                        candidates,
+                    },
+                );
+                None
             }
         }
-        if !matches!(bt, Ty::Error) {
-            self.err(
-                span,
-                TypeErrorKind::UnknownMember {
-                    ty: bt,
-                    name: name.into(),
-                },
-            );
+    }
+
+    fn field(&mut self, e: &Expr, base: &Expr, name: &str) -> Ty {
+        let bt = self.synth(base);
+        let bt = self.resolve(&bt);
+        let fields_of = |s: &Self, d: &DefId| match s.res().adts.get(d).map(|a| &a.kind) {
+            Some(AdtKind::Record(fs)) => Some(fs.clone()),
+            _ => None,
+        };
+        match &bt {
+            Ty::Adt(d, targs) => {
+                if let Some(fs) = fields_of(self, d) {
+                    if let Some(f) = fs.iter().find(|f| f.name == name) {
+                        self.check_private(*d, e.span, name);
+                        return f.ty.subst(targs);
+                    }
+                }
+            }
+            Ty::Capability(Capability::World) => {
+                if let Some(w) = self.prog().world {
+                    if let Some(f) =
+                        fields_of(self, &w).and_then(|fs| fs.into_iter().find(|f| f.name == name))
+                    {
+                        return f.ty;
+                    }
+                }
+            }
+            Ty::Error | Ty::Var(_) => return Ty::Error,
+            _ => {}
         }
+        self.unknown_member(e.span, bt, name);
         Ty::Error
     }
 
@@ -1618,7 +2564,7 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 self.err(span, TypeErrorKind::StringIndex);
                 Ty::Error
             }
-            Ty::Error => {
+            Ty::Error | Ty::Var(_) => {
                 self.synth(index);
                 Ty::Error
             }
@@ -1636,80 +2582,253 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         }
     }
 
+    // -- tagged literals (§17) -------------------------------------------------------------
+
+    fn tagged(&mut self, e: &Expr, tag: kalam_sinks::Tag, parts: &[String], holes: &[Expr]) -> Ty {
+        let sink = SinkType::of_tag(tag);
+        let mut hole_types = Vec::new();
+        for h in holes {
+            let t = self.synth(h);
+            hole_types.push((h.span, t.clone()));
+            // §17.6: a `path"…"` hole must be a `PathSegment` (K1641). The other tags'
+            // hole types depend on the hole's context in the literal; they are checked
+            // when `kalam-sinks::check_template` classifies them (next iteration).
+            if sink == SinkType::Path {
+                let r = self.resolve(&t);
+                if !matches!(
+                    r,
+                    Ty::Sink(SinkType::PathSegment) | Ty::Error | Ty::Var(_) | Ty::Never
+                ) {
+                    let fix = Fix {
+                        title: "validate the segment with `PathSegment.parse`".into(),
+                        applicability: Applicability::Suggestion,
+                        edits: vec![
+                            Edit {
+                                span: Span::new(h.span.start, h.span.start),
+                                insert: "PathSegment.parse(".into(),
+                            },
+                            Edit {
+                                span: Span::new(h.span.end, h.span.end),
+                                insert: ")?".into(),
+                            },
+                        ],
+                    };
+                    self.err_fix(h.span, TypeErrorKind::PathHole { found: r }, vec![fix]);
+                }
+            }
+        }
+        self.out.tagged.push(TaggedLiteral {
+            owner: self.owner,
+            expr: e.id,
+            file: self.file,
+            tag,
+            parts: parts.to_vec(),
+            holes: hole_types,
+        });
+        Ty::Sink(sink)
+    }
+
+    /// K1601's fix: `"…" + x + "…"` (or a plain literal, or a `let` bound to one and used
+    /// once) becomes `TAG"…{x}…"`, with SQL quotes around a hole dropped (the value is a
+    /// bound parameter, §17.3).
+    fn sink_fix(&self, e: &Expr, sink: SinkType) -> Option<Fix> {
+        let tag = tag_of(sink)?;
+        let (target, via_local) = match &e.kind {
+            ExprKind::Local(l) => {
+                let init = self.let_inits.get(l)?;
+                let once = self.prog().local_uses.get(&(self.owner, *l)) == Some(&1);
+                (init.clone(), Some(once))
+            }
+            _ => (e.clone(), None),
+        };
+        let mut pieces = Vec::new();
+        if !self.concat_pieces(&target, &mut pieces) {
+            return None;
+        }
+        let holes: Vec<usize> = pieces
+            .iter()
+            .enumerate()
+            .filter_map(|(i, p)| matches!(p, Piece::Hole(_)).then_some(i))
+            .collect();
+        let mut texts: Vec<String> = Vec::new();
+        let mut current = String::new();
+        let mut spans: Vec<Span> = Vec::new();
+        for p in &pieces {
+            match p {
+                Piece::Lit(raw) => current.push_str(raw),
+                Piece::Hole(s) => {
+                    texts.push(std::mem::take(&mut current));
+                    spans.push(*s);
+                }
+            }
+        }
+        texts.push(current);
+        if sink == SinkType::Sql {
+            for i in 0..spans.len() {
+                let (before, after) = texts.split_at_mut(i + 1);
+                if before[i].ends_with('\'') && after[0].starts_with('\'') {
+                    before[i].pop();
+                    after[0].remove(0);
+                }
+            }
+        }
+        let start = target.span.start;
+        let end = target.span.end;
+        let edits = if holes.is_empty() {
+            vec![Edit {
+                span: Span::new(start, end),
+                insert: format!("{tag}\"{}\"", texts.concat()),
+            }]
+        } else {
+            let mut edits = Vec::new();
+            let mut from = start;
+            for (i, s) in spans.iter().enumerate() {
+                let open = if i == 0 {
+                    format!("{tag}\"{}{{", texts[0])
+                } else {
+                    format!("}}{}{{", texts[i])
+                };
+                edits.push(Edit {
+                    span: Span::new(from, s.start),
+                    insert: open,
+                });
+                from = s.end;
+            }
+            edits.push(Edit {
+                span: Span::new(from, end),
+                insert: format!("}}{}\"", texts[spans.len()]),
+            });
+            edits
+        };
+        let applicability = match via_local {
+            Some(false) => Applicability::Suggestion,
+            _ => Applicability::Machine,
+        };
+        Some(Fix {
+            title: format!("build it with a `{tag}\"…\"` literal: values go in `{{…}}` holes"),
+            applicability,
+            edits,
+        })
+    }
+
+    /// Flattens a string `+` chain into pieces; false when it is not one (or has nothing to
+    /// rewrite).
+    ///
+    /// Iterative (left to right with an explicit stack), so a long chain cannot overflow
+    /// the stack.
+    fn concat_pieces(&self, e: &Expr, out: &mut Vec<Piece>) -> bool {
+        let mut stack: Vec<&Expr> = vec![e];
+        while let Some(e) = stack.pop() {
+            match &e.kind {
+                ExprKind::Binary {
+                    op: BinOp::Add,
+                    lhs,
+                    rhs,
+                } => {
+                    stack.push(rhs);
+                    stack.push(lhs);
+                }
+                ExprKind::Str(_) => match self.prog().raw_strings.get(&(self.owner, e.id)) {
+                    Some(raw) => out.push(Piece::Lit(raw.clone())),
+                    None => return false,
+                },
+                ExprKind::Interp(_) => return false,
+                _ => out.push(Piece::Hole(e.span)),
+            }
+        }
+        true
+    }
+
+    // -- operators --------------------------------------------------------------------------
+
     fn is_literal(e: &Expr) -> bool {
         match &e.kind {
             ExprKind::Int(_) | ExprKind::Float(_) => true,
             ExprKind::Unary {
                 op: UnOp::Neg,
                 operand,
-            } => Self::is_literal(operand),
+            } => matches!(operand.kind, ExprKind::Int(_) | ExprKind::Float(_)),
             _ => false,
         }
     }
 
-    /// Types a numeric literal using `hint` as its context without coercing, so a
-    /// mismatch is reported once, by the operator (K0601), not as a plain mismatch.
-    fn operand(&mut self, e: &Expr, hint: &Ty) -> Ty {
-        let hint = self.resolve(hint);
+    fn is_float_literal(e: &Expr) -> bool {
         match &e.kind {
-            ExprKind::Int(v) => {
-                let t = self.int_literal(*v, false, &hint, e.span);
-                self.record(e, t)
-            }
-            ExprKind::Float(_) => {
-                let t = if hint == Ty::Decimal {
-                    Ty::Decimal
-                } else {
-                    Ty::Float
-                };
-                self.record(e, t)
-            }
+            ExprKind::Float(_) => true,
             ExprKind::Unary {
                 op: UnOp::Neg,
                 operand,
-            } if matches!(operand.kind, ExprKind::Int(_)) => {
-                let ExprKind::Int(v) = operand.kind else {
-                    unreachable!()
-                };
-                let t = self.int_literal(v, true, &hint, e.span);
-                self.record(operand, t.clone());
-                self.record(e, t)
-            }
-            _ => self.synth(e),
+            } => matches!(operand.kind, ExprKind::Float(_)),
+            _ => false,
         }
     }
 
-    fn binary(&mut self, op: BinOp, lhs: &Expr, rhs: &Expr, span: Span) -> Ty {
+    /// The operand types of a binary operator, with literal typing: a literal takes its
+    /// type from the other operand, whichever side it is on (§5.6, ARCHITECTURE §8.1). Two
+    /// literals in an arithmetic operator take the expected type, or `Float` when one of
+    /// them is a float literal (FOUNDER-QUEUE Q25); in a comparison each keeps its own type
+    /// (§9.8: `1 == 1.0` is K0602).
+    fn operands(&mut self, op: BinOp, lhs: &Expr, rhs: &Expr, hint: Option<&Ty>) -> (Ty, Ty) {
+        let (ll, rl) = (Self::is_literal(lhs), Self::is_literal(rhs));
+        if ll && rl {
+            if op.is_arithmetic() {
+                let float = Self::is_float_literal(lhs) || Self::is_float_literal(rhs);
+                let hint = hint.map(|h| self.infer.shallow(h));
+                let base = match hint {
+                    Some(Ty::Decimal) => Ty::Decimal,
+                    Some(Ty::BigInt) if !float => Ty::BigInt,
+                    Some(Ty::Float) => Ty::Float,
+                    _ if float => Ty::Float,
+                    _ => Ty::Int,
+                };
+                return (
+                    self.literal_operand(lhs, &base),
+                    self.literal_operand(rhs, &base),
+                );
+            }
+            let lt = self.literal_operand(lhs, &Ty::Int);
+            let rt = self.literal_operand(rhs, &Ty::Int);
+            return (lt, rt);
+        }
+        if ll {
+            let rt = self.synth(rhs);
+            return (self.literal_operand(lhs, &rt), rt);
+        }
+        let lt = self.synth(lhs);
+        let rt = if rl {
+            self.literal_operand(rhs, &lt)
+        } else {
+            self.synth(rhs)
+        };
+        (lt, rt)
+    }
+
+    fn binary(&mut self, e: &Expr, op: BinOp, lhs: &Expr, rhs: &Expr, hint: Option<&Ty>) -> Ty {
+        let span = e.span;
         if matches!(op, BinOp::And | BinOp::Or) {
             self.check(lhs, &Ty::Bool);
             self.check(rhs, &Ty::Bool);
             return Ty::Bool;
         }
-        // A literal operand takes its type from the other side, whichever side it is on.
-        let (lt, rt) = if Self::is_literal(lhs) && !Self::is_literal(rhs) {
-            let rt = self.synth(rhs);
-            (self.operand(lhs, &rt), rt)
-        } else {
-            let lt = self.synth(lhs);
-            (lt.clone(), self.operand(rhs, &lt))
-        };
+        let (lt, rt) = self.operands(op, lhs, rhs, hint);
         let (l, r) = (self.resolve(&lt), self.resolve(&rt));
+        let is_cmp = op.is_comparison();
         if matches!(l, Ty::Error) || matches!(r, Ty::Error) {
-            return match op {
-                BinOp::Eq | BinOp::NotEq | BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge => {
-                    Ty::Bool
-                }
-                _ => Ty::Error,
-            };
+            return if is_cmp { Ty::Bool } else { Ty::Error };
         }
         let is_eq = matches!(op, BinOp::Eq | BinOp::NotEq);
         if l.is_numeric() && r.is_numeric() && l != r {
-            self.err(span, TypeErrorKind::MixedNumeric { left: l, right: r });
-            return if is_eq || matches!(op, BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge) {
-                Ty::Bool
-            } else {
-                Ty::Error
-            };
+            if is_eq {
+                self.err(span, TypeErrorKind::BadEquality { left: l, right: r });
+                return Ty::Bool;
+            }
+            let fixes = mixed_fix(lhs, &l, rhs, &r).into_iter().collect();
+            self.err_fix(
+                span,
+                TypeErrorKind::MixedNumeric { left: l, right: r },
+                fixes,
+            );
+            return if is_cmp { Ty::Bool } else { Ty::Error };
         }
         let never = matches!(l, Ty::Never) || matches!(r, Ty::Never);
         if !never && self.infer.unify(&rt, &lt).is_err() {
@@ -1722,7 +2841,7 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 }
             };
             self.err(span, kind);
-            return if is_eq { Ty::Bool } else { Ty::Error };
+            return if is_cmp { Ty::Bool } else { Ty::Error };
         }
         let t = self.resolve(&lt);
         let open = matches!(t, Ty::Var(_) | Ty::Never);
@@ -1778,15 +2897,147 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 _ if open => t,
                 _ => no_op(self, t),
             },
-            BinOp::And | BinOp::Or => unreachable!(),
+            BinOp::And | BinOp::Or => Ty::Bool,
         }
     }
+
+    // -- `?` (§14.3) ------------------------------------------------------------------------
+
+    fn try_expr(&mut self, e: &Expr, inner: &Expr, exp: Option<&Ty>) -> Ty {
+        let ret = self.ret();
+        let ret = self.infer.shallow(&ret);
+        // The expected type of `e?` is the success type of the operand: a generic call's
+        // result is inferred from it (`let u: User = json.decode(text)?`).
+        let hint = match (&ret, exp) {
+            (Ty::Result(_, _), Some(x)) => Some(Ty::result(x.clone(), self.infer.fresh())),
+            (Ty::Option(_), Some(x)) => Some(Ty::option(x.clone())),
+            _ => None,
+        };
+        let t = match (&inner.kind, &hint) {
+            (ExprKind::Call { callee, args }, Some(h)) => {
+                let t = self.call(inner, callee, args, Some(h));
+                self.record(inner, t)
+            }
+            (
+                ExprKind::MethodCall {
+                    receiver,
+                    name,
+                    args,
+                },
+                Some(h),
+            ) => {
+                let t = self.method_call(inner, receiver, name, args, Some(h));
+                self.record(inner, t)
+            }
+            _ => self.synth(inner),
+        };
+        let t = self.resolve(&t);
+        let ret = self.resolve(&ret);
+        match (&t, &ret) {
+            (Ty::Error, _) | (_, Ty::Error) => Ty::Error,
+            (Ty::Result(ok, err_ty), Ty::Result(_, f)) => {
+                let conv = if self.infer.try_unify(err_ty, f) {
+                    TryConversion::Same
+                } else {
+                    let (err_ty, f) = (self.resolve(err_ty), self.resolve(f));
+                    let from = TraitRef {
+                        id: TraitId::Builtin(BuiltinTrait::From),
+                        args: vec![err_ty.clone()],
+                    };
+                    let error = TraitRef::builtin(BuiltinTrait::Error);
+                    if self.answer(&f, &from) != Answer::No {
+                        let method = self.conversion_method(&f, &err_ty);
+                        TryConversion::From { method }
+                    } else if f == Ty::AnyError && self.answer(&err_ty, &error) != Answer::No {
+                        TryConversion::BoxAnyError
+                    } else {
+                        self.err(
+                            e.span,
+                            TypeErrorKind::TryCannotConvert {
+                                found: err_ty,
+                                expected: f,
+                            },
+                        );
+                        return (**ok).clone();
+                    }
+                };
+                self.out.tries.push((e.id, conv));
+                (**ok).clone()
+            }
+            (Ty::Result(ok, _), Ty::Var(_)) => {
+                // A lambda whose return type is not known yet: `?` makes it this `Result`.
+                let _ = self.infer.try_unify(&ret, &t);
+                self.out.tries.push((e.id, TryConversion::Same));
+                (**ok).clone()
+            }
+            (Ty::Result(ok, err_ty), _) => {
+                self.err(
+                    e.span,
+                    TypeErrorKind::TryCannotConvert {
+                        found: (**err_ty).clone(),
+                        expected: ret.clone(),
+                    },
+                );
+                (**ok).clone()
+            }
+            (Ty::Option(inner_ty), Ty::Option(_)) => {
+                self.out.tries.push((e.id, TryConversion::OptionNone));
+                (**inner_ty).clone()
+            }
+            (Ty::Option(inner_ty), Ty::Var(_)) => {
+                let fresh = Ty::option(self.infer.fresh());
+                let _ = self.infer.try_unify(&ret, &fresh);
+                self.out.tries.push((e.id, TryConversion::OptionNone));
+                (**inner_ty).clone()
+            }
+            (Ty::Option(inner_ty), _) => {
+                self.err(e.span, TypeErrorKind::TryOptionInResult);
+                (**inner_ty).clone()
+            }
+            (Ty::Var(_), _) => Ty::Error,
+            (other, _) => {
+                let expected = Ty::result(Ty::Error, Ty::Error);
+                self.err(
+                    inner.span,
+                    TypeErrorKind::Mismatch {
+                        expected,
+                        found: other.clone(),
+                    },
+                );
+                Ty::Error
+            }
+        }
+    }
+
+    /// The `from` method of the impl `F as From[E]`, if one is written out.
+    fn conversion_method(&self, f: &Ty, e: &Ty) -> Option<DefId> {
+        let res = self.res();
+        res.traits.impls.iter().find_map(|imp| {
+            let tr = imp.trait_ref.as_ref()?;
+            if tr.id != TraitId::Builtin(BuiltinTrait::From) || tr.args.len() != 1 {
+                return None;
+            }
+            let mut cx = InferCtx::new();
+            let fresh: Vec<Ty> = imp.generics.iter().map(|_| cx.fresh()).collect();
+            let head = Ty::Tuple(vec![imp.self_ty.subst(&fresh), tr.args[0].subst(&fresh)]);
+            let goal = Ty::Tuple(vec![erase_vars(f), erase_vars(e)]);
+            cx.unify(&goal, &head).ok()?;
+            imp.methods
+                .iter()
+                .find(|(n, _)| n == "from")
+                .map(|(_, m)| *m)
+        })
+    }
+
+    // -- closures ---------------------------------------------------------------------------
 
     fn lambda(
         &mut self,
         e: &Expr,
         params: &[hir::LambdaParam],
+        ret: Option<&hir::Type>,
         body: &Expr,
+        closure: u32,
         exp: Option<&Ty>,
     ) -> Ty {
         let exp = exp.map(|t| self.infer.shallow(t));
@@ -1797,28 +3048,78 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             _ => (None, None),
         };
         let mut ptys = Vec::new();
+        let mut reported = false;
         for (i, p) in params.iter().enumerate() {
             let t = match (&p.ty, &exp_params) {
-                (Some(t), _) => self.lower_local_type(t),
+                (Some(t), Some(ps)) => {
+                    let t = self.lower_local_type(t);
+                    self.coerce(&ps[i], &t, e.span);
+                    t
+                }
+                (Some(t), None) => self.lower_local_type(t),
                 (None, Some(ps)) => ps[i].clone(),
                 (None, None) => {
-                    self.err(e.span, TypeErrorKind::LambdaNeedsTypes);
+                    if !reported {
+                        self.err(e.span, TypeErrorKind::LambdaNeedsTypes);
+                        reported = true;
+                    }
                     Ty::Error
                 }
             };
             self.locals.insert(p.local, t.clone());
             ptys.push(t);
         }
-        let ret = match &exp_ret {
-            Some(r) => self.check(body, r),
-            None => self.synth(body),
+        let declared_ret = ret.map(|t| self.lower_local_type(t));
+        let ret_ty = match (&declared_ret, &exp_ret) {
+            (Some(r), _) => r.clone(),
+            (None, Some(r)) => r.clone(),
+            (None, None) => self.infer.fresh(),
+        };
+        self.closures.push(closure);
+        self.rets.push(ret_ty.clone());
+        let body_ty = self.check(body, &ret_ty);
+        self.rets.pop();
+        self.closures.pop();
+        let ret_ty = match (&declared_ret, &exp_ret) {
+            (None, None) => body_ty,
+            _ => ret_ty,
         };
         // A lambda's bit comes from its body (§15.3): an effect variable for `kalam-effects`.
         let s = self.infer.fresh_effect();
-        Ty::func(ptys, ret, s)
+        Ty::func(ptys, ret_ty, s)
     }
 
-    // -- if / match -----------------------------------------------------------------------
+    fn local_fn(&mut self, local: LocalId, closure: u32, decl: &FnDecl) {
+        let mut ptys = Vec::new();
+        for p in &decl.params {
+            let t = self.lower_local_type(&p.ty);
+            ptys.push(t);
+        }
+        let ret = match &decl.ret {
+            Some(t) => self.lower_local_type(t),
+            None => Ty::Unit,
+        };
+        let s = self.infer.fresh_effect();
+        self.locals
+            .insert(local, Ty::func(ptys.clone(), ret.clone(), s));
+        for (p, t) in decl.params.iter().zip(&ptys) {
+            self.locals.insert(p.local, t.clone());
+        }
+        self.closures.push(closure);
+        for (p, t) in decl.params.iter().zip(&ptys) {
+            if let Some(d) = &p.default {
+                self.check(d, t);
+            }
+        }
+        if let Some(body) = &decl.body {
+            self.rets.push(ret.clone());
+            self.fn_body(&body.value, &ret);
+            self.rets.pop();
+        }
+        self.closures.pop();
+    }
+
+    // -- if / match -------------------------------------------------------------------------
 
     /// Value-form `if` (§10.3): `else` is required (K0731); all arms have one type.
     fn if_value(
@@ -1905,10 +3206,7 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             }
         }
         let st = self.resolve(&st);
-        let missing = self.missing_cases(&st, arms);
-        if !missing.is_empty() {
-            self.err(e.span, TypeErrorKind::NonExhaustive { missing });
-        }
+        self.check_arms(e.span, &st, arms);
         if value {
             result.unwrap_or(Ty::Never)
         } else {
@@ -1916,96 +3214,94 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         }
     }
 
-    /// A shallow exhaustiveness check over the top-level constructors (Maranget's full
-    /// algorithm replaces it). Only unguarded arms count (§11 rule 2).
-    fn missing_cases(&self, st: &Ty, arms: &[Arm]) -> Vec<String> {
-        let mut pats: Vec<&Pat> = Vec::new();
-        fn flatten<'a>(p: &'a Pat, out: &mut Vec<&'a Pat>) {
-            match &p.kind {
-                PatKind::Or(ps) => ps.iter().for_each(|p| flatten(p, out)),
-                _ => out.push(p),
+    /// Exhaustiveness (K1001) and usefulness (K1002) of a `match` (§11 rules 1–2).
+    fn check_arms(&mut self, span: Span, st: &Ty, arms: &[Arm]) {
+        if matches!(st, Ty::Error | Ty::Var(_) | Ty::Never) {
+            return;
+        }
+        let collector: &Collector<'_> = self.cx;
+        let cx = exhaust::Cx {
+            adts: &collector.res.adts,
+        };
+        let lowered: Vec<(exhaust::DPat, bool)> = arms
+            .iter()
+            .map(|a| (cx.lower(&a.pat, st), a.guard.is_some()))
+            .collect();
+        let report = cx.check_match(st, &lowered);
+        for i in report.unreachable {
+            if let Some(arm) = arms.get(i) {
+                self.err(arm.pat.span, TypeErrorKind::UnreachableArm);
             }
         }
-        for a in arms.iter().filter(|a| a.guard.is_none()) {
-            flatten(&a.pat, &mut pats);
+        if !report.missing.is_empty() {
+            self.err(
+                span,
+                TypeErrorKind::NonExhaustive {
+                    missing: report.missing,
+                },
+            );
         }
-        if pats.iter().any(|p| p.is_irrefutable()) {
-            return Vec::new();
+    }
+
+    /// K1003: a `let` or `for` pattern must match every value of its type.
+    fn check_irrefutable(&mut self, pat: &Pat, ty: &Ty) {
+        let ty = self.resolve(ty);
+        if matches!(ty, Ty::Error | Ty::Var(_) | Ty::Never) {
+            if !pat.is_irrefutable() && !matches!(ty, Ty::Error) {
+                self.err(pat.span, TypeErrorKind::RefutableLet);
+            }
+            return;
         }
-        let covers = |want: &dyn Fn(&PatKind) -> bool| pats.iter().any(|p| want(&p.kind));
-        let full = |inner: &Option<Box<Pat>>| inner.as_ref().map_or(true, |p| p.is_irrefutable());
-        match st {
-            Ty::Bool => [true, false]
-                .into_iter()
-                .filter(|b| !covers(&|k| matches!(k, PatKind::Bool(x) if x == b)))
-                .map(|b| b.to_string())
-                .collect(),
-            Ty::Option(_) => {
-                let mut m = Vec::new();
-                if !covers(
-                    &|k| matches!(k, PatKind::Lang { item: LangItem::Some, inner } if full(inner)),
-                ) {
-                    m.push("Some(_)".into());
-                }
-                if !covers(&|k| {
-                    matches!(
-                        k,
-                        PatKind::Lang {
-                            item: LangItem::None,
-                            ..
-                        }
-                    )
-                }) {
-                    m.push("None".into());
-                }
-                m
-            }
-            Ty::Result(_, _) => {
-                let mut m = Vec::new();
-                for (item, text) in [(LangItem::Ok, "Ok(_)"), (LangItem::Err, "Err(_)")] {
-                    if !covers(
-                        &|k| matches!(k, PatKind::Lang { item: i, inner } if *i == item && full(inner)),
-                    ) {
-                        m.push(text.into());
-                    }
-                }
-                m
-            }
-            Ty::Adt(d, _) => match self.res().adts.get(d).map(|a| &a.kind) {
-                Some(AdtKind::Enum(vs)) => vs
-                    .iter()
-                    .filter(|v| {
-                        !covers(&|k| match k {
-                            PatKind::Variant {
-                                def, name, fields, ..
-                            } => {
-                                (def.is_some_and(|d| d == v.def)
-                                    || (def.is_none() && *name == v.name))
-                                    && fields.iter().all(|f| f.is_irrefutable())
-                            }
-                            _ => false,
-                        })
-                    })
-                    .map(|v| format!(".{}", v.name))
-                    .collect(),
-                _ => Vec::new(),
-            },
-            // §11 rule 6: matching on `Int`, `String` or `Decimal` needs a final `_` arm.
-            Ty::Int | Ty::BigInt | Ty::String | Ty::Decimal => vec!["_".into()],
-            _ => Vec::new(),
+        let collector: &Collector<'_> = self.cx;
+        let cx = exhaust::Cx {
+            adts: &collector.res.adts,
+        };
+        let p = cx.lower(pat, &ty);
+        if !cx.irrefutable(&p, &ty) {
+            self.err(pat.span, TypeErrorKind::RefutableLet);
         }
     }
 
     // -- patterns -------------------------------------------------------------------------
 
     fn pat(&mut self, p: &Pat, ty: &Ty) {
+        kalam_ast::stack::deeper(|| self.pat_inner(p, ty))
+    }
+
+    fn pat_inner(&mut self, p: &Pat, ty: &Ty) {
         let span = p.span;
         match &p.kind {
             PatKind::Wild | PatKind::Error => {}
             PatKind::Bind(l) => {
-                self.locals.insert(*l, ty.clone());
+                self.bind_pat_local(*l, ty, span);
             }
-            PatKind::Int { .. } | PatKind::Range { .. } => self.coerce(&Ty::Int, ty, span),
+            PatKind::As { pat, local } => {
+                self.pat(pat, ty);
+                self.bind_pat_local(*local, ty, span);
+            }
+            PatKind::Int { negative, value } => {
+                self.coerce(&Ty::Int, ty, span);
+                let limit = if *negative {
+                    1u128 << 63
+                } else {
+                    (1u128 << 63) - 1
+                };
+                if *value > limit {
+                    let literal = if *negative {
+                        format!("-{value}")
+                    } else {
+                        value.to_string()
+                    };
+                    self.err(
+                        span,
+                        TypeErrorKind::LiteralOutOfRange {
+                            literal,
+                            ty: Ty::Int,
+                        },
+                    );
+                }
+            }
+            PatKind::Range { .. } => self.coerce(&Ty::Int, ty, span),
             PatKind::Float(_) => self.err(span, TypeErrorKind::FloatPattern),
             PatKind::Str(_) => self.coerce(&Ty::String, ty, span),
             PatKind::Bool(_) => self.coerce(&Ty::Bool, ty, span),
@@ -2020,6 +3316,20 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 };
                 for (p, t) in ps.iter().zip(&ts) {
                     self.pat(p, t);
+                }
+            }
+            PatKind::List {
+                before,
+                rest,
+                after,
+            } => {
+                let elem = self.infer.fresh();
+                self.coerce(&Ty::list(elem.clone()), ty, span);
+                for p in before.iter().chain(after) {
+                    self.pat(p, &elem);
+                }
+                if let Some(Some(l)) = rest {
+                    self.bind_pat_local(*l, &Ty::list(elem), span);
                 }
             }
             PatKind::Lang { item, inner } => {
@@ -2049,51 +3359,165 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 name,
                 fields,
                 rest,
-            } => {
-                let st = self.resolve(ty);
-                let (adt, targs) = match (&st, def.and_then(|d| self.variant_owner(d))) {
-                    (_, Some((a, _))) => {
-                        let n = self.res().adts[&a].generics.len();
-                        let targs: Vec<Ty> = (0..n).map(|_| self.infer.fresh()).collect();
-                        self.coerce(&Ty::Adt(a, targs.clone()), ty, span);
-                        (a, targs)
-                    }
-                    (Ty::Adt(a, targs), None) if self.res().adts.contains_key(a) => {
-                        (*a, targs.clone())
-                    }
-                    (Ty::Error, _) => return,
-                    _ => {
-                        self.err(
-                            span,
-                            TypeErrorKind::ImplicitMemberNeedsType { name: name.clone() },
-                        );
-                        return;
-                    }
-                };
-                let Some((_, v)) = self.res().adts[&adt]
-                    .variant(name)
-                    .map(|(i, v)| (i, v.clone()))
-                else {
-                    self.err(
-                        span,
-                        TypeErrorKind::UnknownMember {
-                            ty: st,
-                            name: name.clone(),
-                        },
-                    );
+            } => self.variant_pat(span, *def, name, fields, *rest, ty),
+            PatKind::Record { def, fields, rest } => {
+                let Some(adt) = self.res().adts.get(def).cloned() else {
                     return;
                 };
-                if fields.len() > v.fields.len() || (!rest && fields.len() != v.fields.len()) {
-                    self.bad_args(span, format!("`{name}` has {} field(s)", v.fields.len()));
+                let AdtKind::Record(decl) = &adt.kind else {
+                    return;
+                };
+                self.check_private(*def, span, &adt.name);
+                let targs: Vec<Ty> = adt.generics.iter().map(|_| self.infer.fresh()).collect();
+                self.coerce(&Ty::Adt(*def, targs.clone()), ty, span);
+                let mut given = vec![false; decl.len()];
+                for f in fields {
+                    let slot = match &f.label {
+                        Some(l) => decl.iter().position(|d| &d.name == l),
+                        None => None,
+                    };
+                    match slot {
+                        Some(i) => {
+                            given[i] = true;
+                            let ft = decl[i].ty.subst(&targs);
+                            self.pat(&f.pat, &ft);
+                        }
+                        None => {
+                            let detail = match &f.label {
+                                Some(l) => format!("no field named `{l}`"),
+                                None => "record patterns name their fields".into(),
+                            };
+                            self.bad_args(f.pat.span, detail);
+                        }
+                    }
                 }
-                for (p, f) in fields.iter().zip(&v.fields) {
-                    let ft = f.ty.subst(&targs);
-                    self.pat(p, &ft);
+                if !rest {
+                    let missing: Vec<&str> = decl
+                        .iter()
+                        .zip(&given)
+                        .filter(|(_, g)| !**g)
+                        .map(|(d, _)| d.name.as_str())
+                        .collect();
+                    if !missing.is_empty() {
+                        self.bad_args(
+                            span,
+                            format!("missing field(s) {}; add them or `..`", missing.join(", ")),
+                        );
+                    }
                 }
             }
-            PatKind::Or(ps) => {
-                for p in ps {
-                    self.pat(p, ty);
+            PatKind::Or(ps) => self.or_pat(span, ps, ty),
+        }
+    }
+
+    /// A binding in a pattern. In an or-pattern every alternative binds the same local, so
+    /// a second binding must have the first one's type (K1004).
+    fn bind_pat_local(&mut self, l: LocalId, ty: &Ty, span: Span) {
+        if let Some(prev) = self.locals.get(&l).cloned() {
+            if !self.infer.try_unify(&prev, ty) {
+                let name = self
+                    .decls
+                    .get(l.0 as usize)
+                    .map_or(String::new(), |d| d.name.clone());
+                self.err(span, TypeErrorKind::OrPatternBindings { name });
+            }
+            return;
+        }
+        self.locals.insert(l, ty.clone());
+    }
+
+    /// §11 rule 5: the alternatives of an or-pattern bind the same names, at the same types.
+    fn or_pat(&mut self, span: Span, ps: &[Pat], ty: &Ty) {
+        let mut sets: Vec<Vec<LocalId>> = Vec::new();
+        for p in ps {
+            self.pat(p, ty);
+            let mut bound = Vec::new();
+            pat_bindings(p, &mut bound);
+            bound.sort();
+            bound.dedup();
+            sets.push(bound);
+        }
+        if let Some(first) = sets.first() {
+            let differs = sets.iter().find_map(|s| {
+                s.iter()
+                    .find(|l| !first.contains(l))
+                    .or_else(|| first.iter().find(|l| !s.contains(l)))
+                    .copied()
+            });
+            if let Some(l) = differs {
+                let name = self
+                    .decls
+                    .get(l.0 as usize)
+                    .map_or(String::new(), |d| d.name.clone());
+                self.err(span, TypeErrorKind::OrPatternBindings { name });
+            }
+        }
+    }
+
+    fn variant_pat(
+        &mut self,
+        span: Span,
+        def: Option<DefId>,
+        name: &str,
+        fields: &[hir::PatField],
+        rest: bool,
+        ty: &Ty,
+    ) {
+        let st = self.resolve(ty);
+        let (adt, targs) = match (&st, def.and_then(|d| self.variant_owner(d))) {
+            (_, Some((a, _))) => {
+                let n = self.res().adts[&a].generics.len();
+                let targs: Vec<Ty> = (0..n).map(|_| self.infer.fresh()).collect();
+                self.coerce(&Ty::Adt(a, targs.clone()), ty, span);
+                (a, targs)
+            }
+            (Ty::Adt(a, targs), None) if self.res().adts.contains_key(a) => (*a, targs.clone()),
+            (Ty::Error, _) => {
+                for f in fields {
+                    self.pat(&f.pat, &Ty::Error);
+                }
+                return;
+            }
+            _ => {
+                self.err(
+                    span,
+                    TypeErrorKind::ImplicitMemberNeedsType { name: name.into() },
+                );
+                for f in fields {
+                    self.pat(&f.pat, &Ty::Error);
+                }
+                return;
+            }
+        };
+        let Some(v) = self.res().adts[&adt].variant(name).map(|(_, v)| v.clone()) else {
+            self.unknown_member(span, st, name);
+            for f in fields {
+                self.pat(&f.pat, &Ty::Error);
+            }
+            return;
+        };
+        self.check_private(adt, span, name);
+        if fields.len() > v.fields.len() || (!rest && fields.len() != v.fields.len()) {
+            self.bad_args(span, format!("`{name}` has {} field(s)", v.fields.len()));
+        }
+        for (i, f) in fields.iter().enumerate() {
+            let slot = match &f.label {
+                Some(l) => v
+                    .fields
+                    .iter()
+                    .position(|vf| vf.label.as_deref() == Some(l)),
+                None => (i < v.fields.len()).then_some(i),
+            };
+            match slot.and_then(|s| v.fields.get(s)) {
+                Some(vf) => {
+                    let ft = vf.ty.subst(&targs);
+                    self.pat(&f.pat, &ft);
+                }
+                None => {
+                    if let Some(l) = &f.label {
+                        self.bad_args(f.pat.span, format!("`{name}` has no field `{l}`"));
+                    }
+                    self.pat(&f.pat, &Ty::Error);
                 }
             }
         }
@@ -2120,10 +3544,16 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                     }
                     None => self.synth(value),
                 };
-                if !pat.is_irrefutable() {
-                    self.err(pat.span, TypeErrorKind::RefutableLet);
-                }
                 self.pat(pat, &t);
+                self.check_irrefutable(pat, &t);
+                if let PatKind::Bind(l) = pat.kind {
+                    if matches!(
+                        value.kind,
+                        ExprKind::Binary { op: BinOp::Add, .. } | ExprKind::Str(_)
+                    ) {
+                        self.let_inits.insert(l, value.clone());
+                    }
+                }
             }
             StmtKind::Var { local, ty, value } => {
                 let t = match ty {
@@ -2138,7 +3568,7 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             }
             StmtKind::Assign { place, op, value } => self.assign(place, *op, value, s.span),
             StmtKind::Return(value) => {
-                let ret = self.ret.clone();
+                let ret = self.ret();
                 match value {
                     Some(v) => {
                         self.check(v, &ret);
@@ -2151,22 +3581,25 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 let elem = match self.resolve(&it) {
                     Ty::Range(t) | Ty::List(t) | Ty::Set(t) => *t,
                     Ty::Map(k, v) => Ty::Tuple(vec![*k, *v]),
-                    Ty::Error => Ty::Error,
+                    Ty::Error | Ty::Var(_) => Ty::Error,
                     other => {
                         self.err(iter.span, TypeErrorKind::NotIterable { ty: other });
                         Ty::Error
                     }
                 };
-                if !pat.is_irrefutable() {
-                    self.err(pat.span, TypeErrorKind::RefutableLet);
-                }
                 self.pat(pat, &elem);
+                self.check_irrefutable(pat, &elem);
                 self.check_stmts(body);
             }
             StmtKind::While { cond, body } => {
                 self.check(cond, &Ty::Bool);
                 self.check_stmts(body);
             }
+            StmtKind::LocalFn {
+                local,
+                closure,
+                decl,
+            } => self.local_fn(*local, *closure, decl),
         }
     }
 
@@ -2202,7 +3635,8 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         }
     }
 
-    /// `x = e`, `x += e`, `p.f = e`, `xs[i] = e` (§10.4): the root must be a `var` (K0710).
+    /// `x = e`, `x += e`, `p.f = e`, `xs[i] = e`, `m[k] = e` (§10.4): the root must be a
+    /// `var` (K0710).
     fn assign(&mut self, place: &Expr, op: AssignOp, value: &Expr, span: Span) {
         let mut root = place;
         while let ExprKind::Field { base, .. }
@@ -2211,7 +3645,7 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         {
             root = base;
         }
-        let ok = matches!(&root.kind, ExprKind::Local(l) if self.mutable.get(l.0 as usize).copied().unwrap_or(false));
+        let ok = matches!(&root.kind, ExprKind::Local(l) if self.decls.get(l.0 as usize).is_some_and(|d| d.mutable));
         if !ok && !matches!(root.kind, ExprKind::Error) {
             self.err(place.span, TypeErrorKind::NotAssignable);
         }
@@ -2227,10 +3661,22 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             AssignOp::Div => BinOp::Div,
         };
         // `x op= e` is `x = x op e` (§10.4), so the result must have `x`'s type.
-        let rt = self.operand(value, &pt);
+        let rt = if Self::is_literal(value) {
+            self.literal_operand(value, &pt)
+        } else {
+            self.synth(value)
+        };
         let (l, r) = (self.resolve(&pt), self.resolve(&rt));
+        if matches!(l, Ty::Error) || matches!(r, Ty::Error) {
+            return;
+        }
         if l.is_numeric() && r.is_numeric() && l != r {
-            self.err(span, TypeErrorKind::MixedNumeric { left: l, right: r });
+            let fixes = numeric_fix(value, &r, &l).into_iter().collect();
+            self.err_fix(
+                span,
+                TypeErrorKind::MixedNumeric { left: l, right: r },
+                fixes,
+            );
             return;
         }
         if self.infer.unify(&rt, &pt).is_err() {
@@ -2258,7 +3704,7 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             (BinOp::Add, Ty::String | Ty::List(_) | Ty::Sink(SinkType::Sql | SinkType::Html)) => {
                 l.clone()
             }
-            (_, t) if t.is_numeric() || matches!(t, Ty::Var(_) | Ty::Error) => l.clone(),
+            (_, t) if t.is_numeric() || matches!(t, Ty::Var(_)) => l.clone(),
             _ => {
                 self.err(
                     span,
@@ -2306,4 +3752,141 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             _ => false,
         }
     }
+}
+
+/// The locals a pattern binds (an or-pattern's first alternative stands for all of them).
+/// Iterative, so a deeply nested pattern cannot overflow the stack.
+fn pat_bindings(p: &Pat, out: &mut Vec<LocalId>) {
+    let mut stack: Vec<&Pat> = vec![p];
+    while let Some(p) = stack.pop() {
+        match &p.kind {
+            PatKind::Bind(l) => out.push(*l),
+            PatKind::As { pat, local } => {
+                out.push(*local);
+                stack.push(pat);
+            }
+            PatKind::Tuple(ps) => stack.extend(ps.iter()),
+            PatKind::Lang {
+                inner: Some(inner), ..
+            } => stack.push(inner),
+            PatKind::Variant { fields, .. } | PatKind::Record { fields, .. } => {
+                stack.extend(fields.iter().map(|f| &f.pat))
+            }
+            PatKind::List {
+                before,
+                rest,
+                after,
+            } => {
+                stack.extend(before.iter().chain(after));
+                if let Some(Some(l)) = rest {
+                    out.push(*l);
+                }
+            }
+            PatKind::Or(ps) => stack.extend(ps.first()),
+            _ => {}
+        }
+    }
+}
+
+/// The conversion that makes an `Int` operand fit a `Float`/`Decimal`/`BigInt` one
+/// (K0601's fix, §10.6: "with a fix to `.to_float()`").
+fn numeric_fix(e: &Expr, found: &Ty, expected: &Ty) -> Option<Fix> {
+    if *found != Ty::Int {
+        return None;
+    }
+    let postfix = matches!(
+        e.kind,
+        ExprKind::Local(_)
+            | ExprKind::Def(_)
+            | ExprKind::Field { .. }
+            | ExprKind::TupleField { .. }
+            | ExprKind::Index { .. }
+            | ExprKind::Call { .. }
+            | ExprKind::MethodCall { .. }
+            | ExprKind::Int(_)
+    );
+    let (title, edits) = match expected {
+        Ty::Float if postfix => (
+            "convert with `.to_float()`",
+            vec![Edit {
+                span: Span::new(e.span.end, e.span.end),
+                insert: ".to_float()".into(),
+            }],
+        ),
+        Ty::Float => (
+            "convert with `.to_float()`",
+            vec![
+                Edit {
+                    span: Span::new(e.span.start, e.span.start),
+                    insert: "(".into(),
+                },
+                Edit {
+                    span: Span::new(e.span.end, e.span.end),
+                    insert: ").to_float()".into(),
+                },
+            ],
+        ),
+        Ty::Decimal | Ty::BigInt => {
+            let ty = if *expected == Ty::Decimal {
+                "Decimal"
+            } else {
+                "BigInt"
+            };
+            (
+                if *expected == Ty::Decimal {
+                    "convert with `Decimal.from`"
+                } else {
+                    "convert with `BigInt.from`"
+                },
+                vec![
+                    Edit {
+                        span: Span::new(e.span.start, e.span.start),
+                        insert: format!("{ty}.from("),
+                    },
+                    Edit {
+                        span: Span::new(e.span.end, e.span.end),
+                        insert: ")".into(),
+                    },
+                ],
+            )
+        }
+        _ => return None,
+    };
+    Some(Fix {
+        title: title.into(),
+        applicability: Applicability::Machine,
+        edits,
+    })
+}
+
+/// K0601's fix for a binary operator: convert whichever operand is the `Int`.
+fn mixed_fix(lhs: &Expr, l: &Ty, rhs: &Expr, r: &Ty) -> Option<Fix> {
+    numeric_fix(lhs, l, r).or_else(|| numeric_fix(rhs, r, l))
+}
+
+/// K0416's fix: name each positional argument after the field at its position.
+fn record_label_fix(fields: &[FieldDef], args: &[Arg]) -> Option<Fix> {
+    let mut edits = Vec::new();
+    for (i, a) in args.iter().enumerate() {
+        if a.label.is_some() {
+            continue;
+        }
+        let f = fields.get(i)?;
+        edits.push(Edit {
+            span: Span::new(a.span.start, a.span.start),
+            insert: format!("{}: ", f.name),
+        });
+    }
+    let positional_after_named = args
+        .iter()
+        .skip_while(|a| a.label.is_none())
+        .any(|a| a.label.is_none());
+    if edits.is_empty() || positional_after_named {
+        return None;
+    }
+    Some(Fix {
+        title: "name the fields".into(),
+        applicability: Applicability::Machine,
+        edits,
+    })
 }

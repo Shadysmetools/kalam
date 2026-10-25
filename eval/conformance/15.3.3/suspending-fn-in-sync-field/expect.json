@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1401"
+  ],
+  "lines": [
+    null
+  ],
+  "notes": "§15.3.1: \"Every function type has a hidden bit `s ∈ {sync, susp}`. A sync function may be used wherever a suspending one is expected.\" §15.3.3: \"**Function types inside data** (record fields, …) are **suspending by default**. Storing a sync function there is allowed … Write `@sync fn(…) -> R` in the field type to require and preserve a sync function.\" §15.4.1: passing a suspending function where `@sync` is required is K1401. `step` suspends (filesystem). The line is not pinned by the spec."
+}

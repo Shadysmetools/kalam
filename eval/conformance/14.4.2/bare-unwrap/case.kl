@@ -1,0 +1,4 @@
+fn main():
+    let xs = [1]
+    let n = xs.get(0).unwrap()
+    print("{n}")

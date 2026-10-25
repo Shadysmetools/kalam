@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1605"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "§17.3.5: \"`--` and `/* */` comments are allowed in the literal. A hole inside a comment is **K1605**.\""
+}

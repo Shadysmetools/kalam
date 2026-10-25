@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§18.1.2: \"`Show` prints `[REDACTED]`. **There is no `Encode`**, so putting a secret into JSON is a compile error, not a redaction (K0612). **There is no `Eq`, `Ord` or `Hash`.** Compare with `crypto.equal(a, b)`\". §18.1.3: \"`.expose() -> T` returns the value.\" Positive twin: a `Secret` is shown (redacted), its exposed values compare, and `Encode` derives on a type without a `Secret` field."
+}

@@ -1,0 +1,9 @@
+fn first[T](xs: List[T]) -> Option[T] => xs.get(0)
+
+fn main():
+    let head: Option[Int] = first([1, 2, 3])
+    match head:
+        case Some(n):
+            print("{n}")
+        case None:
+            print("none")

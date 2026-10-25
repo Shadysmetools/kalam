@@ -129,17 +129,29 @@ impl PropsReport {
 
 /// Loads `eval/props/report.json` and ties it to the evaluated commit.
 pub fn load_props(root: &Path, head: Option<&str>) -> Result<PropsReport, String> {
-    let text = std::fs::read_to_string(root.join(PROPS_REPORT))
-        .map_err(|_| format!("{PROPS_REPORT} does not exist (the kalam-props suite writes it)"))?;
-    let r = PropsReport::parse(&text).map_err(|e| format!("{PROPS_REPORT}: {e}"))?;
+    load_props_from(&root.join(PROPS_REPORT), PROPS_REPORT, head)
+}
+
+/// Loads a kalam-props report from any path (`kalam-eval --props-report FILE`, for a report
+/// written in a scratch target directory) and ties it to the evaluated commit exactly as
+/// [`load_props`] does: no `commit`, an unknown HEAD or another commit is never accepted.
+pub fn load_props_at(path: &Path, head: Option<&str>) -> Result<PropsReport, String> {
+    load_props_from(path, &path.display().to_string(), head)
+}
+
+fn load_props_from(path: &Path, label: &str, head: Option<&str>) -> Result<PropsReport, String> {
+    let text = std::fs::read_to_string(path)
+        .map_err(|_| format!("{label} does not exist (the kalam-props suite writes it)"))?;
+    let mut r = PropsReport::parse(&text).map_err(|e| format!("{label}: {e}"))?;
+    r.source = label.to_string();
     match (&r.provenance, head) {
         (None, _) => Err(format!(
-            "{PROPS_REPORT} has no `commit`, so it cannot be tied to the evaluated tree \
+            "{label} has no `commit`, so it cannot be tied to the evaluated tree \
              (run `kalam-eval --run-props`, or have kalam-props record the commit)"
         )),
         (Some(_), None) => Err("the evaluated commit is unknown (git unavailable)".into()),
         (Some(Provenance::Commit(c)), Some(h)) if !same_commit(c, h) => Err(format!(
-            "{PROPS_REPORT} is stale: it was written for commit {c}, the evaluated commit is {h}"
+            "{label} is stale: it was written for commit {c}, the evaluated commit is {h}"
         )),
         _ => Ok(r),
     }
@@ -541,6 +553,31 @@ mod tests {
             o => panic!("{o:?}"),
         }
         assert!(matches!(property_tests(&ok), Observation::Passed(_)));
+    }
+
+    #[test]
+    fn a_props_report_at_any_path_still_needs_the_evaluated_commit() {
+        let d = temp_dir("props-at");
+        write(&d, "scratch/report.json", GOOD);
+        let path = d.join("scratch/report.json");
+        let ok = load_props_at(&path, Some("abc1234def"));
+        let stale = load_props_at(&path, Some("ffffffff"));
+        let unknown = load_props_at(&path, None);
+        let missing = load_props_at(&d.join("nope.json"), Some("abc1234def"));
+        write(
+            &d,
+            "scratch/nocommit.json",
+            &GOOD.replace("\"commit\"", "\"x\""),
+        );
+        let no_commit = load_props_at(&d.join("scratch/nocommit.json"), Some("abc1234def"));
+        let _ = fs::remove_dir_all(&d);
+        let ok = ok.unwrap();
+        assert_eq!(ok.source, path.display().to_string());
+        assert_eq!(ok.provenance, Some(Provenance::Commit("abc1234def".into())));
+        assert!(stale.unwrap_err().contains("stale"));
+        assert!(unknown.is_err());
+        assert!(missing.is_err());
+        assert!(no_commit.unwrap_err().contains("no `commit`"));
     }
 
     fn load_fresh_text(text: &str) -> Result<PropsReport, String> {

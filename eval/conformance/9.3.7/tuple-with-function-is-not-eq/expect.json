@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0602"
+  ],
+  "lines": [
+    6
+  ],
+  "notes": "§9.3.7: \"Functions are not `Eq`, `Hash`, `Show`, `Encode` or `Decode`.\" §9.7.5: `Eq` is \"automatic for records, enums and tuples whose components are all `Eq`\". §9.8.1: `==` needs \"two values of the same type that implements `Eq`\" (K0602 otherwise). A tuple holding a function is not `Eq`."
+}

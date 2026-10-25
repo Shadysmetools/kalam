@@ -1,0 +1,9 @@
+@derive(Encode)
+type Profile:
+    user: String
+
+fn main():
+    let a = Secret.new("x")
+    let b = Secret.new("x")
+    let same = a.expose() == b.expose()
+    print("{a} {same}")

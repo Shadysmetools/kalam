@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1612"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "§17.4.7: \"`on*` attribute, `<script>`/`<style>` content, `style` attribute | — | **K1612**: no holes.\""
+}

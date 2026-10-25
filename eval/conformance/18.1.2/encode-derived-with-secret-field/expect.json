@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K0612"
+  ],
+  "lines": [
+    null
+  ],
+  "notes": "§18.1.2: \"`Show` prints `[REDACTED]`. **There is no `Encode`**, so putting a secret into JSON is a compile error, not a redaction (K0612). **There is no `Eq`, `Ord` or `Hash`.** Compare with `crypto.equal(a, b)`\". §9.7.9: \"deriving `Encode` on a type with a `Secret` field is K0612: a compile error, not a redaction\". The spec does not pin the line (attribute or declaration)."
+}

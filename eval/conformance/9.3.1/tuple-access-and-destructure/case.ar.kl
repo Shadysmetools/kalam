@@ -1,0 +1,6 @@
+دالة رئيسي():
+    ليكن pair = (1، "one")
+    ليكن (n، word) = pair
+    ليكن first = pair.0
+    ليكن same = pair == (1، "one")
+    اطبع("{n} {word} {first} {same}")

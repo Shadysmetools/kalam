@@ -1,0 +1,7 @@
+fn upload(name: PathSegment) -> Path => path"uploads/{name}"
+
+fn main():
+    let id = 7
+    let term = "kalam"
+    let _ = url"https://api.example.com/users/{id}?q={term}"
+    let _ = regex"^[a-z0-9_]\{3,20\}$"

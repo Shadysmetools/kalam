@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1101"
+  ],
+  "lines": [
+    null
+  ],
+  "notes": "§12.1.1: \"**Block-bodied functions with a non-`()` return type need an explicit `return`** on every path (K1101; the fix inserts `return` before a final expression of the right type) (DR-08).\" The spec does not pin the line of K1101, so it is not checked."
+}

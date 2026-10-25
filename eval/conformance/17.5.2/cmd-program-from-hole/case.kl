@@ -1,0 +1,3 @@
+fn main():
+    let program = "git"
+    let _ = cmd"{program} --version"

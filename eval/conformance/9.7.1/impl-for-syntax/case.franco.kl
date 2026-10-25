@@ -1,0 +1,9 @@
+haykal Money:
+    amount: adad
+    currency: nass
+
+naffez Show lekol Money:
+    dala show(nafso) -> nass => "{nafso.amount} {nafso.currency}"
+
+dala ra2isi():
+    ektb(Money(amount: 5, currency: "EGP"))

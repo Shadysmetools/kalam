@@ -1,0 +1,5 @@
+dala ra2isi(world: donya):
+    khali t = world.rand.token(bytes: 32)
+    khali n = world.rand.int(0..10)
+    khali id = world.rand.uuid_v4()
+    ektb("{t} {n} {id}")

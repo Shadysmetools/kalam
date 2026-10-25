@@ -1,0 +1,9 @@
+fn main():
+    var count = 1
+    count += 1
+    let snapshot = count
+    let add = fn(x: Int) => x + snapshot
+    fn twice(x: Int) -> Int:
+        let once = add(x)
+        return add(once)
+    print("{twice(1)}")

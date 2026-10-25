@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§17.4.2: text content accepts \"any other `T: Show`\" (HTML-escaped). §17.4.3: \"quoted attribute value `class=\"{c}\"` | `String`, `Int`, `Bool`, `AttrValue`\". §17.4.4: a URL attribute takes `Url`. Positive twin of K1611–K1617."
+}

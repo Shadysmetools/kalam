@@ -1,0 +1,5 @@
+dala ra2isi():
+    khali counter = Cell.new(0)
+    counter.update(dala(n) => n + 1)
+    counter.set(5)
+    ektb("{counter.get()}")

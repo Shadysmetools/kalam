@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1001"
+  ],
+  "lines": [
+    null
+  ],
+  "notes": "§11.0.6: \"Matching on `Int`, `String` or `Decimal` needs a final `_` or binding arm.\" Without one the match is non-exhaustive (§11.0.1, K1001). The line is not pinned by the spec."
+}

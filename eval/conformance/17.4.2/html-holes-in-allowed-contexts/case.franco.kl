@@ -1,0 +1,5 @@
+dala ra2isi():
+    khali name = "Sara"
+    khali count = 3
+    khali home = url"https://example.com/home"
+    khali _ = html"""<p class="{name}" title="{count}">{name}</p><a href="{home}">home</a>"""

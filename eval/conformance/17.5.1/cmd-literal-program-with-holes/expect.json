@@ -1,0 +1,5 @@
+{
+  "must_reject": false,
+  "codes": [],
+  "notes": "§17.5.1: \"The literal is split into argv words **at compile time** … Each hole is **exactly one argv element**\". §17.5.5: \"Hole types: `String`, `Int`, `Path`, `PathSegment`.\" The spec's own example. Positive twin of K1620/K1621."
+}

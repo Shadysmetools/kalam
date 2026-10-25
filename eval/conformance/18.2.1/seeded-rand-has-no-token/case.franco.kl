@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali r = Rand.seeded(7)
+    khali t = r.token(bytes: 32)
+    ektb("{t}")

@@ -1,0 +1,4 @@
+fn main():
+    var count = 1
+    let add = fn(x: Int) => x + count
+    print("{add(1)}")

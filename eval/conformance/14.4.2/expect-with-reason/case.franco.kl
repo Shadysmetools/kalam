@@ -1,0 +1,5 @@
+dala ra2isi():
+    khali xs = [1]
+    khali n = xs.get(0).expect("xs has one element")
+    et2aked(n == 1, "n is one")
+    ektb("{n}")

@@ -1,0 +1,6 @@
+دالة رئيسي():
+    ليكن ratio = 2.5
+    ليكن total = 1 + ratio
+    ليكن one = 1
+    ليكن explicit = one.to_float() + ratio
+    اطبع("{total} {explicit}")

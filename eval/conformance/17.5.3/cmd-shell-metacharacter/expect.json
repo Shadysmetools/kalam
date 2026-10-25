@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1620"
+  ],
+  "lines": [
+    2
+  ],
+  "notes": "§17.5.3: \"**Shell metacharacters** outside quotes (`| ; & && || > < >> $( ) \\` * ? ~ !`) are **K1620**\"."
+}

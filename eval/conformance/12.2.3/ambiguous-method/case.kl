@@ -1,0 +1,18 @@
+trait Named:
+    fn label(self) -> String
+
+trait Tagged:
+    fn label(self) -> String
+
+type Item:
+    id: Int
+
+impl Item as Named:
+    fn label(self) -> String => "named"
+
+impl Item as Tagged:
+    fn label(self) -> String => "tagged"
+
+fn main():
+    let item = Item(id: 1)
+    print(item.label())

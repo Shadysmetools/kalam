@@ -1,0 +1,9 @@
+fn main():
+    let n = 7
+    match n:
+        case 0:
+            print("zero")
+        case 1..=9:
+            print("digit")
+        case _:
+            print("big")

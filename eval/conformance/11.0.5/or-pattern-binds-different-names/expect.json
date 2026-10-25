@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1004"
+  ],
+  "lines": [
+    9
+  ],
+  "notes": "§11.0.5: \"**Or-patterns** (`case .Card | .Wallet:`) must bind the same names with the same types in every alternative (K1004).\" §9.5.2: \"In patterns, fields may be bound positionally in declaration order.\""
+}

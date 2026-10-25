@@ -1,0 +1,9 @@
+haykal Job:
+    run: dala(adad) -> adad
+
+dala double(x: adad) -> adad => x * 2
+
+dala ra2isi():
+    khali job = Job(run: double)
+    khali f = job.run
+    ektb("{f(2)}")

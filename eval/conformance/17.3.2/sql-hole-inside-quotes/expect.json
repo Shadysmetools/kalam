@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1602"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "§17.3.2: \"**A hole inside SQL quotes** (`'{name}'`) is **K1602**\"."
+}

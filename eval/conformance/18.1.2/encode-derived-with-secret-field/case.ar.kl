@@ -1,0 +1,7 @@
+@derive(Encode)
+هيكل Login:
+    user: نص
+    password: Secret[نص]
+
+دالة رئيسي():
+    اطبع("x")

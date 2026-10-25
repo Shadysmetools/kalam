@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1003"
+  ],
+  "lines": [
+    3
+  ],
+  "notes": "§10.2.1: \"`let pattern [: T] = expr` binds immutably. The pattern must be irrefutable (K1003): `let (lat, lng) = point.coords()`.\" §11.0.12: \"There is no `if let` and no `let … else`.\""
+}

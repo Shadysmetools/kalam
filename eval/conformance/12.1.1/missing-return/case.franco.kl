@@ -1,0 +1,5 @@
+dala double(x: adad) -> adad:
+    x * 2
+
+dala ra2isi():
+    ektb("{double(2)}")

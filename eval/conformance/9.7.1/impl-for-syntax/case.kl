@@ -1,0 +1,9 @@
+type Money:
+    amount: Int
+    currency: String
+
+impl Show for Money:
+    fn show(self) -> String => "{self.amount} {self.currency}"
+
+fn main():
+    print(Money(amount: 5, currency: "EGP"))

@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1104"
+  ],
+  "lines": [
+    4
+  ],
+  "notes": "§12.1.5: \"**Named arguments are required** at the call site when an `export`ed function has two **adjacent parameters of the same type** (K1104; the fix inserts the labels). `transfer(db, from: a, to: b, amount: x)` cannot be called with `from` and `to` swapped by position.\" The requirement is at the call site, line 4."
+}

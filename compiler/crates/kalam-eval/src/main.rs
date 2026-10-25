@@ -1,10 +1,10 @@
 //! ```text
-//! kalam-eval [--root DIR] [--target M1..M10|beta|1.0|mvp] [--cargo-test] [--run-props] [--out FILE]
-//!            [--holdout DIR | --no-holdout]
+//! kalam-eval [--root DIR] [--target M1..M10|beta|1.0|mvp] [--cargo-test]
+//!            [--run-props | --props-report FILE] [--out FILE] [--holdout DIR | --no-holdout]
 //!            [--append --timestamp TS [--history FILE] [--git-sha SHA] [--outcome O] [--notes TEXT]]
 //! kalam-eval freeze    [--root DIR] [--target TIER] [--timestamp TS] [--holdout DIR]
 //! kalam-eval integrity [--root DIR] [--holdout DIR]
-//! kalam-eval holdout   --root DIR --store DIR
+//! kalam-eval holdout   --root DIR --store DIR [--include-m2]
 //! kalam-eval clauses   [--root DIR] [--write | --check]
 //! kalam-eval judge-sample [--root DIR] [--check]
 //! kalam-eval judge-ingest [--root DIR] --in FILE
@@ -12,6 +12,12 @@
 //!
 //! `--kalam PATH` (or `KALAM_BIN`) names the `kalam` binary used by the M2 checkpoints and
 //! by conformance cases that run the interpreter. The harness never builds it.
+//!
+//! `--props-report FILE` reads the kalam-props report from FILE instead of
+//! `eval/props/report.json`, for a report written in a scratch target directory
+//! (`KALAM_PROPS_REPORT=FILE cargo test -p kalam-props --release` with any
+//! `CARGO_TARGET_DIR`). Its `commit` must still be the evaluated commit (HEAD); it excludes
+//! `--run-props`.
 //!
 //! - `clauses` prints the spec clause index (`eval/conformance/CLAUSES.json`, src/clauses.rs);
 //!   `--write` writes it, `--check` exits 1 when the committed file is stale.
@@ -43,11 +49,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
 const USAGE: &str = "usage:
-  kalam-eval [--root DIR] [--target M1..M10|beta|1.0|mvp] [--cargo-test] [--run-props] [--out FILE] [--holdout DIR | --no-holdout]
+  kalam-eval [--root DIR] [--target M1..M10|beta|1.0|mvp] [--cargo-test] [--run-props | --props-report FILE] [--out FILE] [--holdout DIR | --no-holdout]
              [--append --timestamp TS [--history FILE] [--git-sha SHA] [--outcome OUTCOME] [--notes TEXT]]
   kalam-eval freeze    [--root DIR] [--target TIER] [--timestamp TS] [--holdout DIR]
   kalam-eval integrity [--root DIR] [--holdout DIR]
-  kalam-eval holdout   --root DIR --store DIR
+  kalam-eval holdout   --root DIR --store DIR [--include-m2]
   kalam-eval clauses   [--root DIR] [--write | --check]
   kalam-eval judge-sample [--root DIR] [--check]
   kalam-eval judge-ingest [--root DIR] --in FILE
@@ -60,6 +66,8 @@ struct Args {
     target: Option<String>,
     cargo_test: bool,
     run_props: bool,
+    props_report: Option<PathBuf>,
+    include_m2: bool,
     out: Option<PathBuf>,
     append: bool,
     timestamp: Option<String>,
@@ -99,6 +107,8 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
             "--target" => a.target = Some(val()?),
             "--cargo-test" => a.cargo_test = true,
             "--run-props" => a.run_props = true,
+            "--props-report" => a.props_report = Some(val()?.into()),
+            "--include-m2" => a.include_m2 = true,
             "--out" => a.out = Some(val()?.into()),
             "--append" => a.append = true,
             "--timestamp" => a.timestamp = Some(val()?),
@@ -122,6 +132,9 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
     }
     if a.command.as_deref() == Some("judge-ingest") && a.input.is_none() {
         return Err("judge-ingest needs --in FILE".into());
+    }
+    if a.run_props && a.props_report.is_some() {
+        return Err("--run-props and --props-report exclude each other".into());
     }
     if a.write && a.check {
         return Err("--write and --check exclude each other".into());
@@ -183,7 +196,7 @@ fn load_scorecard(root: &Path) -> Result<Scorecard, String> {
 }
 
 /// The sealed child: aggregate JSON on stdout, nothing on stderr, even on a panic.
-fn holdout_child(root: &Path, store: &Path) -> ExitCode {
+fn holdout_child(root: &Path, store: &Path, include_m2: bool) -> ExitCode {
     std::panic::set_hook(Box::new(|_| {}));
     let Ok(sc) = load_scorecard(root) else {
         return ExitCode::from(1);
@@ -196,7 +209,7 @@ fn holdout_child(root: &Path, store: &Path) -> ExitCode {
         .unwrap_or_default();
     let hook = parity::default_hook();
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        holdout::aggregate(store, root, hook.as_ref(), &scope)
+        holdout::aggregate(store, root, hook.as_ref(), &scope, include_m2)
     })) {
         Ok(v) => {
             println!("{v}");
@@ -219,7 +232,7 @@ fn main() -> ExitCode {
         let (Some(root), Some(store)) = (&args.root, &args.store) else {
             return ExitCode::from(2);
         };
-        return holdout_child(root, store);
+        return holdout_child(root, store, args.include_m2);
     }
     let root = match args
         .root
@@ -315,7 +328,12 @@ fn main() -> ExitCode {
     // The evaluated tree: HEAD plus any uncommitted changes (LOOP.md §8 `commit`, A12).
     let git_sha = args.git_sha.clone().or_else(|| git_head(&root));
     let runner = match (args.no_holdout, std::env::current_exe()) {
-        (false, Ok(exe)) => Some(holdout::Runner { exe, store }),
+        // `include_m2` is set by `report::run` from the resolved target tier
+        (false, Ok(exe)) => Some(holdout::Runner {
+            exe,
+            store,
+            include_m2: false,
+        }),
         _ => None,
     };
     let mut run = match report::run(
@@ -328,6 +346,7 @@ fn main() -> ExitCode {
             git_sha: git_sha.clone(),
             holdout: runner,
             run_props: args.run_props,
+            props_report: args.props_report.clone(),
             kalam: args.kalam.clone(),
         },
     ) {
@@ -577,6 +596,20 @@ mod tests {
         assert_eq!(a.command.as_deref(), Some("judge-ingest"));
         let a = parse_args(&argv(&["--kalam", "k.exe"])).unwrap();
         assert_eq!(a.kalam, Some(PathBuf::from("k.exe")));
+        let a = parse_args(&argv(&["--props-report", "E:/tmp/r.json"])).unwrap();
+        assert_eq!(a.props_report, Some(PathBuf::from("E:/tmp/r.json")));
+        assert!(parse_args(&argv(&["--props-report", "r.json", "--run-props"])).is_err());
+        assert!(parse_args(&argv(&["--props-report"])).is_err());
+        let a = parse_args(&argv(&[
+            "holdout",
+            "--root",
+            "r",
+            "--store",
+            "s",
+            "--include-m2",
+        ]))
+        .unwrap();
+        assert!(a.include_m2);
     }
 
     #[test]

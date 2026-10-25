@@ -1,3 +1,5 @@
 دالة رئيسي():
-    ليكن total = 1 + 2.5
+    ليكن count = 1
+    ليكن ratio = 2.5
+    ليكن total = count + ratio
     اطبع("{total}")

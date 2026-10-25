@@ -1,0 +1,10 @@
+{
+  "must_reject": true,
+  "codes": [
+    "K1401"
+  ],
+  "lines": [
+    null
+  ],
+  "notes": "§15.4.1: \"`@sync` on a function type (`update: @sync fn(State, Input, Float) -> State`) means the argument must not suspend. Passing a suspending function is **K1401**\". `step` calls `fs.exists` (filesystem, §15.2.1), so it suspends. The line of K1401 is not pinned by the spec."
+}

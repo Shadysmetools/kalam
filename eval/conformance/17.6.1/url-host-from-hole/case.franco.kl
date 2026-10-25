@@ -1,0 +1,3 @@
+dala ra2isi():
+    khali host = "example.com"
+    khali _ = url"https://{host}/users"

@@ -426,9 +426,181 @@ fn imports_reach_exported_items_only() {
             "use app/a.{hidden}\nfn main():\n    print(\"{hidden()}\")\n",
         ),
     ]);
+    // FOUNDER-QUEUE Q23: "is private" (K0418), not "not found" (K0401).
     assert_eq!(
         private.codes(&whole(false)),
+        vec![("src/b.kl".to_string(), "K0418")]
+    );
+}
+
+// ---- K0418: private items (FOUNDER-QUEUE Q23) ----
+
+fn args(d: &Diagnostic) -> Vec<(&'static str, String)> {
+    d.args.clone()
+}
+
+#[test]
+fn importing_a_private_item_is_k0418_with_its_module() {
+    let fs = files(&[
+        ("src/a.kl", "fn hidden() -> Int => 1\n\nexport fn shown() -> Int => 2\n"),
+        (
+            "src/b.kl",
+            "use app/a.{hidden, shown}\nfn main():\n    print(\"{hidden()} {shown()} {hidden()}\")\n",
+        ),
+    ]);
+    let (p, d) = fs.resolve(&whole(false));
+    assert_eq!(d.len(), 1, "{d:#?}");
+    let (file, d) = &d[0];
+    assert_eq!((file.as_str(), d.code), ("src/b.kl", "K0418"));
+    let src = &fs.0[1].1;
+    assert_eq!(&src[d.span.start as usize..d.span.end as usize], "hidden");
+    assert_eq!(
+        args(d),
+        vec![
+            ("name", "`hidden`".to_string()),
+            ("module", "`app/a`".to_string())
+        ]
+    );
+    // The import site is an error; later uses resolve to the private item (no cascade).
+    assert_eq!(p.use_at(FileId(1), d.span), Some(Res::Error));
+    let second = src.rfind("hidden()").unwrap() as u32;
+    let r = p.use_at(FileId(1), Span::new(second, second + 6)).unwrap();
+    let Res::Def(def) = r else { panic!("{r:?}") };
+    assert_eq!(
+        (p.def(def).kind, p.def(def).name.as_str()),
+        (DefKind::Fn, "hidden")
+    );
+}
+
+#[test]
+fn reaching_a_private_item_through_a_module_alias_is_k0418() {
+    for user in [
+        "use app/a\nfn main():\n    print(\"{a.hidden()}\")\n",
+        "use app/a as m\nfn main():\n    print(\"{m.hidden()}\")\n",
+    ] {
+        let fs = files(&[
+            ("src/a.kl", "fn hidden() -> Int => 1\n"),
+            ("src/b.kl", user),
+        ]);
+        let (_, d) = fs.resolve(&whole(false));
+        let got: Vec<_> = d.iter().map(|(f, d)| (f.as_str(), d.code)).collect();
+        assert_eq!(got, vec![("src/b.kl", "K0418")], "{user}");
+        assert!(args(&d[0].1).contains(&("module", "`app/a`".to_string())));
+    }
+    // A name that does not exist at all is still K0401.
+    let fs = files(&[
+        ("src/a.kl", "fn hidden() -> Int => 1\n"),
+        (
+            "src/b.kl",
+            "use app/a\nfn main():\n    print(\"{a.nope()}\")\n",
+        ),
+    ]);
+    assert_eq!(
+        fs.codes(&whole(false)),
         vec![("src/b.kl".to_string(), "K0401")]
+    );
+}
+
+#[test]
+fn a_failed_export_use_does_not_cascade_into_importers() {
+    let importer = "use app/b.{x}\nuse app/b\nfn main():\n    print(\"{x()} {b.x()}\")\n";
+    // Re-exporting a private item: one K0418, at the `export use`.
+    let fs = files(&[
+        ("src/a.kl", "fn x() -> Int => 1\n"),
+        ("src/b.kl", "export use app/a.{x}\n"),
+        ("src/c.kl", importer),
+    ]);
+    assert_eq!(
+        fs.codes(&whole(false)),
+        vec![("src/b.kl".to_string(), "K0418")]
+    );
+    // Re-exporting a name that does not exist: one K0401, at the `export use`.
+    let fs = files(&[
+        ("src/a.kl", "export fn y() -> Int => 1\n"),
+        ("src/b.kl", "export use app/a.{x}\n"),
+        ("src/c.kl", importer),
+    ]);
+    assert_eq!(
+        fs.codes(&whole(false)),
+        vec![("src/b.kl".to_string(), "K0401")]
+    );
+    // Re-exporting from a module that does not exist: one K0401, at the module path.
+    let fs = files(&[
+        ("src/b.kl", "export use app/nope.{x}\n"),
+        ("src/c.kl", importer),
+    ]);
+    assert_eq!(
+        fs.codes(&whole(false)),
+        vec![("src/b.kl".to_string(), "K0401")]
+    );
+}
+
+#[test]
+fn re_export_chains_still_resolve_in_any_order() {
+    let fs = files(&[
+        ("src/a.kl", "export fn x() -> Int => 1\n"),
+        ("src/b.kl", "export use app/c.{x}\n"),
+        ("src/c.kl", "export use app/a.{x}\n"),
+        (
+            "src/main.kl",
+            "use app/b.{x}\nfn main():\n    print(\"{x()}\")\n",
+        ),
+    ]);
+    let (p, d) = fs.resolve(&whole(false));
+    assert!(d.is_empty(), "{d:#?}");
+    let a = p.module_by_path("app/a").unwrap().exports["x"];
+    assert_eq!(p.module_by_path("app/b").unwrap().exports["x"], a);
+}
+
+// ---- K0413 in patterns (core names are `Name`s there) ----
+
+#[test]
+fn core_names_in_binding_patterns_are_k0413() {
+    for (path, src, name) in [
+        ("a.kl", "fn f():\n    let Int = 1\n", "Int"),
+        ("a.ar.kl", "دالة f():\n    ليكن اطبع = 1\n", "اطبع"),
+        ("a.franco.kl", "dala f():\n    khali ektb = 1\n", "ektb"),
+        (
+            "a.kl",
+            "fn f(xs: List[Int]):\n    for print in xs:\n        pass\n",
+            "print",
+        ),
+        ("a.kl", "fn f():\n    let (a, World) = (1, 2)\n", "World"),
+        (
+            "a.kl",
+            "fn f(x: Int):\n    match x:\n        case main: pass\n",
+            "main",
+        ),
+    ] {
+        let (_, d) = check(path, src);
+        assert_eq!(
+            d.iter().map(|d| d.code).collect::<Vec<_>>(),
+            vec!["K0413"],
+            "{src}"
+        );
+        assert_eq!(&src[d[0].span.start as usize..d[0].span.end as usize], name);
+        assert_eq!(args(&d[0]), vec![("name", format!("`{name}`"))]);
+    }
+}
+
+#[test]
+fn constructor_patterns_and_other_skins_core_names_are_fine() {
+    clean(
+        "a.kl",
+        "fn f(x: Option[Int]):\n    match x:\n        case Some(v): print(\"{v}\")\n        case None: pass\n",
+    );
+    // FOUNDER-QUEUE Q21: another skin's core name is an ordinary name.
+    clean(
+        "a.kl",
+        "fn main():\n    let عدد = 1\n    print(\"{عدد}\")\n",
+    );
+    clean(
+        "a.franco.kl",
+        "dala ra2isi():\n    khali Int = 1\n    ektb(\"{Int}\")\n",
+    );
+    clean(
+        "a.kl",
+        "fn main(xs: List[Int]):\n    for اطبع in xs:\n        print(\"{اطبع}\")\n",
     );
 }
 

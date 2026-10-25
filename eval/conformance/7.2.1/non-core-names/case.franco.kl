@@ -1,0 +1,6 @@
+haykal Choice:
+    value: adad
+
+dala ra2isi():
+    khali count = Choice(value: 1)
+    ektb("{count.value}")

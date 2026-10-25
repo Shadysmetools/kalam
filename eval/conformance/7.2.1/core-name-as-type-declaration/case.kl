@@ -1,0 +1,5 @@
+type Option:
+    value: Int
+
+fn main():
+    print("x")
