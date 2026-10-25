@@ -103,6 +103,20 @@ fn unexpected_indent_is_k0120() {
 }
 
 #[test]
+fn every_parse_code_is_documented_for_the_spec_owner() {
+    let doc = std::fs::read_to_string(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("PARSE-CODES.md"),
+    )
+    .expect("PARSE-CODES.md next to the crate");
+    for code in codes::ALL {
+        assert!(
+            doc.contains(&format!("| {code} |")),
+            "{code} has no row in PARSE-CODES.md"
+        );
+    }
+}
+
+#[test]
 fn deep_nesting_is_an_error_not_a_stack_overflow() {
     // Run on a 1 MiB stack: the Windows main-thread default.
     let handle = std::thread::Builder::new()

@@ -364,6 +364,8 @@ impl<'t> Parser<'t> {
     }
 
     pub(crate) fn too_deep(&mut self) {
+        // The cut-off token is explained by K0259; no second K0250 on the same spot.
+        self.last_error_pos = Some(self.pos);
         if !self.too_deep_reported {
             self.too_deep_reported = true;
             let span = self.cur_span();
