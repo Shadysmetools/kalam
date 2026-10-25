@@ -73,6 +73,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "kalam-eval"
+version = "0.1.0"
+dependencies = [
+ "kalam-base",
+ "kalam-diagnostics",
+ "kalam-fmt",
+ "kalam-lexer",
+ "kalam-skins",
+ "serde_json",
+]
+
+[[package]]
 name = "kalam-fmt"
 version = "0.1.0"
 dependencies = [

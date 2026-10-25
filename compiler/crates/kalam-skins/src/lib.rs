@@ -405,14 +405,16 @@ fn build_skin(
 }
 
 /// Arabic orthographic folding used for keyword matching and for identifier skeletons
-/// (spec §5.3): أ إ آ ٱ → ا, ى → ي, ة → ه, ؤ → و, ئ → ي. Identifiers themselves are never
-/// rewritten (DR-04).
+/// (spec §5.3): أ إ آ ٱ → ا, ى → ي, ة → ه, ؤ → و, ئ → ي, plus the Persian/Urdu letters
+/// ی → ي, ک → ك, ە ھ ۀ → ه (DECISIONS.md D19). Identifiers themselves are never
+/// rewritten (DR-04): the fold is a comparison key only.
 pub fn arabic_fold(s: &str) -> String {
     s.chars()
         .map(|c| match c {
             '\u{0623}' | '\u{0625}' | '\u{0622}' | '\u{0671}' => '\u{0627}', // أ إ آ ٱ → ا
-            '\u{0649}' => '\u{064A}',                                        // ى → ي
-            '\u{0629}' => '\u{0647}',                                        // ة → ه
+            '\u{0649}' | '\u{06CC}' => '\u{064A}',                           // ى ی → ي
+            '\u{06A9}' => '\u{0643}',                                        // ک → ك
+            '\u{0629}' | '\u{06D5}' | '\u{06BE}' | '\u{06C0}' => '\u{0647}', // ة ە ھ ۀ → ه
             '\u{0624}' => '\u{0648}',                                        // ؤ → و
             '\u{0626}' => '\u{064A}',                                        // ئ → ي
             other => other,
@@ -478,6 +480,35 @@ mod tests {
         );
         assert_eq!(table.spelling(Concept::KwFn, Skin::Franco), "dala");
         assert_eq!(table.spelling(Concept::PunctComma, Skin::Ar), "\u{060C}");
+    }
+
+    #[test]
+    fn arabic_fold_folds_persian_and_urdu_letters() {
+        // DECISIONS.md D19: ی ک ە ھ ۀ fold to their Arabic equivalents.
+        assert_eq!(arabic_fold("\u{06CC}"), "\u{064A}"); // ی → ي
+        assert_eq!(arabic_fold("\u{06A9}"), "\u{0643}"); // ک → ك
+        assert_eq!(arabic_fold("\u{06D5}"), "\u{0647}"); // ە → ه
+        assert_eq!(arabic_fold("\u{06BE}"), "\u{0647}"); // ھ → ه
+        assert_eq!(arabic_fold("\u{06C0}"), "\u{0647}"); // ۀ → ه
+        // Persian and Arabic spellings of one word share a fold key, so they match the
+        // same keyword and collide as identifier skeletons (SEC0104).
+        assert_eq!(arabic_fold("\u{06A9}تاب"), arabic_fold("كتاب"));
+        assert_eq!(arabic_fold("عل\u{06CC}"), arabic_fold("علي"));
+        assert_eq!(arabic_fold("عل\u{06CC}"), arabic_fold("على"));
+    }
+
+    #[test]
+    fn persian_letters_match_arabic_keywords_as_variants() {
+        let table = KeywordTable::builtin();
+        let ar = table.skin(Skin::Ar);
+        let m = ar.lookup_word("ل\u{06A9}ل").unwrap(); // لکل with keheh
+        assert_eq!(m.concept, Concept::KwFor);
+        assert_eq!(m.spelling, Spelling::Variant);
+        let m = ar.lookup_word("ف\u{06CC}").unwrap(); // فی with Farsi yeh
+        assert_eq!(m.concept, Concept::KwIn);
+        assert_eq!(m.spelling, Spelling::Variant);
+        // Other skins are unaffected.
+        assert_eq!(table.skin(Skin::Franco).lookup_word("ف\u{06CC}"), None);
     }
 
     #[test]

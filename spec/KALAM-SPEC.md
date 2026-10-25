@@ -2,7 +2,7 @@
 
 > **Status:** canonical v0.1 specification. It supersedes the three drafts in `spec/drafts/`. **Date:** 2026-10-24.
 > **Lineage:** based on `draft-production.md` (the judge's winner), with ideas grafted from `draft-security.md` and `draft-simplicity.md`. Every conflict the judge listed is resolved in §2.
-> **Binding inputs:** `DECISIONS.md` (D1–D17, locked) and research reports 01–06. Citations use the report's own rule IDs: `04 L7` is security charter rule L7, `05 P3` is parity gate P3, `02 §7.6` is a report section.
+> **Binding inputs:** `DECISIONS.md` (D1–D25, locked; D18–D25 and resolved D7 were applied on 2026-10-25, see the errata log) and research reports 01–06. Citations use the report's own rule IDs: `04 L7` is security charter rule L7, `05 P3` is parity gate P3, `02 §7.6` is a report section.
 > **Companion files:** `spec/keywords.json` is the machine-readable keyword table the lexer loads. Where it and §7 disagree, `keywords.json` wins and §7 is a bug. `spec/llms.txt` is the compact summary for LLMs.
 > **Normative words:** MUST, MUST NOT, SHOULD and MAY have their RFC 2119 meanings. Text marked *Rationale* is not normative.
 
@@ -40,7 +40,7 @@
 27. Diagnostic index
 28. Example programs (8 programs × 3 skins)
 29. Open questions (design team)
-30. Founder questions
+30. Founder decisions (resolved)
 
 ---
 
@@ -82,7 +82,7 @@ fn show_note(req: Request[App]) -> Result[Response, HttpError]:
 1. **Canonical text is the English skin, formatted. Canonical identity is KCF.** LLMs, docs and `llms.txt` use the formatted English skin. Hashing, signing, the lockfile and the registry use the Kalam Canonical Form (KCF), a skin-free serialization (§4.4). An optional glossary is display-only, so it never changes a hash or a wire name.
 2. **"A digit always starts a number."** No keyword, alias or core name in any skin starts with a digit. `3ala` is error K0127 in every skin. Lexing is trivially decidable (§5.6).
 3. **Trojan-Source-proof source text.** There is a per-class table for code, comments and strings. The only whitespace is U+0020. Bidi controls are never allowed raw. Identifiers are never folded: two distinct names with the same confusable skeleton in one scope are an error (SEC0104) (§5.1–§5.3).
-4. **`Int` is the 53-bit safe-integer range on every backend.** Overflow traps (§9.2). This is a provisional lock and Founder question F1.
+4. **`Int` is a true 64-bit checked integer on every backend.** Overflow traps (§9.2). On JS, an `Int` is a `number` in the safe range and a `bigint` outside it (§22). Locked by the founder (D18).
 5. **Suspension is inferred.** There is no `async` keyword. Function types inside data suspend by default, and `@sync` opts out (§15).
 6. **Variants use a leading dot** (`.Circle`). Kalam has **one namespace** per scope. Arabic has no letter case, so capitalization never carries meaning (§2, DR-05, DR-11).
 7. **Injection is a type error.** `sql"…"`, `html"…"`, `cmd"…"`, `url"…"`, `path"…"` and `regex"…"` are compile-time-parsed tagged literals with typed holes. Literal provenance is guaranteed (§17).
@@ -121,18 +121,18 @@ This section resolves every conflict that the judge listed, in the judge's order
 
 | ID | Conflict | Decision | Rejected | Rationale (citations) | Spec |
 |---|---|---|---|---|---|
-| DR-01 | **D7: Arabic RTL and digits** | **Locked as the consensus of all three drafts.** Files are stored in logical order. Bidi controls (including LRM, RLM and ALM) are rejected raw everywhere, strings included, and are written as `\u{…}` escapes. Base display direction comes from the skin, and UTS #55 token isolation happens only in first-party renderers. ASCII digits are the default in every skin. Arabic-Indic `٠–٩` are allowed in Arabic-skin literals, and the Arabic printer emits them only under a project setting. Persian `۰–۹` are rejected. One digit system per literal. `٫` is the decimal separator only with Arabic-Indic digits. `،` is never a decimal separator. `،` and `؟` are the only punctuation aliases, Arabic skin only. | 02 §7.5 (LRM/RLM/ALM as whitespace) | 04 U1 and 05 §1.6 overrule 02 §7.5: an invisible character that only changes display is attack surface with no semantic purpose, and UTS #55 puts display fixes in the renderer (02 §6.1). ASCII default: 02 §6.3 (Egyptians write prices, phones and code with ASCII digits). | §6 |
+| DR-01 | **D7: Arabic RTL and digits** | **Locked as the consensus of all three drafts, and ratified by the founder (D7 resolved, 2026-10-25).** Files are stored in logical order. Bidi controls (including LRM, RLM and ALM) are rejected raw everywhere, strings included, and are written as `\u{…}` escapes. Base display direction comes from the skin, and UTS #55 token isolation happens only in first-party renderers. ASCII digits are the default in every skin. Arabic-Indic `٠–٩` are allowed in Arabic-skin literals, and the Arabic printer emits them only under a project setting. Persian `۰–۹` are rejected. One digit system per literal. `٫` is the decimal separator only with Arabic-Indic digits. `،` is never a decimal separator. `،` and `؟` are the only punctuation aliases, Arabic skin only. | 02 §7.5 (LRM/RLM/ALM as whitespace) | 04 U1 and 05 §1.6 overrule 02 §7.5: an invisible character that only changes display is attack surface with no semantic purpose, and UTS #55 puts display fixes in the renderer (02 §6.1). ASCII default: 02 §6.3 (Egyptians write prices, phones and code with ASCII digits). | §6 |
 | DR-01a | D7 open item (a): Arabic-Indic digits in `en`/`franco` files | **Rejected** (SEC0122), with a machine-applicable fix to ASCII. | Production: accept and rewrite | One file = one skin (D6) also covers digit glyphs. The fix gives the same ergonomics, and the lexer surface stays smaller (04 U5). | §6.2 |
 | DR-01b | D7 (b): exponents with Arabic-Indic digits | **Not allowed.** Hex, binary, octal and exponent forms exist only with ASCII digits (K0128). | Production: Latin `e` inside an Arabic-Indic literal | A Latin letter inside an Arabic-Indic literal is a mixed-script token, which is what 04 U3/U5 forbid. Scientific notation is rare in SaaS code. | §5.6 |
 | DR-01c | D7 (c): printing of `،` and `؟` | **Fixed.** The Arabic printer always emits `،` and `؟`. Input accepts both `,`/`،` and `?`/`؟` in Arabic files. | Production: project setting | One fewer setting, and the output is the same in every Arabic project (P4). The digit glyph setting remains, because 02 §6.3 shows a real split in practice. | §6.4 |
 | DR-01d | D7 (d): U+066C ARABIC THOUSANDS SEPARATOR | **Rejected** (SEC0123), with a fix-it to `_`. | unspecified in all drafts | It is a visible separator that looks like `,` and `٫`. The digit separator is `_` in every skin. | §6.3 |
 | DR-03 | **Franco digit-leading aliases** | **None, anywhere.** No keyword, alias or core name starts with a digit. The natural digit-leading spellings (`5ali`, `7asab`, `2ktb`, `5alas`, `8alat`, `5arab`, `5aregi`) are kept only in the `did_you_mean` lists of `keywords.json`, so K0127 can say "Names can't start with a digit. Did you mean `hasab`?". | Security and Production: closed list with whole-run lookup | 05 P7 forbids prefix-ambiguous numbers. With no digit-leading spellings, P7 holds trivially and no edit-distance proof is needed (04 U5's mitigation becomes unnecessary). Security's own open question 2 and its strict CI already reject these aliases. | §5.6, §7 |
-| DR-04 | **Identifier folding** | **No folding of identifiers** (Security). For each identifier the compiler computes `skeleton = UTS39_skeleton(arabic_fold(NFKC(id)))`, with ASCII digits only in identifiers. Two *distinct* identifiers with the same skeleton visible in one scope, or exported from one module, are **SEC0104**. A *use* that matches no declaration but has the same skeleton as exactly one visible declaration is K0401 ("not defined") with a machine fix to the declared spelling. Keywords **are** matched after `arabic_fold`. Persian/Urdu letters are rejected with a fix-it (SEC0107). Presentation forms are rejected (SEC0106), not NFKC-folded. | Simplicity (fold = same name); Production (fold resolves, W0109) | Silent folding makes two byte sequences name one variable, which defeats grep and review (04 U4, 02 §7.4 collision rule). Reject-plus-fix gives the same comfort and keeps files canonical. | §5.3 |
+| DR-04 | **Identifier folding** | **No folding of identifiers** (Security). For each identifier the compiler computes `skeleton = UTS39_skeleton(arabic_fold(NFKC(id)))`, with ASCII digits only in identifiers. Two *distinct* identifiers with the same skeleton visible in one scope, or exported from one module, are **SEC0104**. A *use* that matches no declaration but has the same skeleton as exactly one visible declaration is K0401 ("not defined") with a machine fix to the declared spelling. Keywords **are** matched after `arabic_fold`. **Persian/Urdu letters ی ک ە ھ ۀ are accepted and folded** by `arabic_fold` to ي ك ه ه ه (D19), so `کتاب` and `كتاب` have one skeleton: declaring both in one scope is SEC0104, and a use spelled `کتاب` of a declared `كتاب` is K0401 with a machine fix, exactly like the hamza/alef forms. (SEC0107 is retired.) Presentation forms are rejected (SEC0106), not NFKC-folded. | Simplicity (fold = same name); Production (fold resolves, W0109); Persian/Urdu letters rejected (SEC0107, superseded by D19) | Silent folding makes two byte sequences name one variable, which defeats grep and review (04 U4, 02 §7.4 collision rule). Reject-plus-fix gives the same comfort and keeps files canonical. Folding Persian/Urdu letters into the skeleton (D19) admits Persian- and Urdu-keyboard users without adding a homoglyph hole, because the collision rule still applies after folding. | §5.3 |
 | DR-17 | **Raw identifier spelling** | **Backticks:** `` `law` ``. | Security: `r#name` | `r#` collides with the `#` comment character (`x = r#note`). Backticks have no other meaning in Kalam. | §5.3 |
-| DR-18 | **Skin declaration and IDs** | **File extension only:** `.kl` (en), `.ar.kl` (ar), `.franco.kl` (franco). There is no pragma. Skin IDs are `en`, `ar` and `franco` everywhere: `KALAM_LANG`, `kalam.toml`, `keywords.json` and CLI flags. | Security: `.kla`/`.klf` plus an optional `#skin` pragma; `fr` as an ID | One way (P4). A pragma is a special-cased comment. `fr` is ISO 639-1 for French. | §4.1 |
+| DR-18 | **Skin declaration and IDs** | **File extension only:** `.kl` (en), `.ar.kl` (ar), `.franco.kl` (franco). There is no pragma. Skin IDs are `en`, `ar` and `franco` everywhere: `KALAM_LANG`, `kalam.toml`, `keywords.json` and CLI flags. Locked by the founder (D24). | Security: `.kla`/`.klf` plus an optional `#skin` pragma; `fr` as an ID | One way (P4). A pragma is a special-cased comment. `fr` is ISO 639-1 for French. | §4.1 |
 | DR-20 | **Arabic synonyms; tatweel and harakat in keywords** | **No lexical synonyms in Arabic** (Production's `لو`, `بينما`, `توقف` are removed). Orthographic folding (hamza/alef, ى/ي, ة/ه) is not an alias. **Tatweel and harakat inside a keyword are rejected** (SEC0106), with an auto-fix by `fmt`. Franco keeps a closed, versioned list of *spelling variants*, all non-digit-leading, which `fmt` rewrites and `fmt --check` rejects. | Production (real aliases); Simplicity §3.1 (tolerate and strip) | 05 D4 requires zero synonyms. Franco orthography is not standardized (02 §2, §7.6), so spelling variants are the Franco analogue of Arabic hamza folding. Repositories still converge on one spelling. | §7.3 |
 | DR-30 | **BOM; Arabic-Indic digits inside identifiers** | **A BOM is rejected everywhere** (SEC0100), including at offset 0, and `fmt` strips it. **Arabic-Indic digits inside identifiers are rejected** (SEC0124), with a fix to ASCII digits. | Simplicity: BOM ignored; Security: digits allowed with skeleton folding | One canonical byte form. `١` is confusable with `ا`, `l` and `1` (04 §4.1 table). Rejecting is simpler than folding and has the same safety. | §5.1, §5.3 |
-| DR-31 | **Franco `walla`/`aw` semantics** | `walla` = `else` and `aw` = `or` stay **provisionally**. In Egyptian speech `walla` often means "or", so this pair goes into the 200-developer survey (02 §9), together with the و/أو pair (exception E1, §7.4). | — | The judge found a hazard that none of the drafts flagged. Changing a keyword after 1.0 is an edition change, so the survey must come before beta. | §7.4, F3 |
+| DR-31 | **Franco `walla`/`aw` semantics** | `walla` = `else` and `aw` = `or` stay **provisionally**. In Egyptian speech `walla` often means "or", so this pair goes into the 200-developer survey (02 §9), together with the و/أو pair (exception E1, §7.4). | — | The judge found a hazard that none of the drafts flagged. Changing a keyword after 1.0 is an edition change, so the survey must come before beta. | §7.4, D22 |
 
 ### 2.2 Grammar and syntax
 
@@ -157,7 +157,7 @@ This section resolves every conflict that the judge listed, in the judge's order
 
 | ID | Conflict | Decision | Rejected | Rationale | Spec |
 |---|---|---|---|---|---|
-| DR-02 | **Int semantics** | **`Int` = [−(2⁵³−1), 2⁵³−1] on every backend, trapping on overflow** (provisional lock, Founder question F1). `BigInt` is the arbitrary-precision opt-in. **Decode rules:** a Postgres `bigint` or JSON integer outside the range decoding into `Int` is a decode error (`DbError.Shape` / `DecodeError.OutOfRange`), never a silent float. Declare the field `BigInt` to accept it. An npm value that is a JS `bigint` or an unsafe `number` fails the boundary check (§19.2). The C backend uses `int64_t` plus range checks, so results are identical. | Security: i64 with a dual number/bigint JS representation | Zero-cost on JS (a plain `number` plus `Number.isSafeInteger` after `+ - *`). Security's helper-call cost is unmeasured (its own open question 6). 03 §4's requirement, "never just number", is met because `Int` and `Float` are distinct types with defined traps. **Gate:** before the JS backend freezes, benchmark the i64 dual representation (05 D6). Re-open only if its cost on the corpus is ≤ 10%. | §9.2 |
+| DR-02 | **Int semantics** | **`Int` = [−2⁶³, 2⁶³−1] (a true 64-bit signed integer) on every backend, trapping on overflow** (locked by the founder, D18). `BigInt` is the arbitrary-precision opt-in. **JS representation:** a canonical dual representation, where an `Int` is a JS `number` exactly when its value is in the safe range ±(2⁵³−1), and a `bigint` otherwise (§22). **Decode rules:** a Postgres `bigint` always fits; a JSON integer outside the i64 range decoding into `Int` is a decode error (`DecodeError.OutOfRange`), never a silent float. JSON integers are decoded exactly, never through a lossy JS `number` (§18.3). Declare the field `BigInt` to accept larger values. An npm value crossing into `Int` must be a safe-integer `number` or an in-range `bigint` (§19.2). The C backend uses `int64_t` with checked arithmetic, so results are identical. | 53-bit safe range with a plain JS `number` (the provisional v0.1 default, superseded by D18) | One integer type that means the same thing on every backend and matches Postgres `bigint`, Rust/Go/Java/C# `i64`/`long`, and the future C/WASM backend with no range checks (03 §4, 04 L2). 03 §4's "never just number" is met. The cost is confined to the JS backend's slow path: arithmetic on two `number`s stays a plain double operation plus one `Number.isSafeInteger` check (§22). **Performance target** (not a decision gate): the dual representation costs ≤ 10% on the 05 D6 corpus, and a regression is a JS-backend bug, not a reason to change `Int`. | §9.2, §22 |
 | DR-12 | **Error conversion in `?`** | **`From` + `AnyError` + `.context()`** (Production). `?` converts with an explicit `impl F as From[E]`. `AnyError` boxes any `E: Error` and is not dynamically typed: it can only be inspected with `.downcast() -> Option[E]` against an expected type. | Simplicity: auto-wrap into core `Error`; Security: explicit `Into` only, no any-error type | SaaS handlers need ergonomic `?` across DB, JSON and HTTP errors (06 §2). `AnyError` is an opaque existential with a typed downcast, so it does not reintroduce `any` (Security §8.2's concern). | §14.3 |
 | DR-13 | **Suspension of stored functions** | **Suspend by default, with `@sync` opt-out** (Production). Function-typed parameters are effect-polymorphic. Function types inside data are suspending unless written `@sync fn(…)`. The suspension bit of exported functions is part of the API: sync → suspending is a semver-major change. | Simplicity: escaping functions always suspend; Security: whole-program per-record inference | Modular and sound. Separate compilation stays possible, and a library's lowering never depends on how downstream code uses it. | §15.3 |
 | DR-14 | **Cancellation semantics** | **An unobservable "cancelled" unwind at the next suspension point** (Production). It runs no user code. The runtime rolls back an open DB transaction and releases locks, as for a panic. | Security: suspending call returns `Err(.Cancelled)` | With an `Err` value, user code can swallow cancellation and keep working after it was cancelled. | §15.7 |
@@ -172,7 +172,7 @@ This section resolves every conflict that the judge listed, in the judge's order
 
 | ID | Conflict | Decision | Rejected | Rationale | Spec |
 |---|---|---|---|---|---|
-| DR-19 | **Core names translated per skin** | **19 core names are translated**, including the primitive types (Production's set), so Arabic lines do not mix scripts for everyday types. Word choices: None = `لا_شيء` (not `عدم`, one letter from `عدد` = Int). true = `صح`. type = `هيكل`. match = `حسب` (`طابق` also means "floor"). continue = `استمر` (`تابع` also means "subsidiary"). case = `عندما` ("when"). Rejected: `حالة` ("state") and `عند`, which is one letter from `عدد`. main = `رئيسي` / `ra2isi`. Option and Result constructors are capitalized `Some`/`None`/`Ok`/`Err`. | Security: 6 names, types ASCII, lowercase `some`/`ok`/`err` | Lowercase constructors would ban the locals `ok` and `err` and make a bare `ok` in a pattern ambiguous. Mixed-script Arabic lines force a keyboard switch (02 §6.4). | §7.2 |
+| DR-19 | **Core names translated per skin** | **All 19 core names are translated in every skin** (locked by the founder, D21), including the primitive types (Production's set), so Arabic lines do not mix scripts for everyday types. Word choices: None = `لا_شيء` (not `عدم`, one letter from `عدد` = Int). true = `صح`. type = `هيكل`. match = `حسب` (`طابق` also means "floor"). continue = `استمر` (`تابع` also means "subsidiary"). case = `عندما` ("when"). Rejected: `حالة` ("state") and `عند`, which is one letter from `عدد`. main = `رئيسي` / `ra2isi`. Option and Result constructors are capitalized `Some`/`None`/`Ok`/`Err`. | Security: 6 names, types ASCII, lowercase `some`/`ok`/`err` | Lowercase constructors would ban the locals `ok` and `err` and make a bare `ok` in a pattern ambiguous. Mixed-script Arabic lines force a keyboard switch (02 §6.4). | §7.2 |
 | DR-29 | **Tag names and the tag set** | `sql"…"`→`Sql`, `html"…"`→`Html`, `cmd"…"`→`Command` (argv only, never a shell), `url"…"`→`Url`, `path"…"`→`Path` (holes must be `PathSegment`), `regex"…"`→`Regex` (RE2). User-defined tags come from `impl T as Template` plus `@tag("name")`. Escape hatches: `unsafe.raw_sql`, `unsafe.raw_html`, `unsafe.raw_url`. **There is no raw `Command`.** | `sh`/`shell`, `re` | `cmd`/`Command` is report 04 §3.2's own naming, and unlike `sh` it does not suggest a shell is involved (Security X10). `regex` matches its type name. | §17 |
 | DR-32 | **Server-driven UI directives (D11)** | **Both layers, compiler-checked inside `html"…"`.** (1) **Live components** (typed, TEA-style, from Simplicity): `state`, `update(State, Msg) -> State` and `view(State) -> Html`. Event attributes `k-click`, `k-submit`, `k-input` and `k-change` take a hole whose type must derive `Message` (K1616). The value crosses the wire as an **opaque, signed, CSRF-bound token** (Security §16.4.1), never code. (2) **Hypermedia directives** for plain actions (Production): `k-get`, `k-post`, `k-target` and `k-swap`. Their URL holes must be `Url`. The `k-` attribute namespace is reserved, and unknown `k-*` attributes are K1617. | library-defined directives | Checking in the compiler keeps the security property local and testable (04 S3). The typed message model gives the strongest LLM prior (Elm/TEA) without new syntax (06 §1.2). | §20.3 |
 | DR-36 | **Arabic keyword choice rule** (graft) | CI keeps a list of the 2,000 most frequent Arabic identifier words. A keyword or core name that appears in it fails CI unless a written justification is recorded in `skins/ar-justifications.toml`. v0.1 justifications: `نص`, `قائمة` and `نتيجة` are core names that are also common nouns. Arabic code names values with `ال` (`النص`), so the collision is mostly avoided. | — | Security §5.2. This rule is why the table uses `هيكل` over `نوع`, `حسب` over `طابق`, `استمر` over `تابع`, and `عندما` over `حالة`. | §7.4 |
@@ -192,8 +192,8 @@ A locked decision beats a research report. Where reports disagree with each othe
 | X5 | 03 §4.1 rule 4 and 04 U5: digit-leading identifiers are legal in Franco under restrictions. | **No identifier, keyword, alias or core name starts with a digit, in any skin.** | 02 §7.6; 05 P7. This removes the spoofing surface instead of mitigating it. |
 | X6 | 02 §7.5: LRM/RLM/ALM allowed as whitespace. | Rejected raw everywhere, including strings and comments. | 04 U1; 05 §1.6. |
 | X7 | 02 §7.4: fold tatweel/harakat and hamza/ى/ة in identifiers. | Identifiers are never folded. Folding is used to compute skeletons (SEC0104). Tatweel and harakat are rejected in identifiers and keywords. | Silent folding defeats grep and review (DR-04). |
-| X8 | 02 §7.4 step 5: fold Persian ی/ک. | Rejected in identifiers in v0.1 (SEC0107), with a fix-it. | 04 §7 Q3. Linguist review pending (Founder question F6). |
-| X9 | 04 L12: no ambient authority. | `print` (stdout) and `log.*` (stderr) are ambient. A **library** package that calls them must declare `console = true` in its manifest, which shows in the capability diff. | Hello-world stays one line. Stdout goes to the operator. Founder question F4. |
+| X8 | 02 §7.4 step 5: fold Persian ی/ک. | **Followed, as a comparison fold** (D19). ی ک ە ھ ۀ are legal in identifiers and keywords. `arabic_fold` maps them to ي ك ه ه ه for keyword matching and identifier skeletons. Identifiers are still never rewritten, and a collision after folding is SEC0104 (DR-04). | Founder decision D19 (Persian/Urdu-keyboard users are in scope). The linguist review of the fold list (Q14) continues. |
+| X9 | 04 L12: no ambient authority. | `print` (stdout) and `log.*` (stderr) are ambient. A **library** package that calls them must declare `console = true` in its manifest, which shows in the capability diff. | Hello-world stays one line. Stdout goes to the operator. Locked by the founder (D20). |
 | X10 | 04 §3.2: shell type `Command`, tag `cmd"…"`. | Followed exactly (`cmd"…"` → `Command`). Security draft's `shell"…"` is not used. | Report naming. |
 | X11 | 02 §8: `repeat`, `const`, `from`, `default`, `input`, `try`, `await`. | Dropped. `repeat` → `for _ in 0..n`. `const` → module-level `let`. `default` → `case _:`. `input` is a capability method. | Fewer keywords, fewer cross-skin collisions (05 D4). |
 | X12 | 01 §3.3: identifiers normalized with NFC. 02 §9 Q1b: NFKC. | The **file** must be NFC. Identifiers are **compared** through NFKC only inside the skeleton function. They are never rewritten. | 04 U2 permits both. Keeping spelling visible is safer (DR-04). |
@@ -270,7 +270,7 @@ world    = { ar = "العالم", franco = "el_donya" }
 ```
 
 1. **The glossary is applied only by display surfaces:** the LSP's display mode, `kalam view --skin ar --glossary`, review renderers and generated docs. It never changes files on disk, the KCF, or behaviour.
-2. **Runtime-visible names are always canonical names.** These are JSON keys, DB column mapping, exported JS symbols and the field names that `Show` prints (05 P5).
+2. **Runtime-visible names are always canonical names.** These are JSON keys, DB column mapping, exported JS symbols and the field names that `Show` prints (05 P5). **Arabic canonical names are valid wire names** (D23): a project that writes Arabic identifiers natively gets Arabic JSON keys and DB columns, and that is allowed freely. There is **no default lint** requiring ASCII wire names or `@name` on `Encode`/`Decode`/`Row` types. A team that wants ASCII keys for outside API consumers writes `@name("…")` on those fields.
 3. The map must be bijective per skin. Every display name must pass the identifier rules (§5.3). No display name may have the same skeleton as another identifier, keyword or core name in scope (SEC0108).
 4. **Writing glossary output to disk is a rename refactoring**, not a conversion: `kalam rename --glossary names.toml`. It produces a new KCF, and it inserts `@name("…")` on fields of `Encode`/`Decode`/`Row` types so that wire names do not change.
 
@@ -307,7 +307,7 @@ These rules apply to **all** source text: code, comments and string literals (04
 | Class | Definition |
 |---|---|
 | `LETTER_LATIN` | `XID_Start` ∩ Script=Latin |
-| `LETTER_ARABIC` | `XID_Start` ∩ Script=Arabic, **excluding**: U+0640 tatweel; harakat U+064B–065F, U+0670; Quranic marks U+06D6–06ED; presentation forms U+FB50–FDFF, U+FE70–FEFF; Persian/Urdu letters U+06CC ی, U+06A9 ک, U+06D5 ە, U+06BE ھ, U+06C0 ۀ |
+| `LETTER_ARABIC` | `XID_Start` ∩ Script=Arabic, **excluding**: U+0640 tatweel; harakat U+064B–065F, U+0670; Quranic marks U+06D6–06ED; presentation forms U+FB50–FDFF, U+FE70–FEFF. The Persian/Urdu letters U+06CC ی, U+06A9 ک, U+06D5 ە, U+06BE ھ and U+06C0 ۀ **are** included; `arabic_fold` folds them for comparison (§5.3, D19) |
 | `LETTER_OTHER` | `XID_Start` in any other single script (Greek, Cyrillic, CJK, …). Allowed, but a project may restrict scripts with `[lint] scripts = ["Latin", "Arabic"]` |
 | `ASCII_DIGIT` | `0`–`9` |
 | `ARABIC_DIGIT` | `٠`–`٩` (U+0660–0669). Valid only in numeric literals of `ar` files (§6.2) |
@@ -326,7 +326,7 @@ ID_CONTINUE = ID_START | ASCII_DIGIT | XID_Continue marks of the identifier's ow
 1. **UAX #31 base** (`XID_Start`/`XID_Continue`) in the pinned Unicode version.
 2. **Never starts with a digit,** in any digit system and any skin (X5). `3ala` is K0127. Write `ala` or `_3ala`.
 3. **Single script** (UTS #39 "Single Script", 04 U3). Each identifier is one script plus Common (`_`, ASCII digits). `pаypal` with a Cyrillic `а` is SEC0105. `user_اسم` is SEC0105.
-4. **Forbidden inside identifiers** (SEC0106, auto-fix removes or replaces them): tatweel, harakat, Quranic marks, ZWJ/ZWNJ, presentation forms. **Persian/Urdu letters** are SEC0107, with a fix to `ي`, `ك`, `ه`.
+4. **Forbidden inside identifiers** (SEC0106, auto-fix removes or replaces them): tatweel, harakat, Quranic marks, ZWJ/ZWNJ, presentation forms. **Persian/Urdu letters** (ی ک ە ھ ۀ) are allowed (D19). They are never rewritten, but they fold to `ي`, `ك`, `ه` for every comparison (keyword lookup and skeletons, below), so a collision with the Arabic spelling is SEC0104.
 5. **ASCII digits only** after the first character. Arabic-Indic digits in identifiers are SEC0124 (fix: ASCII), because `١` is confusable with `ا`, `l` and `1` (DR-30).
 6. **Case-sensitive.** No case or style folding (01 §3.2). Case never carries *meaning* in Kalam (DR-11).
 7. **Raw identifiers:** backticks make any word an identifier (`` `law` ``). The backticks are not part of the name. `fmt` removes unneeded backticks.
@@ -337,13 +337,13 @@ ID_CONTINUE = ID_START | ASCII_DIGIT | XID_Continue marks of the identifier's ow
 
 `skeleton(id) = UTS39_skeleton( arabic_fold( NFKC(id) ) )`
 
-where `arabic_fold` maps أ إ آ ٱ → ا, ى → ي, ة → ه, ؤ → و, ئ → ي, and the UTS #39 skeleton maps cross-script lookalikes (`ا`/`l`/`1`, `٥`/`o`, Latin/Cyrillic). It is an error if two **distinct** identifiers with the same skeleton are both visible in one scope or are both exported from one module. The message shows both declarations side by side with their code points. For example, `على` and `علي` declared in one function collide.
+where `arabic_fold` maps أ إ آ ٱ → ا, ى → ي, ة → ه, ؤ → و, ئ → ي, and the Persian/Urdu letters ی (U+06CC) → ي, ک (U+06A9) → ك, ە (U+06D5) → ه, ھ (U+06BE) → ه, ۀ (U+06C0) → ه (D19). The UTS #39 skeleton maps cross-script lookalikes (`ا`/`l`/`1`, `٥`/`o`, Latin/Cyrillic). It is an error if two **distinct** identifiers with the same skeleton are both visible in one scope or are both exported from one module. The message shows both declarations side by side with their code points. For example, `على` and `علي` declared in one function collide, and so do `كتاب` and `کتاب` (Arabic kaf vs. Persian keheh).
 
 **Uses are never folded.** If a use matches no visible declaration exactly but has the same skeleton as exactly one, the error is K0401 ("`اكتب` is not defined"), with a machine fix to the declared spelling (`أكتب`).
 
 ### 5.4 Keywords and core names in the lexer
 
-- The lexer loads `keywords.json`. A word run is checked against the **file's skin only**: keywords and core names are matched exactly in `en`, after `arabic_fold` in `ar` (so `اذا` and `إذا` are one keyword, and `fmt` writes the canonical spelling), and against the canonical spelling plus closed alias list in `franco`.
+- The lexer loads `keywords.json`. A word run is checked against the **file's skin only**: keywords and core names are matched exactly in `en`, after `arabic_fold` in `ar` (so `اذا` and `إذا` are one keyword, `لکل` with Persian keheh is `لكل`, and `fmt` writes the canonical spelling), and against the canonical spelling plus closed alias list in `franco`.
 - Reserved words of other skins are ordinary identifiers. They become backtick-escaped only if the file is converted (§4.3).
 - An English keyword or core name in an `ar` or `franco` file is K0201, with a machine fix to the file's spelling (X1). The same applies in the other direction. **K0201 replaces the error the word would otherwise cause**: it is reported only where that word, read as an identifier, would be a syntax error (for example `if x:` in a Franco file) or an undefined name (for example `print(…)` in an Arabic file). A declared identifier that happens to equal another skin's reserved word is legal (the bullet above), and the LSP shows H0202.
 - Tatweel or harakat inside an Arabic keyword are SEC0106, with an auto-fix (DR-20).
@@ -381,7 +381,7 @@ Consequences:
 - **After a member-access `.`** (the previous token is `.`), a digit run lexes as a decimal `INT_LIT` member index only. It never absorbs a `.` or an exponent. So `t.0.1` lexes as `t` `.` `0` `.` `1` (DR-26).
 - Leading zeros (`007`) are K0125. `0`, `0.5` and `0x0F` are fine.
 - **One digit system per literal** (SEC0120). `1٢3` is rejected. Arabic-Indic literals use `٫` as the decimal separator. ASCII literals use `.`. Hex, binary, octal and exponents are ASCII only (K0128).
-- A literal outside the range of its type is a compile error (K0126), not a wrap.
+- A literal outside the range of its type is a compile error (K0126), not a wrap. For `Int` the range is [−2⁶³, 2⁶³−1] = [−9223372036854775808, 9223372036854775807] (D18). The lexer computes the exact value but never range-checks, because an integer literal may be a `BigInt` of any size and `-9223372036854775808` reaches it without the sign. The **type checker** reports K0126 when an integer literal is checked against `Int` and its value does not fit, treating a literal that is the direct operand of unary `-` as negative (so `-9223372036854775808` is legal and `9223372036854775808` is not).
 
 **Literal typing** (bidirectional, compile time, exact):
 - An integer literal is `Int`, unless the expected type is `Float`, `Decimal` or `BigInt`, in which case it has that type.
@@ -424,13 +424,13 @@ Consequences:
 - ASCII in every skin. The exceptions are `،` for `,` and `؟` for `?`, which are accepted in `ar` files only (§6.4).
 - `|` appears only between pattern alternatives. `@` appears only at the start of an attribute.
 - `and`, `or` and `not` are keywords. `&&`, `||` and `!` are K0911, with fixes.
-- There are no bitwise operators (use `Int` methods such as `bit_and`, `shift_left`; a shift outside 0..53 panics), and no `**` (use `.pow()`), `++`, `===`, `?:` or `|>`. §21.3 has the fixes.
+- There are no bitwise operators (use `Int` methods such as `bit_and`, `shift_left`; a shift amount outside `0..=63` panics), and no `**` (use `.pow()`), `++`, `===`, `?:` or `|>`. §21.3 has the fixes.
 
 ---
 
 ## 6. D7 resolved: Arabic RTL, digits and punctuation
 
-D7 was deferred to research. This section locks it, as the consensus of all three drafts plus the four open items (DR-01, DR-01a–d). It is stated for founder ratification (F2).
+D7 was deferred to research. This section locks it, as the consensus of all three drafts plus the four open items (DR-01, DR-01a–d). The founder ratified it as written (D7 resolved, 2026-10-25).
 
 ### 6.1 Direction
 
@@ -448,7 +448,7 @@ D7 was deferred to research. This section locks it, as the consensus of all thre
 | `franco` | ASCII only. Arabic-Indic digits are SEC0122, with a machine fix to ASCII | ASCII |
 | `ar` | ASCII or Arabic-Indic, one system per literal | per project setting `[skin.ar] digits = "ascii"` (default) or `"arabic-indic"` |
 
-- Persian/Extended Arabic-Indic digits are always rejected (SEC0121).
+- Persian/Extended Arabic-Indic digits are always rejected (SEC0121). D19 does not change this: only the Persian/Urdu **letters** ی ک ە ھ ۀ are accepted and folded (§5.3). Persian digits `۰–۹` stay rejected everywhere, because `۴ ۵ ۶` differ in shape from `٤ ٥ ٦` and the two systems are confusable.
 - *Rationale for the ASCII default:* Egyptians write prices, phone numbers and code with ASCII digits, and ASCII avoids a keyboard-layout switch for every number (02 §6.3). Teams that prefer Arabic-Indic flip one project setting. KCF stores values, so G1/G2 hold.
 - Digits **inside strings** are data and are never converted. Runtime parsing (`"١٢٣".to_int()`) accepts ASCII and Arabic-Indic digits and returns `Ok(123)`. `Int.to_string()` always produces ASCII digits, which is a stable wire format. Locale-aware display is `i18n.number(n, locale: "ar-EG")`.
 
@@ -571,11 +571,11 @@ Core names are prelude items whose *spelling* comes from the skin table. They ca
 
 ### 7.4 Table integrity rules (CI test over `keywords.json`, 05 P7)
 
-1. No two reserved spellings (keywords, core names or Franco variants) in one skin share a **lookup key**. The lookup key is the one the lexer matches on (§5.4): the exact spelling in `en` and `franco`, and `arabic_fold(spelling)` in `ar`. (The vowel-stripping Franco fold of §7.3 is used only for "did you mean" and is not a lookup key. Under it, `we`/`wi` (and) and `aw` (or) share the key `w`, and `ao` folds to the empty string, so those hints can be ambiguous.)
+1. No two reserved spellings (keywords, core names or Franco variants) in one skin share a **lookup key**. The lookup key is the one the lexer matches on (§5.4): the exact spelling in `en` and `franco`, and `arabic_fold(spelling)` in `ar` (including the Persian/Urdu folds of D19, §5.3). (The vowel-stripping Franco fold of §7.3 is used only for "did you mean" and is not a lookup key. Under it, `we`/`wi` (and) and `aw` (or) share the key `w`, and `ao` folds to the empty string, so those hints can be ambiguous.)
 2. No Franco canonical spelling or variant starts with a digit or matches the numeric-literal grammar (§5.6). This makes "no prefix-ambiguous number" hold trivially.
 3. No Arabic canonical spelling contains tatweel or harakat.
 4. `KW_UNSAFE` and `KW_EXTERN` are identical ASCII in all skins.
-5. Within a skin, two reserved words at edit distance ≤ 1 after folding are allowed only if they can never appear in the same grammatical position. **Known exception E1:** Arabic `و` (and) and `أو` (or) are both infix and differ by one letter. They are kept because they are the standard Arabic conjunctions. Lint L0114 flags a mixed `و`/`أو` chain written without parentheses. Survey item: F3.
+5. Within a skin, two reserved words at edit distance ≤ 1 after folding are allowed only if they can never appear in the same grammatical position. **Known exception E1:** Arabic `و` (and) and `أو` (or) are both infix and differ by one letter. They are kept because they are the standard Arabic conjunctions. Lint L0114 flags a mixed `و`/`أو` chain written without parentheses. Survey item: D22 (vocabulary survey before beta).
 6. **2,000-word rule (DR-36):** an Arabic keyword or core name that appears in the CI list of the 2,000 most frequent Arabic identifier words needs a recorded justification.
 7. Word-choice notes that are enforced by tests:
    - `صح` (true) and `عدد` (Int) avoid the `صحيح` true/integer near-collision.
@@ -746,7 +746,7 @@ There is no explicit type-argument syntax in expressions (DR-25), so postfix `[`
 
 | Type | Values | Operations and semantics |
 |---|---|---|
-| `Int` | integers in **[−(2⁵³−1), 2⁵³−1]** on every backend (DR-02) | `+ - *` trap when the result leaves the range (04 L7). `//` floors and `%` takes the sign of the divisor (Python semantics). `/` on two `Int`s returns `Float`. Division or modulo by zero panics. Explicit `wrapping_add`, `checked_add` (→ `Option[Int]`) and `saturating_add` exist. |
+| `Int` | 64-bit signed integers, **[−2⁶³, 2⁶³−1]**, on every backend (DR-02, D18) | `+ - *` and unary `-` trap when the result leaves the range (04 L7), so `-(−2⁶³)` panics. Shifts take an amount in `0..=63` and panic outside it. `//` floors and `%` takes the sign of the divisor (Python semantics). `/` on two `Int`s returns `Float`. Division or modulo by zero panics. Explicit `wrapping_add`, `checked_add` (→ `Option[Int]`) and `saturating_add` exist. |
 | `BigInt` | arbitrary precision | Same operators, no overflow. Built from an integer literal in `BigInt` context or with `BigInt.from(i)`. |
 | `Float` | IEEE-754 binary64 | `+ - * /`. `==`, `!=`, `<`, `<=`, `>`, `>=` are **built-in IEEE operators on `Float` only**. `Float` is **not** `Eq`, `Ord` or `Hash` (DR-23): use `.total_cmp()`, `.near(other, tol:)` and `.is_nan()`. `to_int()` → `Option[Int]`. |
 | `Decimal` | exact base 10, 34 significant digits (IEEE 754 decimal128) | `+ - *` are exact and trap on overflow. **There is no `/`.** Use `a.div(b, scale: 2, rounding: .HalfEven)` (04 L14). `Decimal` is `Eq`, `Ord` and `Hash`. |
@@ -756,7 +756,7 @@ There is no explicit type-argument syntax in expressions (DR-25), so postfix `[`
 | `()` | the unit value `()` | Returned by functions with no `->` |
 | `Never` | no values | The type of `panic(…)`, `return`, `break` and `continue` |
 
-*Rationale for the `Int` range:* JS represents it as a plain `number` with an overflow check after `+ - *`, at almost no cost. JSON and npm numbers fit it naturally. The future C backend implements the same range with `int64_t` plus range checks, so the backends agree exactly (03 §4, 04 L2). Values that need more go in `BigInt`. **Decode rules** (DR-02): a Postgres `bigint` or a JSON integer outside the range is a decode error when the target type is `Int`, never a lossy float.
+*Rationale for the `Int` range (D18):* a true 64-bit integer means the same thing on every backend and matches Postgres `bigint`, database IDs, Unix nanosecond timestamps and `i64`/`long` in other languages. The future C/WASM backend uses `int64_t` with checked arithmetic, so the backends agree exactly (03 §4, 04 L2). The JS backend uses a canonical dual `number`/`bigint` representation with a `number` fast path (§22). Values that need more than 64 bits go in `BigInt`. **Decode rules** (DR-02): a Postgres `bigint` always fits `Int`. A JSON integer outside the i64 range is a decode error when the target type is `Int`, never a lossy float, and JSON integers are read exactly, never through a JS `number` (§18.3).
 
 ### 9.3 Built-in composite types
 
@@ -1275,7 +1275,7 @@ Handlers receive `Request[App]` and reach capabilities through `req.app`. Each h
 
 ### 16.4 Ambient console and defence in depth
 
-- `print` writes to stdout and `log.*` writes structured lines to stderr, with no capability (deviation X9, Founder question F4). A **library** package that calls them must declare `console = true`, which appears in the capability diff. In production web servers, stdout goes into the structured logger, which escapes CR/LF and ANSI sequences (CWE-117). `Show` redacts `Secret`s.
+- `print` writes to stdout and `log.*` writes structured lines to stderr, with no capability (deviation X9, locked by the founder as D20). A **library** package that calls them must declare `console = true`, which appears in the capability diff. In production web servers, stdout goes into the structured logger, which escapes CR/LF and ANSI sequences (CWE-117). `Show` redacts `Secret`s.
 - **Defence in depth on JS:** the launcher that `kalam build` generates derives OS-level permission flags from the root manifest's capability list (Node `--permission` with `--allow-fs-read=…`, Deno `--allow-net=…`). A bug in an extern binding then still hits a second wall (Security 15.5).
 - **Worked threat:** a compromised dependency with API `pad(s: String, n: Int) -> String` cannot read `~/.aws/credentials` or call home. No capability reaches it, it cannot construct one or find one in a global, and its only route to ambient authority would be an `extern`. That needs an `[npm]`/`ffi` entry, which shows up in the capability diff and in `kalam audit` (04 §3.3).
 
@@ -1324,7 +1324,7 @@ The stdlib tags parse their literal text **at compile time**. Malformed SQL quot
 - `--` and `/* */` comments are allowed in the literal. A hole inside a comment is **K1605**.
 - **`LIKE` wildcards:** `sql.like_contains(s)` (and `like_prefix`, `like_suffix`) escapes `%`, `_` and `\`. A raw `String` in a `LIKE` hole draws **W1606**.
 - `Db` API (`std/sql`): `db.all(q) -> Result[List[T], DbError]` with `T: Row` taken from the expected type, `db.one(q) -> Result[Option[T], DbError]`, `db.exec(q) -> Result[Int, DbError]` (rows affected), and `db.transaction(f: fn(Db) -> Result[T, E]) -> Result[T, E]` with `E: From[DbError]`. A transaction commits on `Ok` and rolls back on `Err`, on panic or on cancellation.
-- Rows decode **schema-first** by column name. A missing or extra column, or an `Int` column value outside the 53-bit range, is `Err(DbError.Shape)`.
+- Rows decode **schema-first** by column name. A missing or extra column, or an `Int` column value outside the i64 range (for example a Postgres `numeric`), is `Err(DbError.Shape)`. A Postgres `bigint` always decodes into `Int` exactly; the driver's text form is parsed, never passed through a JS `number`.
 - `kalam db check` (P2, 04 S16) optionally verifies every `sql` literal against a migration-derived schema.
 
 ### 17.4 `html"…"` → `Html` (contextual auto-escaping, 04 S3)
@@ -1400,7 +1400,7 @@ A package can define its own safe-string type (`graphql"…"`, `ldap"…"`) by i
 ### 18.3 Decoding (schema-first, 04 S4, S10)
 
 - `json.decode(input) -> Result[T, DecodeError]`, with `T` taken from the expected type, builds exactly a `T`. It never builds a type named by the payload. `Decode` is derived structurally and cannot be hand-written. The only user code a decoder ever runs is an opaque type's `@decode_with` validator, which is pure, non-suspending, capability-free, and chosen by the static target type.
-- **Default limits:** 1 MiB input, depth 32, 10,000 elements per container, 64 KiB per string. **Unknown fields are rejected. Duplicate keys are rejected.** Integers outside the `Int` range are rejected for `Int` targets. NaN and Infinity are rejected. Override per call with `limits: DecodeLimits(…)`.
+- **Default limits:** 1 MiB input, depth 32, 10,000 elements per container, 64 KiB per string. **Unknown fields are rejected. Duplicate keys are rejected.** Integer tokens are parsed **exactly** from the input text, never through a lossy floating-point step (on JS, never via `JSON.parse` into a `number`). Integers outside the `Int` range [−2⁶³, 2⁶³−1] are rejected for `Int` targets. A JSON number with a fraction or exponent is rejected for `Int` targets. NaN and Infinity are rejected. Override per call with `limits: DecodeLimits(…)`.
 - The same rules apply to request binding (`req.json()`, `req.form()`, `req.query()`) and to DB row decoding.
 - **Mass-assignment lint W0710:** decoding request data directly into a type that also derives `Row` (a DB row type) is flagged. Define a separate input type, so fields such as `role` or `owner_id` can never be bound from a request (04 S10; Q9 asks whether this should become an error).
 
@@ -1446,7 +1446,7 @@ extern fn create_session(client: StripeClient, params: SessionParams) -> Result[
 
 | Kalam | To JS | From JS (failure → panic, or `Err(JsError.Shape)` with `throws: true`) |
 |---|---|---|
-| `Int` | `number` | a `number` that passes `Number.isSafeInteger`. A `bigint` or unsafe number fails. **No `parseInt`, no truncation** |
+| `Int` | `number` when the value is in the safe range ±(2⁵³−1), `bigint` otherwise (`.d.ts`: `number \| bigint`) | a `number` that passes `Number.isSafeInteger`, or a `bigint` in [−2⁶³, 2⁶³−1] (normalized to `number` when safe). A `number` outside the safe range fails, because it may already have been rounded. **No `parseInt`, no truncation** |
 | `BigInt` | `bigint` | `bigint`, or a safe integer `number` |
 | `Float` | `number` | `typeof === "number"` |
 | `Decimal` | `string` (canonical decimal text) | a `string` that parses as a Decimal |
@@ -1743,7 +1743,7 @@ Output is ES2022 ESM for Node ≥ 22, Bun, Deno and modern browsers, with Source
 | enum | one generated class per variant with a numeric `$tag`. Payload-free variants are singletons |
 | `Option[T]` | `undefined` for `None` and the value itself for `Some(v)`, **unless** `v` could itself be `undefined` (a nested `Option`, `()` or a type variable), in which case a runtime check boxes it as `$Some(v)` |
 | `Result[T, E]` | `{ok: true, value}` / `{ok: false, error}` (shared shapes for V8) |
-| `Int` | JS `number`. `+ - *` emit `$i(a + b)`, which checks `Number.isSafeInteger` and panics otherwise. Range analysis may only *remove* checks it proves redundant. `//` and `%` use `$floordiv`/`$mod` (floored, panic on 0) |
+| `Int` | **Canonical dual representation (D18):** an `Int` is a JS `number` exactly when its value is in the safe range ±(2⁵³−1), and a `bigint` otherwise. Every runtime operation returns the canonical form, so `===`, `Map`/`Set` keys and hashing need no special case. **Fast path:** `+ - *` emit `$add(a, b)` etc. When both operands are `number`s, the helper computes the double result `r` and returns it if `Number.isSafeInteger(r)`. This test is exact for `+ - *`: when the true result is safe the double is exact, and when it is not, rounding cannot bring it back into the safe range, because 2⁵³ is representable. **Slow path:** otherwise the helper computes in `bigint`, panics if `BigInt.asIntN(64, x) !== x`, and normalizes a safe result back to `number`. Range analysis may inline the fast path or remove checks it proves redundant, and nothing else. `//` and `%` use `$floordiv`/`$mod` (floored, panic on 0). Comparisons use the JS operators, which are exact across `number` and `bigint`. `Show` and JSON encoding print the exact decimal digits. **Performance target:** ≤ 10% overhead on the 05 D6 corpus versus plain `number` arithmetic |
 | `Float` | `number` |
 | `Decimal`, `BigInt` | a small runtime decimal128 class (no `number` in its arithmetic), and native `bigint` |
 | `String` | a JS string, always well-formed (guaranteed by the lexer, decoders and boundary checks). APIs work in code points and graphemes (`Intl.Segmenter`) and never expose UTF-16 units |
@@ -1857,14 +1857,14 @@ These belong in CI from the first compiler commit (05 D1, D2 and the parity gate
 | Area | Tests |
 |---|---|
 | Trojan Source | Each code-point class in §5.1, placed in code, comments, strings and identifiers, is rejected with the right code. The escaped form compiles. Legitimate Arabic text in strings and comments compiles. NBSP and U+2028 are rejected. ZWJ between two emoji is accepted in a string. (05 NEG task 50) |
-| Identifiers | Mixed-script rejection; skeleton collisions (`على`/`علي`, Latin `o` vs. Arabic-Indic `٥`); tatweel, harakat and presentation forms rejected with fix-its; Persian letters rejected; digit-leading rejected in every skin; an unfolded use (`اكتب` vs. declared `أكتب`) is K0401 with a machine fix. |
+| Identifiers | Mixed-script rejection; skeleton collisions (`على`/`علي`, Latin `o` vs. Arabic-Indic `٥`); tatweel, harakat and presentation forms rejected with fix-its; Persian/Urdu letters accepted and folded (`کتاب` and `كتاب` declared in one scope are SEC0104; `لکل` in an `ar` file is the keyword `لكل`); digit-leading rejected in every skin; an unfolded use (`اكتب` vs. declared `أكتب`) is K0401 with a machine fix. |
 | Numerals | `1٢3`, Persian digits, `٫` with ASCII digits, `،` as a decimal, U+066C, leading zeros, `0x1Fg`, `1e5x`, `7f` and `3ala` are rejected with the right codes. `0x1e+5` lexes as three tokens. `t.0.1` lexes as two member accesses. `1e5` is a `Float`. Arabic-Indic literals are accepted only in `.ar.kl`. |
 | Keyword table | The seven rules of §7.4, run over `keywords.json`. Every Franco variant formats to canonical. `fmt --check` rejects variants. Every `did_you_mean` entry appears in K0127's message. |
 | Layout | Leading-dot continuation: a value block whose final line is `.None` at the same indentation parses as a statement; a block whose first line starts with `.X` is not joined to its header; a deeper `.map(…)` line after `let x = xs` joins. |
 | Inline if | `let x = if c: a else: b`, `return if c: a else: b`, `f(if c: a else: b)` parse as expressions. `if x < 0: return Err(.Neg)` parses as a statement. The K0910 fix output parses. |
 | Skins and parity | 05 P1–P5 round-trips for every corpus program, including backtick escapes, Arabic-Indic digit settings and glossary display (which must not change KCF). English keywords in `.ar.kl` give K0201. |
 | Types | No implicit conversions (a matrix of every primitive pair under `==`, `+` and as a call argument). `Float` is not `Eq`/`Ord`/`Hash`. `Secret` is not `Encode`/`Eq`. Capabilities have no `Decode`. Method resolution is unchanged by adding imports. |
-| Integers | Overflow traps at exactly ±(2⁵³−1) on JS and in the reference interpreter, with differential execution. A Postgres `bigint` of 2⁵³ decoding into `Int` is `DbError.Shape`. |
+| Integers | Overflow traps exactly outside [−2⁶³, 2⁶³−1] on JS and in the reference interpreter, with differential execution, including across the JS `number`/`bigint` boundary (2⁵³−1 + 1, 2⁶³−1 + 1, −2⁶³ − 1, −(−2⁶³), products that cross 2⁵³). Every JS result is in canonical form (`number` iff safe). A Postgres `bigint` of 2⁶³−1 decodes into `Int` exactly. A JSON integer 9007199254740993 decodes exactly; 2⁶³ decoding into `Int` is `DecodeError.OutOfRange`. `9223372036854775808` as an `Int` literal is K0126 and `-9223372036854775808` is legal. |
 | Patterns | Exhaustiveness, unreachable arms (K1002), bare identifier as binding, `.Variant` resolution, W0403 over a foreign enum. |
 | Must-use | Discarded `Result` → K1303. Discarded value → K0730. `let _ =` is accepted and counted. |
 | Concurrency | Suspension inference over the call graph, higher-order specialization, `@sync` fields, K1401 call chains, cancellation only at suspension points, and transaction rollback on panic and on cancellation. |
@@ -1941,7 +1941,7 @@ That is **10 concepts**, within the MVP limit of 12, with no `async`, no classes
 | SEC0104 | two distinct identifiers with the same skeleton in one scope |
 | SEC0105 | mixed-script identifier |
 | SEC0106 | tatweel, harakat, Quranic mark, ZWJ/ZWNJ or presentation form in an identifier or keyword |
-| SEC0107 | Persian/Urdu letter in an identifier |
+| SEC0107 | *retired* (was: Persian/Urdu letter in an identifier; these letters are folded since D19). The code is never reused |
 | SEC0108 | glossary display name collides by skeleton |
 | SEC0110 | bidi control or mark |
 | SEC0111 | invisible format character or misplaced variation selector |
@@ -1956,7 +1956,7 @@ That is **10 concepts**, within the MVP limit of 12, with no `async`, no classes
 | K0105 | unexpected character |
 | K0120 | bad indentation (unit, jump or unexpected indent) |
 | K0122 | dedent to an unknown level |
-| K0126 | literal out of range for its type |
+| K0126 | literal out of range for its type (`Int`: [−2⁶³, 2⁶³−1], D18; reported by the type checker) |
 | K0125 | leading zero |
 | K0127 | number glued to letters / name starts with a digit |
 | K0128 | hex, binary, octal or exponent with Arabic-Indic digits |
@@ -2837,7 +2837,7 @@ These are engineering questions the design loop can settle by measurement. None 
 
 1. **Suspend-by-default for stored functions (§15.3).** Is it too pessimistic for performance-sensitive code? Measure the microtask cost on the corpus before adding effect variables on generic records.
 2. **Capability ergonomics.** Is an `App` record carried by `Request[A]` enough, or do larger apps need a dependency-injection convention? Per-function capability manifests (Austral-style, 04 §7 Q2) were rejected as too heavy for v0.1.
-3. **Core-name count.** Could `assert`, `Set` and `Decimal` stay untranslated to bring reserved spellings closer to the 05 D4 budget, if core names are counted (§26.1, F8)?
+3. **Core-name count.** Could `assert`, `Set` and `Decimal` stay untranslated to bring reserved spellings closer to the 05 D4 budget, if core names are counted (§26.1)? *Closed by D21: all 19 core names stay translated in every skin; the budget question is only how §26.1 counts them.*
 4. **Record field privacy.** v0.1 has only whole-record `opaque`. Is per-field `export` needed?
 5. **Stdlib alias packs** (02 §9 Q2). Should `Request`, `.map` and `Env` get official Arabic and Franco names? v0.1 says no, so APIs stay greppable and docs single-sourced.
 6. **LLM mistakes as errors vs. hidden aliases.** Re-measure with 05 D3 self-repair rates whether accepting `def`/`elif` silently would raise first-try pass rates enough to justify a second spelling.
@@ -2853,30 +2853,21 @@ These are engineering questions the design loop can settle by measurement. None 
 
 ---
 
-## 30. Founder questions
+## 30. Founder decisions (resolved)
 
-These decisions need the founder's input. Each has a working default, so the build loop is never blocked.
+The founder answered every question this section used to ask (`DECISIONS.md`, 2026-10-25). They are locked decisions now, and the spec text cited for each one states them as normative. There are no open founder questions in v0.1.
 
-**F1. `Int` = 53-bit safe range on every backend** (DR-02). The default is a provisional lock: `Int` is ±(2⁵³−1) and trapping everywhere, zero-cost on JS, with `BigInt` as the opt-in. The alternative is a true 64-bit `Int`, which needs a dual number/bigint representation and helper calls on JS (Security draft). **Ask:** approve the 53-bit default, with the commitment to benchmark i64 before the JS backend freezes and to switch only if its cost is ≤ 10%? This decision cannot be changed after 1.0.
-
-**F2. Ratify D7** (§6, DR-01). Logical-order files; no bidi controls anywhere; RTL display for Arabic files done by tools; ASCII digits by default; Arabic-Indic digits allowed only in Arabic files (with a project setting for printing them); Persian digits and U+066C rejected; `٫` only with Arabic-Indic digits; `،`/`؟` as the only punctuation aliases. **Ask:** record this in `DECISIONS.md` as the locked D7?
-
-**F3. Arabic and Franco vocabulary survey.** The tables in `keywords.json` are provisional until a survey of 200+ Egyptian developers (02 §9) and a native-speaker review. **Ask:** approve running it before beta, with these flagged items:
-- Franco `walla` = `else`, although Egyptians often say *walla* for "or" (`aw` is `or`). This is a real confusion risk;
-- Arabic `و` (and) vs. `أو` (or), which differ by one letter (exception E1);
-- `عندما`/`lama` for `case`, `هيكل`/`haykal` for `type`, and `بصفة`/`ka` for `as` (also used in `impl Type as Trait`);
-- `علني` ("public") in Arabic vs. `talla3` ("export") in Franco for `export`;
-- the length of Franco `motghayer` (`var`).
-
-**F4. Ambient console** (X9). `print` and `log.*` need no capability, a deliberate deviation from 04 L12 so that hello-world stays one line. Libraries must declare `console = true`. **Ask:** accept, or require `world` even for printing?
-
-**F5. Canonical names in Arabic-first projects** (§4.5). If a team writes Arabic identifiers natively, those *are* the canonical names, so their JSON keys and DB columns are Arabic unless they add `@name("…")`. **Ask:** allow this freely, or add a default-on lint that requires ASCII wire names (`@name`) on exported `Encode`/`Row` types so that API consumers always see ASCII keys?
-
-**F6. Persian/Urdu letters** (X8). v0.1 rejects ی, ک, ە, ھ and ۀ in identifiers (with a fix-it to the Arabic letter). This is safest against homoglyphs, but it excludes Persian- and Urdu-speaking developers from writing native identifiers. **Ask:** is MENA-Arabic-only scope acceptable for v0.1?
-
-**F7. Franco skin naming.** The skin ID is `franco` and the file suffix is `.franco.kl`, replacing the drafts' `fr`, which is the ISO code for French. The alternative is `.arz.kl` (ISO 639-3 for Egyptian Arabic, but obscure). **Ask:** confirm the user-visible name.
-
-**F8. Translating 19 core names** (`Int` → `عدد`, `String` → `نص`, …). This makes Arabic lines read naturally and avoids keyboard switching for everyday types. It also brings reserved spellings to 50 per skin, above the 05 D4 limit of 40 if core names count as keywords. **Ask:** keep the full translated set (the current default), or trim it to stay within the keyword budget (Q3)?
+| Former question | Decision | Choice | Spec |
+|---|---|---|---|
+| F1. `Int` range | **D18** | `Int` is a **true 64-bit checked integer** on every backend, [−2⁶³, 2⁶³−1], trapping on overflow. JS uses the canonical dual `number`/`bigint` representation with a `number` fast path. The 53-bit default is withdrawn. | §0 item 4, DR-02, §5.6, §9.2, §18.3, §19.2, §22 |
+| F2. Ratify D7 | **D7 (resolved)** | §6 as written: logical order, no bidi controls anywhere, RTL display by tools, ASCII digits by default, Arabic-Indic digits only in Arabic files. | §6, DR-01 |
+| F3. Vocabulary survey | **D22** | The `keywords.json` tables stay provisional. A survey of 200+ developers and a native-speaker review run before beta, covering the items flagged in DR-31 and §7.4 (`walla`/`aw`, `و`/`أو`, `عندما`/`lama`, `هيكل`/`haykal`, `بصفة`/`ka`, `علني`/`talla3`, `motghayer`). | §7, DR-31 |
+| F4. Ambient console | **D20** | `print` and `log.*` are ambient (no capability). A library package that calls them must declare `console = true`. | X9, §16.4, K1504 |
+| F5. Wire names in Arabic-first projects | **D23** | Arabic identifiers may be JSON keys and DB columns freely. There is **no** default ASCII wire-name lint. `@name("…")` stays available as an opt-in. | §4.5 |
+| F6. Persian/Urdu letters | **D19** | ی ک ە ھ ۀ are **folded** to ي ك ه ه ه for keyword and identifier comparison, not rejected. A lookalike collision after folding stays a compile error (SEC0104). SEC0107 is retired. | X8, DR-04, §5.2, §5.3, §5.4 |
+| F7. Franco skin naming | **D24** | Skin ID `franco`, file extension `.franco.kl`. | DR-18, §4.1 |
+| F8. Translating core names | **D21** | All 19 core names are translated in every skin. | DR-19, §7.2 |
+| (roadmap) | **D25** | About 28 months to 1.0, with the C/WASM backend before 1.0. | `ROADMAP.md` |
 
 ---
 
@@ -2894,3 +2885,12 @@ Spec errata are recorded here with a date, as ROADMAP M0 requires. Each erratum 
 | 2026-10-24 | §16.1 | `Net`: TLS verification always on (04 S12 MUST was untraced) | CRITIQUE S1 |
 | 2026-10-24 | §24 | Traceability rows added for S15, P3–P5, P8, P11–P13 and G1–G4 | CRITIQUE S2 |
 | 2026-10-24 | §27 | K0129 and K1504 adopted from ARCHITECTURE.md | CRITIQUE C6 |
+| 2026-10-25 | §0, DR-02, §5.6, §5.9, §9.2, §17.3, §18.3, §19.2, §22, §25, §27 | `Int` is a true 64-bit checked integer, [−2⁶³, 2⁶³−1], on every backend; the 53-bit default is withdrawn. JS lowering is specified as a canonical dual `number`/`bigint` representation with a sound `Number.isSafeInteger` fast path. JSON integers decode exactly. Shift amounts range over `0..=63`. K0126 bounds are the i64 range and K0126 is reported by the type checker (unary minus admits −2⁶³) | `DECISIONS.md` D18 |
+| 2026-10-25 | §5.2, §5.3, §5.4, §6.2, §7.4, DR-04, X8, §25, §27 | Persian/Urdu letters ی ک ە ھ ۀ are allowed and folded by `arabic_fold` to ي ك ه ه ه for keyword lookup and skeletons; a collision after folding is SEC0104. SEC0107 is retired | `DECISIONS.md` D19 |
+| 2026-10-25 | §4.5, §30 | Arabic canonical names are valid JSON keys and DB columns; no default ASCII wire-name lint | `DECISIONS.md` D23 |
+| 2026-10-25 | §6, DR-01, §30 | D7 recorded as founder-ratified (no longer "for ratification") | `DECISIONS.md` D7 (resolved) |
+| 2026-10-25 | X9, §16.4, §30 | Ambient `print`/`log` with library `console = true` is locked, not a founder question | `DECISIONS.md` D20 |
+| 2026-10-25 | DR-19, Q3, §30 | Translating all 19 core names in every skin is locked | `DECISIONS.md` D21 |
+| 2026-10-25 | DR-31, §7.4, §30 | Vocabulary tables provisional pending the pre-beta survey (was F3) | `DECISIONS.md` D22 |
+| 2026-10-25 | DR-18, §30 | Franco skin ID `franco` and extension `.franco.kl` are locked | `DECISIONS.md` D24 |
+| 2026-10-25 | header, §30 | §30 "Founder questions" replaced by "Founder decisions (resolved)"; binding inputs are now D1–D25 | `DECISIONS.md` D18–D25 |

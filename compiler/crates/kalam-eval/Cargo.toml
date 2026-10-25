@@ -1,0 +1,20 @@
+[package]
+name = "kalam-eval"
+description = "Kalam eval harness: computes the scorecard metrics that are measurable today (eval/LOOP.md, eval/SCORECARD.md)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+kalam-base.workspace = true
+kalam-skins.workspace = true
+kalam-diagnostics.workspace = true
+kalam-lexer.workspace = true
+kalam-fmt.workspace = true
+serde_json.workspace = true
+
+[[bin]]
+name = "kalam-eval"
+path = "src/main.rs"

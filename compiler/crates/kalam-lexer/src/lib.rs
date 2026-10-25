@@ -368,6 +368,53 @@ fn validate_arabic_number(s: &str) -> Result<TokenKind, &'static str> {
     })
 }
 
+/// The exact value of an integer-literal token's text (decimal with ASCII or Arabic-Indic
+/// digits, `0x`, `0b`, `0o`, with `_` separators). `None` if the text is not a valid
+/// `INT_LIT` or does not fit in `u128`.
+///
+/// The lexer never range-checks a literal itself: an integer literal may be a `BigInt`
+/// (any size), and `-9223372036854775808` reaches the lexer without its sign. The type
+/// checker reports K0126 in `Int` context using [`int_literal_fits_int`] (spec §5.6, D18).
+pub fn int_literal_value(text: &str) -> Option<u128> {
+    // Mirror the lexer's acceptance rules (one digit system per literal, no Persian digits,
+    // Arabic-Indic forms validated on their own) before normalizing to ASCII.
+    let has_ascii = text.chars().any(|c| c.is_ascii_digit());
+    let has_arabic = text.chars().any(is_arabic_indic_digit);
+    if text.chars().any(is_persian_digit) || (has_ascii && has_arabic) {
+        return None;
+    }
+    if has_arabic && validate_arabic_number(text) != Ok(TokenKind::Int) {
+        return None;
+    }
+    let ascii = to_ascii_digits(text);
+    if validate_ascii_number(&ascii) != Ok(TokenKind::Int) {
+        return None;
+    }
+    let (digits, radix) = if let Some(rest) = ascii.strip_prefix("0x") {
+        (rest, 16)
+    } else if let Some(rest) = ascii.strip_prefix("0b") {
+        (rest, 2)
+    } else if let Some(rest) = ascii.strip_prefix("0o") {
+        (rest, 8)
+    } else {
+        (ascii.as_str(), 10)
+    };
+    let mut value: u128 = 0;
+    for c in digits.chars().filter(|&c| c != '_') {
+        let d = c.to_digit(radix)? as u128;
+        value = value.checked_mul(radix as u128)?.checked_add(d)?;
+    }
+    Some(value)
+}
+
+/// True if a literal of this magnitude is an `Int`: `Int` is a true 64-bit checked
+/// integer on every backend, [−2⁶³, 2⁶³−1] (DECISIONS.md D18). `negated` is true when
+/// the literal is the direct operand of unary minus, so `-9223372036854775808` fits.
+pub fn int_literal_fits_int(magnitude: u128, negated: bool) -> bool {
+    let limit = if negated { 1u128 << 63 } else { (1u128 << 63) - 1 };
+    magnitude <= limit
+}
+
 /// Rewrites Arabic-Indic and Persian digits to ASCII and `٫` to `.`.
 pub fn to_ascii_digits(s: &str) -> String {
     s.chars()
@@ -1204,6 +1251,60 @@ mod tests {
             kinds("\u{0661}\u{066B}\u{0665}\n", Skin::Ar),
             vec![T::Float, T::Newline, T::Eof]
         );
+    }
+
+    #[test]
+    fn int_literal_values_and_the_i64_range() {
+        // D18: `Int` is a true 64-bit integer; K0126 uses these helpers in `Int` context.
+        assert_eq!(int_literal_value("0"), Some(0));
+        assert_eq!(int_literal_value("1_000_000"), Some(1_000_000));
+        assert_eq!(int_literal_value("\u{0661}\u{0662}"), Some(12));
+        assert_eq!(int_literal_value("\u{0661}_\u{0662}"), Some(12));
+        assert_eq!(int_literal_value("0xff"), Some(255));
+        assert_eq!(int_literal_value("0b1010"), Some(10));
+        assert_eq!(int_literal_value("0o17"), Some(15));
+        assert_eq!(int_literal_value("1.5"), None);
+        assert_eq!(int_literal_value("1e5"), None);
+        assert_eq!(int_literal_value("3ala"), None);
+        // Tokens the lexer rejects have no value: Persian digits, mixed digit systems,
+        // and a radix prefix after an Arabic-Indic zero.
+        assert_eq!(int_literal_value("\u{06F1}\u{06F2}"), None);
+        assert_eq!(int_literal_value("1\u{0662}3"), None);
+        assert_eq!(int_literal_value("\u{0660}xff"), None);
+        assert_eq!(int_literal_value("\u{0660}"), Some(0));
+        // Larger than u128: no value, so it can only be a K0126 (or a BigInt via typeck).
+        assert_eq!(int_literal_value(&"9".repeat(40)), None);
+
+        let max = int_literal_value("9223372036854775807").unwrap();
+        let min_mag = int_literal_value("9223372036854775808").unwrap();
+        assert!(int_literal_fits_int(max, false));
+        assert!(int_literal_fits_int(max, true));
+        assert!(!int_literal_fits_int(min_mag, false)); // 2^63 is out of range...
+        assert!(int_literal_fits_int(min_mag, true)); // ...but -2^63 is i64::MIN
+        assert!(!int_literal_fits_int(min_mag + 1, true));
+        assert!(int_literal_fits_int(int_literal_value("0x7fff_ffff_ffff_ffff").unwrap(), false));
+        assert!(!int_literal_fits_int(int_literal_value("0x8000_0000_0000_0000").unwrap(), false));
+        // The old 53-bit limit is gone: 2^53 is an ordinary Int literal.
+        assert!(int_literal_fits_int(int_literal_value("9007199254740992").unwrap(), false));
+        // The lexer itself never rejects a large literal (it may be a BigInt).
+        assert_eq!(codes("99999999999999999999999\n", Skin::En), Vec::<&str>::new());
+    }
+
+    #[test]
+    fn persian_and_urdu_letters_are_folded_not_rejected() {
+        // D19: ی ک ە ھ ۀ are ordinary Arabic-script letters in identifiers...
+        for word in ["\u{06A9}تاب", "عل\u{06CC}", "\u{06BE}ذا", "\u{06D5}", "خان\u{06C0}"] {
+            let text = format!("{word}\n");
+            assert_eq!(kinds(&text, Skin::Ar), vec![T::Ident, T::Newline, T::Eof], "{word}");
+            assert_eq!(kinds(&text, Skin::En), vec![T::Ident, T::Newline, T::Eof], "{word}");
+        }
+        // ...and in an Arabic file they match keywords after folding, flagged for `fmt`.
+        let out = lex("ل\u{06A9}ل س ف\u{06CC} ق\n", Skin::Ar, FileId(0));
+        assert!(out.diagnostics.is_empty(), "{:?}", out.diagnostics);
+        assert_eq!(out.tokens[0].kind, T::Keyword(Concept::KwFor));
+        assert!(out.tokens[0].flags.variant_spelling);
+        assert_eq!(out.tokens[2].kind, T::Keyword(Concept::KwIn));
+        assert!(out.tokens[2].flags.variant_spelling);
     }
 
     #[test]

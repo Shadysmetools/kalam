@@ -114,7 +114,7 @@ fn transfer(db: Db, from: Int, to: Int, amount: Decimal) -> Result[(), DbError]:
 
 | Type | Notes |
 |---|---|
-| `Int` | range ±(2^53−1). Overflow **panics**. `checked_add`, `wrapping_add`, `saturating_add` exist |
+| `Int` | true 64-bit signed integer, −2^63 to 2^63−1, on every backend (JS included). Overflow **panics**. `checked_add`, `wrapping_add`, `saturating_add` exist. An out-of-range `Int` literal is a compile error (K0126) |
 | `BigInt` | arbitrary precision (opt-in) |
 | `Float` | IEEE binary64. **Not Eq/Ord/Hash**: no Map keys, sort with `.total_cmp()`, compare with `.near(x, tol:)` |
 | `Decimal` | exact, 34 digits, for money. `let p: Decimal = 19.99` is exact. **No `/`**: use `a.div(b, scale: 2, rounding: .HalfEven)` |
@@ -318,7 +318,7 @@ extern fn create_session(client: StripeClient, params: SessionParams) -> Result[
 ```
 
 - The npm package must be listed in `[npm]` in `kalam.toml`. `async: true` means the call suspends. `throws: true` turns JS exceptions into `Err(JsError)`. Without it, a JS exception becomes a panic. `extern type X` declares an opaque JS object.
-- Every value coming back from JS is validated, and an `Int` must be a safe integer. Untyped JS values are `JsValue` and are read with `js.decode(v)`.
+- Every value coming back from JS is validated. An `Int` must be a safe-integer `number` or a `bigint` in the 64-bit range (a `number` above 2^53 is rejected because it may already be rounded). Untyped JS values are `JsValue` and are read with `js.decode(v)`.
 - Prefer `kalam bind npm:pkg` (generated bindings) or a `@kalam-bind/*` package over writing externs by hand.
 
 ## 11. Stdlib quick reference (all names are English in every skin)
@@ -388,3 +388,5 @@ Core names: Int عدد adad · Float كسري kasri · Decimal عشري ashri ·
 - Arabic files print `،` for `,` and `؟` for `?`. Stdlib names, tags and `@attributes` stay ASCII in every skin.
 - **No name may start with a digit**, in any skin. In Franco, write `ameel`, not `3amil`. The compiler suggests the right spelling.
 - In Arabic, name values with the article (`العالم: عالم`), because types and values share one namespace.
+- Persian/Urdu letters ی ک ە ھ ۀ are allowed and are compared as ي ك ه. So `کتاب` and `كتاب` in one scope is an error (SEC0104), and `لکل` in an Arabic file is the keyword `لكل`.
+- Arabic field names are fine as JSON keys and DB columns. Add `@name("…")` only if you want a different wire name.

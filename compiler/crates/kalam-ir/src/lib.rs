@@ -4,7 +4,7 @@
 //! KIR invariants (ARCHITECTURE.md §10.2), which are the contract that keeps a future C
 //! backend possible:
 //! 1. Every expression has an explicit type. Generics are kept; C runs `monomorphize`.
-//! 2. Every operation has spec semantics (`IntAdd` traps outside ±(2^53 − 1), `IntFloorDiv`
+//! 2. Every operation has spec semantics (`IntAdd` traps outside [−2^63, 2^63 − 1], `IntFloorDiv`
 //!    floors and panics on zero, …), never "whatever the host does".
 //! 3. Evaluation order is explicit (temporaries where a backend could reorder).
 //! 4. Every suspension point is marked (`Call::suspends`, `Coerce::SyncToSusp`).

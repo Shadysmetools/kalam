@@ -1,7 +1,7 @@
 # Kalam (كلام) Roadmap to 1.0
 
 > **Status:** proposed plan, 2026-10-24. It needs founder approval as part of M0.
-> **Binding inputs:** `DECISIONS.md` (D1–D17, locked), `spec/KALAM-SPEC.md` v0.1, research reports 01–06.
+> **Binding inputs:** `DECISIONS.md` (D1–D25, locked; D18–D25 override the spec and the defaults below), `spec/KALAM-SPEC.md` v0.1, research reports 01–06.
 > **Scorecard:** exit criteria use the metric names and MVP/β/1.0 thresholds from research/05 §2 (parity gates P1–P10) and §4.2–4.3 (dimensions D1–D8). `eval/SCORECARD.md` (draft, with `eval/scorecard.json`) holds these same thresholds, and every reference below of the form "SC D2: …" points to the same row in both places. Scorecard D1–D8 (dimensions) are not decisions D1–D17. Here, decisions are always written "decision D8".
 
 ---
@@ -62,6 +62,8 @@ Decision D8 sets the horizon: long-term, no rush, **1–2 years to 1.0**. **This
 
 ### 0.4 Founder decisions placed on the timeline
 
+> **Resolved 2026-10-25 (`DECISIONS.md`):** D7 (F2), D18 (F1), D19 (F6: fold ی ک ە ھ ۀ, not reject), D20 (F4), D21 (F8), D22 (F3: keyword tables provisional until the survey), D23 (F5), D24 (F7) and D25 (accept about 28 months, C/WASM before 1.0). Where a row below names a default, the recorded decision replaces it.
+
 | Item (spec §29–30) | Must be decided by | Default if not decided |
 |---|---|---|
 | **F2 / decision D7: Arabic RTL and digits.** Already resolved in spec §6 / DR-01 from reports 02 and 04 | **M0 exit.** The founder records it in `DECISIONS.md` as the locked D7 | Spec §6 stands |
@@ -69,7 +71,7 @@ Decision D8 sets the horizon: long-term, no rush, **1–2 years to 1.0**. **This
 | The calendar: accept about 28 months to 1.0, or cut scope (§0.3) | M0 exit | about 28 months |
 | P9 scope exception: the normative spec is English-only, with AR/franco summary pages (`docs/DOCS-PLAN.md` §2) | M0 exit | Exception granted |
 | F4 ambient console; F5 Arabic wire names | M2 exit (they affect type and capability checks) | Spec defaults |
-| **F1 `Int` = 53-bit.** Benchmark i64 on the corpus. Switch only if the cost is ≤ 10% (DR-02) | **M3 exit**, before the JS backend freezes. It cannot change after 1.0 | 53-bit |
+| **F1 `Int` range: decided, D18.** `Int` is a true 64-bit checked integer on every backend (JS: dual `number`/`bigint`). The ≤ 10% cost in DR-02 is now a performance target, not a decision gate | Decided 2026-10-25 | — |
 | Q7 live-component state across instances | M5 mid-point | Sticky sessions |
 | **F3 vocabulary survey** (200+ Egyptian developers, plus a native-speaker review: `walla`/`aw`, `و`/`أو`, `عندما`, `هيكل`, `بصفة`/`ka`, `علني`/`talla3`, `motghayer`) | Launch at M0. **Apply results before Beta.** Keyword changes after 1.0 need an edition | Current `keywords.json` |
 | Q14 linguist review of the confusable table and `arabic_fold` | M1 exit | Draft table |
@@ -151,7 +153,7 @@ Decision D8 sets the horizon: long-term, no rush, **1–2 years to 1.0**. **This
 - SC D1: spec clause coverage ≥ 40% (checkpoint; MVP threshold 60% at M5). Conformance pass rate ≥ 95% on the clauses covered. Fuzz 24 h, now including the type checker.
 - SC D5: diagnostic completeness ≥ 70%, golden coverage ≥ 70% ×3 skins, machine-applicable fix rate ≥ 20%, Becker-rubric judge ≥ 3.0.
 - All MVP-tier corpus tasks 1–15 type-check in all three skins against the stdlib signature stubs. The prelude-only tasks run on the reference interpreter with the expected output: 1, 2, 5, 11, 12, 13 and 14 (8 too, if it needs no `std/string` float formatting). The [NEG] tasks 48–50 fail with the exact expected codes.
-- Founder answers F4 and F5.
+- F4 and F5 are already decided (DECISIONS D20: ambient console; D23: Arabic wire names allowed, no ASCII lint). The type and capability checks implement them.
 
 **Risks**
 - Suspension inference plus higher-order functions is the hardest part of the spec (§15.3, Q1). *Mitigation:* build it as a separate pass with its own conformance directory. Measure microtask cost before adding effect variables.
@@ -172,16 +174,16 @@ Decision D8 sets the horizon: long-term, no rush, **1–2 years to 1.0**. **This
 - `kalam run`, `kalam build`, `kalam test` (with `test` blocks), `kalam new` (with `AGENTS.md`), and `kalam mcp` (check, fix, fmt, convert_skin, explain).
 - **Pulled forward:** `kalam lsp` with diagnostics, formatting and hover (3/8). EN TextMate grammar and VS Code client stub. `llm-eval` harness live (HumanEval and MBPP ported, MultiPL-T approach, n=10, T=0.2, pinned models). Tour chapters 1–5 in three languages.
 - Static scanner for emitted JS: no `eval`, `Function(`, `==` or `for…in`. Test pages run under a strict CSP with Trusted Types.
-- **i64 benchmark** for founder question F1.
+- **Int benchmark**: cost of the D18 dual `number`/`bigint` lowering on the corpus (DR-02 performance target).
 
 **Exit criteria (checkpoint)**
 - **Hard gate:** P5 behavioural identity for every task that runs. Byte-identical output across skins.
-- SC D1: differential mismatches between the reference interpreter and JS = 0 on the corpus and 10k generated programs. Integer traps at exactly ±(2⁵³−1) on both.
+- SC D1: differential mismatches between the reference interpreter and JS = 0 on the corpus and 10k generated programs. Integer traps at exactly the signed 64-bit bounds [−2⁶³, 2⁶³−1] on both (DECISIONS D18).
 - SC D6: hello-world cold start ≤ 200 ms, HTTP first response ≤ 1 s, bundle ≤ 30 MB, idle RSS ≤ 100 MB, compile ≤ 5 s / incremental ≤ 2 s.
 - SC D4: concepts before hello web ≤ 12 (spec value: 10).
 - SC D3, first measurement (not gated yet): pass@1, syntax-valid rate, hallucinated-API rate, and skin gap reported with 95% confidence intervals.
 - SC D7: LSP 3/8 in EN.
-- F1 decided by the founder from benchmark data. The JS backend lowering of `Int` is then frozen.
+- The JS backend lowering of `Int` (D18 dual representation) is frozen.
 
 **Risks**
 - `async` coloring cost (the two-variant `f`/`f$s` code size). *Mitigation:* measure bundle size and microtask overhead on the corpus each iteration.

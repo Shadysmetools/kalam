@@ -249,6 +249,16 @@ pub static CATALOG: &[Entry] = &[
         proposed: false,
     },
     Entry {
+        code: "K0126",
+        title: ["NUMBER TOO BIG FOR ITS TYPE", "رقم أكبر من نوعه", "RAKAM AKBAR MEN NO3O"],
+        message: [
+            "`{literal}` doesn't fit in `{type}`. For `Int`, the range is the whole numbers from -9223372036854775808 to 9223372036854775807 (64 bits) on every platform. For larger numbers, give the value the type `BigInt`.",
+            "`{literal}` لا يتسع له النوع `{type}`. مدى النوع `عدد` هو الأعداد الصحيحة من -9223372036854775808 إلى 9223372036854775807 (64 بت) على كل المنصات. للأعداد الأكبر اجعل نوع القيمة `BigInt`.",
+            "`{literal}` mesh hayeksa3 f `{type}`. Lel `adad`, el mada howa el arqam el sa7ee7a men -9223372036854775808 l 9223372036854775807 (64 bit) 3ala kol platform. Lel arqam el akbar, ekhali no3 el qeema `BigInt`.",
+        ],
+        proposed: false,
+    },
+    Entry {
         code: "K0127",
         title: ["NUMBER GLUED TO LETTERS", "رقم ملتصق بحروف", "RAKAM LAZE2 F 7OROOF"],
         message: [
@@ -362,6 +372,16 @@ mod tests {
             "found U+202E, write `\\u{...}`"
         );
         assert_eq!(render_template("{unknown}", &args), "{unknown}");
+    }
+
+    #[test]
+    fn k0126_states_the_true_64_bit_int_range() {
+        // DECISIONS.md D18: `Int` is a checked 64-bit integer on every backend.
+        let e = lookup("K0126").expect("K0126 is in the catalog");
+        for msg in e.message {
+            assert!(msg.contains("9223372036854775807"), "{msg}");
+            assert!(!msg.contains("2⁵³") && !msg.contains("9007199254740991"), "{msg}");
+        }
     }
 
     #[test]

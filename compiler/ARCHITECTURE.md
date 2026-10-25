@@ -311,7 +311,7 @@ KIR is a **structured, typed, expression-oriented IR**, not an SSA CFG. Structur
 ### 10.2 Invariants (the target-neutrality contract)
 
 1. **Every type is explicit** on every expression. Generics are kept, and type parameters are explicit. Backends that need monomorphization (C) run the shared `monomorphize` pass. JS does not need it.
-2. **Every operation has spec semantics, not host semantics.** `IntAdd`/`IntSub`/`IntMul` trap outside ±(2⁵³−1). `IntFloorDiv` and `IntMod` floor and panic on 0. `FloatEq` is IEEE. `StrConcat`, `ListGet` and the others panic out of bounds. No backend may implement these with "whatever the host does".
+2. **Every operation has spec semantics, not host semantics.** `IntAdd`/`IntSub`/`IntMul` trap outside the signed 64-bit range [−2⁶³, 2⁶³−1] (DECISIONS D18). `IntFloorDiv` and `IntMod` floor and panic on 0. `FloatEq` is IEEE. `StrConcat`, `ListGet` and the others panic out of bounds. No backend may implement these with "whatever the host does".
 3. **Evaluation order is explicit.** Lowering introduces temporaries wherever a backend could reorder evaluation, so the left-to-right rule (§10.6) is a property of the IR, not of the target.
 4. **Every suspension point is marked.** `Call { suspends: bool, instance: Sync | Susp }`. Function definitions carry `suspends`. `Coerce(SyncToSusp)` is explicit.
 5. **Sugar is gone:** `?` is a `Switch` plus early return with the recorded conversion. `match` becomes a decision tree with a defensive panicking default. Value-semantic assignment becomes `with`/`set`/`insert` rebinding. Interpolation becomes `Show` calls plus concatenation. Tagged literals become `MakeTemplate { tag, static_parts: StaticPartsId, holes }`. Default arguments are filled in at call sites. Named arguments become positional.
@@ -552,7 +552,7 @@ pub trait Backend {
 | Closures | closure conversion pass (environment records) |
 | Memory | ARC/ORC-style reference counting with a cycle collector, or Boehm GC for a first version. GC semantics with no observable finalizers (03 §4). Values are immutable and `Cell` is the only mutable cell, which simplifies cycles |
 | Suspension | stackful coroutines (for example `minicoro`) over a libuv event loop. KIR's explicit suspension points and `Coerce(SyncToSusp)` make a later switch to compiled state machines possible without touching the frontend |
-| Integers | `int64_t` plus `__builtin_*_overflow` and a range check to ±(2⁵³−1), so results equal JS exactly (DR-02) |
+| Integers | `int64_t` plus `__builtin_*_overflow`, trapping on overflow, so results equal the JS dual `number`/`bigint` lowering exactly (DR-02, DECISIONS D18) |
 | UB | none reachable from safe code (04 L2): checked indexing, guarded shifts and division, zero-initialization, `-fno-strict-aliasing`, sanitizer-fuzzed output, where any sanitizer hit is a compiler security bug (04 §2.3) |
 | Toolchain | bundled, pinned `zig cc`; hardening flags on by default (04 P13); `#line` directives for gdb/lldb, with a DAP adapter later |
 

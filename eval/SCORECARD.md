@@ -11,7 +11,8 @@
 
 ## 1. How to read this
 
-- **Milestones:** `mvp`, `beta`, `1.0`. The loop always works toward one **target milestone**, recorded in `eval/FREEZE.json`.
+- **Scorecard tiers:** `mvp`, `beta`, `1.0`. These carry the thresholds.
+- **Milestone tiers:** `M1`–`M10`, `beta` and `1.0`, aligned to `ROADMAP.md` (§10). The loop always works toward one **target milestone tier**, recorded in `eval/FREEZE.json`. M5 is judged by the full `mvp` rule, Beta by `beta` and 1.0 by `1.0`. The other milestones are *checklist* tiers: a named subset of these metrics and gate checks at existing thresholds, on a narrower scope.
 - **Eight weighted dimensions** (§4) are each scored 0–100. Their weighted mean is the **composite**. The composite is advisory.
 - **Five hard gates** (§3) are pass/fail and binding. A higher composite never overrides a failed gate.
 - **Every metric is computed by a command.** No human judgement is needed per iteration. Human studies run only at the beta and 1.0 gates (§6).
@@ -94,6 +95,7 @@
 | `D1.spec_clause_coverage` | Spec clause coverage (%) | kalam-eval conformance --coverage: clauses = every numbered ### subsection of KALAM-SPEC.md sections 4-22; a clause is covered when >=1 positive and >=1 negative test under conformance/** carries `clause: <section>` front-matter. value = covered / clauses * 100. | higher | 0 | ≥ 60 | ≥ 90 | ≥ 100 | S2 |
 | `D1.conformance_pass_rate` | Conformance pass rate (x3 skins) (%) | kalam-eval conformance --run --skins en,ar,franco: passed / total test-skin pairs * 100. A test that cannot run because a stage is missing counts as failed. | higher | 0 | ≥ 95 | ≥ 99.5 | ≥ 100 | S2 |
 | `D1.corpus_tier_pass` | Corpus pass count, tier-ordered (dev + held-out, x3 skins) (tasks) | kalam-eval corpus --skins all --split dev, plus the sealed holdout runner (aggregates only). A task passes only if every case passes in all three skins. value = p_mvp + (p_mvp==21 ? p_beta + (p_beta==25 ? p_1_0 : 0) : 0), so a later-tier pass never substitutes for an earlier-tier failure. | higher | 0 | ≥ 21 | ≥ 46 | ≥ 50 | S4 |
+| `D1.corpus_syntax_pass` | Corpus syntax pass: MVP-tier tasks that parse, format and round-trip (dev + held-out, x3 skins) (tasks) | kalam-eval corpus --syntax-only --skins all --tier mvp --split dev, plus the sealed holdout runner (aggregate m1_syntax only). Scope: the 21 MVP-tier tasks T01-T15, T31-T33, T48-T50. A task counts when every case, in all three skins, is accepted by `kalam check --parse-only`, satisfies fmt(fmt(x)) == fmt(x) and kcf(fmt(x)) == kcf(x), and passes P1, P2 and P3. Parity scope rule applies: T50 main counts when all three skins give the same SEC rejection before parsing. Not scored at mvp/beta/1.0 (D1.corpus_tier_pass supersedes it); gating only in milestone tier M1 (§10). | higher | 0 | report_only | report_only | report_only | S2 |
 | `D1.differential_mismatches` | Differential execution (scope with 0 mismatches) — levels: L0 none; L1 MVP: JS(node) vs reference interpreter on the corpus + 1k generated programs; L2 beta: + JS(browser, Playwright) and 10k generated programs per iteration; L3 1.0: + WASM/C backend when present and 1M generated programs per week | kalam-eval differential: run corpus + generated programs on each backend pair and compare stdout/stderr/exit. value = highest level whose scope had 0 mismatches. | ladder | 0 | L1 | L2 | L3 | S6 |
 | `D1.fuzz_crash_free_hours` | Compiler fuzzing, crash-free hours (h) | kalam-eval fuzz-status: hours since the last new unfixed crash across the lexer, parser, type checker and formatter targets (AFL++/cargo-fuzz), counted on the current commit lineage. | higher | 0 | ≥ 24 | ≥ 168 | ≥ 720 | S10 |
 | `D1.property_tests` | Property suites pass (fmt idempotence, round-trip, stdlib laws) (bool) | cargo test -p kalam-props --release; value = all properties pass on >=10k cases each. | binary | 0 | pass | pass | pass | S2 |
@@ -109,7 +111,7 @@
 | `D2.impossible_share` | Share of bad cases that are Impossible (%) | same run as D2.secure_by_default_rate; value = Impossible/total*100. | higher | 0 | report_only | report_only | ≥ 70 | S3 |
 | `D2.good_variant_pass` | Good-twin usability (%) | kalam-eval seccorpus --good: the secure twin of each case compiles and passes its tests. | higher | 0 | ≥ 90 | ≥ 98 | ≥ 100 | S4 |
 | `D2.trojan_source_suite` | Trojan Source suite (~60 cases incl. T50) (bool) | kalam-eval trojan: every bad case rejected with the expected SEC code naming the code point; every good case (escaped controls, legitimate Arabic text, emoji ZWJ) accepted. Feeds gate G-SEC. | binary | 0 | pass | pass | pass | S1 |
-| `D2.lexing_hazard_suite` | Arabic/Franco lexing hazard suite (bool) | kalam-eval lexhaz: normalization, alef/hamza and ى/ي folding in keywords, tatweel/harakat, Arabic-Indic and Persian digits, U+066B/U+066C, Franco digit-letter boundaries (3ala, 7asab, 2ktb) with did_you_mean. Feeds gate G-SEC. | binary | 0 | pass | pass | pass | S1 |
+| `D2.lexing_hazard_suite` | Arabic/Franco lexing hazard suite (bool) | kalam-eval lexhaz: normalization, alef/hamza and ى/ي folding in keywords, tatweel/harakat, Persian/Urdu letters ی ک ە ھ ۀ folded to their Arabic equivalents in identifiers and keywords (DECISIONS D19: fold, not reject) with a lookalike collision after folding still a compile error (SEC0104; it needs name resolution, so those cases count from tier M2), Arabic-Indic and Persian digits, U+066B/U+066C, Franco digit-letter boundaries (3ala, 7asab, 2ktb) with did_you_mean. Feeds gate G-SEC. | binary | 0 | pass | pass | pass | S1 |
 | `D2.escape_hatch_density` | Escape hatches per KLOC of reference corpus (per KLOC) | kalam audit --json over all dev corpus programs (en skin): count(unsafe.* + extern + .expose()) / KLOC. Counted on the AST, never by grep (spec P10). | lower | 6 | ≤ 2 | ≤ 1 | ≤ 0.5 | S3 |
 | `D2.stdlib_parser_fuzz_hours` | Stdlib parser fuzzing, crash-free hours (h) | kalam-eval fuzz-status --stdlib: JSON, URL, HTTP request parser, html literal runtime, regex (with a linear-time/ReDoS oracle). | higher | 0 | ≥ 24 | ≥ 168 | ≥ 720 | S10 |
 | `D2.supply_chain_scorecard` | OpenSSF Scorecard on project repos (score) | scorecard --repo=<public repo> --format json; value = aggregate score. Measurable once the repo is public (DECISIONS D13). | higher | 0 | n/a | ≥ 6 | ≥ 8 | S11 |
@@ -217,6 +219,8 @@ A milestone is **passed** only when all five conditions hold on the **frozen** e
    - **H-CD:** a Cognitive Dimensions walkthrough, PLIERS-style. β allows no dimension rated "severe"; 1.0 allows none rated "poor".
 5. **The founder approves** (DECISIONS D17). When rules 1–3 hold (and rule 4 where it applies), the loop stops by itself (LOOP.md §5). It never starts the next milestone without approval.
 
+This rule judges the milestone tiers M5 (`mvp`), Beta (`beta`) and 1.0 (`1.0`). The checklist tiers (M1–M4, M6–M10) use the pass rule of §10 instead: rules 2–3 do not apply to them, and rule 5 always does.
+
 ## 7. Measurement stages (prerequisite DAG)
 
 | Stage | Builds | After | First metrics it makes measurable |
@@ -263,3 +267,95 @@ Where the spec and research/05 disagree, the spec wins, because it is canonical.
 | E11 | Holdout covers corpus and LLM problems | also 30% of the security corpus and of the Trojan Source suite | the same overfitting risk applies there (LOOP.md §6) |
 | E12 | Unmeasured metrics not discussed | unavailable = 0 | stops the loop gaining by not building a measurement |
 | E13 | Corpus files `corpus/<id>/{en,ar,fr}` with `.kl` skins | `eval/corpus/<task>/{en,ar,franco}.kalam`, staged as `.kl`/`.ar.kl`/`.franco.kl` before compiling | the task contract fixed this layout; spec DR-18 sets the skin by extension only; skin ID `franco`, not `fr` (spec DR-18) |
+| E14 | Three milestones (MVP, β, 1.0) | Twelve milestone tiers aligned to ROADMAP.md: checklist tiers M1–M4 and M6–M10, scorecard tiers M5 (= MVP), Beta and 1.0 (§10) | DECISIONS D17 stops the loop at every roadmap milestone, so the loop needs a pass rule and a stop for each one, not only for the three scorecard tiers |
+| E15 | Corpus measured only by execution | adds `D1.corpus_syntax_pass` (parse, format, round-trip; report-only at MVP/β/1.0, gating only at M1) | M1 has no backend, so `D1.corpus_tier_pass` (stage S4) can't measure its corpus exit criterion |
+
+
+## 10. Milestone tiers (aligned to ROADMAP.md)
+
+DECISIONS D17 stops the loop at **every** roadmap milestone, so every milestone needs its own pass rule. `scorecard.json` → `milestone_tiers` holds the same data as this section: the same ids, thresholds, scopes and order. The target tier is pinned in `eval/FREEZE.json`.
+
+**Two modes.**
+- **Checklist tiers** (M1–M4, M6–M10). The milestone passes when **every check in the tier holds** on the frozen eval set, held-out included. §6 rules 2–3 (the minimum dimension and composite scores) do **not** apply, and the composite is recorded as advisory only. Each check reuses an existing metric or gate check at its existing threshold, on a scope that may be narrower. A tier invents no new threshold, with one exception: `D1.corpus_syntax_pass` (E15) has a threshold only in M1. *Checkpoints* are the roadmap's intermediate targets (ROADMAP.md §0.1 rule 4). They appear in the milestone summary for the founder to judge. Normalization, the composite and G-RATCHET never read them.
+- **Scorecard tiers** (M5 = `mvp`, Beta = `beta`, 1.0 = `1.0`). The full §6 rule applies, and the checkpoints go to the founder.
+
+**Ratchets across tiers.** Every check of the earlier tiers, once met, stays met (G-RATCHET). The chain is M1 → M2 → M3 → M4 → M5, then M6–M10 each ratchet from M5, then Beta and 1.0.
+
+**Tier score** (checklist tiers only). This is the mean `check_score` over the tier's checks, and the loop uses it in place of the composite (LOOP.md §3 step 8 and §5):
+- pass/fail checks score 100 or 0;
+- a higher-is-better numeric check scores min(100, 100 × value / threshold);
+- a lower-is-better numeric check scores min(100, 100 × threshold / value);
+- `= 0 failures` scores 100 at 0 and 0 otherwise;
+- an unmeasured check scores 0.
+
+**Out-of-tier metrics.** Every metric and gate check not listed in a checklist tier is outside that milestone's decision. This exclusion is part of the tier definition, so it takes effect only when the founder approves this eval version (LOOP.md §6, rules A2 and A4). The loop never marks anything `n/a` itself. While the loop works on a checklist tier, it builds nothing in a stage outside the tier's *stages in scope*.
+
+### 10.1 Tier M1: lexer, parser, formatter, skin converter
+
+**Roadmap:** ROADMAP.md M1. **Stages in scope:** S0, S1, S2, S10 (the lexer, parser and formatter fuzz targets only). The thresholds are the existing MVP thresholds on an M1 scope, plus the M1-only corpus syntax threshold.
+
+<!--TABLE:M1-->
+| # | Check id | What | M1 threshold | Scope at M1 | Stage |
+|---|---|---|---|---|---|
+| 1 | `G-INT` | Eval integrity | pass |  | S0 |
+| 2 | `G-PAR.P7` | Keyword-table integrity | = 0 conflicts | spec §7.4 rules 1-4; rules 5-7 once their data exists | S0 |
+| 3 | `D2.trojan_source_suite` | Trojan Source suite (~60 cases incl. T50) | pass | dev + held-out Trojan Source suite | S1 |
+| 4 | `D2.lexing_hazard_suite` | Arabic/Franco lexing hazard suite | pass | lexer cases, including DECISIONS D19 folding of ی ک ە ھ ۀ in keyword matching (no SEC0107); the SEC0104 post-fold collision cases need name resolution and count from M2 | S1 |
+| 5 | `G-PAR.P1` | Canonical identity | = 100 % | every corpus case that parses (parity scope rule) | S2 |
+| 6 | `G-PAR.P2` | Pairwise round-trip | = 100 % | 6 ordered skin pairs plus 3-hop cycles | S2 |
+| 7 | `G-PAR.P3` | Source fixpoint | = 100 % | byte-identical fixpoint | S2 |
+| 8 | `G-PAR.P8` | Mixed-skin policy | pass | K0201 only; K0301 (module level) is deferred to M2 | S2 |
+| 9 | `D7.formatter_idempotence` | Formatter idempotence and skin parity | pass | every corpus and conformance file, all skins | S2 |
+| 10 | `D7.skin_convert` | `kalam convert` round-trips the corpus | pass | P2 and P3 through the real `kalam convert` | S2 |
+| 11 | `D1.corpus_syntax_pass` | Corpus syntax pass: MVP-tier tasks that parse, format and round-trip (dev + held-out, x3 skins) | ≥ 21 tasks | T01-T15, T31-T33, T48-T50; dev + held-out; x3 skins | S2 |
+| 12 | `D1.property_tests` | Property suites pass (fmt idempotence, round-trip, stdlib laws) | pass | fmt-idempotence and round-trip properties only (stdlib laws start at M4) | S2 |
+| 13 | `D5.error_recovery_precision` | Error recovery: genuine / reported errors | ≥ 0.5 | eval/diagnostics/broken/ (>= 30 files x 3 skins) | S2 |
+| 14 | `D5.diag_completeness` | Diagnostic completeness (code, span, help, docs link, x3 languages) | ≥ 70 % | the M1 code set: every spec §27 code in K01xx, K02xx, K09xx and SEC01xx except retired codes such as SEC0107, plus any other code `kalam explain --catalog --json` lists (codes that exist so far) | S2 |
+| 15 | `G-PAR.P6` | Diagnostic catalog parity | = 100 % | the M1 code set: every spec §27 code in K01xx, K02xx, K09xx and SEC01xx except retired codes such as SEC0107, plus any other code `kalam explain --catalog --json` lists (codes that exist so far) | S2 |
+| 16 | `G-PAR.P4` | Property round-trip | = 0 failures | >= 10k generated programs per run through P1-P3 | S2 |
+| 17 | `D1.fuzz_crash_free_hours` | Compiler fuzzing, crash-free hours | ≥ 24 h | lexer, parser and formatter fuzz targets (G-FUZZ at M1 scope) | S10 |
+| 18 | `G-RATCHET` | Ratchets | pass | every check above once met, plus ratchet_only | S0 |
+<!--/TABLE:M1-->
+
+**The M1 code set** (checks 14 and 15). This is every spec §27 code in K01xx, K02xx, K09xx and SEC01xx except retired codes such as SEC0107, plus any other code that `kalam explain --catalog --json` lists. These are the codes that exist so far (ROADMAP M1: "for the codes that exist so far").
+
+**Ratchet only at M1.** These were met at M0 and must stay met. They are not M1 targets: <!--LIST:M1.ratchet_only-->
+`D4.keywords_per_skin`, `D4.grammar_productions`, `D4.synonym_count`
+<!--/LIST:M1.ratchet_only-->
+
+**Measured but report only at M1** (recorded in history with weight 0; the loop may pick them only when every M1 check already holds, see LOOP.md §4): <!--LIST:M1.report_only-->
+`D1.compiler_line_coverage`, `D1.compiler_branch_coverage`, `D1.spec_clause_coverage`, `D1.conformance_pass_rate`, `D3.context_footprint_tokens`, `D4.tokens_vs_python`, `D4.reserved_spellings_per_skin`
+<!--/LIST:M1.report_only-->
+
+**Not part of M1:**
+- G-PAR P5, P9 and P10;
+- the G-SEC CWE check;
+- `D2.stdlib_parser_fuzz_hours`;
+- every metric of stages S3–S9 and S11.
+
+**M1 pass and stop rule.** M1 is passed when all 18 checks hold on the frozen set, held-out included. The loop then stops and reports to the founder (LOOP.md §5 rule 1, with the verbatim checklist in LOOP.md §5.1). The open human item **Q14**, the linguist review of the confusable table and `arabic_fold` (ROADMAP §0.4), goes into the M1 report. It is not a loop check. The loop also stops at once on a **design fork** that needs the founder (LOOP.md §5 rule 2).
+
+### 10.2 Tiers M2–M10, Beta and 1.0
+
+<!--TABLE:TIERS-->
+| Tier | Roadmap milestone | Mode | Stages in scope | Checks (scorecard id: threshold) | Roadmap checkpoints (founder-judged, never scored) |
+|---|---|---|---|---|---|
+| M2 | Type checker (and reference interpreter) | checklist | S0, S1, S2, S3, S6, S10 | `D1.conformance_pass_rate` ≥ 95 % (clauses covered so far); `D1.fuzz_crash_free_hours` ≥ 24 h (adds the type-checker target); `G-PAR.P8` pass (K0201 and K0301); `D2.lexing_hazard_suite` pass (adds the SEC0104 post-fold collision cases (DECISIONS D19)); `D5.diag_completeness` ≥ 70 %; `D5.golden_coverage` ≥ 70 %; `D5.machine_fix_rate` ≥ 20 %; `D5.judge_score` ≥ 3.0 | `D1.spec_clause_coverage`: >= 40% (roadmap checkpoint; the MVP threshold of 60% applies at M5); `roadmap.M2.typecheck`: MVP-tier tasks T01-T15 type-check in all three skins against the stdlib signature stubs; `roadmap.M2.interpreter`: T01, T02, T05, T11-T14 (and T08 if it needs no float formatting) run on the reference interpreter with the expected output; `roadmap.M2.negative`: T48-T50 fail with exactly the expected codes |
+| M3 | JS emitter, plus hello web | checklist | S0, S1, S2, S3, S4, S6, S7, S8, S10 | `G-PAR.P5` = 100 % (every task that runs); `D6.hello_cold_start_ms` ≤ 200 ms; `D6.http_first_response_ms` ≤ 1000 ms; `D6.hello_bundle_mb` ≤ 30 MB; `D6.idle_server_rss_mb` ≤ 100 MB; `D6.compile_corpus_s` ≤ 5 s; `D6.incremental_rebuild_ms` ≤ 2000 ms; `D4.hello_web_concepts` ≤ 12 count; report only: `D3.pass1_c1_en_frontier`, `D3.syntax_valid_rate`, `D3.hallucinated_api_rate`, `D3.skin_gap_pp` | `roadmap.M3.differential`: 0 mismatches between the reference interpreter and JS on the corpus and 10k generated programs; `roadmap.M3.int64`: Int traps at exactly the signed 64-bit bounds on both the interpreter and JS (DECISIONS D18 overrides the roadmap's 2^53-1); `roadmap.M3.lsp_en`: LSP 3/8 capabilities in the en skin |
+| M4 | Stdlib core, plus safe string kinds | checklist | S0, S1, S2, S3, S4, S5, S6, S7, S8, S10 | `D2.secure_by_default_rate` ≥ 80 %; `G-SEC.cwe_vulnerable` pass (0 Vulnerable for CWE-89 and CWE-79); `D2.good_variant_pass` ≥ 90 %; `D2.escape_hatch_density` ≤ 2 per KLOC; `D2.stdlib_parser_fuzz_hours` ≥ 24 h; `D8.doc_examples_pass` pass; `D7.pkg_features` ≥ 2 of 6 | `roadmap.M4.non_web_tasks`: the 18 non-web MVP-tier tasks (T01-T15, T48-T50) pass 100% in all three skins, dev and held-out; `D8.stdlib_checklist`: >= 30% (roadmap checkpoint; MVP 40% at M5) |
+| M5 | kalam web, plus first real SaaS dogfood | scorecard §6 at `mvp` | S0, S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11 | the full §6 rule | `roadmap.M5.beta_web_tasks`: corpus tasks T34-T39 pass, and T41 runs end to end with tenant-isolation tests; `roadmap.M5.dogfood`: the dogfood product has been live >= 4 weeks with real users, no Sev-1 caused by Kalam, every bug has a regression test (founder-verified) |
+| M6 | LSP, VS Code, tree-sitter | checklist | S7 | `D7.lsp_capabilities` ≥ 6 of 8; `D7.lsp_completion_p95_ms` ≤ 150 ms; `D7.editor_support` ≥ L2; `D7.debugger` ≥ L1 | none |
+| M7 | Package manager and registry | checklist | S7, S11 | `D7.pkg_features` ≥ 5 of 6; `D2.supply_chain_scorecard` ≥ 6 score; `D8.reproducible_build` pass | `roadmap.M7.redteam`: install scripts never run via registry, git or path deps; forged or unsigned packages rejected; cross-script typosquats blocked at publish |
+| M8 | Playground and docs site | checklist | S11 | `D8.docs_completeness` ≥ 90 %; `D8.doc_examples_pass` pass; `G-PAR.P9` = 100 %; `G-PAR.P6` = 100 % (every diagnostic code, explain page in all three languages); `D3.context_footprint_tokens` ≤ 13500 tokens | `roadmap.M8.llms_full`: llms-full.txt <= 40k tokens; `roadmap.M8.playground`: the playground runs every tour example in all three skins in Chromium, Firefox and Safari |
+| M9 | Games module | checklist | S5, S9 | `D6.game_frame_p99_ms` ≤ 16.7 ms | `roadmap.M9.tasks`: corpus tasks T45 and T46 pass in all three skins; `roadmap.M9.stdlib_rows`: the 2D game loop + input and audio rows of D8.stdlib_checklist are complete |
+| M10 | C/WASM backend | checklist | S4, S6, S10, S11 | `D8.deploy_targets` ≥ 4 of 5 | `roadmap.M10.differential`: 0 mismatches across interpreter, JS, native and WASM on the corpus and 10k generated programs per run; the 1M-per-week run started; `roadmap.M10.native_corpus`: T47 passes, and the whole MVP and beta corpus passes on the native backend; `roadmap.M10.sanitizer_fuzz`: sanitizer-backed fuzzing of the C backend crash-free for 7 days |
+| beta | Beta | scorecard §6 at `beta` | S0, S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11 | the full §6 rule | none |
+| 1.0 | 1.0 | scorecard §6 at `1.0` | S0, S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11 | the full §6 rule | `roadmap.1_0.dogfood`: the founder's products have run on Kalam in production for >= 12 months |
+<!--/TABLE:TIERS-->
+
+The DECISIONS rulings that override ROADMAP.md text in these tiers:
+- **M3:** Int traps at the signed 64-bit bounds, not at ±(2⁵³−1). F1 is already decided (DECISIONS D18).
+- **M2:** F4 and F5 are already decided (D20, D23).
+- **M9/M10:** DECISIONS D25 keeps the C/WASM backend before 1.0. The JS-only fallback needs a new founder decision at the M9 exit review.
+- **Beta:** the F3 survey is applied before Beta (D22).
+- **M5:** where ROADMAP's M5 text gives the context footprint as ≤ 20k, the §5 threshold of ≤ 15k stands (E2).

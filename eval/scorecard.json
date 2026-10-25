@@ -326,6 +326,25 @@
       "gate": null
     },
     {
+      "id": "D1.corpus_syntax_pass",
+      "dimension": "D1",
+      "name": "Corpus syntax pass: MVP-tier tasks that parse, format and round-trip (dev + held-out, x3 skins)",
+      "direction": "higher",
+      "unit": "tasks",
+      "floor": 0,
+      "thresholds": {
+        "mvp": "report_only",
+        "beta": "report_only",
+        "1.0": "report_only"
+      },
+      "stretch": null,
+      "job": "fast",
+      "stage": "S2",
+      "compute": "kalam-eval corpus --syntax-only --skins all --tier mvp --split dev, plus the sealed holdout runner (aggregate m1_syntax only). Scope: the 21 MVP-tier tasks T01-T15, T31-T33, T48-T50. A task counts when every case, in all three skins, is accepted by `kalam check --parse-only`, satisfies fmt(fmt(x)) == fmt(x) and kcf(fmt(x)) == kcf(x), and passes P1, P2 and P3. Parity scope rule applies: T50 main counts when all three skins give the same SEC rejection before parsing. Not scored at mvp/beta/1.0 (D1.corpus_tier_pass supersedes it); gating only in milestone tier M1.",
+      "noise": "exact",
+      "gate": null
+    },
+    {
       "id": "D1.differential_mismatches",
       "dimension": "D1",
       "name": "Differential execution (scope with 0 mismatches)",
@@ -517,7 +536,7 @@
       "stretch": null,
       "job": "fast",
       "stage": "S1",
-      "compute": "kalam-eval lexhaz: normalization, alef/hamza and ى/ي folding in keywords, tatweel/harakat, Arabic-Indic and Persian digits, U+066B/U+066C, Franco digit-letter boundaries (3ala, 7asab, 2ktb) with did_you_mean.",
+      "compute": "kalam-eval lexhaz: normalization, alef/hamza and ى/ي folding in keywords, tatweel/harakat, Persian/Urdu letters ی ک ە ھ ۀ folded to their Arabic equivalents in identifiers and keywords (DECISIONS D19: fold, not reject) with a lookalike collision after folding still a compile error (SEC0104; it needs name resolution, so those cases count from tier M2), Arabic-Indic and Persian digits, U+066B/U+066C, Franco digit-letter boundaries (3ala, 7asab, 2ktb) with did_you_mean.",
       "noise": "exact",
       "gate": "G-SEC"
     },
@@ -1487,6 +1506,788 @@
       "unavailable",
       "n/a",
       "report_only"
+    ]
+  },
+  "milestone_tiers": {
+    "status": "proposed with this draft eval version; binding once the founder approves the freeze (LOOP.md §2)",
+    "order": [
+      "M1",
+      "M2",
+      "M3",
+      "M4",
+      "M5",
+      "M6",
+      "M7",
+      "M8",
+      "M9",
+      "M10",
+      "beta",
+      "1.0"
+    ],
+    "modes": {
+      "checklist": "milestone passes when every check holds (frozen set, held-out included); no dimension or composite minimum; composite advisory only. Checks reuse existing scorecard thresholds on a narrower scope. checkpoints are roadmap targets (ROADMAP.md §0.1 rule 4): reported in the milestone summary and judged by the founder; never read by normalization, the composite or G-RATCHET.",
+      "scorecard": "the full SCORECARD.md §6 milestone rule at scorecard_tier, plus checkpoints for the founder"
+    },
+    "ratchet_rule": "every check of the ratchet_from tier (transitively), once met, stays met (G-RATCHET)",
+    "tiers": [
+      {
+        "id": "M1",
+        "name": "Lexer, parser, formatter, skin converter",
+        "roadmap": "ROADMAP.md M1",
+        "mode": "checklist",
+        "scorecard_tier": null,
+        "stages_in_scope": [
+          "S0",
+          "S1",
+          "S2",
+          "S10"
+        ],
+        "checks": [
+          {
+            "id": "G-INT",
+            "op": "pass",
+            "stage": "S0"
+          },
+          {
+            "id": "G-PAR.P7",
+            "op": "==",
+            "value": 0,
+            "unit": "conflicts",
+            "scope": "spec §7.4 rules 1-4; rules 5-7 once their data exists",
+            "stage": "S0"
+          },
+          {
+            "id": "D2.trojan_source_suite",
+            "op": "pass",
+            "scope": "dev + held-out Trojan Source suite",
+            "stage": "S1"
+          },
+          {
+            "id": "D2.lexing_hazard_suite",
+            "op": "pass",
+            "scope": "lexer cases, including DECISIONS D19 folding of ی ک ە ھ ۀ in keyword matching (no SEC0107); the SEC0104 post-fold collision cases need name resolution and count from M2",
+            "stage": "S1"
+          },
+          {
+            "id": "G-PAR.P1",
+            "op": "==",
+            "value": 100,
+            "unit": "%",
+            "scope": "every corpus case that parses (parity scope rule)",
+            "stage": "S2"
+          },
+          {
+            "id": "G-PAR.P2",
+            "op": "==",
+            "value": 100,
+            "unit": "%",
+            "scope": "6 ordered skin pairs plus 3-hop cycles",
+            "stage": "S2"
+          },
+          {
+            "id": "G-PAR.P3",
+            "op": "==",
+            "value": 100,
+            "unit": "%",
+            "scope": "byte-identical fixpoint",
+            "stage": "S2"
+          },
+          {
+            "id": "G-PAR.P8",
+            "op": "pass",
+            "scope": "K0201 only; K0301 (module level) is deferred to M2",
+            "stage": "S2"
+          },
+          {
+            "id": "D7.formatter_idempotence",
+            "op": "pass",
+            "scope": "every corpus and conformance file, all skins",
+            "stage": "S2"
+          },
+          {
+            "id": "D7.skin_convert",
+            "op": "pass",
+            "scope": "P2 and P3 through the real `kalam convert`",
+            "stage": "S2"
+          },
+          {
+            "id": "D1.corpus_syntax_pass",
+            "op": ">=",
+            "value": 21,
+            "unit": "tasks",
+            "scope": "T01-T15, T31-T33, T48-T50; dev + held-out; x3 skins",
+            "stage": "S2"
+          },
+          {
+            "id": "D1.property_tests",
+            "op": "pass",
+            "scope": "fmt-idempotence and round-trip properties only (stdlib laws start at M4)",
+            "stage": "S2"
+          },
+          {
+            "id": "D5.error_recovery_precision",
+            "op": ">=",
+            "value": 0.5,
+            "scope": "eval/diagnostics/broken/ (>= 30 files x 3 skins)",
+            "stage": "S2"
+          },
+          {
+            "id": "D5.diag_completeness",
+            "op": ">=",
+            "value": 70,
+            "unit": "%",
+            "scope": "the M1 code set: every spec §27 code in K01xx, K02xx, K09xx and SEC01xx except retired codes such as SEC0107, plus any other code `kalam explain --catalog --json` lists (codes that exist so far)",
+            "stage": "S2"
+          },
+          {
+            "id": "G-PAR.P6",
+            "op": "==",
+            "value": 100,
+            "unit": "%",
+            "scope": "the M1 code set: every spec §27 code in K01xx, K02xx, K09xx and SEC01xx except retired codes such as SEC0107, plus any other code `kalam explain --catalog --json` lists (codes that exist so far)",
+            "stage": "S2"
+          },
+          {
+            "id": "G-PAR.P4",
+            "op": "==",
+            "value": 0,
+            "unit": "failures",
+            "scope": ">= 10k generated programs per run through P1-P3",
+            "stage": "S2"
+          },
+          {
+            "id": "D1.fuzz_crash_free_hours",
+            "op": ">=",
+            "value": 24,
+            "unit": "h",
+            "scope": "lexer, parser and formatter fuzz targets (G-FUZZ at M1 scope)",
+            "stage": "S10"
+          },
+          {
+            "id": "G-RATCHET",
+            "op": "pass",
+            "scope": "every check above once met, plus ratchet_only",
+            "stage": "S0"
+          }
+        ],
+        "ratchet_only": [
+          "D4.keywords_per_skin",
+          "D4.grammar_productions",
+          "D4.synonym_count"
+        ],
+        "report_only": [
+          "D1.compiler_line_coverage",
+          "D1.compiler_branch_coverage",
+          "D1.spec_clause_coverage",
+          "D1.conformance_pass_rate",
+          "D3.context_footprint_tokens",
+          "D4.tokens_vs_python",
+          "D4.reserved_spellings_per_skin"
+        ],
+        "out_of_scope": "every other metric and gate check (G-PAR P5, P9, P10; the G-SEC CWE check; D2.stdlib_parser_fuzz_hours; all stage S3-S9 and S11 metrics). They are excluded from the M1 decision by this tier definition, which takes effect only when the founder approves this eval version (LOOP.md §6 A2, A4). The loop builds nothing in stages outside stages_in_scope during M1.",
+        "pass_rule": "every check holds on the frozen eval set, held-out included. SCORECARD.md §6 rules 2-3 (dimension minimum, composite minimum) do NOT apply at M1; the composite is recorded as advisory only. The thresholds are the existing MVP thresholds applied to a narrower scope, except D1.corpus_syntax_pass, whose only threshold is this tier's 21.",
+        "tier_score": "mean over checks of check_score: pass/fail = 100/0; numeric higher-is-better = min(100, 100 * value / threshold); lower-is-better = min(100, 100 * threshold / value); == 100 % uses value; == 0 failures scores 100 at 0 and 0 otherwise. Unmeasured = 0.",
+        "stop": "when every check holds: run the milestone job, write eval/milestones/M1/scorecard.result.json and eval/milestones/M1/summary.md, write eval/STOP 'awaiting founder approval for M1', and end the loop (LOOP.md §5 rule 1). Also stop at once on a design fork (LOOP.md §5 rule 2).",
+        "founder_items": [
+          "Q14: linguist review of the confusable table and arabic_fold (ROADMAP §0.4, due at M1 exit); listed in summary.md as an open human item, not a loop check",
+          "spec errata found during M1 (each with a conformance test and a dated changelog line)",
+          "open eval/questions.jsonl entries and every design fork logged"
+        ],
+        "checklist": [
+          "M1 EXIT CHECKLIST  (frozen eval set, held-out included; every box must hold)",
+          "[ ] 1  G-INT passes: manifest, append-only logs and reviewer sign-offs are clean",
+          "[ ] 2  P7 keyword-table integrity: 0 conflicts in spec/keywords.json (spec §7.4)",
+          "[ ] 3  D2.trojan_source_suite: 100% of bad cases rejected with a SEC code naming the code point, 100% of good cases accepted",
+          "[ ] 4  D2.lexing_hazard_suite: 100% of the lexer cases, including ی ک ە ھ ۀ folding in keywords (DECISIONS D19; SEC0104 collision cases count from M2)",
+          "[ ] 5  P1 canonical identity: identical KCF SHA-256 across en/ar/franco for 100% of parsing corpus cases",
+          "[ ] 6  P2 pairwise round-trip: all 6 ordered skin pairs and the 3-hop cycles KCF-equal, comments and blank lines kept",
+          "[ ] 7  P3 source fixpoint: byte-identical for 100% of cases",
+          "[ ] 8  P8 mixed-skin policy: a keyword from another skin gives K0201 in every skin (K0301 is deferred to M2)",
+          "[ ] 9  D7.formatter_idempotence: fmt(fmt(x)) == fmt(x) and kcf(fmt(x)) == kcf(x) for every corpus and conformance file, all skins",
+          "[ ] 10 D7.skin_convert: P2 and P3 pass through the real `kalam convert`",
+          "[ ] 11 D1.corpus_syntax_pass = 21/21: every case of T01-T15, T31-T33, T48-T50 (dev + held-out) parses, formats and round-trips in all three skins (T50 main: the same SEC rejection in all three)",
+          "[ ] 12 D1.property_tests: the fmt-idempotence and round-trip properties pass on >= 10k cases each",
+          "[ ] 13 D5.error_recovery_precision >= 0.5 on eval/diagnostics/broken/",
+          "[ ] 14 D5.diag_completeness >= 70% over the M1 code set (every spec §27 K01xx, K02xx, K09xx and SEC01xx code except retired ones such as SEC0107, plus any other code `kalam explain` lists)",
+          "[ ] 15 P6 diagnostic catalog parity = 100% over the M1 code set (en/ar/franco message, help and `kalam explain` page)",
+          "[ ] 16 P4 property round-trip: >= 10k generated programs per run through P1-P3 with 0 failures",
+          "[ ] 17 D1.fuzz_crash_free_hours >= 24 on the lexer, parser and formatter targets (G-FUZZ at M1 scope)",
+          "[ ] 18 G-RATCHET passes, and the M0 data metrics still hold (keywords <= 40, productions <= 120, synonyms pass)",
+          "When all 18 hold: run the milestone job, write eval/milestones/M1/scorecard.result.json and summary.md,",
+          "write eval/STOP \"awaiting founder approval for M1\", and report to the founder. Open human item: Q14."
+        ],
+        "checkpoints": []
+      },
+      {
+        "id": "M2",
+        "name": "Type checker (and reference interpreter)",
+        "roadmap": "ROADMAP.md M2",
+        "mode": "checklist",
+        "scorecard_tier": null,
+        "stages_in_scope": [
+          "S0",
+          "S1",
+          "S2",
+          "S3",
+          "S6",
+          "S10"
+        ],
+        "ratchet_from": "M1",
+        "checks": [
+          {
+            "id": "D1.conformance_pass_rate",
+            "op": ">=",
+            "value": 95,
+            "unit": "%",
+            "scope": "clauses covered so far"
+          },
+          {
+            "id": "D1.fuzz_crash_free_hours",
+            "op": ">=",
+            "value": 24,
+            "unit": "h",
+            "scope": "adds the type-checker target"
+          },
+          {
+            "id": "G-PAR.P8",
+            "op": "pass",
+            "scope": "K0201 and K0301"
+          },
+          {
+            "id": "D2.lexing_hazard_suite",
+            "op": "pass",
+            "scope": "adds the SEC0104 post-fold collision cases (DECISIONS D19)"
+          },
+          {
+            "id": "D5.diag_completeness",
+            "op": ">=",
+            "value": 70,
+            "unit": "%"
+          },
+          {
+            "id": "D5.golden_coverage",
+            "op": ">=",
+            "value": 70,
+            "unit": "%"
+          },
+          {
+            "id": "D5.machine_fix_rate",
+            "op": ">=",
+            "value": 20,
+            "unit": "%"
+          },
+          {
+            "id": "D5.judge_score",
+            "op": ">=",
+            "value": 3.0
+          }
+        ],
+        "checkpoints": [
+          {
+            "id": "D1.spec_clause_coverage",
+            "target": ">= 40% (roadmap checkpoint; the MVP threshold of 60% applies at M5)"
+          },
+          {
+            "id": "roadmap.M2.typecheck",
+            "target": "MVP-tier tasks T01-T15 type-check in all three skins against the stdlib signature stubs"
+          },
+          {
+            "id": "roadmap.M2.interpreter",
+            "target": "T01, T02, T05, T11-T14 (and T08 if it needs no float formatting) run on the reference interpreter with the expected output"
+          },
+          {
+            "id": "roadmap.M2.negative",
+            "target": "T48-T50 fail with exactly the expected codes"
+          }
+        ],
+        "founder_items": [
+          "F4 and F5 are already decided (DECISIONS D20, D23)",
+          "Q11: name the soundness-proof owner"
+        ],
+        "report_only": [],
+        "ratchet_only": []
+      },
+      {
+        "id": "M3",
+        "name": "JS emitter, plus hello web",
+        "roadmap": "ROADMAP.md M3",
+        "mode": "checklist",
+        "scorecard_tier": null,
+        "stages_in_scope": [
+          "S0",
+          "S1",
+          "S2",
+          "S3",
+          "S4",
+          "S6",
+          "S7",
+          "S8",
+          "S10"
+        ],
+        "ratchet_from": "M2",
+        "checks": [
+          {
+            "id": "G-PAR.P5",
+            "op": "==",
+            "value": 100,
+            "unit": "%",
+            "scope": "every task that runs"
+          },
+          {
+            "id": "D6.hello_cold_start_ms",
+            "op": "<=",
+            "value": 200,
+            "unit": "ms"
+          },
+          {
+            "id": "D6.http_first_response_ms",
+            "op": "<=",
+            "value": 1000,
+            "unit": "ms"
+          },
+          {
+            "id": "D6.hello_bundle_mb",
+            "op": "<=",
+            "value": 30,
+            "unit": "MB"
+          },
+          {
+            "id": "D6.idle_server_rss_mb",
+            "op": "<=",
+            "value": 100,
+            "unit": "MB"
+          },
+          {
+            "id": "D6.compile_corpus_s",
+            "op": "<=",
+            "value": 5,
+            "unit": "s"
+          },
+          {
+            "id": "D6.incremental_rebuild_ms",
+            "op": "<=",
+            "value": 2000,
+            "unit": "ms"
+          },
+          {
+            "id": "D4.hello_web_concepts",
+            "op": "<=",
+            "value": 12,
+            "unit": "count"
+          }
+        ],
+        "report_only": [
+          "D3.pass1_c1_en_frontier",
+          "D3.syntax_valid_rate",
+          "D3.hallucinated_api_rate",
+          "D3.skin_gap_pp"
+        ],
+        "checkpoints": [
+          {
+            "id": "roadmap.M3.differential",
+            "target": "0 mismatches between the reference interpreter and JS on the corpus and 10k generated programs"
+          },
+          {
+            "id": "roadmap.M3.int64",
+            "target": "Int traps at exactly the signed 64-bit bounds on both the interpreter and JS (DECISIONS D18 overrides the roadmap's 2^53-1)"
+          },
+          {
+            "id": "roadmap.M3.lsp_en",
+            "target": "LSP 3/8 capabilities in the en skin"
+          }
+        ],
+        "founder_items": [
+          "F1 is already decided (DECISIONS D18: true 64-bit checked Int); the i64 benchmark is reported, not decided"
+        ],
+        "ratchet_only": []
+      },
+      {
+        "id": "M4",
+        "name": "Stdlib core, plus safe string kinds",
+        "roadmap": "ROADMAP.md M4",
+        "mode": "checklist",
+        "scorecard_tier": null,
+        "stages_in_scope": [
+          "S0",
+          "S1",
+          "S2",
+          "S3",
+          "S4",
+          "S5",
+          "S6",
+          "S7",
+          "S8",
+          "S10"
+        ],
+        "ratchet_from": "M3",
+        "checks": [
+          {
+            "id": "D2.secure_by_default_rate",
+            "op": ">=",
+            "value": 80,
+            "unit": "%"
+          },
+          {
+            "id": "G-SEC.cwe_vulnerable",
+            "op": "pass",
+            "scope": "0 Vulnerable for CWE-89 and CWE-79"
+          },
+          {
+            "id": "D2.good_variant_pass",
+            "op": ">=",
+            "value": 90,
+            "unit": "%"
+          },
+          {
+            "id": "D2.escape_hatch_density",
+            "op": "<=",
+            "value": 2,
+            "unit": "per KLOC"
+          },
+          {
+            "id": "D2.stdlib_parser_fuzz_hours",
+            "op": ">=",
+            "value": 24,
+            "unit": "h"
+          },
+          {
+            "id": "D8.doc_examples_pass",
+            "op": "pass"
+          },
+          {
+            "id": "D7.pkg_features",
+            "op": ">=",
+            "value": 2,
+            "unit": "of 6"
+          }
+        ],
+        "checkpoints": [
+          {
+            "id": "roadmap.M4.non_web_tasks",
+            "target": "the 18 non-web MVP-tier tasks (T01-T15, T48-T50) pass 100% in all three skins, dev and held-out"
+          },
+          {
+            "id": "D8.stdlib_checklist",
+            "target": ">= 30% (roadmap checkpoint; MVP 40% at M5)"
+          }
+        ],
+        "founder_items": [
+          "pick the dogfood product (default: invoicing SaaS)"
+        ],
+        "report_only": [],
+        "ratchet_only": []
+      },
+      {
+        "id": "M5",
+        "name": "kalam web, plus first real SaaS dogfood",
+        "roadmap": "ROADMAP.md M5",
+        "mode": "scorecard",
+        "scorecard_tier": "mvp",
+        "stages_in_scope": [
+          "S0",
+          "S1",
+          "S2",
+          "S3",
+          "S4",
+          "S5",
+          "S6",
+          "S7",
+          "S8",
+          "S9",
+          "S10",
+          "S11"
+        ],
+        "ratchet_from": "M4",
+        "checks": [],
+        "checkpoints": [
+          {
+            "id": "roadmap.M5.beta_web_tasks",
+            "target": "corpus tasks T34-T39 pass, and T41 runs end to end with tenant-isolation tests"
+          },
+          {
+            "id": "roadmap.M5.dogfood",
+            "target": "the dogfood product has been live >= 4 weeks with real users, no Sev-1 caused by Kalam, every bug has a regression test (founder-verified)"
+          }
+        ],
+        "founder_items": [
+          "Q7: live-component state across instances (default: sticky sessions)"
+        ],
+        "report_only": [],
+        "ratchet_only": []
+      },
+      {
+        "id": "M6",
+        "name": "LSP, VS Code, tree-sitter",
+        "roadmap": "ROADMAP.md M6",
+        "mode": "checklist",
+        "scorecard_tier": null,
+        "stages_in_scope": [
+          "S7"
+        ],
+        "ratchet_from": "M5",
+        "checks": [
+          {
+            "id": "D7.lsp_capabilities",
+            "op": ">=",
+            "value": 6,
+            "unit": "of 8"
+          },
+          {
+            "id": "D7.lsp_completion_p95_ms",
+            "op": "<=",
+            "value": 150,
+            "unit": "ms"
+          },
+          {
+            "id": "D7.editor_support",
+            "op": ">=",
+            "value": 2,
+            "unit": "level"
+          },
+          {
+            "id": "D7.debugger",
+            "op": ">=",
+            "value": 1,
+            "unit": "level"
+          }
+        ],
+        "founder_items": [],
+        "report_only": [],
+        "ratchet_only": [],
+        "checkpoints": []
+      },
+      {
+        "id": "M7",
+        "name": "Package manager and registry",
+        "roadmap": "ROADMAP.md M7",
+        "mode": "checklist",
+        "scorecard_tier": null,
+        "stages_in_scope": [
+          "S7",
+          "S11"
+        ],
+        "ratchet_from": "M5",
+        "checks": [
+          {
+            "id": "D7.pkg_features",
+            "op": ">=",
+            "value": 5,
+            "unit": "of 6"
+          },
+          {
+            "id": "D2.supply_chain_scorecard",
+            "op": ">=",
+            "value": 6,
+            "unit": "score"
+          },
+          {
+            "id": "D8.reproducible_build",
+            "op": "pass"
+          }
+        ],
+        "checkpoints": [
+          {
+            "id": "roadmap.M7.redteam",
+            "target": "install scripts never run via registry, git or path deps; forged or unsigned packages rejected; cross-script typosquats blocked at publish"
+          }
+        ],
+        "founder_items": [],
+        "report_only": [],
+        "ratchet_only": []
+      },
+      {
+        "id": "M8",
+        "name": "Playground and docs site",
+        "roadmap": "ROADMAP.md M8",
+        "mode": "checklist",
+        "scorecard_tier": null,
+        "stages_in_scope": [
+          "S11"
+        ],
+        "ratchet_from": "M5",
+        "checks": [
+          {
+            "id": "D8.docs_completeness",
+            "op": ">=",
+            "value": 90,
+            "unit": "%"
+          },
+          {
+            "id": "D8.doc_examples_pass",
+            "op": "pass"
+          },
+          {
+            "id": "G-PAR.P9",
+            "op": "==",
+            "value": 100,
+            "unit": "%"
+          },
+          {
+            "id": "G-PAR.P6",
+            "op": "==",
+            "value": 100,
+            "unit": "%",
+            "scope": "every diagnostic code, explain page in all three languages"
+          },
+          {
+            "id": "D3.context_footprint_tokens",
+            "op": "<=",
+            "value": 13500,
+            "unit": "tokens"
+          }
+        ],
+        "checkpoints": [
+          {
+            "id": "roadmap.M8.llms_full",
+            "target": "llms-full.txt <= 40k tokens"
+          },
+          {
+            "id": "roadmap.M8.playground",
+            "target": "the playground runs every tour example in all three skins in Chromium, Firefox and Safari"
+          }
+        ],
+        "founder_items": [],
+        "report_only": [],
+        "ratchet_only": []
+      },
+      {
+        "id": "M9",
+        "name": "Games module",
+        "roadmap": "ROADMAP.md M9",
+        "mode": "checklist",
+        "scorecard_tier": null,
+        "stages_in_scope": [
+          "S5",
+          "S9"
+        ],
+        "ratchet_from": "M5",
+        "checks": [
+          {
+            "id": "D6.game_frame_p99_ms",
+            "op": "<=",
+            "value": 16.7,
+            "unit": "ms"
+          }
+        ],
+        "checkpoints": [
+          {
+            "id": "roadmap.M9.tasks",
+            "target": "corpus tasks T45 and T46 pass in all three skins"
+          },
+          {
+            "id": "roadmap.M9.stdlib_rows",
+            "target": "the 2D game loop + input and audio rows of D8.stdlib_checklist are complete"
+          }
+        ],
+        "founder_items": [
+          "at M9 exit: if M10 has slipped > 12 weeks, decide the JS-only Beta/1.0 fallback (DECISIONS D25 keeps C/WASM before 1.0 by default)"
+        ],
+        "report_only": [],
+        "ratchet_only": []
+      },
+      {
+        "id": "M10",
+        "name": "C/WASM backend",
+        "roadmap": "ROADMAP.md M10",
+        "mode": "checklist",
+        "scorecard_tier": null,
+        "stages_in_scope": [
+          "S4",
+          "S6",
+          "S10",
+          "S11"
+        ],
+        "ratchet_from": "M5",
+        "checks": [
+          {
+            "id": "D8.deploy_targets",
+            "op": ">=",
+            "value": 4,
+            "unit": "of 5"
+          }
+        ],
+        "checkpoints": [
+          {
+            "id": "roadmap.M10.differential",
+            "target": "0 mismatches across interpreter, JS, native and WASM on the corpus and 10k generated programs per run; the 1M-per-week run started"
+          },
+          {
+            "id": "roadmap.M10.native_corpus",
+            "target": "T47 passes, and the whole MVP and beta corpus passes on the native backend"
+          },
+          {
+            "id": "roadmap.M10.sanitizer_fuzz",
+            "target": "sanitizer-backed fuzzing of the C backend crash-free for 7 days"
+          }
+        ],
+        "founder_items": [],
+        "report_only": [],
+        "ratchet_only": []
+      },
+      {
+        "id": "beta",
+        "name": "Beta",
+        "roadmap": "ROADMAP.md Beta",
+        "mode": "scorecard",
+        "scorecard_tier": "beta",
+        "stages_in_scope": [
+          "S0",
+          "S1",
+          "S2",
+          "S3",
+          "S4",
+          "S5",
+          "S6",
+          "S7",
+          "S8",
+          "S9",
+          "S10",
+          "S11"
+        ],
+        "ratchet_from": "M10",
+        "checks": [],
+        "founder_items": [
+          "F3 vocabulary survey results applied to keywords.json (DECISIONS D22)",
+          "human gates H-RCT and H-CD"
+        ],
+        "report_only": [],
+        "ratchet_only": [],
+        "checkpoints": []
+      },
+      {
+        "id": "1.0",
+        "name": "1.0",
+        "roadmap": "ROADMAP.md 1.0",
+        "mode": "scorecard",
+        "scorecard_tier": "1.0",
+        "stages_in_scope": [
+          "S0",
+          "S1",
+          "S2",
+          "S3",
+          "S4",
+          "S5",
+          "S6",
+          "S7",
+          "S8",
+          "S9",
+          "S10",
+          "S11"
+        ],
+        "ratchet_from": "beta",
+        "checks": [],
+        "checkpoints": [
+          {
+            "id": "roadmap.1_0.dogfood",
+            "target": "the founder's products have run on Kalam in production for >= 12 months"
+          }
+        ],
+        "founder_items": [
+          "Q11: mechanized soundness proof, or a founder decision to ship without it"
+        ],
+        "report_only": [],
+        "ratchet_only": []
+      }
     ]
   }
 }
