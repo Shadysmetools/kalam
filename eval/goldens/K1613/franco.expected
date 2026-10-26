@@ -1,0 +1,10 @@
+-- ATTRIBUTE EL LINK ME7TAG URL -------------------------- main.franco.kl  K1613
+
+El hole di betemla attribute link (zay `href` aw `src`), fa qeemetha lazem teb2a `Url`, mesh `nass`. El string momken yeb2a link `javascript:`.
+
+3│     khali page = html"""<a href="{home}">home</a>"""
+                                     ^^^^
+
+Mosa3da: Ebny el link b literal `url"..."`, aw 7allel el nass b `Url.parse(s)` elly bterfod `javascript:` w `data:` w `vbscript:`.
+
+E3raf aktar: kalam explain K1613

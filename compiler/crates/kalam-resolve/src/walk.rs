@@ -29,6 +29,9 @@ use crate::{
     SourceModule, BUILTIN_FILE,
 };
 
+// K0405's rename fix-it (spec §10.1).
+mod rename;
+
 /// One scope's names: exact spelling → symbol, and skeleton → the first symbol with it.
 #[derive(Clone, Debug, Default)]
 struct Scope {
@@ -116,6 +119,11 @@ pub(crate) struct Builder<'s> {
     /// Paths of missing modules that already have an opaque stand-in (made for a failed
     /// `export use`): they still classify as [`Target::Missing`].
     missing: BTreeSet<String>,
+    /// Each K0405 (its index in `diags`) with the declaration it reports, for the rename
+    /// fix-it ([`rename`], spec §10.1).
+    renames: Vec<(usize, DefId)>,
+    /// Lambda parameters: unlike a function's, their names are no call-site labels.
+    lambda_params: BTreeSet<DefId>,
 }
 
 impl<'s> Builder<'s> {
@@ -141,6 +149,8 @@ impl<'s> Builder<'s> {
             imports_of: BTreeMap::new(),
             variant_index: BTreeMap::new(),
             missing: BTreeSet::new(),
+            renames: Vec::new(),
+            lambda_params: BTreeSet::new(),
         };
         b.builtins();
         b.modules();
@@ -152,6 +162,7 @@ impl<'s> Builder<'s> {
         b.bodies();
         b.cycles();
         b.private_types();
+        b.rename_fixes();
         let mut diags = std::mem::take(&mut b.diags);
         diags.sort_by_key(|d| (d.file, d.span.start, d.span.end));
         (b.p, diags)
@@ -1014,6 +1025,9 @@ impl<'s> Builder<'s> {
                     d = d.label(prev_span.span, format!("`{name}` is already declared here"));
                 }
                 self.diags.push(d);
+                if !import {
+                    self.renames.push((self.diags.len() - 1, def));
+                }
             }
             None => {
                 if let Some((other, other_span)) = self.lookalike(ctx, &skel, name) {
@@ -1985,7 +1999,9 @@ impl Walker<'_, '_> {
                     if let Some(t) = &p.ty {
                         self.ty(t);
                     }
-                    self.bind_local(&p.name, DefKind::Param);
+                    if let Some(d) = self.bind_local(&p.name, DefKind::Param) {
+                        self.b.lambda_params.insert(d);
+                    }
                 }
                 if let Some(r) = &l.ret {
                     self.ty(r);

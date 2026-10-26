@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali name = "Sara"
+    khali page = html"""<button k-frobnicate="go">{name}</button>"""
+    ektb("{page}")

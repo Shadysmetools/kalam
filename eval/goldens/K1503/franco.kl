@@ -1,0 +1,5 @@
+dala api_key(env: Env) -> ekhtiyari[nass] => env.get("STRIPE_API_KEY")
+
+dala ra2isi(world: donya):
+    khali key = api_key(world.env)
+    ektb("{key.is_some()}")

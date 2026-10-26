@@ -28,9 +28,20 @@
 //!             "not_measurable"} | null,
 //!  "diag_recovery": {"value", "files", "score_sum", "full_skin_cases", "first_match", "cascade_free",
 //!                    "deferred_m2", "defects", "unchecked"} | null,
+//!  "typecheck": {"status": "measured"|"not_measurable", "files_passed", "files", "files_failed",
+//!                "unchecked", "tasks", "type_checker"} | null,
 //!  "leak": {"hits"}}
 //! ```
+//!
+//! `typecheck` feeds `roadmap.M2.typecheck` ([`crate::checkpoints::held_typecheck`]): every
+//! `run` case of the held-out T01-T15 tasks, all skins, through directory-mode `kalam check`
+//! against `<root>/stdlib`, the same route as dev. It needs the `kalam` binary (`--kalam
+//! PATH` or `KALAM_BIN`); without one it is `not_measurable`, and it is `null` when the
+//! corpus could not be read.
 
+use crate::checkpoints;
+use crate::cli::KalamCli;
+use crate::corpus;
 use crate::corpus_run;
 use crate::integrity::{self, tree_hash};
 use crate::parity::{self, Outcome, ParseHook, SyntaxOutcome};
@@ -63,6 +74,7 @@ pub fn aggregate(
     hook: &dyn ParseHook,
     m1_scope: &[u32],
     include_m2: bool,
+    kalam: Option<&Path>,
 ) -> Value {
     let manifest = tree_hash(store);
     let files = integrity::walk(store, &["."]);
@@ -120,6 +132,13 @@ pub fn aggregate(
         }
     };
 
+    let typecheck = corpus::discover(&corpus_dir)
+        .map(|cases| {
+            let std = root.join(crate::m2::STDLIB_DIR);
+            checkpoints::held_typecheck(&KalamCli::locate(kalam), &cases, &std)
+        })
+        .unwrap_or(Value::Null);
+
     // suites
     let load = |name: &str| suite_dir(store, name).and_then(|d| suites::load(&d).ok().flatten());
     let trojan = load(suites::TROJAN).map(|cases| {
@@ -155,6 +174,7 @@ pub fn aggregate(
         "fmt": fmt,
         "trojan": trojan,
         "diag_recovery": recovery,
+        "typecheck": typecheck,
         "leak": {"hits": integrity::scan_sources(root, &needles).len()},
     })
 }
@@ -169,6 +189,9 @@ pub struct Runner {
     /// Judge the `[M2]` Trojan Source cases (target tier M2 or later, FOUNDER-QUEUE Q10);
     /// passed to the child as `--include-m2`.
     pub include_m2: bool,
+    /// The `kalam` binary for the held-out type-check aggregate, passed as `--kalam` (the
+    /// child also honours `KALAM_BIN`).
+    pub kalam: Option<PathBuf>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -220,6 +243,9 @@ pub fn run_child(runner: &Runner, root: &Path) -> Held {
         .arg(&store);
     if runner.include_m2 {
         cmd.arg("--include-m2");
+    }
+    if let Some(k) = &runner.kalam {
+        cmd.arg("--kalam").arg(k);
     }
     let out = cmd.output();
     let out = match out {

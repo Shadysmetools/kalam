@@ -5,6 +5,10 @@ This `match` doesn't handle every possible value. Missing: .Amber.
 8│     match light:
        ^^^^^^^^^^^^
 
+Try:
+
+    case .Amber: panic("TODO")
+
 Help: Add a `case` for each missing value. Listing them is better than a catch-all `_`: a variant added later is then reported here instead of slipping into the catch-all.
 
 Learn more: kalam explain K1001

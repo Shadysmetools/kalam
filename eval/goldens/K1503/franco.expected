@@ -1,0 +1,10 @@
+-- SECRET BYET2ERI KA NASS 3ADI -------------------------- main.franco.kl  K1503
+
+El key da shaklo secret (byekhlas b `_KEY` aw `_SECRET` aw `_TOKEN`, aw fe esmo password), bas `env.get` betraga3 nass 3adi momken yekhlas f el logs aw f JSON.
+
+1│ dala api_key(env: Env) -> ekhtiyari[nass] => env.get("STRIPE_API_KEY")
+                                                        ^^^^^^^^^^^^^^^^
+
+Mosa3da: Esta5dem `env.secret(key)`, 3ashan betraga3 `Secret[nass]`: btetteba3 `[REDACTED]` w 3omraha ma tet3amallaha encode.
+
+E3raf aktar: kalam explain K1503

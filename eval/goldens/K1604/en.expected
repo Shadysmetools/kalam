@@ -1,0 +1,10 @@
+-- SEVERAL SQL STATEMENTS --------------------------------------- main.kl  K1604
+
+This SQL literal holds more than one statement (a `;` outside quotes). Each `Sql` value is exactly one statement.
+
+3│     let q = sql"DELETE FROM users WHERE name = {name}; DELETE FROM notes"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Help: Split it into one `sql"..."` per statement, and run them inside a transaction if they must succeed together.
+
+Learn more: kalam explain K1604

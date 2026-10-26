@@ -1,0 +1,7 @@
+hat std/sql.{Db, DbError}
+
+dala remove(db: Db, city: nass) -> natiga[adad, DbError]:
+    rag3 db.exec("DELETE FROM t WHERE city = '" + city + "'")
+
+dala ra2isi():
+    fot

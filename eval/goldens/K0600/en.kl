@@ -1,0 +1,3 @@
+fn main():
+    let half: Int = 7 / 2
+    print("{half}")

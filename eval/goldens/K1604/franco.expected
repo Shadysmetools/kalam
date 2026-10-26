@@ -1,0 +1,10 @@
+-- KAZA STATEMENT SQL ------------------------------------ main.franco.kl  K1604
+
+El SQL literal da feeh aktar men statement (`;` bara el quotes). W kol qeema `Sql` statement wa7ed bel zabt.
+
+3│     khali q = sql"DELETE FROM users WHERE name = {name}; DELETE FROM notes"
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Mosa3da: Qassemha l `sql"..."` l kol statement, w shaghalhom gowa transaction law lazem yenga7o ma3 ba3d.
+
+E3raf aktar: kalam explain K1604

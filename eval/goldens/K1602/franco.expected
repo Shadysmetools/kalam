@@ -1,0 +1,10 @@
+-- HOLE SQL GOWA QUOTES ---------------------------------- main.franco.kl  K1602
+
+El hole di gowa quotes SQL. Qeyam el holes betetba3at lel database ka parameters, 3omraha ma betetlezze2 f el nass, fa el quotes kanet hatkhalleeha string sabet.
+
+3│     khali q = sql"SELECT id FROM users WHERE name = '{name}'"
+                                                         ^^^^
+
+Mosa3da: Shil el quotes elly 7awalen el hole: ekteb `name = { name }`, mesh `name = '{ name }'`.
+
+E3raf aktar: kalam explain K1602

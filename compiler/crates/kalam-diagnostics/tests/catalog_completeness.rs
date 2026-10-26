@@ -506,6 +506,11 @@ const EMITTER_ARGS: &[(&str, &[&str])] = &[
     // kalam-typeck, M2 iteration 3: an impl that does not match its trait (FOUNDER-QUEUE Q27,
     // spec §27 erratum): the trait as written in the impl head, and the first difference.
     ("K1107", &["trait", "detail"]),
+    // kalam-typeck, M2 iteration 4: K0804 and K1108 are proposed codes; K1204 is the
+    // spec §27 erratum of FOUNDER-QUEUE Q33 (its reason is a label, so it has no args).
+    ("K0804", &["type"]),
+    ("K1108", &["type", "name"]),
+    ("K1204", &[]),
     // kalam-effects: suspension inference (§15). The call chain is a label, not an arg.
     ("K1401", &[]),
     ("K1402", &[]),

@@ -1,0 +1,4 @@
+fn main():
+    let tag = "p"
+    let page = html"""<{tag}>hi</p>"""
+    print("{page}")

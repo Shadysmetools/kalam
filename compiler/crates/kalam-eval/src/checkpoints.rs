@@ -18,9 +18,13 @@
 //!   exactly the expected error codes (`others: none`) on an expected line, through the same
 //!   directory mode against the stdlib (a stdlib error is an unexpected code).
 //!
-//! T05, T10 and T13 are held out (LOOP.md §6.2): the harness never reads them, and the
-//! held-out runner reports no checkpoint aggregate. A checkpoint whose scope includes a
-//! held-out task can therefore be `fail` (a dev task fails) or `not_measurable`, never `pass`.
+//! T05, T10 and T13 are held out (LOOP.md §6.2): the harness never reads them. For
+//! `roadmap.M2.typecheck` the sealed held-out runner reports counts only ([`held_typecheck`]:
+//! files checked, passed and failed, tasks seen, whether the type checker ran), through the
+//! same directory-mode route, and the checkpoint passes only when the dev files and every
+//! held-out file pass, with all held-out tasks seen. The other checkpoints have no held-out
+//! aggregate: a scope that includes a held-out task can be `fail` (a dev task fails) or
+//! `not_measurable`, never `pass`.
 
 use crate::cli::KalamCli;
 use crate::corpus::{self, Case};
@@ -122,8 +126,121 @@ fn stdlib_errors(errors: &[crate::cli::CliDiag]) -> usize {
         .count()
 }
 
-pub fn typecheck(cli: &Result<KalamCli, String>, cases: &[Case], std: &Path) -> Checkpoint {
-    let tasks: Vec<u32> = (1..=15).collect();
+/// What directory-mode `kalam check` made of the `run` cases of T01-T15 (dev or held-out).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct TypecheckCounts {
+    pub passed: usize,
+    pub total: usize,
+    /// `task/case skin: ...` for each file with an error (dev evidence only: these name
+    /// tasks and cases, so the held-out aggregate keeps only their number).
+    pub failed: Vec<String>,
+    /// Files the binary could not check at all (an infrastructure error, not a verdict).
+    pub unchecked: Vec<String>,
+    pub from_std: usize,
+    pub tasks: BTreeSet<String>,
+}
+
+/// The tasks of `roadmap.M2.typecheck`.
+fn typecheck_tasks() -> Vec<u32> {
+    (1..=15).collect()
+}
+
+/// Checks every `run` case of T01-T15 in `cases`, every skin, in directory mode against
+/// the stdlib at `std`.
+pub fn typecheck_counts(cli: &KalamCli, cases: &[Case], std: &Path) -> TypecheckCounts {
+    let tasks = typecheck_tasks();
+    let mut n = TypecheckCounts::default();
+    for c in cases.iter().filter(|c| in_tasks(c, &tasks)) {
+        if c.expect.kind.as_deref() != Some("run") {
+            continue;
+        }
+        n.tasks.insert(c.task.clone());
+        for f in &c.files {
+            n.total += 1;
+            let r = read(c, f).and_then(|b| cli.check_in_project(f.skin, &b, std));
+            match r {
+                Ok(r) if r.errors.is_empty() && r.exit == Some(0) => n.passed += 1,
+                Ok(r) => {
+                    n.from_std += stdlib_errors(&r.errors);
+                    n.failed.push(format!(
+                        "{}/{} {}: exit {:?} {:?}",
+                        c.task,
+                        c.case,
+                        f.skin.id(),
+                        r.exit,
+                        r.errors
+                            .iter()
+                            .map(|d| format!("{}@{}:{}", d.code, d.file, d.line))
+                            .collect::<Vec<_>>()
+                    ))
+                }
+                Err(e) => n
+                    .unchecked
+                    .push(format!("{}/{} {}: {e}", c.task, c.case, f.skin.id())),
+            }
+        }
+    }
+    n
+}
+
+/// The held-out `typecheck` aggregate (runs inside the sealed child): counts and booleans
+/// only, never a task, case, file, code or message.
+pub fn held_typecheck(cli: &Result<KalamCli, String>, cases: &[Case], std: &Path) -> Value {
+    let Ok(cli) = cli else {
+        return json!({"status": "not_measurable", "files_passed": 0, "files": 0,
+                      "files_failed": 0, "unchecked": 0, "tasks": 0, "type_checker": false});
+    };
+    let typeck = cli.typeck_available_in_project(std).is_ok();
+    let n = typecheck_counts(cli, cases, std);
+    json!({
+        "status": "measured",
+        "files_passed": n.passed,
+        "files": n.total,
+        "files_failed": n.failed.len(),
+        "unchecked": n.unchecked.len(),
+        "tasks": n.tasks.len(),
+        "type_checker": typeck,
+    })
+}
+
+/// The held-out `typecheck` aggregate as the checkpoint reads it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct HeldTypecheck {
+    pub files_passed: u64,
+    pub files: u64,
+    pub files_failed: u64,
+    pub unchecked: u64,
+    pub tasks: u64,
+    pub type_checker: bool,
+}
+
+impl HeldTypecheck {
+    /// `None` unless the aggregate was measured.
+    pub fn from_json(v: &Value) -> Option<HeldTypecheck> {
+        if v["status"] != "measured" {
+            return None;
+        }
+        let n = |k: &str| v[k].as_u64();
+        Some(HeldTypecheck {
+            files_passed: n("files_passed")?,
+            files: n("files")?,
+            files_failed: n("files_failed")?,
+            unchecked: n("unchecked")?,
+            tasks: n("tasks")?,
+            type_checker: v["type_checker"].as_bool()?,
+        })
+    }
+}
+
+/// `held`: the held-out aggregate's `typecheck` value, `None` when the held-out runner did
+/// not run or reported none.
+pub fn typecheck(
+    cli: &Result<KalamCli, String>,
+    cases: &[Case],
+    std: &Path,
+    held_agg: Option<&Value>,
+) -> Checkpoint {
+    let tasks = typecheck_tasks();
     let target =
         "MVP-tier tasks T01-T15 type-check in all three skins against the stdlib signature stubs"
             .to_string();
@@ -139,67 +256,60 @@ pub fn typecheck(cli: &Result<KalamCli, String>, cases: &[Case], std: &Path) -> 
         Ok(c) => c,
     };
     let typeck = cli.typeck_available_in_project(std);
-    let (mut passed, mut total, mut failed) = (0, 0, Vec::new());
-    // files the binary could not check at all (an infrastructure error, not a verdict)
-    let mut unchecked: Vec<String> = Vec::new();
-    let mut from_std = 0;
-    let mut seen = BTreeSet::new();
-    for c in cases.iter().filter(|c| in_tasks(c, &tasks)) {
-        if c.expect.kind.as_deref() != Some("run") {
-            continue;
-        }
-        seen.insert(c.task.clone());
-        for f in &c.files {
-            total += 1;
-            let r = read(c, f).and_then(|b| cli.check_in_project(f.skin, &b, std));
-            match r {
-                Ok(r) if r.errors.is_empty() && r.exit == Some(0) => passed += 1,
-                Ok(r) => {
-                    from_std += stdlib_errors(&r.errors);
-                    failed.push(format!(
-                        "{}/{} {}: exit {:?} {:?}",
-                        c.task,
-                        c.case,
-                        f.skin.id(),
-                        r.exit,
-                        r.errors
-                            .iter()
-                            .map(|d| format!("{}@{}:{}", d.code, d.file, d.line))
-                            .collect::<Vec<_>>()
-                    ))
-                }
-                Err(e) => unchecked.push(format!("{}/{} {}: {e}", c.task, c.case, f.skin.id())),
-            }
-        }
-    }
+    let n = typecheck_counts(cli, cases, std);
     let held = held_out_in(&tasks);
-    let status = typecheck_status(&failed, &unchecked, typeck.is_ok(), passed, total, &held);
+    let held_run = held_agg.and_then(HeldTypecheck::from_json);
+    let status = typecheck_status(
+        &n.failed,
+        &n.unchecked,
+        typeck.is_ok(),
+        n.passed,
+        n.total,
+        &held,
+        held_run,
+    );
+    let (passed, total, from_std) = (n.passed, n.total, n.from_std);
     Checkpoint {
         id: "roadmap.M2.typecheck",
         target,
         status,
-        value: json!({"dev_files_passed": passed, "dev_files": total, "dev_tasks": seen.len(),
-                      "type_checker": typeck.is_ok(), "stdlib_errors": from_std}),
+        value: json!({"dev_files_passed": passed, "dev_files": total, "dev_tasks": n.tasks.len(),
+                      "type_checker": typeck.is_ok(), "stdlib_errors": from_std,
+                      "held_out": held_agg.cloned().unwrap_or(Value::Null)}),
         evidence: format!(
             "`{} check --json --std {} PROJECT` per skin (file staged as src/main<ext>): dev {passed}/{total} files of \
              {} tasks have no error{}; errors in stdlib files {from_std}; failures {:?}; could not be checked {} {:?}; \
-             held-out tasks {held:?} are not run (the held-out runner has no type-check aggregate)",
+             held-out tasks {held:?}: {}",
             cli.exe.display(),
             std.display(),
-            seen.len(),
+            n.tasks.len(),
             match &typeck {
                 Ok(()) => " (type checker on)".to_string(),
                 Err(w) => format!(" under name resolution only, so a clean file proves nothing yet: {w}"),
             },
-            failed.iter().take(5).collect::<Vec<_>>(),
-            unchecked.len(),
-            unchecked.iter().take(2).collect::<Vec<_>>()
+            n.failed.iter().take(5).collect::<Vec<_>>(),
+            n.unchecked.len(),
+            n.unchecked.iter().take(2).collect::<Vec<_>>(),
+            match held_run {
+                None => "the held-out runner reported no measured type-check aggregate".to_string(),
+                Some(h) => format!(
+                    "{}/{} files of {} tasks have no error, {} failed, {} could not be checked (type checker {})",
+                    h.files_passed,
+                    h.files,
+                    h.tasks,
+                    h.files_failed,
+                    h.unchecked,
+                    if h.type_checker { "on" } else { "off" }
+                ),
+            }
         ),
     }
 }
 
-/// `roadmap.M2.typecheck`: an error in a checked file fails it; anything unchecked, or no
-/// type checker, leaves it not measurable; otherwise the held-out-aware [`verdict`].
+/// `roadmap.M2.typecheck`: an error in a checked file (dev or held-out) fails it; anything
+/// unchecked, or no type checker, leaves it not measurable; a scope with held-out tasks
+/// passes only on a measured held-out aggregate in which every file passed and every
+/// held-out task was seen.
 fn typecheck_status(
     failed: &[String],
     unchecked: &[String],
@@ -207,13 +317,28 @@ fn typecheck_status(
     passed: usize,
     total: usize,
     held: &[String],
+    held_run: Option<HeldTypecheck>,
 ) -> &'static str {
-    if !failed.is_empty() {
-        "fail"
-    } else if !unchecked.is_empty() || !typeck {
-        "not_measurable"
-    } else {
-        verdict(failed, passed, total, held)
+    if !failed.is_empty() || held_run.is_some_and(|h| h.files_failed > 0) {
+        return "fail";
+    }
+    if !unchecked.is_empty() || !typeck {
+        return "not_measurable";
+    }
+    if held.is_empty() {
+        return verdict(failed, passed, total, held);
+    }
+    match held_run {
+        Some(h)
+            if h.type_checker
+                && h.unchecked == 0
+                && h.files > 0
+                && h.files_passed == h.files
+                && h.tasks >= held.len() as u64 =>
+        {
+            verdict(failed, passed, total, &[])
+        }
+        _ => "not_measurable",
     }
 }
 
@@ -356,7 +481,7 @@ pub fn negative(cli: &Result<KalamCli, String>, cases: &[Case], std: &Path) -> C
     Checkpoint {
         id: "roadmap.M2.negative",
         target,
-        status: typecheck_status(&failed, &unchecked, true, passed, total, &[]),
+        status: typecheck_status(&failed, &unchecked, true, passed, total, &[], None),
         value: json!({"dev_files_passed": passed, "dev_files": total, "unchecked": unchecked.len()}),
         evidence: format!(
             "`{} check --json --std {} PROJECT` per skin on every compile-error case: {passed}/{total} files give \
@@ -370,22 +495,28 @@ pub fn negative(cli: &Result<KalamCli, String>, cases: &[Case], std: &Path) -> C
     }
 }
 
-/// All M2 checkpoints over the dev corpus at `corpus_dir`, against the stdlib at `std`.
-pub fn m2(cli: &Result<KalamCli, String>, corpus_dir: &Path, std: &Path) -> Vec<Checkpoint> {
+/// All M2 checkpoints over the dev corpus at `corpus_dir`, against the stdlib at `std`;
+/// `held_typecheck` is the held-out aggregate's `typecheck` value, if any.
+pub fn m2(
+    cli: &Result<KalamCli, String>,
+    corpus_dir: &Path,
+    std: &Path,
+    held_typecheck: Option<&Value>,
+) -> Vec<Checkpoint> {
     let cases = match corpus::discover(corpus_dir) {
         Ok(c) => c,
         Err(e) => {
             let why = format!("{}: {e}", corpus_dir.display());
             let cli_err: Result<KalamCli, String> = Err(why);
             return vec![
-                typecheck(&cli_err, &[], std),
+                typecheck(&cli_err, &[], std, held_typecheck),
                 interpreter(&cli_err, &[]),
                 negative(&cli_err, &[], std),
             ];
         }
     };
     vec![
-        typecheck(cli, &cases, std),
+        typecheck(cli, &cases, std, held_typecheck),
         interpreter(cli, &cases),
         negative(cli, &cases, std),
     ]
@@ -425,20 +556,81 @@ mod tests {
     #[test]
     fn a_binary_that_cannot_check_is_not_a_failure() {
         let x = vec!["x".to_string()];
-        assert_eq!(typecheck_status(&[], &x, true, 0, 1, &[]), "not_measurable");
-        assert_eq!(typecheck_status(&x, &x, true, 0, 2, &[]), "fail");
+        assert_eq!(
+            typecheck_status(&[], &x, true, 0, 1, &[], None),
+            "not_measurable"
+        );
+        assert_eq!(typecheck_status(&x, &x, true, 0, 2, &[], None), "fail");
         // an error is a failure even under name resolution only
-        assert_eq!(typecheck_status(&x, &[], false, 0, 1, &[]), "fail");
+        assert_eq!(typecheck_status(&x, &[], false, 0, 1, &[], None), "fail");
         // a clean run without the type checker proves nothing
         assert_eq!(
-            typecheck_status(&[], &[], false, 3, 3, &[]),
+            typecheck_status(&[], &[], false, 3, 3, &[], None),
             "not_measurable"
         );
-        assert_eq!(typecheck_status(&[], &[], true, 3, 3, &[]), "pass");
+        assert_eq!(typecheck_status(&[], &[], true, 3, 3, &[], None), "pass");
         assert_eq!(
-            typecheck_status(&[], &[], true, 3, 3, &["T05".into()]),
+            typecheck_status(&[], &[], true, 3, 3, &["T05".into()], None),
             "not_measurable"
         );
+    }
+
+    fn held(passed: u64, files: u64, failed: u64, tasks: u64) -> HeldTypecheck {
+        HeldTypecheck {
+            files_passed: passed,
+            files,
+            files_failed: failed,
+            unchecked: files - passed - failed,
+            tasks,
+            type_checker: true,
+        }
+    }
+
+    #[test]
+    fn the_held_out_aggregate_decides_a_held_out_scope() {
+        let h3 = ["T05".to_string(), "T10".into(), "T13".into()];
+        let st = |h: Option<HeldTypecheck>| typecheck_status(&[], &[], true, 36, 36, &h3, h);
+        // every held-out file of every held-out task passes: pass
+        assert_eq!(st(Some(held(9, 9, 0, 3))), "pass");
+        // a held-out failure fails it, even with dev clean
+        assert_eq!(st(Some(held(8, 9, 1, 3))), "fail");
+        // an unchecked held-out file, a missing task, no type checker or no aggregate: unknown
+        assert_eq!(st(Some(held(8, 9, 0, 3))), "not_measurable");
+        assert_eq!(st(Some(held(6, 6, 0, 2))), "not_measurable");
+        assert_eq!(st(Some(held(0, 0, 0, 0))), "not_measurable");
+        let off = HeldTypecheck {
+            type_checker: false,
+            ..held(9, 9, 0, 3)
+        };
+        assert_eq!(st(Some(off)), "not_measurable");
+        assert_eq!(st(None), "not_measurable");
+        // a dev failure still fails
+        assert_eq!(
+            typecheck_status(
+                &["x".into()],
+                &[],
+                true,
+                35,
+                36,
+                &h3,
+                Some(held(9, 9, 0, 3))
+            ),
+            "fail"
+        );
+    }
+
+    #[test]
+    fn the_held_out_aggregate_round_trips_and_names_nothing() {
+        let v = held_typecheck(&Err("no kalam binary".into()), &[], Path::new("std"));
+        assert_eq!(v["status"], "not_measurable");
+        assert!(HeldTypecheck::from_json(&v).is_none());
+        let measured = json!({"status": "measured", "files_passed": 9, "files": 9,
+                              "files_failed": 0, "unchecked": 0, "tasks": 3, "type_checker": true});
+        assert_eq!(HeldTypecheck::from_json(&measured), Some(held(9, 9, 0, 3)));
+        // counts and booleans only
+        for (_, x) in measured.as_object().unwrap() {
+            assert!(x.is_u64() || x.is_boolean() || x == "measured");
+        }
     }
 
     #[test]
@@ -448,6 +640,7 @@ mod tests {
             &Err("no kalam binary".into()),
             &root,
             &root.join("../../stdlib"),
+            None,
         );
         assert_eq!(cps.len(), 3);
         assert!(cps.iter().all(|c| c.status == "not_measurable"), "{cps:?}");

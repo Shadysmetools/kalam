@@ -233,6 +233,35 @@ pub fn names_its_codepoint(r: &Reported) -> bool {
         .any(|c| r.context.contains(*c))
 }
 
+/// Identifiers a message quotes in the `` `name` (U+...`` form a collision diagnostic uses
+/// for its two names (spec §5.3: the spelling, then its code points).
+fn quoted_names(message: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    for (i, _) in message.match_indices("` (U+") {
+        if let Some(open) = message[..i].rfind('`') {
+            out.push(&message[open + 1..i]);
+        }
+    }
+    out
+}
+
+/// FOUNDER-QUEUE Q38 (harness rule erratum): a SEC0104 between two all-ASCII lookalikes
+/// (`al` and `a1`) has no non-ASCII code point to name, so quoting both identifiers names
+/// it: the identifier under the span is all ASCII, and the message quotes it and another,
+/// different all-ASCII identifier (each as `` `name` (U+...``). Any non-ASCII collision
+/// still needs [`names_its_codepoint`].
+pub fn names_ascii_collision(r: &Reported) -> bool {
+    let ident = r.context.trim();
+    if r.code != "SEC0104" || ident.is_empty() || !ident.is_ascii() {
+        return false;
+    }
+    let quoted = quoted_names(&r.message_en);
+    quoted.contains(&ident)
+        && quoted
+            .iter()
+            .any(|q| !q.is_empty() && q.is_ascii() && *q != ident)
+}
+
 /// Codes that the M1 stages (S0 harness, S1 lexer, S2 parser/printer) cannot emit: name
 /// resolution and later (SEC0104/SEC0108 need scopes; K03xx-K06xx, K08xx, K10xx-K17xx).
 pub fn needs_later_stage(code: &str) -> bool {
@@ -287,7 +316,11 @@ pub fn judge_file(
                 if let Some(l) = line.filter(|l| *l != r.line) {
                     problems.push(format!("first {code} is on line {}, expected {l}", r.line));
                 }
-                if rules.name_codepoints && code.starts_with("SEC") && !names_its_codepoint(r) {
+                if rules.name_codepoints
+                    && code.starts_with("SEC")
+                    && !names_its_codepoint(r)
+                    && !names_ascii_collision(r)
+                {
                     problems.push(format!("{code} does not name the code point it reports"));
                 }
             }
@@ -723,6 +756,58 @@ pub(crate) mod tests {
             ..r
         };
         assert!(!names_its_codepoint(&unnamed));
+    }
+
+    /// Q38: an all-ASCII SEC0104 names its collision by quoting both identifiers.
+    #[test]
+    fn an_ascii_collision_is_named_by_quoting_both_identifiers() {
+        let msg = |a: &str, b: &str| {
+            format!(
+                "{a} and {b} are two different names in this scope that look the same once \
+                 lookalike letters are folded together (for example `\u{64A}` and `\u{649}`)."
+            )
+        };
+        let sec = |context: &str, message: String| Reported {
+            code: "SEC0104".into(),
+            line: 3,
+            message_en: message,
+            context: context.into(),
+        };
+        // `al` vs `a1` (eval/suites/trojan-source/collision-l-vs-1)
+        let both = sec("a1", msg("`a1` (U+0061 U+0031)", "`al` (U+0061 U+006C)"));
+        assert!(!names_its_codepoint(&both));
+        assert!(names_ascii_collision(&both));
+        let rules = RejectRules {
+            name_codepoints: true,
+            ..RejectRules::default()
+        };
+        let expect = SuiteExpect::parse(r#"{"must_reject": true, "codes": ["SEC0104"]}"#).unwrap();
+        assert!(judge_file(&expect, std::slice::from_ref(&both), &rules).is_ok());
+        // only one identifier quoted: not named
+        let one = sec("a1", "`a1` (U+0061 U+0031) looks like another name".into());
+        assert!(!names_ascii_collision(&one));
+        assert!(judge_file(&expect, &[one], &rules).is_err());
+        // the other name quoted without its code points (the catalog's own examples): not named
+        let bare = sec("a1", "`a1` (U+0061 U+0031) and `al` look the same".into());
+        assert!(!names_ascii_collision(&bare));
+        // a Latin/Cyrillic collision is not all-ASCII: it still needs a U+ name under the span
+        let cyr = sec(
+            "\u{430}b",
+            msg("`\u{430}b` (U+0430 U+0062)", "`ab` (U+0061 U+0062)"),
+        );
+        assert!(!names_ascii_collision(&cyr));
+        assert!(names_its_codepoint(&cyr));
+        let latin_side = sec(
+            "ab",
+            msg("`ab` (U+0061 U+0062)", "`\u{430}b` (U+0430 U+0062)"),
+        );
+        assert!(!names_ascii_collision(&latin_side));
+        // another code never takes the ASCII rule
+        let other = Reported {
+            code: "SEC0108".into(),
+            ..both.clone()
+        };
+        assert!(!names_ascii_collision(&other));
     }
 
     #[test]

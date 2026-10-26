@@ -1,0 +1,4 @@
+fn main():
+    let name = "Sara"
+    let page = html"""<script>{name}</script>"""
+    print("{page}")

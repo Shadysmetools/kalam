@@ -1,9 +1,14 @@
 //! Mutations: byte/char level, token level (from the real lexer's spans) and grammar aware
 //! (generated program fragments, deep nesting, re-skinned keywords, Arabic glyph swaps).
+//! A share of mutations are **typed** ([`mutate_typed`]): a token is replaced by another of
+//! its class (a name by a name, a literal by a literal, a binary operator by a binary
+//! operator), which mostly keeps a program parsing, so name resolution, the type checker and
+//! the interpreter (targets `typeck`, `interp`) see many more well-formed programs.
 //! Every mutation keeps the text valid UTF-8, because the CLI rejects anything else before
 //! the lexer runs.
 
 use kalam_base::{FileId, Skin, Span};
+use kalam_lexer::TokenKind;
 use kalam_props::rng::Rng;
 use kalam_props::soup::{FRAGMENTS, HAZARDS};
 use kalam_skins::KeywordTable;
@@ -96,6 +101,72 @@ fn random_token(rng: &mut Rng) -> String {
             .to_string(),
         _ => rng.pick(HAZARDS).to_string(),
     }
+}
+
+/// Token classes a typed mutation keeps.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Class {
+    Name,
+    Literal,
+    BinOp,
+}
+
+const LITERALS: &[&str] = &[
+    "0",
+    "1",
+    "2",
+    "-1",
+    "1.5",
+    "0.0",
+    "\"\"",
+    "\"s\"",
+    "[]",
+    "9223372036854775807",
+];
+
+const BIN_OPS: &[&str] = &[
+    "+", "-", "*", "/", "//", "%", "==", "!=", "<", "<=", ">", ">=",
+];
+
+fn class_of(kind: TokenKind, text: &str) -> Option<Class> {
+    match kind {
+        TokenKind::Ident | TokenKind::Core(_) => Some(Class::Name),
+        TokenKind::Int | TokenKind::Float | TokenKind::Str => Some(Class::Literal),
+        TokenKind::Op(_) if BIN_OPS.contains(&text) => Some(Class::BinOp),
+        _ => None,
+    }
+}
+
+/// One typed mutation of `text` in `skin` (in place): a name, literal or binary operator
+/// token replaced by another of its class, taken from the same file or a small fixed set.
+pub fn mutate_typed(rng: &mut Rng, text: &mut String, skin: Skin) {
+    let toks: Vec<(Class, usize, usize)> = kalam_lexer::lex(text, skin, FileId(0))
+        .tokens
+        .iter()
+        .filter_map(|t| {
+            let (a, b) = (t.span.start as usize, t.span.end as usize);
+            if a >= b || b > text.len() || !text.is_char_boundary(a) || !text.is_char_boundary(b) {
+                return None;
+            }
+            class_of(t.kind, &text[a..b]).map(|c| (c, a, b))
+        })
+        .collect();
+    if toks.is_empty() {
+        return;
+    }
+    let (class, a, b) = toks[rng.below(toks.len())];
+    let same: Vec<&(Class, usize, usize)> = toks.iter().filter(|t| t.0 == class).collect();
+    let replacement = if rng.chance(70) && same.len() > 1 {
+        let (_, c, d) = *same[rng.below(same.len())];
+        text[c..d].to_string()
+    } else {
+        match class {
+            Class::Name => return,
+            Class::Literal => rng.pick(LITERALS).to_string(),
+            Class::BinOp => rng.pick(BIN_OPS).to_string(),
+        }
+    };
+    text.replace_range(a..b, &replacement);
 }
 
 /// One mutation of `text` (in place). `other` is another corpus entry for splicing.
@@ -323,6 +394,19 @@ fn mutate_once(rng: &mut Rng, text: &mut String, skin: Skin, other: &str) {
 /// A stacked ("havoc") mutation of `base`.
 pub fn mutate(rng: &mut Rng, base: &Input, other: &Input) -> Input {
     let mut text = base.text.clone();
+    if rng.chance(30) {
+        for _ in 0..1 + rng.below(3) {
+            mutate_typed(rng, &mut text, base.skin);
+            if text.len() > MAX_LEN {
+                let cut = boundary_at_or_before(&text, MAX_LEN);
+                text.truncate(cut);
+            }
+        }
+        return Input {
+            skin: base.skin,
+            text,
+        };
+    }
     let rounds = 1 + {
         let big = rng.chance(20);
         rng.below(if big { 16 } else { 4 })
@@ -345,6 +429,29 @@ pub fn mutate(rng: &mut Rng, base: &Input, other: &Input) -> Input {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Typed mutations change the program and mostly keep it parsing.
+    #[test]
+    fn typed_mutations_mostly_keep_a_program_parsing() {
+        let base = "fn area(w: Int, h: Int) -> Int:\n    return w * h + 1\n\nfn main():\n    let a = area(2, 3)\n    print(\"{a}\")\n";
+        let mut rng = Rng::new(3);
+        let (mut clean, mut changed) = (0, 0);
+        for _ in 0..400 {
+            let mut t = base.to_string();
+            mutate_typed(&mut rng, &mut t, Skin::En);
+            changed += usize::from(t != base);
+            let lexed = kalam_lexer::lex(&t, Skin::En, FileId(0));
+            let parsed = kalam_parser::parse(&t, &lexed, Skin::En, FileId(0));
+            let errors = lexed
+                .diagnostics
+                .iter()
+                .chain(parsed.diagnostics.iter())
+                .any(|d| d.is_error());
+            clean += usize::from(!errors);
+        }
+        assert!(changed > 200, "changed {changed}/400");
+        assert!(clean > 300, "clean {clean}/400");
+    }
 
     #[test]
     fn mutations_keep_utf8_and_size() {

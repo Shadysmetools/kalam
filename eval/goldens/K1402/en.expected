@@ -1,0 +1,10 @@
+-- @sync FUNCTION SUSPENDS -------------------------------------- main.kl  K1402
+
+This function is marked `@sync`, a promise that it never waits, but it calls something that can suspend. The chain of calls shows where.
+
+2│ fn present(fs: Fs) -> Bool => fs.exists(path"notes.txt")
+      ^^^^^^^ `present` calls `exists` (suspends)
+
+Help: Remove the waiting call from this function, or remove `@sync` if the function really needs to wait (callers that rely on it will then be reported).
+
+Learn more: kalam explain K1402

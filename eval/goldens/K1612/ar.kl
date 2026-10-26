@@ -1,0 +1,4 @@
+دالة رئيسي():
+    ليكن name = "Sara"
+    ليكن page = html"""<script>{name}</script>"""
+    اطبع("{page}")

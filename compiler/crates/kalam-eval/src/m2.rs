@@ -219,6 +219,7 @@ pub fn compute(
     kalam: Option<&Path>,
     seeded: &[SuiteCase],
     checkpoint_ids: &[String],
+    held_typecheck: Option<&Value>,
 ) -> M2Inputs {
     let spec_units = clauses::index(spec_text);
     let clauses_checked =
@@ -271,7 +272,7 @@ pub fn compute(
     let catalog_full = diagcat::measure_in(spec_text, &diagcat::builtin_entries(), None);
     let std_dir = root.join(STDLIB_DIR);
     let checkpoints = if checkpoint_ids.iter().any(|c| c.starts_with("roadmap.M2.")) {
-        checkpoints::m2(&cli, &root.join("eval/corpus"), &std_dir)
+        checkpoints::m2(&cli, &root.join("eval/corpus"), &std_dir, held_typecheck)
     } else {
         Vec::new()
     };

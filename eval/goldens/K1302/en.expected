@@ -5,6 +5,8 @@ This `?` is applied to an `Option`, but the function returns a `Result`. A missi
 2│     let n = xs.get(0)?
                ^^^^^^^^^^
 
+Try: `.ok_or("missing value")`
+
 Help: Turn the missing value into an error first: `.ok_or(error)?`.
 
 Learn more: kalam explain K1302

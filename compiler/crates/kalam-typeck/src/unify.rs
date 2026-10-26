@@ -225,6 +225,27 @@ impl InferCtx {
         }
     }
 
+    /// [`Self::try_unify`] for a hint: the expected type of a call's or a constructor's
+    /// result, which only guides inference (§9.9 rule 5). Its suspension flows are dropped:
+    /// the result is coerced to the expected type again where it is used, which records
+    /// them at that place (a hint's flow had the span of whatever was checked before, so
+    /// one suspending value passed to a `@sync` parameter was reported twice).
+    pub fn try_unify_hint(&mut self, found: &Ty, expected: &Ty) -> bool {
+        let flows = self.flows.len();
+        let ok = self.try_unify(found, expected);
+        self.flows.truncate(flows);
+        ok
+    }
+
+    /// Gives the variable `v`, when it is still unbound, the value `ty` outright: no
+    /// unification, so `Error` binds too. The checker's defaulting at the end of a body.
+    pub fn default_to(&mut self, v: u32, ty: Ty) {
+        let root = self.find(v);
+        if self.nodes[root as usize].value.is_none() {
+            self.nodes[root as usize].value = Some(ty);
+        }
+    }
+
     /// Unifies only if the whole unification succeeds; on failure every binding it made
     /// is rolled back. Used for speculative hints (the expected type of a generic call's
     /// result), so a failed hint cannot leave half-bound variables behind.

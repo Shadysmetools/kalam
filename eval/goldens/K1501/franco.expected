@@ -1,0 +1,10 @@
+-- DONYA MATET3AMALSH ------------------------------------ main.franco.kl  K1501
+
+Mesh ha2dar asma7 lel code da ye3mel aw ye3mel decode l `donya`. `ra2isi` bas heya elly btestelem el `donya`, 3ashan kol salaheya f el program yet-tabba3 leeha.
+
+2│     khali root = donya()
+                    ^^^^^^^
+
+Mosa3da: Khod el salaheya elly me7tagha ka parameter (`net: Net`, `fs: Fs`), w ba3atha men `ra2isi` lta7t.
+
+E3raf aktar: kalam explain K1501

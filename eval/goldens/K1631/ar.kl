@@ -1,0 +1,4 @@
+دالة رئيسي():
+    ليكن host = "example.com"
+    ليكن link = url"https://{host}/users"
+    اطبع("{link}")

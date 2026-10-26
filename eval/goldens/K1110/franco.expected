@@ -1,0 +1,16 @@
+-- LAMBDA BTEMSEK MOTGHAYER ------------------------------ main.franco.kl  K1110
+
+El lambda di betesta5dem `motghayer` men el dala elly 7awaleiha. El lambdas betemsek qeyam, w 3omraha ma betemsek motghayerat momken tetghayar ba3dein.
+
+4│     khali add = dala(x: adad) => x + count
+                                        ^^^^^
+
+Garrab:
+
+    khali snapshot = count
+
+Garrab: `snapshot`
+
+Mosa3da: Ensakh el qeema el 7alya f sabet el awel, `khali snapshot = v`, w esta5dem `snapshot` gowa el lambda. W `kalam fix` byzawed el noskha.
+
+E3raf aktar: kalam explain K1110

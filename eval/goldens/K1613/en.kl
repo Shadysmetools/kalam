@@ -1,0 +1,4 @@
+fn main():
+    let home = "https://example.com"
+    let page = html"""<a href="{home}">home</a>"""
+    print("{page}")

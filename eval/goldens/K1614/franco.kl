@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali tag = "p"
+    khali page = html"""<{tag}>hi</p>"""
+    ektb("{page}")

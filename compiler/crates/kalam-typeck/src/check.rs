@@ -26,7 +26,11 @@
 //!   type (K0803), positional or labelled payloads.
 //! - §9.6 generics with bounds; §9.7 traits, coherence and the orphan rule, built-in trait
 //!   facts and derivation, `impl T as Trait`; §9.8 `Float`'s IEEE `==`/`<` (DR-23), K0602.
-//! - §9.9 inference rules 1–6 (return-type inference from the expected type included).
+//! - §9.9 inference rules 1–6 (return-type inference from the expected type included). At
+//!   the end of a body a type nothing fixed is `Never`, unless a trait requirement depends
+//!   on it, which is K0804 (proposed; `json.decode(s)` without an expected type).
+//! - §9.4/§13.4 module constants and field defaults are constant expressions (K1204,
+//!   `consts.rs`, FOUNDER-QUEUE Q33).
 //! - §10.2–§10.8: `let` patterns (K1003), `var`, value-form `if`/`match` (K0731),
 //!   assignment through a `var` place (K0710), loops over ranges, lists, sets, maps,
 //!   discarded values (K0730).
@@ -34,7 +38,8 @@
 //!   or-patterns (K1004), literal patterns (K1005), list, record and `as` patterns.
 //! - §12.1 named/default arguments, K1101, K1104 (adjacent same-type parameters of an
 //!   exported function, with a machine fix inserting the labels); §12.2 DR-27 method
-//!   resolution over inherent and trait methods (K0420, K1103), `Type.f` associated
+//!   resolution over inherent and trait methods (K0420, K1103; a function-typed field called
+//!   with method syntax is K1108, proposed, Q35), `Type.f` associated
 //!   functions, `Trait.m(x)`; §12.3 lambdas (K0801), local `fn`s, capture of a `var` (K1110).
 //! - §14.2 must-use `Result` (K1303); §14.3 `?` with its four rules (`Same`, `From`, boxing
 //!   into `AnyError`, K1301) and the `Option` form (K1302).
@@ -70,6 +75,8 @@ use crate::unify::{InferCtx, SuspFlow, UnifyError};
 // Fix-its and recovery helpers (K1001, K1110, K1301, K1302, Q31, well-formed locals).
 mod fixes;
 use fixes::{Capture, StmtCtx};
+// K1108 (a field called like a method) and the checker's K0401 for `.V` (Q34, Q35).
+mod members;
 
 /// How `e?` turns the error it propagates into the function's error (§14.3), recorded for
 /// lowering.
@@ -158,13 +165,23 @@ impl TypeckResults {
     /// Every error as a diagnostic, in source order per file; an error that repeats another
     /// one (same code, same place) is dropped.
     pub fn diagnostics(&self) -> Vec<Diagnostic> {
+        self.diagnostics_in(&HashMap::new())
+    }
+
+    /// [`TypeckResults::diagnostics`] with every type in a message spelled in the skin of
+    /// its file (`skins`; English for a file not in the map), spec §21.4 rule 1.
+    pub fn diagnostics_in(&self, skins: &HashMap<FileId, kalam_base::Skin>) -> Vec<Diagnostic> {
         let mut errors: Vec<&TypeError> = self.errors.iter().collect();
         errors.sort_by_key(|e| (e.file, e.span.start, e.span.end));
         let mut seen = HashSet::new();
         errors
             .into_iter()
             .filter(|e| seen.insert((e.file, e.span, e.code())))
-            .map(|e| e.to_diagnostic(&|d| self.name_of(d)))
+            .map(|e| {
+                let skin = skins.get(&e.file).copied().unwrap_or(kalam_base::Skin::En);
+                let sp = kalam_diagnostics::code::TypeSpelling::new(skin);
+                e.to_diagnostic_in(&|d| self.name_of(d), sp)
+            })
             .collect()
     }
 }
@@ -181,6 +198,7 @@ fn check_program_here(prog: &HirProgram) -> TypeckResults {
         trait_ids: HashMap::new(),
         method_impl: HashMap::new(),
         written: HashMap::new(),
+        contract_self: HashMap::new(),
     };
     cx.collect();
     cx.check_bodies();
@@ -215,6 +233,9 @@ struct Collector<'p> {
     /// to check their own body, while `res.signatures` holds the trait's (what callers
     /// see), so the mismatch is reported once, at the impl.
     written: HashMap<DefId, Scheme>,
+    /// For those methods, whether the trait's method takes `self` (callers call it the
+    /// trait's way, FOUNDER-QUEUE Q37).
+    contract_self: HashMap<DefId, bool>,
 }
 
 /// State for lowering one written type.
@@ -354,6 +375,7 @@ impl Collector<'_> {
                 self.written.insert(m, own);
             }
         }
+        self.contract_self.extend(outcome.selfs);
     }
 
     fn generics(&mut self, file: FileId, decls: &[GenericParamDecl]) -> Vec<GenericParam> {
@@ -621,6 +643,7 @@ impl Collector<'_> {
 
     fn check_bodies(&mut self) {
         let ids = self.prog.item_ids();
+        let mut const_eval = crate::consts::ConstEval::new(self.prog);
         // Constants first, in dependency order (§13.1: "evaluated once, in dependency
         // order"); a cycle keeps item order.
         for id in self.const_order(&ids) {
@@ -641,11 +664,22 @@ impl Collector<'_> {
                 }
                 None => b.synth(&c.value),
             };
+            // A part of an unannotated constant's type that its value leaves open is K0804;
+            // then the body is settled, so the type read below is closed.
+            if declared.is_none() {
+                b.close_constant_type(&ty, c.value.span);
+            }
+            b.settle();
             let ty = b.infer.resolve(&ty);
             let out = b.finish();
+            let clean = out.errors.is_empty();
             self.absorb(id, out);
             let ty = ty.map(&mut |t| matches!(t, Ty::Var(_)).then_some(Ty::Error));
             self.res.consts.insert(id, ty);
+            // §13.4 (Q33): a constant expression, no panic, no capability or `Cell` (K1204).
+            if let Some(e) = const_eval.constant(self.prog, &self.res, id, clean) {
+                self.res.errors.push(e);
+            }
         }
         for &id in &ids {
             let Some(item) = self.prog.item(id) else {
@@ -672,7 +706,15 @@ impl Collector<'_> {
                         }
                     }
                     let out = b.finish();
+                    let clean = out.errors.is_empty();
                     self.absorb(id, out);
+                    // §9.4: field defaults are constant expressions (§13.4, K1204).
+                    for d in r.fields.iter().filter_map(|f| f.default.as_ref()) {
+                        let found = const_eval.field_default(&self.res, id, file, d, clean);
+                        if let Some(e) = found {
+                            self.res.errors.push(e);
+                        }
+                    }
                 }
                 ItemKind::Test(body) => {
                     let file = item.file;
@@ -1146,22 +1188,106 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         self.rets.last().cloned().unwrap_or(Ty::Unit)
     }
 
-    /// Solves the deferred obligations and zonks every recorded type. Variables nobody
-    /// constrained become `Error` (they can only come from already-reported errors or from
-    /// values that are never used, such as an unused `None`).
-    fn finish(mut self) -> BodyOut {
+    /// Settles the body: the K1110 captures, then the deferred trait requirements, then the
+    /// type variables nothing constrained (spec §9.9; the verifier's open item 1).
+    ///
+    /// - A requirement that fails is the trait's error. One that still waits on a variable
+    ///   fails or holds whatever that type is, or it depends on it: then guessing would
+    ///   change what the program does (`json.decode(s)` without an expected type, `print`
+    ///   of `None`), so it is K0804, once per open type. Its variables become poison.
+    /// - Every other variable becomes `Never`. Nothing constrains it, so no value of its
+    ///   type is ever made or used (`E` in `Ok(1).is_ok()`, `A` in an unused
+    ///   `http.router()`), and `Never` keeps every type closed for KIR. In a body that
+    ///   already has an error they become poison instead, as before.
+    ///
+    /// Idempotent: the constant path settles before reading the constant's type.
+    fn settle(&mut self) {
         self.capture_errors();
         let obligations = std::mem::take(&mut self.obligations);
+        let clean = self.out.errors.is_empty();
         for o in obligations {
             let ty = self.resolve(&o.ty);
             let tr = TraitRef {
                 id: o.tr.id,
                 args: o.tr.args.iter().map(|t| self.infer.resolve(t)).collect(),
             };
-            if self.answer(&ty, &tr) == Answer::No {
-                self.trait_error(&ty, &tr, o.span, o.origin);
+            match self.answer(&ty, &tr) {
+                Answer::Yes => {}
+                Answer::No => self.trait_error(&ty, &tr, o.span, o.origin),
+                Answer::Unknown => {
+                    // `Error` answers `Yes`, so `No` here holds for every open part.
+                    let erased = TraitRef {
+                        id: tr.id,
+                        args: tr.args.iter().map(erase_vars).collect(),
+                    };
+                    if self.answer(&erase_vars(&ty), &erased) == Answer::No {
+                        self.trait_error(&ty, &tr, o.span, o.origin);
+                    } else if clean {
+                        let trait_name = match tr.id {
+                            TraitId::Builtin(b) => b.name().to_string(),
+                            TraitId::User(d) => self.res().name_of(d),
+                        };
+                        let kind = TypeErrorKind::UninferredType { ty: ty.clone() };
+                        let label = format!("`{trait_name}` for it depends on what `_` is");
+                        let e = TypeError::new(kind, self.file, o.span).with_label(o.span, label);
+                        self.push_error(e);
+                    }
+                    // Reported (or a root cause is): later requirements on it stay quiet.
+                    let mut open = Vec::new();
+                    for t in std::iter::once(&ty).chain(tr.args.iter()) {
+                        t.any(&mut |t| {
+                            if let Ty::Var(v) = t {
+                                open.push(*v);
+                            }
+                            false
+                        });
+                    }
+                    for v in open {
+                        self.infer.default_to(v, Ty::Error);
+                    }
+                }
             }
         }
+        let default = if self.out.errors.is_empty() {
+            Ty::Never
+        } else {
+            Ty::Error
+        };
+        for v in 0..self.infer.var_count() as u32 {
+            self.infer.default_to(v, default.clone());
+        }
+    }
+
+    /// An unannotated module constant's type must be closed by its value alone (§9.9 rule
+    /// 1): other bodies use the constant, so a part nothing fixed would surface there as
+    /// `Never` (`let NONE = None` used as an `Option[Int]`). K0804 at the value, when the
+    /// body has no other error; the open parts become poison. Called before [`Self::settle`].
+    fn close_constant_type(&mut self, ty: &Ty, span: Span) {
+        let ty = self.resolve(ty);
+        let mut open = Vec::new();
+        ty.any(&mut |t| {
+            if let Ty::Var(v) = t {
+                open.push(*v);
+            }
+            false
+        });
+        if open.is_empty() {
+            return;
+        }
+        if self.out.errors.is_empty() {
+            let label = "a module constant takes its type from its value alone";
+            let e = TypeError::new(TypeErrorKind::UninferredType { ty }, self.file, span)
+                .with_label(span, label);
+            self.push_error(e);
+        }
+        for v in open {
+            self.infer.default_to(v, Ty::Error);
+        }
+    }
+
+    /// Settles the body (see [`Self::settle`]) and zonks every recorded type.
+    fn finish(mut self) -> BodyOut {
+        self.settle();
         let mut out = std::mem::take(&mut self.out);
         let zonk = |t: &Ty, infer: &mut InferCtx| {
             infer.resolve(t).map(&mut |t| match t {
@@ -1601,10 +1727,12 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             ExprKind::Def(d) => self.def_value(e, *d),
             ExprKind::Lang(item) => self.lang_value(*item),
             ExprKind::ImplicitMember(name) => {
-                self.err(
-                    e.span,
-                    TypeErrorKind::ImplicitMemberNeedsType { name: name.clone() },
-                );
+                if !self.unknown_variant(e.span, name) {
+                    self.err(
+                        e.span,
+                        TypeErrorKind::ImplicitMemberNeedsType { name: name.clone() },
+                    );
+                }
                 Ty::Error
             }
             ExprKind::AssocFn { ty, name } => match self.assoc_fn(e, ty, name) {
@@ -2039,7 +2167,7 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         };
         // Return-type inference from the expected type (§9.9 rule 5).
         if let Some(x) = exp {
-            let _ = self.infer.try_unify(&ret, x);
+            let _ = self.infer.try_unify_hint(&ret, x);
         }
         let decl = self.param_decls(d, 0);
         self.check_labels(e.span, d, 0, args);
@@ -2177,8 +2305,10 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         args: &[Arg],
         exp: Option<&Ty>,
     ) -> Ty {
+        // The callee's type is the instance this call uses (closed with the arguments
+        // below), so no type stays open for KIR.
         let callee_ty = self.lang_value(item);
-        self.record(callee, callee_ty);
+        self.record(callee, callee_ty.clone());
         let arity = |s: &mut Self, n: usize| {
             if args.len() != n {
                 s.bad_args(
@@ -2203,6 +2333,10 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                         a.value.span,
                         Origin::Show,
                     );
+                    if args.len() == 1 {
+                        let used = Ty::func(vec![t], Ty::Unit, Suspension::Sync);
+                        let _ = self.infer.try_unify(&callee_ty, &used);
+                    }
                 }
                 Ty::Unit
             }
@@ -2267,6 +2401,8 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 for a in args.iter().skip(1) {
                     self.synth(&a.value);
                 }
+                let used = Ty::func(vec![inner], whole.clone(), Suspension::Sync);
+                let _ = self.infer.try_unify(&callee_ty, &used);
                 whole
             }
         }
@@ -2291,7 +2427,7 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         let targs: Vec<Ty> = adt.generics.iter().map(|_| self.infer.fresh()).collect();
         let ty = Ty::Adt(def, targs.clone());
         if let Some(x) = exp {
-            let _ = self.infer.try_unify(&ty, x);
+            let _ = self.infer.try_unify_hint(&ty, x);
         }
         self.out.insts.push((e.id, targs.clone()));
         // §9.6: the record's type arguments satisfy its parameters' bounds.
@@ -2382,6 +2518,13 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         args: &[Arg],
         exp: Option<&Ty>,
     ) -> Ty {
+        // `.V` that no enum has: K0401, as resolve says in project mode (Q34).
+        if adt.is_none() && self.unknown_variant(e.span, name) {
+            for a in args {
+                self.synth(&a.value);
+            }
+            return Ty::Error;
+        }
         let exp = exp.map(|t| self.infer.shallow(t));
         let adt = match (adt, &exp) {
             (Some(a), _) => a,
@@ -2409,7 +2552,7 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         let targs: Vec<Ty> = def.generics.iter().map(|_| self.infer.fresh()).collect();
         let ty = Ty::Adt(adt, targs.clone());
         if let Some(x) = &exp {
-            let _ = self.infer.try_unify(&ty, x);
+            let _ = self.infer.try_unify_hint(&ty, x);
         }
         let Some((_, variant)) = def.variant(name) else {
             self.unknown_member(e.span, ty.clone(), name);
@@ -2526,6 +2669,9 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         let method = match candidates.as_slice() {
             [one] => one.method,
             [] => {
+                if let Some(t) = self.field_called_as_method(e, receiver, &rt, name, args) {
+                    return t;
+                }
                 self.unknown_member(e.span, rt, name);
                 for a in args {
                     self.synth(&a.value);
@@ -2566,10 +2712,18 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         let Ty::Fn { params, ret, .. } = ft else {
             return Ty::Error;
         };
-        let has_self = matches!(
-            self.prog().item(method).map(|i| &i.kind),
-            Some(ItemKind::Fn(f)) if f.has_self
-        );
+        // A method that does not match its trait is called the trait's way (Q37).
+        let has_self = self
+            .cx
+            .contract_self
+            .get(&method)
+            .copied()
+            .unwrap_or_else(|| {
+                matches!(
+                    self.prog().item(method).map(|i| &i.kind),
+                    Some(ItemKind::Fn(f)) if f.has_self
+                )
+            });
         if !has_self || params.is_empty() {
             self.bad_args(
                 e.span,
@@ -2583,7 +2737,7 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         self.coerce(&rt, &params[0], receiver.span);
         if let Some(x) = exp {
             let x = self.infer.shallow(x);
-            let _ = self.infer.try_unify(&ret, &x);
+            let _ = self.infer.try_unify_hint(&ret, &x);
         }
         let decl = self.param_decls(method, 1);
         self.check_labels(e.span, method, 1, args);
@@ -3346,8 +3500,11 @@ impl<'c, 'p> BodyCx<'c, 'p> {
     ) -> Ty {
         let st = self.synth(scrutinee);
         let mut result = exp.cloned();
+        let mut patterns_fit = true;
         for arm in arms {
+            let before = self.out.errors.len();
             self.pat(&arm.pat, &st);
+            patterns_fit &= self.out.errors.len() == before;
             if let Some(g) = &arm.guard {
                 self.check(g, &Ty::Bool);
             }
@@ -3358,7 +3515,11 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             }
         }
         let st = self.resolve(&st);
-        self.check_arms(e.span, &st, arms);
+        // A pattern that does not fit the scrutinee is the root cause: its K1001 (and the
+        // fix that would add arms to a broken match) waits until the patterns type-check.
+        if patterns_fit {
+            self.check_arms(e.span, &st, arms);
+        }
         if value {
             result.unwrap_or(Ty::Never)
         } else {
@@ -3621,6 +3782,13 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         rest: bool,
         ty: &Ty,
     ) {
+        // `.V` that no enum has: K0401, as resolve says in project mode (Q34).
+        if def.is_none() && self.unknown_variant(span, name) {
+            for f in fields {
+                self.pat(&f.pat, &Ty::Error);
+            }
+            return;
+        }
         let st = self.resolve(ty);
         let (adt, targs) = match (&st, def.and_then(|d| self.variant_owner(d))) {
             (_, Some((a, _))) => {

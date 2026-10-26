@@ -5,6 +5,13 @@
 13│     let n = parse(text)?
                 ^^^^^^^^^^^^
 
+Try: `.map_err(fn(failure) => …)`
+
+Try:
+
+    impl LoadFail as From[ParseFail]:
+        fn from(value: ParseFail) -> LoadFail => panic("TODO")
+
 Help: Convert the error at the call, for example `.map_err(fn(e) => ...)?`, or add `impl F as From[E]` for your error type `F`.
 
 Learn more: kalam explain K1301

@@ -1,0 +1,10 @@
+-- URL SCHEME OR HOST FROM A HOLE ------------------------------- main.kl  K1631
+
+In this `url"..."` literal, the scheme or the host comes from a hole. Both must be written in the literal, so a value can never send a request to another server.
+
+3│     let link = url"https://{host}/users"
+                               ^^^^
+
+Help: Write the scheme and host literally and keep holes for the path and query. For a URL that really comes from input, use `Url.parse(s)`.
+
+Learn more: kalam explain K1631

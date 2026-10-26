@@ -68,6 +68,7 @@ fn child_prints_aggregates_only() {
         exe: PathBuf::from(env!("CARGO_BIN_EXE_kalam-eval")),
         store: s.clone(),
         include_m2: false,
+        kalam: None,
     };
     let held = holdout::run_child(&runner, &repo_root());
     let text = held.to_json().to_string();
@@ -90,6 +91,54 @@ fn child_prints_aggregates_only() {
     assert_eq!(v["leak"]["hits"], 0, "{text}");
     assert!(v["manifest_sha256"].as_str().is_some_and(|h| h.len() == 64));
     assert!(v["diag_recovery"].is_null());
+    assert!(v["typecheck"].is_object(), "{text}");
+}
+
+/// The held-out type-check aggregate (`roadmap.M2.typecheck`): counts only. Without a
+/// `kalam` binary it is not measurable; with one (`KALAM_BIN`, as the harness is given it)
+/// the one held-out task's three files are checked.
+#[test]
+fn child_reports_a_typecheck_aggregate_with_counts_only() {
+    let s = store();
+    let runner = Runner {
+        exe: PathBuf::from(env!("CARGO_BIN_EXE_kalam-eval")),
+        store: s.clone(),
+        include_m2: true,
+        kalam: Some(s.join("no-such-kalam.exe")),
+    };
+    let missing = holdout::run_child(&runner, &repo_root());
+    let real = std::env::var_os("KALAM_BIN").map(|k| {
+        holdout::run_child(
+            &Runner {
+                kalam: Some(PathBuf::from(k)),
+                ..runner.clone()
+            },
+            &repo_root(),
+        )
+    });
+    let _ = fs::remove_dir_all(&s);
+    let v = missing.aggregate().expect("measured").clone();
+    assert_eq!(v["typecheck"]["status"], "not_measurable", "{v}");
+    assert_eq!(v["typecheck"]["files"], 0, "{v}");
+    let Some(real) = real else {
+        eprintln!("KALAM_BIN is not set: the measured half of this test is skipped");
+        return;
+    };
+    let text = real.to_json().to_string();
+    for secret in [SECRET_TASK, SECRET_TEXT, "zebra", "main.kl", "t05", "src/"] {
+        assert!(!text.contains(secret), "leaked {secret}: {text}");
+    }
+    let t = &real.aggregate().expect("measured")["typecheck"];
+    assert_eq!(t["status"], "measured", "{text}");
+    assert_eq!(t["type_checker"], true, "{text}");
+    assert_eq!(t["files"], 3, "{text}");
+    assert_eq!(t["files_passed"], 3, "{text}");
+    assert_eq!(t["files_failed"], 0, "{text}");
+    assert_eq!(t["unchecked"], 0, "{text}");
+    assert_eq!(t["tasks"], 1, "{text}");
+    for (k, x) in t.as_object().unwrap() {
+        assert!(x.is_u64() || x.is_boolean() || k == "status", "{k}: {x}");
+    }
 }
 
 #[test]
@@ -98,6 +147,7 @@ fn missing_and_encrypted_stores_measure_nothing() {
         exe: PathBuf::from(env!("CARGO_BIN_EXE_kalam-eval")),
         store: PathBuf::from("/no/such/store"),
         include_m2: false,
+        kalam: None,
     };
     assert!(matches!(
         holdout::run_child(&runner, &repo_root()),
@@ -109,6 +159,7 @@ fn missing_and_encrypted_stores_measure_nothing() {
         exe: PathBuf::from(env!("CARGO_BIN_EXE_kalam-eval")),
         store: s.clone(),
         include_m2: false,
+        kalam: None,
     };
     let held = holdout::run_child(&runner, &repo_root());
     let _ = fs::remove_dir_all(&s);
@@ -168,6 +219,7 @@ fn flat_store_feeds_trojan_and_recovery_not_the_corpus() {
         exe: PathBuf::from(env!("CARGO_BIN_EXE_kalam-eval")),
         store: s.clone(),
         include_m2: false,
+        kalam: None,
     };
     let held = holdout::run_child(&runner, &repo_root());
     let text = held.to_json().to_string();
@@ -219,6 +271,7 @@ fn from_m2_the_child_judges_m2_trojan_cases() {
             exe: PathBuf::from(env!("CARGO_BIN_EXE_kalam-eval")),
             store: s.clone(),
             include_m2,
+            kalam: None,
         };
         match holdout::run_child(&runner, &repo_root()) {
             Held::Ran(v) => v,

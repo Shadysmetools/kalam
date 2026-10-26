@@ -38,23 +38,39 @@ These goldens feed `D5.golden_coverage`. They are also half of the corpus for `D
 - **Example choice.** K0420, K0602 and K0730 use record types (`Point`, `Size`), so the message names no core type. Their template is right; the core-name problem is the type printer's and is listed below for K0126, K0601 and K1601, which cannot avoid a core type.
 - **Multi-edit fixes** print one `Try:` line per edit (as in the M2-start K0910, K0914 and K0923 goldens): K0416, K1104.
 
+## Added in M2 iteration 4 (2026-10-25)
+
+25 codes: K0126, K0420, K0600, K0601, K1110, K1204, K1401, K1402, K1501, K1503, K1601, K1602, K1603, K1604, K1605, K1610, K1612, K1613, K1614, K1615, K1616, K1617, K1620, K1621, K1631. K1001, K1301 and K1302 match again. That makes 114 of the 145 catalog codes with goldens; the catalog grew by K0804, K1108 and K1204 this iteration. At the end of the iteration 113 match (77.9 %), because K0405 is changing under a fix that is still being written (below).
+
+- **Renderer changes** (`kalam_diagnostics::render_human`), so these older goldens were re-blessed after a line-by-line review:
+  - **Fixes of several lines** are shown as the code they insert, indented four spaces under `Try:` (the spec §21.4 example), with blank lines at either end dropped and the common indentation removed. Before, one backtick span ran across lines. Re-blessed: K0925, K1001, K1301. K1001, K1301 and K1302 also gained their `Try:` lines because the type checker now attaches those fixes.
+  - **Labels** (secondary spans) are printed in the excerpt. A label on exactly the primary span follows the carets (`^^^^^ expected `Int`, found `Float``). Any other label gets its own source line and a `-` underline. Line numbers share one right-aligned gutter. Re-blessed: K0303, K0405, SEC0104.
+  - **Label language.** A label's text is written in English by the stage that found the problem. The renderer translates it through `kalam_diagnostics::labels`, keyed by the English text (gettext style), and spells keywords and core names in the file's skin. A label with no translation is shown in English messages only, never inside an Arabic or Franco one.
+  - **One `Try:` per distinct text.** A fix that writes the same text in several places, such as a rename, shows it once.
+- **Types in messages follow the file's skin** (spec §21.4 rule 1, D21). The type checker prints them with `Ty::display_in` and `kalam_diagnostics::code::TypeSpelling`, the same spellings `kalam convert` uses: the 11 core type names, `fn` and the Arabic comma. `List[Int]` is `قائمة[عدد]` in an `ar` file and `qayma[adad]` in a `franco` file. Names that are not core names (`BigInt`, `Secret`, `Sql`, `Net`, user types) stay as written. This unblocked K0126, K0601 and K1601.
+- **Catalog wording fixed before blessing:**
+  - K0601 and K0602 (en) say "a value of type `Int` with one of type `Float`", which removes "a `Int`". K0602 was re-blessed.
+  - K0420's help no longer promises suggestions that are never attached.
+  - K0600's help points at the type label and no longer pushes `.to_float()` for every mismatch.
+  - K1503's help spells `Secret[{core_string}]` in the file's skin.
+- **Sources** are English programs written from the type checker's and kalam-sinks' spec tests (`kalam-typeck/tests/sinks_caps.rs`, `kalam-effects/src/tests.rs`). The `ar` and `franco` sources are `kalam convert` output. Each rendering was reviewed by hand with the checks above. The checks were also scripted: the first error is the code; no rule-3 word appears in English prose; no English core type name appears inside backticks in an `ar` or `franco` rendering; any "`kalam fix` …" claim has a machine fix in the JSON.
+- **K1204** is brand new (FOUNDER-QUEUE Q33, in progress in another slice this iteration). Its golden records today's text. Its labels are in the label table, so `ar`/`franco` show them.
+- **K0405** has a rename fix from name resolution that is still being written this iteration (`total_2` in every skin). Its golden was not re-blessed for that change: it fails until the fix settles (the renaming convention per skin is still open in that slice).
+
 ## Catalog codes without goldens, and why
 
 ### Rendered text is wrong: not blessed
 
 | Code | What is wrong in the rendering |
 |---|---|
-| K0126 | `ar`/`franco`: "النوع `Int`" / "no3 `Int`". The type checker prints types with English core names (`kalam_typeck::Ty::display`); rule 1 needs `عدد` / `adad`. The same sentence then says "`عدد`", so the message names one type two ways |
-| K0420 | The help says "pick one of the names I suggest", but no suggestion is ever attached (no `Try:` line, no fix, for `xs.length()` or `p.z`) |
-| K0600 | The message never names the expected and found types (the `expected`/`found` arguments exist, the template ignores them), and the help always suggests `.to_float()`, even for `let x: Int = "hi"`. Also FOUNDER-QUEUE Q31: `let x: Int = 7 / 2` reports K0601, not K0600 |
-| K0601 | `en`: "I can't combine a `Int` with a `Float`" ("an `Int`"; K0602 has the same template problem). `ar`/`franco`: `Int`/`Float` in English skin (as K0126). Number types are always core names, so no example avoids it |
+| K0405 | Not a wording problem: name resolution is adding a rename fix this iteration, so the blessed text (no `Try:`) no longer matches. Re-bless once the per-skin naming of that fix is settled |
 | K0603 | The message does not name the missing trait (for `json.decode` into a type without `Decode`, it talks about `Ord`/`Show`), and the help always suggests `impl T as Show:` |
-| K0916 | The help says "`kalam fix` does this for you", but the diagnostic has no fix |
+| K0916 | The help says "`kalam fix` does this for you", but the diagnostic has no fix (spec §21.3 lists one) |
 | K1005 | Not reported: the parser rejects `case 2.5:` with K0250 "I expected a pattern here" (spec §11 rule 6 and §27 say K1005) |
-| K1105 | `ar`/`franco`: the detail is English inside the translated sentence ("... معاملات الدالة: expected at most 1 argument(s).") |
-| K1110 | The help says "`kalam fix` inserts the copy", but the diagnostic has no fix |
-| K1601 | `ar`/`franco`: "`String`" in English skin (as K0126); every K1601 is about a `String` |
-| K1641 | The help says "`kalam fix` inserts it", but the only fix is `applicability: suggestion`, which `kalam fix` does not apply |
+| K1105 | `ar`/`franco`: the `detail` argument is English prose inside the translated sentence ("... معاملات الدالة: expected at most 1 argument(s).") |
+| K1107 | `ar`/`franco`: the same problem as K1105. The `detail` text ("`name` returns `Int` here, but `String` in the trait") is English, and its types are printed in English skin (`kalam_typeck::conform` does not use `Ty::display_in` yet) |
+| K1611 | The help says "`kalam fix` adds them" (spec §17.4: "fix-it adds quotes"), but kalam-sinks attaches no fix |
+| K1641 | The help says "`kalam fix` inserts it", but the only fix is `applicability: suggestion`. Its `ar` edit also inserts `?` where the Arabic file spells it `؟` |
 
 ### Cannot be a three-skin golden today
 
@@ -64,6 +80,7 @@ These goldens feed `D5.golden_coverage`. They are also half of the corpus for `D
 | SEC0122 | It cannot occur in an `ar` file, where Arabic-Indic digits are allowed |
 | K0301, K1201 | They need two files of one package, and a golden is a single file |
 | SEC0108 | It needs a `names.toml` display glossary |
-| H0202, L0114, W0114, W0133, W0403, W0421, W0710, W0720, W1606, W1622 | The runner compares the file's first **error**, so a hint, lint or warning can never match. None of them is reported by `kalam check` yet either |
+| H0202, L0114, W0114, W0133, W0403, W0421, W0710, W0720, W1606, W1622 | The runner compares the file's first **error**, so a hint, lint or warning can never match (W0421, W1606 and W1622 are reported by `kalam check` now) |
 | K0418 | Needs a second module (a private item of a user module; the stdlib stubs' private items are not reachable from one file) |
-| K1401, K1402, K1501–K1504, K1602–K1650 (except K1601, K1641), K1701, K1702 | `kalam check` does not run the effects, capability and sink checks on a single file yet |
+| K0804, K1108 | New this iteration and still being implemented in the type-checker slice; not authored yet |
+| K1502, K1504, K1618, K1650, K1701, K1702 | Not reported by any compiler stage yet. K1504 and K1701 also need a package manifest, which a single-file golden does not have |

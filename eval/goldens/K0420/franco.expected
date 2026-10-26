@@ -1,0 +1,10 @@
+-- FIELD AW METHOD MESH MA3ROOFA ------------------------- main.franco.kl  K0420
+
+`qayma[adad]` mafeehoosh field aw method esmaha `length`. Ana ba-check kol call 3ala el API el 7a2ee2y, fa el esm el mettakhammen beyo2af hena badal ma yo2a3 w el program shaghal.
+
+3│     khali n = xs.length()
+                 ^^^^^^^^^^^
+
+Mosa3da: Raga3 el ketaba 3ala el fields wel methods bta3et el no3. Asamy men loghat tanya: `push` → `append`, `length` w `size` → `len`, `includes` → `contains`.
+
+E3raf aktar: kalam explain K0420

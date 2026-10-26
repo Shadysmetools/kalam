@@ -1,0 +1,6 @@
+fn load() -> Int => 41
+
+let answer = load() + 1
+
+fn main():
+    print("{answer}")

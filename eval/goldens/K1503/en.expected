@@ -1,0 +1,10 @@
+-- SECRET READ AS PLAIN TEXT ------------------------------------ main.kl  K1503
+
+This key looks like a secret (it ends in `_KEY`, `_SECRET` or `_TOKEN`, or names a password), but `env.get` returns plain text, which can end up in logs or JSON.
+
+1│ fn api_key(env: Env) -> Option[String] => env.get("STRIPE_API_KEY")
+                                                     ^^^^^^^^^^^^^^^^
+
+Help: Use `env.secret(key)`, which returns `Secret[String]`: it prints as `[REDACTED]` and can never be encoded.
+
+Learn more: kalam explain K1503

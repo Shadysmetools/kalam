@@ -41,6 +41,14 @@
       "source": "dala total(items: qayma[adad]) -> adad:\n    motghayer sum = 0\n    lekol item fi items:\n        sum += item\n    rag3 sum\n\ndala ra2isi():\n    khali xs = [1, 2, 3]\n    khali n = total(xs) + 007\n    ektb(\"total {n}\")\n"
     },
     {
+      "code": "K0126",
+      "id": "K0126/ar",
+      "message_language": "ar",
+      "rendered": "-- رقم أكبر من نوعه ------------------------------------------ main.ar.kl  K0126\n\nهذا الرقم لا يتسع له النوع `عدد`. مدى النوع `عدد` هو الأعداد الصحيحة من -9223372036854775808 إلى 9223372036854775807 (64 بت) على كل المنصات.\n\n2│     ليكن big = 9223372036854775808\n                  ^^^^^^^^^^^^^^^^^^^\n\nمساعدة: استخدم قيمة أصغر، أو اجعل نوع القيمة `BigInt` للأعداد التي لا حد لها.\n\nلمعرفة المزيد: kalam explain K0126",
+      "skin": "ar",
+      "source": "دالة رئيسي():\n    ليكن big = 9223372036854775808\n    اطبع(\"{big}\")\n"
+    },
+    {
       "code": "K0127",
       "id": "K0127/franco",
       "message_language": "franco",
@@ -164,7 +172,7 @@
       "code": "K0303",
       "id": "K0303/en",
       "message_language": "en",
-      "rendered": "-- PRIVATE TYPE IN AN EXPORTED SIGNATURE ------------------------ main.kl  K0303\n\nThis exported declaration uses `Ticket`, which is private to this module. Other modules could call it, but they could not write the type it takes or returns.\n\n4│ export fn make_ticket() -> Ticket => Ticket(id: 1)\n                              ^^^^^^\n\nHelp: Add `export` to the private type (or `export opaque` to keep its fields hidden), or stop exporting this declaration.\n\nLearn more: kalam explain K0303",
+      "rendered": "-- PRIVATE TYPE IN AN EXPORTED SIGNATURE ------------------------ main.kl  K0303\n\nThis exported declaration uses `Ticket`, which is private to this module. Other modules could call it, but they could not write the type it takes or returns.\n\n1│ type Ticket:\n        ------ `Ticket` is declared here without `export`\n4│ export fn make_ticket() -> Ticket => Ticket(id: 1)\n                              ^^^^^^\n\nHelp: Add `export` to the private type (or `export opaque` to keep its fields hidden), or stop exporting this declaration.\n\nLearn more: kalam explain K0303",
       "skin": "en",
       "source": "type Ticket:\n    id: Int\n\nexport fn make_ticket() -> Ticket => Ticket(id: 1)\n"
     },
@@ -180,9 +188,81 @@
       "code": "K0405",
       "id": "K0405/franco",
       "message_language": "franco",
-      "rendered": "-- ESM MESTA5DEM ABLAN ----------------------------------- main.franco.kl  K0405\n\n`total` met3arraf ablan f scope bayen hena. Kalam mesh beysma7 l ta3reef gedeed yekhabbi ta3reef a2dam, fa el esm leeh ma3na wa7ed f kol wa2t.\n\n4│         khali total = 2\n                 ^^^^^\n\nMosa3da: Edy el ta3reef el gedeed esm khas beeh. W l 2eema men no3 b nafs el esm, el code el 3araby beyzawwed \"ال\" (`الشكل: شكل`) w code el Franco beyzawwed `el_` (`el_donya: donya`).\n\nE3raf aktar: kalam explain K0405",
+      "rendered": "-- ESM MESTA5DEM ABLAN ----------------------------------- main.franco.kl  K0405\n\n`total` met3arraf ablan f scope bayen hena. Kalam mesh beysma7 l ta3reef gedeed yekhabbi ta3reef a2dam, fa el esm leeh ma3na wa7ed f kol wa2t.\n\n2│     khali total = 1\n             ----- `total` et3arraf hena el awel\n4│         khali total = 2\n                 ^^^^^\n\nMosa3da: Edy el ta3reef el gedeed esm khas beeh. W l 2eema men no3 b nafs el esm, el code el 3araby beyzawwed \"ال\" (`الشكل: شكل`) w code el Franco beyzawwed `el_` (`el_donya: donya`).\n\nE3raf aktar: kalam explain K0405",
       "skin": "franco",
       "source": "dala ra2isi():\n    khali total = 1\n    law total > 0:\n        khali total = 2\n        ektb(\"{total}\")\n"
+    },
+    {
+      "code": "K0413",
+      "id": "K0413/en",
+      "message_language": "en",
+      "rendered": "-- CORE NAME IS RESERVED ---------------------------------------- main.kl  K0413\n\n`Int` is a core name (spec §7.2). Core names are translated between skins, so each one means the same thing in every program and is never declared again.\n\n2│     let Int = 3\n           ^^^\n\nHelp: Choose another name for your declaration. The one core name a program declares is `main`, its entry point.\n\nLearn more: kalam explain K0413",
+      "skin": "en",
+      "source": "fn main():\n    let Int = 3\n    print(\"{Int}\")\n"
+    },
+    {
+      "code": "K0416",
+      "id": "K0416/ar",
+      "message_language": "ar",
+      "rendered": "-- السجل يحتاج أسماء الحقول ---------------------------------- main.ar.kl  K0416\n\nلا أستطيع بناء هذا السجل من معاملات بالترتيب. يُبنى السجل دائمًا بتسمية كل حقل، حتى لا تذهب قيمة إلى الحقل الخطأ أبدًا.\n\n6│     ليكن p = Point(1، 2)\n                ^^^^^^^^^^^\n\nجرّب: `x: `\n\nجرّب: `y: `\n\nمساعدة: سمِّ كل حقل، مثل `مستخدم(الرقم: 1، الاسم: \"سارة\")`. ويمكن ترك الحقول التي لها قيمة افتراضية.\n\nلمعرفة المزيد: kalam explain K0416",
+      "skin": "ar",
+      "source": "هيكل Point:\n    x: عدد\n    y: عدد\n\nدالة رئيسي():\n    ليكن p = Point(1، 2)\n    اطبع(\"{p.x}\")\n"
+    },
+    {
+      "code": "K0417",
+      "id": "K0417/franco",
+      "message_language": "franco",
+      "rendered": "-- FIELD ESMO WITH --------------------------------------- main.franco.kl  K0417\n\nMayenfa3sh field f record yeb2a esmo `with`: kol record 3ando method `with` gahza betraga3 nos5a meno ba3d ma tghayar shwayet fields (`u.with(name: \"Omar\")`).\n\n2│     with: adad\n       ^^^^\n\nMosa3da: Ghayar esm el field, masalan `with_value` aw esm beyewa22a7 howa shayel eh.\n\nE3raf aktar: kalam explain K0417",
+      "skin": "franco",
+      "source": "haykal Query:\n    with: adad\n\ndala ra2isi():\n    khali q = Query(with: 1)\n    ektb(\"{q.with}\")\n"
+    },
+    {
+      "code": "K0420",
+      "id": "K0420/franco",
+      "message_language": "franco",
+      "rendered": "-- FIELD AW METHOD MESH MA3ROOFA ------------------------- main.franco.kl  K0420\n\n`qayma[adad]` mafeehoosh field aw method esmaha `length`. Ana ba-check kol call 3ala el API el 7a2ee2y, fa el esm el mettakhammen beyo2af hena badal ma yo2a3 w el program shaghal.\n\n3│     khali n = xs.length()\n                 ^^^^^^^^^^^\n\nMosa3da: Raga3 el ketaba 3ala el fields wel methods bta3et el no3. Asamy men loghat tanya: `push` → `append`, `length` w `size` → `len`, `includes` → `contains`.\n\nE3raf aktar: kalam explain K0420",
+      "skin": "franco",
+      "source": "dala ra2isi():\n    khali xs = [1, 2]\n    khali n = xs.length()\n    ektb(\"{n}\")\n"
+    },
+    {
+      "code": "K0600",
+      "id": "K0600/franco",
+      "message_language": "franco",
+      "rendered": "-- EL TYPES MESH MAZBOOTA -------------------------------- main.franco.kl  K0600\n\nNo3 el qeema di mesh mnaseb el makan elly etsta5demet feeh. Kalam 3omro ma by7awel ben el types lewa7do, fa lazem el etnein yetaba2o bel zabt.\n\n2│     khali half: adad = 7 / 2\n                          ^^^^^ el matloob `adad`, wel mawgood `kasri`\n\nGarrab: ` // `\n\nMosa3da: Shoof el makan da me7tag eh (parameter, aw return type, aw annotation, aw dala tet3amalha call, aw 7aga te3mel 3aleiha loop); el molaheza ta7t el code bet2ol anhy anwa3 mesh mtab2a. W ba3dein ghayar el qeema aw 7awelha sara7a, masalan b `.to_float()` aw `.round()` ben anwa3 el arqam.\n\nE3raf aktar: kalam explain K0600",
+      "skin": "franco",
+      "source": "dala ra2isi():\n    khali half: adad = 7 / 2\n    ektb(\"{half}\")\n"
+    },
+    {
+      "code": "K0601",
+      "id": "K0601/en",
+      "message_language": "en",
+      "rendered": "-- NUMBER TYPES DON'T MIX --------------------------------------- main.kl  K0601\n\nI can't combine a value of type `Int` with one of type `Float`. Kalam never converts numbers by itself, so you choose how.\n\n4│     let total = count + ratio\n                   ^^^^^^^^^^^^^\n\nTry: `.to_float()`\n\nHelp: Convert one side explicitly: `.to_float()` keeps the fraction, `.round()` drops it.\n\nLearn more: kalam explain K0601",
+      "skin": "en",
+      "source": "fn main():\n    let count = 1\n    let ratio = 2.5\n    let total = count + ratio\n    print(\"{total}\")\n"
+    },
+    {
+      "code": "K0602",
+      "id": "K0602/en",
+      "message_language": "en",
+      "rendered": "-- COMPARING DIFFERENT TYPES ------------------------------------ main.kl  K0602\n\nI can't compare a value of type `Point` with one of type `Size` using `==`. Equality needs two values of the same type, and that type must support equality (`Eq`).\n\n10│     let same = p == s\n                   ^^^^^^\n\nHelp: Convert one side so both have the same type, or compare fields that support equality. Compare secrets with `crypto.equal(a, b)`.\n\nLearn more: kalam explain K0602",
+      "skin": "en",
+      "source": "type Point:\n    x: Int\n\ntype Size:\n    width: Int\n\nfn main():\n    let p = Point(x: 1)\n    let s = Size(width: 1)\n    let same = p == s\n    print(\"{same}\")\n"
+    },
+    {
+      "code": "K0612",
+      "id": "K0612/en",
+      "message_language": "en",
+      "rendered": "-- SECRET IN AN ENCODED TYPE ------------------------------------ main.kl  K0612\n\nThis type derives `Encode`, but one of its fields is a `Secret`. Encoding it would write the secret into JSON or onto the wire, so I stop here rather than hide it behind a redaction.\n\n2│ type Login:\n        ^^^^^\n\nHelp: Remove `Encode` from the `@derive` list, or define a separate output type without the secret field and encode that one.\n\nLearn more: kalam explain K0612",
+      "skin": "en",
+      "source": "@derive(Encode)\ntype Login:\n    user: String\n    password: Secret[String]\n\nfn main():\n    print(\"ok\")\n"
+    },
+    {
+      "code": "K0650",
+      "id": "K0650/ar",
+      "message_language": "ar",
+      "rendered": "-- النص لا يُفهرس -------------------------------------------- main.ar.kl  K0650\n\nلا أستطيع فهرسة نص بـ `[...]`. الموضع في النص غامض: البايتات ونقاط الترميز والحروف الظاهرة كلها تُعدّ بطرق مختلفة، ويظهر الفرق في النص العربي.\n\n3│     ليكن first = name[0]\n                    ^^^^^^^\n\nمساعدة: استخدم `.chars()` أو `.graphemes()` للمرور على الحروف، أو `.slice(from, to)` لأخذ جزء من النص (والمواضع تعدّ الحروف الظاهرة).\n\nلمعرفة المزيد: kalam explain K0650",
+      "skin": "ar",
+      "source": "دالة رئيسي():\n    ليكن name = \"Sara\"\n    ليكن first = name[0]\n    اطبع(first)\n"
     },
     {
       "code": "K0710",
@@ -201,12 +281,44 @@
       "source": "dala describe(n: adad) -> nass:\n    law -10 < n < 0:\n        rag3 \"negative\"\n    walla law n == 0:\n        rag3 \"zero\"\n    walla:\n        rag3 \"positive\"\n\ndala ra2isi():\n    khali label = describe(5)\n    ektb(label)\n"
     },
     {
+      "code": "K0730",
+      "id": "K0730/franco",
+      "message_language": "franco",
+      "rendered": "-- QEEMA MESH MOSTA5DAMA --------------------------------- main.franco.kl  K0730\n\nEl expression da bydy qeema men no3 `Point`, w mafeesh 7aga betesta5demha. W el qeema elly btet7seb w tetrmy ghaleban ghalta, zay ennak tenady `items.append(x)` w testanna `items` tetghayar.\n\n6│     p.with(x: 2)\n       ^^^^^^^^^^^^\n\nMosa3da: Esta5dem el qeema, masalan e7fazha b `khali` aw raga3ha lel motghayer, aw ekteb `khali _ = ...` 3ashan tesebha 3an 2asd.\n\nE3raf aktar: kalam explain K0730",
+      "skin": "franco",
+      "source": "haykal Point:\n    x: adad\n\ndala ra2isi():\n    khali p = Point(x: 1)\n    p.with(x: 2)\n    ektb(\"{p.x}\")\n"
+    },
+    {
       "code": "K0731",
       "id": "K0731/en",
       "message_language": "en",
       "rendered": "-- CONDITION WITHOUT AN ELSE ------------------------------------ main.kl  K0731\n\nThis `if` is used as a value, so it needs a `else` branch: without one, there is no value when the condition is false.\n\n10│     let label = if 5 > 0: \"positive\"\n                    ^^\n\nHelp: Add a `else:` branch with the value for the false case, or use the `if` as a statement on its own line.\n\nLearn more: kalam explain K0731",
       "skin": "en",
       "source": "fn describe(n: Int) -> String:\n    if n < 0:\n        return \"negative\"\n    else if n == 0:\n        return \"zero\"\n    else:\n        return \"positive\"\n\nfn main():\n    let label = if 5 > 0: \"positive\"\n    print(label)\n"
+    },
+    {
+      "code": "K0801",
+      "id": "K0801/en",
+      "message_language": "en",
+      "rendered": "-- LAMBDA PARAMETER TYPES UNKNOWN ------------------------------- main.kl  K0801\n\nI can't tell the types of this lambda's parameters. A lambda takes its parameter types from the place it is passed to, and nothing here says what they are.\n\n2│     let inc = fn(x) => x + 1\n                 ^^^^^^^^^^^^^^\n\nHelp: Write the parameter types, for example `fn(x: Int) => x + 1`, or pass the lambda directly to a function that expects one.\n\nLearn more: kalam explain K0801",
+      "skin": "en",
+      "source": "fn main():\n    let inc = fn(x) => x + 1\n    print(\"{inc(1)}\")\n"
+    },
+    {
+      "code": "K0802",
+      "id": "K0802/ar",
+      "message_language": "ar",
+      "rendered": "-- مجموعة فارغة تحتاج نوعًا ---------------------------------- main.ar.kl  K0802\n\nلا أستطيع معرفة ما ستحويه هذه المجموعة الفارغة. فالمجموعة الفارغة `[]` أو `{}` ليس لها نوع عناصر في ذاتها، ولا شيء حولها يحدده.\n\n2│     ليكن xs = []\n                 ^^\n\nمساعدة: أضف نوعًا، مثل `ليكن الأسماء: قائمة[نص] = []`.\n\nلمعرفة المزيد: kalam explain K0802",
+      "skin": "ar",
+      "source": "دالة رئيسي():\n    ليكن xs = []\n    اطبع(\"{xs}\")\n"
+    },
+    {
+      "code": "K0803",
+      "id": "K0803/franco",
+      "message_language": "franco",
+      "rendered": "-- EL MEMBER EL MOKHTASAR ME7TAG TYPE -------------------- main.franco.kl  K0803\n\nMesh 3aref `.Red` tab3a anhy type. El member el mokhtasar zay `.Red` byetdawar 3aleih f el type el mestanny f el makan da, w mafeesh 7aga hena bet2ool howa anhy type.\n\n7│     khali c = .Red\n                 ^^^^\n\nMosa3da: Ekteb el type 2oddamo, `EsmElType.Red`, aw zawed annotation 3ashan el type el mestanny yeb2a ma3roof.\n\nE3raf aktar: kalam explain K0803",
+      "skin": "franco",
+      "source": "ta3dad Light:\n    Red\n    Amber\n    Green\n\ndala ra2isi():\n    khali c = .Red\n    ektb(\"{c}\")\n"
     },
     {
       "code": "K0901",
@@ -369,6 +481,14 @@
       "source": "dala total(items: qayma[adad]) -> adad:\n    motghayer sum = 0\n    lekol item fi items:\n        sum += item\n    rag3 sum\n\ndala ra2isi():\n    khali xs = [1, 2, 3]\n    khali double = dala(x: adad):\n        rag3 x * 2\n    khali n = total(xs.map(double))\n    ektb(\"total {n}\")\n"
     },
     {
+      "code": "K0922",
+      "id": "K0922/ar",
+      "message_language": "ar",
+      "rendered": "-- معاملات نوع صريحة ----------------------------------------- main.ar.kl  K0922\n\nلا يقبل كلام معاملات نوع صريحة في الاستدعاء مثل `f[T](x)`، بل يستنتجها من المعاملات ومن النوع الذي تتوقعه.\n\n5│     ليكن head = first[عدد](xs)\n                   ^^^^^^^^^^\n\nمساعدة: احذف `[T]` من الاستدعاء واكتب نوع النتيجة بدلًا من ذلك: `ليكن r: T = f(x)`. الأمر `kalam fix` يفعل ذلك لك.\n\nلمعرفة المزيد: kalam explain K0922",
+      "skin": "ar",
+      "source": "دالة first[T](xs: قائمة[T]) -> اختياري[T] => xs.get(0)\n\nدالة رئيسي():\n    ليكن xs = [1، 2، 3]\n    ليكن head = first[عدد](xs)\n    اطبع(\"{head.is_some()}\")\n"
+    },
+    {
       "code": "K0923",
       "id": "K0923/ar",
       "message_language": "ar",
@@ -388,7 +508,7 @@
       "code": "K0925",
       "id": "K0925/ar",
       "message_language": "ar",
-      "rendered": "-- جملة switch ----------------------------------------------- main.ar.kl  K0925\n\n`switch` و`case X ->` والفروع `x => …` من لغات أخرى. أما كلام فيتفرع على القيمة بـ `حسب`، مع سطر `عندما النمط:` لكل فرع.\n\n2│     switch n {\n       ^^^^^^^^^^\n\nجرّب: `حسب n:\n        عندما 0: أرجع \"zero\"`\n\nمساعدة: اكتب `حسب x:` وتحتها، بإزاحة، `عندما النمط: النتيجة` لكل فرع. واستخدم `_` نمطًا لـ \"أي شيء آخر\". الأمر `kalam fix` يفعل ذلك لك.\n\nلمعرفة المزيد: kalam explain K0925",
+      "rendered": "-- جملة switch ----------------------------------------------- main.ar.kl  K0925\n\n`switch` و`case X ->` والفروع `x => …` من لغات أخرى. أما كلام فيتفرع على القيمة بـ `حسب`، مع سطر `عندما النمط:` لكل فرع.\n\n2│     switch n {\n       ^^^^^^^^^^\n\nجرّب:\n\n    حسب n:\n        عندما 0: أرجع \"zero\"\n\nمساعدة: اكتب `حسب x:` وتحتها، بإزاحة، `عندما النمط: النتيجة` لكل فرع. واستخدم `_` نمطًا لـ \"أي شيء آخر\". الأمر `kalam fix` يفعل ذلك لك.\n\nلمعرفة المزيد: kalam explain K0925",
       "skin": "ar",
       "source": "دالة describe(n: عدد) -> نص:\n    switch n {\n        عندما 0 -> أرجع \"zero\"\n    }\n    أرجع \"other\"\n\nدالة رئيسي():\n    ليكن label = describe(5)\n    اطبع(label)\n"
     },
@@ -399,6 +519,278 @@
       "rendered": "-- LOOP ZAY C -------------------------------------------- main.franco.kl  K0926\n\n`for (let i = 0; i < n; i++)` w `for i in range(n)` men loghat tanya. Kalam bey3mel loop 3ala range maktoob `0..n`.\n\n3│     lekol (motghayer i = 0; i < items.len(); i += 1):\n       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nGarrab: ` i fi 0..items.len()`\n\nMosa3da: Ekteb `lekol i fi 0..n:`. W esta5dem `0..=n` law 3ayez `n` nafsaha teb2a gowa. `kalam fix` bey3mel keda lak.\n\nE3raf aktar: kalam explain K0926",
       "skin": "franco",
       "source": "dala total(items: qayma[adad]) -> adad:\n    motghayer sum = 0\n    lekol (motghayer i = 0; i < items.len(); i += 1):\n        sum += items[i]\n    rag3 sum\n\ndala ra2isi():\n    khali xs = [1, 2, 3]\n    khali n = total(xs)\n    ektb(\"total {n}\")\n"
+    },
+    {
+      "code": "K1001",
+      "id": "K1001/en",
+      "message_language": "en",
+      "rendered": "-- MATCH DOESN'T COVER EVERY CASE ------------------------------- main.kl  K1001\n\nThis `match` doesn't handle every possible value. Missing: .Amber.\n\n8│     match light:\n       ^^^^^^^^^^^^\n\nTry:\n\n    case .Amber: panic(\"TODO\")\n\nHelp: Add a `case` for each missing value. Listing them is better than a catch-all `_`: a variant added later is then reported here instead of slipping into the catch-all.\n\nLearn more: kalam explain K1001",
+      "skin": "en",
+      "source": "enum Light:\n    Red\n    Amber\n    Green\n\nfn main():\n    let light: Light = .Red\n    match light:\n        case .Red:\n            print(\"stop\")\n        case .Green:\n            print(\"go\")\n"
+    },
+    {
+      "code": "K1002",
+      "id": "K1002/ar",
+      "message_language": "ar",
+      "rendered": "-- فرع لا يُوصل إليه ----------------------------------------- main.ar.kl  K1002\n\nهذا الـ `عندما` لن يعمل أبدًا: الفروع التي فوقه تطابق بالفعل كل قيمة كان سيطابقها.\n\n11│         عندما .Red:\n                  ^^^^\n\nمساعدة: انقل هذا الفرع فوق الفرع الذي يغطيه (وغالبًا يكون فرعًا عامًا `_` وُضع مبكرًا)، أو احذفه.\n\nلمعرفة المزيد: kalam explain K1002",
+      "skin": "ar",
+      "source": "تعداد Light:\n    Red\n    Amber\n    Green\n\nدالة رئيسي():\n    ليكن light: Light = .Red\n    حسب light:\n        عندما _:\n            اطبع(\"any\")\n        عندما .Red:\n            اطبع(\"stop\")\n"
+    },
+    {
+      "code": "K1003",
+      "id": "K1003/en",
+      "message_language": "en",
+      "rendered": "-- PATTERN CAN FAIL HERE ---------------------------------------- main.kl  K1003\n\nThis pattern doesn't match every value, but `let` and `for` have nowhere to go when a pattern fails.\n\n3│     let Some(n) = found\n           ^^^^^^^\n\nHelp: Use `match` with a `case` for each possibility.\n\nLearn more: kalam explain K1003",
+      "skin": "en",
+      "source": "fn main():\n    let found: Option[Int] = Some(1)\n    let Some(n) = found\n    print(\"{n}\")\n"
+    },
+    {
+      "code": "K1004",
+      "id": "K1004/franco",
+      "message_language": "franco",
+      "rendered": "-- EL BADAYEL BTERBOT ASAMY MOKHTALFA -------------------- main.franco.kl  K1004\n\nBadayel el pattern `|` da mesh berbot nafs el asamy b nafs el types, fa ba3d el asamy kanet hatefdal men gher qeema ba3d el match.\n\n9│         lama .Card(last4) | .Wallet(id):\n                ^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nMosa3da: Orbot nafs el asamy b nafs el types f kol badeel, aw efsel el badayel f foroo3 `lama` monfasla.\n\nE3raf aktar: kalam explain K1004",
+      "skin": "franco",
+      "source": "ta3dad Payment:\n    Card(last4: nass)\n    Wallet(id: nass)\n    Cash\n\ndala ra2isi():\n    khali p: Payment = .Cash\n    hasab p:\n        lama .Card(last4) | .Wallet(id):\n            ektb(\"electronic\")\n        lama .Cash:\n            ektb(\"cash\")\n"
+    },
+    {
+      "code": "K1101",
+      "id": "K1101/en",
+      "message_language": "en",
+      "rendered": "-- MISSING RETURN ----------------------------------------------- main.kl  K1101\n\nThis function promises to return a value, but at least one path through its body reaches the end without `return`.\n\n2│     x * 2\n       ^^^^^\n\nTry: `return `\n\nHelp: End every path with `return`, for example add the missing `else` branch, or a `return` after the last block.\n\nLearn more: kalam explain K1101",
+      "skin": "en",
+      "source": "fn double(x: Int) -> Int:\n    x * 2\n\nfn main():\n    print(\"{double(2)}\")\n"
+    },
+    {
+      "code": "K1103",
+      "id": "K1103/franco",
+      "message_language": "franco",
+      "rendered": "-- METHOD MESH WADE7A ------------------------------------ main.franco.kl  K1103\n\nFe aktar men method esmaha `label` tenfa3 hena: el type nafso aw kaza trait men el traits bta3to bey3arrafoha. W ana mesh ha5tar wa7da badalak.\n\n18│     ektb(item.label())\n             ^^^^^^^^^^^^\n\nMosa3da: Sammy el trait elly 2asdak 3aleiha: ekteb `Trait.label(x)` badal `x.label()`.\n\nE3raf aktar: kalam explain K1103",
+      "skin": "franco",
+      "source": "sefa Named:\n    dala label(nafso) -> nass\n\nsefa Tagged:\n    dala label(nafso) -> nass\n\nhaykal Item:\n    id: adad\n\nnaffez Item ka Named:\n    dala label(nafso) -> nass => \"named\"\n\nnaffez Item ka Tagged:\n    dala label(nafso) -> nass => \"tagged\"\n\ndala ra2isi():\n    khali item = Item(id: 1)\n    ektb(item.label())\n"
+    },
+    {
+      "code": "K1104",
+      "id": "K1104/en",
+      "message_language": "en",
+      "rendered": "-- LABELS NEEDED FOR SAME-TYPE PARAMETERS ----------------------- main.kl  K1104\n\nThis exported function has two neighbouring parameters of the same type, so a call by position could swap them without any error. Their arguments need labels.\n\n4│     let r = transfer(1, 2, 3)\n               ^^^^^^^^^^^^^^^^^\n\nTry: `to: `\n\nTry: `amount: `\n\nHelp: Label the arguments with the parameter names, for example `transfer(from: a, to: b)`. `kalam fix` inserts the labels.\n\nLearn more: kalam explain K1104",
+      "skin": "en",
+      "source": "export fn transfer(from: Int, to: Int, amount: Int) -> Int => from + to + amount\n\nfn main():\n    let r = transfer(1, 2, 3)\n    print(\"{r}\")\n"
+    },
+    {
+      "code": "K1106",
+      "id": "K1106/ar",
+      "message_language": "ar",
+      "rendered": "-- تنفيذ في غير مكانه ---------------------------------------- main.ar.kl  K1106\n\nلا أستطيع قبول هذا الـ `نفذ`: فإما أن تنفيذًا آخر للسمة نفسها للنوع نفسه موجود بالفعل، وإما أنه خارج وحدة السمة ووحدة النوع كلتيهما (قاعدة اليتيم).\n\n1│ نفذ عدد بصفة Show:\n   ^^^^^^^\n\nمساعدة: أبقِ تنفيذًا واحدًا لكل سمة ونوع، في الوحدة التي تعرّف السمة أو التي تعرّف النوع. ولإضافة سلوك إلى نوع من حزمة أخرى، غلّفه في نوع خاص بك.\n\nلمعرفة المزيد: kalam explain K1106",
+      "skin": "ar",
+      "source": "نفذ عدد بصفة Show:\n    دالة show(ذات) -> نص => \"number\"\n\nدالة رئيسي():\n    اطبع(\"ok\")\n"
+    },
+    {
+      "code": "K1110",
+      "id": "K1110/ar",
+      "message_language": "ar",
+      "rendered": "-- دالة مجهولة تلتقط متغيرًا --------------------------------- main.ar.kl  K1110\n\nهذه الدالة المجهولة تستخدم `متغير` من الدالة المحيطة بها. والدوال المجهولة تلتقط قيمًا، ولا تلتقط أبدًا متغيرات قد تتغير لاحقًا.\n\n4│     ليكن add = دالة(x: عدد) => x + count\n                                      ^^^^^\n\nجرّب:\n\n    ليكن snapshot = count\n\nجرّب: `snapshot`\n\nمساعدة: انسخ القيمة الحالية في ثابت أولًا، `ليكن لقطة = v`، واستخدم `لقطة` داخل الدالة المجهولة. والأمر `kalam fix` يضيف النسخة.\n\nلمعرفة المزيد: kalam explain K1110",
+      "skin": "ar",
+      "source": "دالة رئيسي():\n    متغير count = 1\n    count += 1\n    ليكن add = دالة(x: عدد) => x + count\n    اطبع(\"{add(1)}\")\n"
+    },
+    {
+      "code": "K1202",
+      "id": "K1202/ar",
+      "message_language": "ar",
+      "rendered": "-- متغير على مستوى الوحدة ------------------------------------ main.ar.kl  K1202\n\nلا يمكن تعريف `متغير` على مستوى الوحدة. ليس في كلام حالة عامة قابلة للتغيير: القيمة على مستوى الوحدة ثابتة.\n\n1│ متغير counter = 0\n   ^^^^^\n\nجرّب: `ليكن`\n\nمساعدة: استخدم `ليكن` للثابت. وللحالة التي تتغير، أنشئ `Cell` في `رئيسي` ومرّرها إلى الدوال التي تحتاجها.\n\nلمعرفة المزيد: kalam explain K1202",
+      "skin": "ar",
+      "source": "متغير counter = 0\n\nدالة رئيسي():\n    اطبع(\"{counter}\")\n"
+    },
+    {
+      "code": "K1203",
+      "id": "K1203/en",
+      "message_language": "en",
+      "rendered": "-- GLOB IMPORT -------------------------------------------------- main.kl  K1203\n\nI don't accept glob imports (`*`). A glob hides where each name comes from, and a new export upstream could silently change what a name in this file means.\n\n1│ use std/math.*\n               ^^\n\nHelp: List the names you use, for example `use std/http.{Request, Response}`.\n\nLearn more: kalam explain K1203",
+      "skin": "en",
+      "source": "use std/math.*\n\nfn main():\n    print(\"ok\")\n"
+    },
+    {
+      "code": "K1204",
+      "id": "K1204/franco",
+      "message_language": "franco",
+      "rendered": "-- MESH SABET -------------------------------------------- main.franco.kl  K1204\n\nLazem da yeb2a sabet, wel goz2 el mt3allem mesh keda. `khali` 3ala mostawa el module wel default bta3 field mayesta5demosh gheir el literals wel constructors wel sawabet el tanya wel operators, w mayenfa3sh yo2a3o; w sabet el module kaman mayshelsh capability aw `Cell`.\n\n3│ khali answer = load() + 1\n                  ^^^^^^ el call bta3 el dala mesh ta3beer sabet\n\nMosa3da: E7seb el qeema gowa `ra2isi` (aw gowa dala) w ba3atha, aw ekteb-ha literal. W lel state el moshtarak e3mel el `Cell` gowa `ra2isi`.\n\nE3raf aktar: kalam explain K1204",
+      "skin": "franco",
+      "source": "dala load() -> adad => 41\n\nkhali answer = load() + 1\n\ndala ra2isi():\n    ektb(\"{answer}\")\n"
+    },
+    {
+      "code": "K1301",
+      "id": "K1301/franco",
+      "message_language": "franco",
+      "rendered": "-- ? MESH HA2DAR Y7AWEL EL ERROR ------------------------- main.franco.kl  K1301\n\n`?` kan hayba3at el error da lfo2, bas no3 el error bta3o mesh howa elly el dala di betraga3o, w ana mesh 3aref ay ta7weel ben el etnein.\n\n13│     khali n = parse(text)?\n                  ^^^^^^^^^^^^\n\nGarrab: `.map_err(dala(failure) => …)`\n\nGarrab:\n\n    naffez LoadFail ka From[ParseFail]:\n        dala from(value: ParseFail) -> LoadFail => enhyar(\"TODO\")\n\nMosa3da: 7awel el error 3and el call, zay `.map_err(dala(e) => ...)?`, aw zawed `naffez F ka From[E]` l no3 el error bta3ak `F`.\n\nE3raf aktar: kalam explain K1301",
+      "skin": "franco",
+      "source": "ta3dad ParseFail:\n    Empty\n\nta3dad LoadFail:\n    Missing\n\ndala parse(text: nass) -> natiga[adad, ParseFail]:\n    law text == \"\":\n        rag3 fashal(.Empty)\n    rag3 naga7(1)\n\ndala load(text: nass) -> natiga[adad, LoadFail]:\n    khali n = parse(text)?\n    rag3 naga7(n)\n\ndala ra2isi():\n    khali _ = load(\"1\")\n"
+    },
+    {
+      "code": "K1302",
+      "id": "K1302/franco",
+      "message_language": "franco",
+      "rendered": "-- ? 3ALA OPTION F DALA BTRAGA3 RESULT ------------------- main.franco.kl  K1302\n\nEl `?` di 3ala `ekhtiyari`, bas el dala betraga3 `natiga`. W el qeema el msh mawgooda malhash error yetba3at lfo2, fa lazem t2ool howa anhy error.\n\n2│     khali n = xs.get(0)?\n                 ^^^^^^^^^^\n\nGarrab: `.ok_or(\"qeema mesh mawgooda\")`\n\nMosa3da: 7awel el qeema el msh mawgooda l error el awel: `.ok_or(error)?`.\n\nE3raf aktar: kalam explain K1302",
+      "skin": "franco",
+      "source": "dala head(xs: qayma[adad]) -> natiga[adad, nass]:\n    khali n = xs.get(0)?\n    rag3 naga7(n)\n\ndala ra2isi():\n    khali _ = head([2])\n"
+    },
+    {
+      "code": "K1303",
+      "id": "K1303/franco",
+      "message_language": "franco",
+      "rendered": "-- NATIGA MESH MOSTA5DAMA -------------------------------- main.franco.kl  K1303\n\nEl call da beyraga3 `natiga`, w mafeesh 7aga bet-check-ha. W el error elly etgahel fashal saket: el program bykammel ka2en el call nege7.\n\n7│     save(1)\n       ^^^^^^^\n\nMosa3da: 3algha b `hasab`, aw ba3at el error lfo2 b `?`, aw ekteb `khali _ = ...` 3ashan tesebha 3an 2asd (w `kalam audit` bey3ed el 7alat di).\n\nE3raf aktar: kalam explain K1303",
+      "skin": "franco",
+      "source": "dala save(n: adad) -> natiga[(), nass]:\n    law n < 0:\n        rag3 fashal(\"negative\")\n    rag3 naga7(())\n\ndala ra2isi():\n    save(1)\n"
+    },
+    {
+      "code": "K1401",
+      "id": "K1401/en",
+      "message_language": "en",
+      "rendered": "-- SUSPENDING FUNCTION WHERE @sync IS REQUIRED ------------------ main.kl  K1401\n\nThis function is passed where a `@sync` function is required, but it can suspend: somewhere in its calls it waits for I/O or a timer. The chain of calls shows where.\n\n9│     print(\"{apply(step, 1)}\")\n                     ^^^^ `step` calls `exists` (suspends)\n\nHelp: Move the waiting call out of this function (do the I/O before or after, and pass the result in), or pass a function that doesn't suspend.\n\nLearn more: kalam explain K1401",
+      "skin": "en",
+      "source": "fn apply(f: @sync fn(Int) -> Int, x: Int) -> Int => f(x)\n\nfn main(world: World):\n    let fs = world.fs\n    fn step(x: Int) -> Int:\n        if fs.exists(path\"flag.txt\"):\n            return x + 1\n        return x\n    print(\"{apply(step, 1)}\")\n"
+    },
+    {
+      "code": "K1402",
+      "id": "K1402/en",
+      "message_language": "en",
+      "rendered": "-- @sync FUNCTION SUSPENDS -------------------------------------- main.kl  K1402\n\nThis function is marked `@sync`, a promise that it never waits, but it calls something that can suspend. The chain of calls shows where.\n\n2│ fn present(fs: Fs) -> Bool => fs.exists(path\"notes.txt\")\n      ^^^^^^^ `present` calls `exists` (suspends)\n\nHelp: Remove the waiting call from this function, or remove `@sync` if the function really needs to wait (callers that rely on it will then be reported).\n\nLearn more: kalam explain K1402",
+      "skin": "en",
+      "source": "@sync\nfn present(fs: Fs) -> Bool => fs.exists(path\"notes.txt\")\n\nfn main(world: World):\n    print(\"{present(world.fs)}\")\n"
+    },
+    {
+      "code": "K1501",
+      "id": "K1501/ar",
+      "message_language": "ar",
+      "rendered": "-- لا يمكن إنشاء عالم ---------------------------------------- main.ar.kl  K1501\n\nلا أستطيع السماح لهذا الكود بإنشاء `عالم` أو فك ترميزه. وحدها `رئيسي` تستلم `عالم`، حتى يمكن تتبع كل صلاحية في البرنامج إليها.\n\n2│     ليكن root = عالم()\n                   ^^^^^^\n\nمساعدة: خذ الصلاحية التي تحتاجها كمعامل (`net: Net`، `fs: Fs`)، ومرّرها إليك من `رئيسي`.\n\nلمعرفة المزيد: kalam explain K1501",
+      "skin": "ar",
+      "source": "دالة رئيسي():\n    ليكن root = عالم()\n    اطبع(\"{root.net}\")\n"
+    },
+    {
+      "code": "K1503",
+      "id": "K1503/ar",
+      "message_language": "ar",
+      "rendered": "-- سرّ يُقرأ كنص عادي ---------------------------------------- main.ar.kl  K1503\n\nهذا المفتاح يبدو سرًا (ينتهي بـ `_KEY` أو `_SECRET` أو `_TOKEN`، أو يسمّي كلمة مرور)، لكن `env.get` ترجع نصًا عاديًا قد ينتهي في السجلات أو في JSON.\n\n1│ دالة api_key(env: Env) -> اختياري[نص] => env.get(\"STRIPE_API_KEY\")\n                                                    ^^^^^^^^^^^^^^^^\n\nمساعدة: استخدم `env.secret(key)`، فهي ترجع `Secret[نص]`: تُطبع `[REDACTED]` ولا يمكن ترميزها أبدًا.\n\nلمعرفة المزيد: kalam explain K1503",
+      "skin": "ar",
+      "source": "دالة api_key(env: Env) -> اختياري[نص] => env.get(\"STRIPE_API_KEY\")\n\nدالة رئيسي(world: عالم):\n    ليكن key = api_key(world.env)\n    اطبع(\"{key.is_some()}\")\n"
+    },
+    {
+      "code": "K1601",
+      "id": "K1601/en",
+      "message_language": "en",
+      "rendered": "-- STRING PASSED TO A SINK -------------------------------------- main.kl  K1601\n\nThis place expects `Sql`, but this is `String`. A plain string here is how injection happens, so a sink never takes one.\n\n4│     return db.exec(\"DELETE FROM t WHERE city = '\" + city + \"'\")\n                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nTry: `sql\"DELETE FROM t WHERE city = {`\n\nTry: `}\"`\n\nHelp: Write the text as a tagged literal (`sql\"...\"`, `html\"...\"` or `cmd\"...\"`) and put the values in holes: each hole is escaped for its context.\n\nLearn more: kalam explain K1601",
+      "skin": "en",
+      "source": "use std/sql.{Db, DbError}\n\nfn remove(db: Db, city: String) -> Result[Int, DbError]:\n    return db.exec(\"DELETE FROM t WHERE city = '\" + city + \"'\")\n\nfn main():\n    pass\n"
+    },
+    {
+      "code": "K1602",
+      "id": "K1602/franco",
+      "message_language": "franco",
+      "rendered": "-- HOLE SQL GOWA QUOTES ---------------------------------- main.franco.kl  K1602\n\nEl hole di gowa quotes SQL. Qeyam el holes betetba3at lel database ka parameters, 3omraha ma betetlezze2 f el nass, fa el quotes kanet hatkhalleeha string sabet.\n\n3│     khali q = sql\"SELECT id FROM users WHERE name = '{name}'\"\n                                                         ^^^^\n\nMosa3da: Shil el quotes elly 7awalen el hole: ekteb `name = { name }`, mesh `name = '{ name }'`.\n\nE3raf aktar: kalam explain K1602",
+      "skin": "franco",
+      "source": "dala ra2isi():\n    khali name = \"Sara\"\n    khali q = sql\"SELECT id FROM users WHERE name = '{name}'\"\n    ektb(\"{q}\")\n"
+    },
+    {
+      "code": "K1603",
+      "id": "K1603/franco",
+      "message_language": "franco",
+      "rendered": "-- HOLE SQL MAKAN ESM ------------------------------------ main.franco.kl  K1603\n\nEl hole di f makan SQL mestanny feeh esm (table aw column aw `ASC` aw `DESC`), mesh qeema. W parameter el query mayenfa3sh yemla esm, w lez2 nass hena kan hayefta7 bab el injection.\n\n3│     khali q = sql\"SELECT id FROM users ORDER BY {column}\"\n                                                    ^^^^^^\n\nMosa3da: Ebny el esm b `sql.ident(name, allowed: [...])` elly bet-check-o 3ala list sabta, aw esta5dem enum el 7alat bta3to betraga3 asamy sabta.\n\nE3raf aktar: kalam explain K1603",
+      "skin": "franco",
+      "source": "dala ra2isi():\n    khali column = \"name\"\n    khali q = sql\"SELECT id FROM users ORDER BY {column}\"\n    ektb(\"{q}\")\n"
+    },
+    {
+      "code": "K1604",
+      "id": "K1604/en",
+      "message_language": "en",
+      "rendered": "-- SEVERAL SQL STATEMENTS --------------------------------------- main.kl  K1604\n\nThis SQL literal holds more than one statement (a `;` outside quotes). Each `Sql` value is exactly one statement.\n\n3│     let q = sql\"DELETE FROM users WHERE name = {name}; DELETE FROM notes\"\n               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nHelp: Split it into one `sql\"...\"` per statement, and run them inside a transaction if they must succeed together.\n\nLearn more: kalam explain K1604",
+      "skin": "en",
+      "source": "fn main():\n    let name = \"Sara\"\n    let q = sql\"DELETE FROM users WHERE name = {name}; DELETE FROM notes\"\n    print(\"{q}\")\n"
+    },
+    {
+      "code": "K1605",
+      "id": "K1605/ar",
+      "message_language": "ar",
+      "rendered": "-- فجوة SQL داخل تعليق --------------------------------------- main.ar.kl  K1605\n\nهذه الفجوة داخل تعليق SQL، فلن ترى قاعدة البيانات قيمتها أبدًا. وغالبًا ما تكون بقية من تعديل الاستعلام.\n\n3│     ليكن q = sql\"SELECT id FROM users /* {name} */\"\n                                             ^^^^\n\nمساعدة: انقل الفجوة خارج التعليق، أو احذفها.\n\nلمعرفة المزيد: kalam explain K1605",
+      "skin": "ar",
+      "source": "دالة رئيسي():\n    ليكن name = \"Sara\"\n    ليكن q = sql\"SELECT id FROM users /* {name} */\"\n    اطبع(\"{q}\")\n"
+    },
+    {
+      "code": "K1610",
+      "id": "K1610/ar",
+      "message_language": "ar",
+      "rendered": "-- قيمة HTML غير سليمة البناء -------------------------------- main.ar.kl  K1610\n\nلا أستطيع قراءة القيمة الحرفية `html\"...\"` هذه كجزء HTML سليم البناء: هناك وسم غير مغلق أو متداخل بشكل خاطئ، أو قيمة سمة بلا علامات اقتباس.\n\n2│     ليكن page = html\"<p><b>hi</p>\"\n                   ^^^^^^^^^^^^^^^^^^\n\nمساعدة: أغلق كل وسم بعكس ترتيب فتحه، وضع كل قيمة سمة بين علامتي اقتباس.\n\nلمعرفة المزيد: kalam explain K1610",
+      "skin": "ar",
+      "source": "دالة رئيسي():\n    ليكن page = html\"<p><b>hi</p>\"\n    اطبع(\"{page}\")\n"
+    },
+    {
+      "code": "K1612",
+      "id": "K1612/franco",
+      "message_language": "franco",
+      "rendered": "-- HOLE F SCRIPT AW STYLE -------------------------------- main.franco.kl  K1612\n\nEl hole di f makan byeshtaghal ka code: attribute `on*`, aw attribute `style`, aw gowa `<script>` aw `<style>`. W mafeesh escape yekhalli el qeema amna henak.\n\n3│     khali page = html\"\"\"<script>{name}</script>\"\"\"\n                                    ^^^^\n\nMosa3da: Ba3at el data lel scripts b `{ json(x) }` gowa `<script type=\"application/json\">`, w ekhtar el styles b class badal hole f style.\n\nE3raf aktar: kalam explain K1612",
+      "skin": "franco",
+      "source": "dala ra2isi():\n    khali name = \"Sara\"\n    khali page = html\"\"\"<script>{name}</script>\"\"\"\n    ektb(\"{page}\")\n"
+    },
+    {
+      "code": "K1613",
+      "id": "K1613/ar",
+      "message_language": "ar",
+      "rendered": "-- سمة الرابط تحتاج Url -------------------------------------- main.ar.kl  K1613\n\nهذه الفجوة تملأ سمة رابط (مثل `href` أو `src`)، فيجب أن تكون قيمتها `Url` لا `نص`. فالنص قد يكون رابط `javascript:`.\n\n3│     ليكن page = html\"\"\"<a href=\"{home}\">home</a>\"\"\"\n                                    ^^^^\n\nمساعدة: ابنِ الرابط بقيمة حرفية `url\"...\"`، أو حلّل النص بـ `Url.parse(s)` التي ترفض `javascript:` و`data:` و`vbscript:`.\n\nلمعرفة المزيد: kalam explain K1613",
+      "skin": "ar",
+      "source": "دالة رئيسي():\n    ليكن home = \"https://example.com\"\n    ليكن page = html\"\"\"<a href=\"{home}\">home</a>\"\"\"\n    اطبع(\"{page}\")\n"
+    },
+    {
+      "code": "K1614",
+      "id": "K1614/ar",
+      "message_language": "ar",
+      "rendered": "-- فجوة في اسم وسم أو سمة ------------------------------------ main.ar.kl  K1614\n\nهذه الفجوة في اسم وسم أو اسم سمة. والأسماء تحدد ما تفعله الوسوم، فيجب أن تُكتب في القيمة الحرفية نفسها.\n\n3│     ليكن page = html\"\"\"<{tag}>hi</p>\"\"\"\n                            ^^^\n\nمساعدة: اكتب الاسم حرفيًا. ولمجموعة سمات تتغير، استخدم `Attrs` التي أسماؤها قائمة ثابتة.\n\nلمعرفة المزيد: kalam explain K1614",
+      "skin": "ar",
+      "source": "دالة رئيسي():\n    ليكن tag = \"p\"\n    ليكن page = html\"\"\"<{tag}>hi</p>\"\"\"\n    اطبع(\"{page}\")\n"
+    },
+    {
+      "code": "K1615",
+      "id": "K1615/ar",
+      "message_language": "ar",
+      "rendered": "-- فجوة في تعليق HTML ---------------------------------------- main.ar.kl  K1615\n\nهذه الفجوة داخل تعليق HTML. والتعليقات تُرسل إلى المتصفح، والقيمة التي فيها `-->` كانت ستنهي التعليق وتصبح وسومًا.\n\n3│     ليكن page = html\"\"\"<p>hi<!-- {name} --></p>\"\"\"\n                                     ^^^^\n\nمساعدة: انقل القيمة خارج التعليق، أو استخدم تعليق كلام `#` الذي لا يُرسل أبدًا.\n\nلمعرفة المزيد: kalam explain K1615",
+      "skin": "ar",
+      "source": "دالة رئيسي():\n    ليكن name = \"Sara\"\n    ليكن page = html\"\"\"<p>hi<!-- {name} --></p>\"\"\"\n    اطبع(\"{page}\")\n"
+    },
+    {
+      "code": "K1616",
+      "id": "K1616/franco",
+      "message_language": "franco",
+      "rendered": "-- HOLE EL EVENT ME7TAGA MESSAGE ------------------------- main.franco.kl  K1616\n\nEl hole bta3et `k-click` aw `k-submit` aw `k-input` aw `k-change` di lazem tsheel qeema no3aha bey3mel derive l `Message`. El qeyam di bas elly momken tetba3at lel browser ka token mewa22a3.\n\n7│     khali page = html\"\"\"<button k-click=\"{count}\">ok</button>\"\"\"\n                                             ^^^^^\n\nMosa3da: Esta5dem 7ala men el enum bta3 el messages, zay `k-click=\"{ Msg.Save }\"`, w zawed `@derive(Message)` lel enum da.\n\nE3raf aktar: kalam explain K1616",
+      "skin": "franco",
+      "source": "@derive(Message)\nta3dad Msg:\n    Save\n\ndala ra2isi():\n    khali count = 1\n    khali page = html\"\"\"<button k-click=\"{count}\">ok</button>\"\"\"\n    ektb(\"{page}\")\n"
+    },
+    {
+      "code": "K1617",
+      "id": "K1617/franco",
+      "message_language": "franco",
+      "rendered": "-- ATTRIBUTE k-* MESH MA3ROOF ---------------------------- main.franco.kl  K1617\n\nMesh 3aref el attribute `k-` da. El bedaya `k-` ma7gooza lel directives bta3et Kalam, w el directive el maktooba ghalat kanet mesh hate3mel ay 7aga.\n\n3│     khali page = html\"\"\"<button k-frobnicate=\"go\">{name}</button>\"\"\"\n                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\nMosa3da: Raga3 el ketaba 3ala el directives el ma3roofa: `k-click`, `k-submit`, `k-input`, `k-change`, `k-get`, `k-post`, `k-target` w `k-swap`.\n\nE3raf aktar: kalam explain K1617",
+      "skin": "franco",
+      "source": "dala ra2isi():\n    khali name = \"Sara\"\n    khali page = html\"\"\"<button k-frobnicate=\"go\">{name}</button>\"\"\"\n    ektb(\"{page}\")\n"
+    },
+    {
+      "code": "K1620",
+      "id": "K1620/franco",
+      "message_language": "franco",
+      "rendered": "-- 7ARF SHELL F COMMAND ---------------------------------- main.franco.kl  K1620\n\nEl literal `cmd\"...\"` da feeh 7arf shell zay `|` aw `;` aw `&` aw `>` aw `$(` bara el quotes. W Kalam 3omro ma beyshaghal shell, fa el 7arf kan hayewsal lel program ka nass 3adi.\n\n2│     khali command = cmd\"ls -la | wc -l\"\n                       ^^^^^^^^^^^^^^^^^^^\n\nMosa3da: Esta5dem `proc.pipe([...])` lel pipelines, wel options `stdin:` w `stdout:` lel files.\n\nE3raf aktar: kalam explain K1620",
+      "skin": "franco",
+      "source": "dala ra2isi():\n    khali command = cmd\"ls -la | wc -l\"\n    ektb(\"{command}\")\n"
+    },
+    {
+      "code": "K1621",
+      "id": "K1621/en",
+      "message_language": "en",
+      "rendered": "-- COMMAND PROGRAM IS NOT LITERAL ------------------------------- main.kl  K1621\n\nThe first word of this `cmd\"...\"` literal, the program to run, comes from a hole. The program must be written in the literal, so a value can never choose what runs.\n\n3│     let command = cmd\"{program} --version\"\n                          ^^^^^^^\n\nHelp: Write the program name literally. To choose between a few programs, use `match` with one `cmd\"...\"` per case.\n\nLearn more: kalam explain K1621",
+      "skin": "en",
+      "source": "fn main():\n    let program = \"git\"\n    let command = cmd\"{program} --version\"\n    print(\"{command}\")\n"
+    },
+    {
+      "code": "K1631",
+      "id": "K1631/ar",
+      "message_language": "ar",
+      "rendered": "-- مخطط الرابط أو مضيفه من فجوة ------------------------------ main.ar.kl  K1631\n\nفي القيمة الحرفية `url\"...\"` هذه يأتي المخطط أو المضيف من فجوة. ويجب أن يُكتب الاثنان في القيمة الحرفية، حتى لا تستطيع قيمةٌ أبدًا إرسال طلب إلى خادم آخر.\n\n3│     ليكن link = url\"https://{host}/users\"\n                                ^^^^\n\nمساعدة: اكتب المخطط والمضيف حرفيًا واترك الفجوات للمسار والاستعلام. وللرابط الذي يأتي فعلًا من المدخلات، استخدم `Url.parse(s)`.\n\nلمعرفة المزيد: kalam explain K1631",
+      "skin": "ar",
+      "source": "دالة رئيسي():\n    ليكن host = \"example.com\"\n    ليكن link = url\"https://{host}/users\"\n    اطبع(\"{link}\")\n"
     },
     {
       "code": "SEC0100",
@@ -436,7 +828,7 @@
       "code": "SEC0104",
       "id": "SEC0104/en",
       "message_language": "en",
-      "rendered": "-- NAMES THAT LOOK THE SAME ----------------------------------- main.kl  SEC0104\n\n`کتاب` (U+06A9 U+062A U+0627 U+0628) and `كتاب` (U+0643 U+062A U+0627 U+0628) are two different names in this scope that look the same once lookalike letters are folded together (for example `ي` and `ى`, `ك` and `ک`, or a Latin letter and its Cyrillic twin). A reader can't tell which of the two a line uses.\n\n3│     let کتاب = \"b\"\n           ^^^^\n\nHelp: Rename one of the two names so they differ in a way a reader can see, and update its uses.\n\nLearn more: kalam explain SEC0104",
+      "rendered": "-- NAMES THAT LOOK THE SAME ----------------------------------- main.kl  SEC0104\n\n`کتاب` (U+06A9 U+062A U+0627 U+0628) and `كتاب` (U+0643 U+062A U+0627 U+0628) are two different names in this scope that look the same once lookalike letters are folded together (for example `ي` and `ى`, `ك` and `ک`, or a Latin letter and its Cyrillic twin). A reader can't tell which of the two a line uses.\n\n2│     let كتاب = \"a\"\n           ---- `كتاب` is declared here\n3│     let کتاب = \"b\"\n           ^^^^\n\nHelp: Rename one of the two names so they differ in a way a reader can see, and update its uses.\n\nLearn more: kalam explain SEC0104",
       "skin": "en",
       "source": "fn main():\n    let كتاب = \"a\"\n    let کتاب = \"b\"\n    print(كتاب)\n    print(کتاب)\n"
     },
@@ -521,12 +913,12 @@
       "source": "fn main():\n    let اسم١ = \"Sara\"\n    print(اسم١)\n"
     }
   ],
-  "n": 65,
+  "n": 114,
   "rubric": "eval/judge/RUBRIC.md",
   "rubric_sha256": "f0cba998336a5b48e4f2ff88719bff0282cd7b4a490970e607adc66cfe4829c4",
   "rubric_version": "becker-2026.1",
   "rule": "one item per eval/goldens code; skin = Skin::ALL[sha256(seed + code)[0] % 3]; rendered = the committed .expected text",
-  "sample_sha256": "f577458e9720687c27d3b4d34efb880542c636021e81ab0ffa9d1ebd909c47fe",
+  "sample_sha256": "268a64cf7ee2065600ec71541f2b578715d33b3e7340c69b90c2ef40ca47ac7c",
   "schema": "kalam-judge-sample/1",
   "seed": "kalam-judge-sample/1"
 }

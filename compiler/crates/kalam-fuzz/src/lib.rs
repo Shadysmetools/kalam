@@ -1,5 +1,6 @@
-//! A coverage-agnostic mutational fuzzer for the Kalam front end (`D1.fuzz_crash_free_hours`,
-//! M1 scope: lexer, parser and formatter targets; here also KCF and skin conversion).
+//! A coverage-agnostic mutational fuzzer for the Kalam compiler (`D1.fuzz_crash_free_hours`,
+//! targets in [`target::TARGETS`]: lexer, parser, KCF, fmt, convert, and from M2 the type
+//! checker and the reference interpreter).
 //!
 //! `cargo-fuzz`/libFuzzer does not build on the windows-gnu toolchain, so this is an
 //! in-house fuzzer: seeds from `eval/corpus`, `eval/suites` and generated programs;

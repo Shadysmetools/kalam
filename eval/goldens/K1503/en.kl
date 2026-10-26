@@ -1,0 +1,5 @@
+fn api_key(env: Env) -> Option[String] => env.get("STRIPE_API_KEY")
+
+fn main(world: World):
+    let key = api_key(world.env)
+    print("{key.is_some()}")

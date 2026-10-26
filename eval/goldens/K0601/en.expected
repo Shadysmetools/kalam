@@ -1,0 +1,12 @@
+-- NUMBER TYPES DON'T MIX --------------------------------------- main.kl  K0601
+
+I can't combine a value of type `Int` with one of type `Float`. Kalam never converts numbers by itself, so you choose how.
+
+4│     let total = count + ratio
+                   ^^^^^^^^^^^^^
+
+Try: `.to_float()`
+
+Help: Convert one side explicitly: `.to_float()` keeps the fraction, `.round()` drops it.
+
+Learn more: kalam explain K0601

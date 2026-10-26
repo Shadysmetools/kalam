@@ -1,0 +1,12 @@
+-- TYPES DON'T MATCH -------------------------------------------- main.kl  K0600
+
+The type of this value doesn't fit the place where it is used. Kalam never converts between types by itself, so the two have to agree exactly.
+
+2│     let half: Int = 7 / 2
+                       ^^^^^ expected `Int`, found `Float`
+
+Try: ` // `
+
+Help: Check what this place needs (a parameter, a return type, an annotation, a function to call or something to loop over); the note under the code says which types don't fit. Then change the value, or convert it explicitly, for example with `.to_float()` or `.round()` between number types.
+
+Learn more: kalam explain K0600

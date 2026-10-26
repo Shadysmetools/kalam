@@ -1,0 +1,10 @@
+-- SCHEME AW HOST EL URL MEN HOLE ------------------------ main.franco.kl  K1631
+
+F el literal `url"..."` da, el scheme aw el host gay men hole. W el etnein lazem yetketbo f el literal, 3ashan 3omr ma qeema teb3at request l server tany.
+
+3│     khali link = url"https://{host}/users"
+                                 ^^^^
+
+Mosa3da: Ekteb el scheme wel host zay ma homa w khalli el holes lel path wel query. W lel URL elly fe3lan gay men el input, esta5dem `Url.parse(s)`.
+
+E3raf aktar: kalam explain K1631

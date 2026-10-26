@@ -1,6 +1,6 @@
 [package]
 name = "kalam-fuzz"
-description = "Coverage-agnostic mutational fuzzer for the lexer, parser, KCF, fmt and convert (D1.fuzz_crash_free_hours)"
+description = "Coverage-agnostic mutational fuzzer for the lexer, parser, KCF, fmt, convert, type checker and reference interpreter (D1.fuzz_crash_free_hours)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

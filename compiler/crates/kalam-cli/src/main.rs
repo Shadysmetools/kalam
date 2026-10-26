@@ -23,7 +23,6 @@ const PLANNED: &[(&str, &str)] = &[
     ("view", "Phase 0"),
     ("rename", "Phase 1"),
     ("diff", "Phase 1"),
-    ("fix", "Phase 1"),
     ("audit", "Phase 1"),
     ("caps", "Phase 1"),
     ("bind", "Phase 2"),
@@ -42,6 +41,9 @@ fn usage() -> &'static str {
      \x20                                    check a package: every file under PROJECT/src as one\n\
      \x20                                    module graph, with the stdlib at DIR (default: the\n\
      \x20                                    repository stdlib/)\n\
+     \x20 kalam fix [--dry-run] FILE|DIR...    apply the machine-applicable fixes `kalam check`\n\
+     \x20                                    reports, until none is left (--dry-run: print a\n\
+     \x20                                    diff, change nothing)\n\
      \x20 kalam fmt [--check|--stdout] FILE...  format files in canonical layout (in place)\n\
      \x20 kalam convert --to en|ar|franco [--write] FILE\n\
      \x20                                    print FILE in another skin (--write: rename it)\n\
@@ -83,6 +85,7 @@ fn main() -> ExitCode {
             ExitCode::SUCCESS
         }
         "check" => check(rest),
+        "fix" => fix(rest),
         "run" => run(rest),
         "fmt" => fmt(rest),
         "convert" => convert(rest),
@@ -228,6 +231,142 @@ fn check(args: &[String]) -> ExitCode {
     } else {
         ExitCode::SUCCESS
     }
+}
+
+/// The Kalam files `kalam fix` works on: each FILE as given, and every `.kl`, `.ar.kl` and
+/// `.franco.kl` file under each DIR (recursively, in path order, skipping `target` and
+/// hidden directories). `Err` with a message for a path that is neither.
+fn fix_targets(paths: &[&String]) -> Result<Vec<String>, String> {
+    fn walk(dir: &std::path::Path, out: &mut Vec<String>) {
+        let Ok(entries) = std::fs::read_dir(dir) else {
+            return;
+        };
+        for e in entries.flatten() {
+            let name = e.file_name().to_string_lossy().into_owned();
+            let p = e.path();
+            match e.file_type() {
+                Ok(t) if t.is_dir() => {
+                    if name != "target" && !name.starts_with('.') {
+                        walk(&p, out);
+                    }
+                }
+                Ok(_) if Skin::from_path(&name).is_some() => {
+                    out.push(p.to_string_lossy().into_owned())
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut files = Vec::new();
+    for path in paths {
+        let p = std::path::Path::new(path.as_str());
+        if p.is_dir() {
+            let mut found = Vec::new();
+            walk(p, &mut found);
+            if found.is_empty() {
+                return Err(format!(
+                    "`{path}` holds no Kalam file (.kl, .ar.kl or .franco.kl)"
+                ));
+            }
+            found.sort();
+            files.extend(found);
+        } else if Skin::from_path(path).is_some() {
+            files.push(path.to_string());
+        } else if !p.exists() {
+            return Err(format!("cannot read `{path}`: no such file or directory"));
+        } else {
+            return Err(format!(
+                "`{path}` is not a Kalam file (expected .kl, .ar.kl or .franco.kl)"
+            ));
+        }
+    }
+    Ok(files)
+}
+
+/// `kalam fix [--dry-run] FILE|DIR...` (spec §21.3, §21.5): applies the machine-applicable
+/// fixes `kalam check` reports, file by file, to a fixpoint (`kalam_driver::fix_file`: a
+/// suggestion is never applied, and a fix that makes the file worse is undone). Each file
+/// is checked as `kalam check FILE` checks it; a DIR is walked file by file, not as one
+/// package. Then the diagnostics left are printed as `kalam check` prints them.
+///
+/// `--dry-run` writes nothing and prints a unified diff of every change on stdout. Exit
+/// status: 0 when no error is left (after the fixes, or after the fixes a dry run would
+/// make), 1 when errors are left or a file cannot be read or written, 2 for usage errors.
+fn fix(args: &[String]) -> ExitCode {
+    let dry_run = args.iter().any(|a| a == "--dry-run");
+    if let Some(flag) = args
+        .iter()
+        .find(|a| a.starts_with("--") && *a != "--dry-run")
+    {
+        eprintln!("unknown option `{flag}`\nusage: kalam fix [--dry-run] FILE|DIR...");
+        return ExitCode::from(2);
+    }
+    let paths: Vec<&String> = args.iter().filter(|a| !a.starts_with("--")).collect();
+    if paths.is_empty() {
+        eprintln!("usage: kalam fix [--dry-run] FILE|DIR...");
+        return ExitCode::from(2);
+    }
+    let files = match fix_targets(&paths) {
+        Ok(files) => files,
+        Err(message) => {
+            eprintln!("{message}");
+            return ExitCode::from(2);
+        }
+    };
+    let lang = message_lang();
+    let mut status = ExitCode::SUCCESS;
+    for path in &files {
+        let bytes = match std::fs::read(path) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                eprintln!("cannot read `{path}`: {e}");
+                status = ExitCode::from(1);
+                continue;
+            }
+        };
+        let Ok(fixed) = kalam_driver::fix_file(path, &bytes) else {
+            eprintln!("`{path}` is not a Kalam file (expected .kl, .ar.kl or .franco.kl)");
+            return ExitCode::from(2);
+        };
+        if fixed.not_utf8 {
+            eprintln!(
+                "note: `{path}` is not valid UTF-8, so `kalam fix` left it unchanged (see SEC0100)"
+            );
+        }
+        for r in &fixed.rejected {
+            eprintln!(
+                "note: {path}:{}: the {} fix ({}) was not applied: it made the file worse",
+                r.line, r.code, r.title
+            );
+        }
+        if fixed.changed() {
+            if dry_run {
+                print!(
+                    "{}",
+                    kalam_driver::unified_diff(path, &fixed.original, &fixed.fixed)
+                );
+            } else if let Err(code) = write_file(path, &fixed.fixed) {
+                status = code;
+                continue;
+            } else {
+                let list: Vec<String> = fixed
+                    .applied
+                    .iter()
+                    .map(|a| format!("{} line {}", a.code, a.line))
+                    .collect();
+                let n = fixed.applied.len();
+                let fixes = if n == 1 { "fix" } else { "fixes" };
+                println!("fixed {path}: {n} {fixes} ({})", list.join(", "));
+            }
+        }
+        if !fixed.checked.diagnostics.is_empty() {
+            eprint!("{}", fixed.checked.render_human(lang));
+        }
+        if fixed.checked.has_errors() {
+            status = ExitCode::from(1);
+        }
+    }
+    status
 }
 
 /// The repository stdlib (`stdlib/` next to `compiler/`), the default for `--std`.

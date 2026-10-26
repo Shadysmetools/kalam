@@ -24,13 +24,15 @@
 //! resolved program as HIR), [`lower`] (resolve's `Program` + AST → HIR), [`check`] (the
 //! checker), [`exhaust`] (pattern usefulness), [`error`] (errors and codes), [`builder`]
 //! (hand-built HIR for tests and tools), [`wf`] (well-formed types: `Map`/`Set` keys,
-//! generic bounds), `conform` (impls against their traits, K1107) and `decls`
+//! generic bounds), `conform` (impls against their traits, K1107), `consts` (module
+//! constants and field defaults are constant expressions, K1204) and `decls`
 //! (declaration checks: well-formed signatures and fields, the entry point, derives).
 
 pub mod adt;
 pub mod builder;
 pub mod check;
 mod conform;
+mod consts;
 mod decls;
 pub mod error;
 pub mod exhaust;
@@ -59,8 +61,9 @@ pub struct Checked {
 
 impl Checked {
     /// Every type error as a diagnostic, in source order per file.
+    /// Types in messages are spelled in each file's skin (spec §21.4 rule 1).
     pub fn diagnostics(&self) -> Vec<kalam_diagnostics::Diagnostic> {
-        self.results.diagnostics()
+        self.results.diagnostics_in(&self.hir.skins)
     }
 }
 

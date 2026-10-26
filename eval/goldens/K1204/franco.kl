@@ -1,0 +1,6 @@
+dala load() -> adad => 41
+
+khali answer = load() + 1
+
+dala ra2isi():
+    ektb("{answer}")

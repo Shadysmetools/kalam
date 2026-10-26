@@ -1,0 +1,5 @@
+دالة api_key(env: Env) -> اختياري[نص] => env.get("STRIPE_API_KEY")
+
+دالة رئيسي(world: عالم):
+    ليكن key = api_key(world.env)
+    اطبع("{key.is_some()}")

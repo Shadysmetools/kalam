@@ -6,19 +6,27 @@
 //! Panics are caught and reported; a stack overflow or an abort kills the process, and the
 //! supervisor, which still holds the input it sent, records it.
 
-use std::cell::RefCell;
 use std::io::{self, BufReader, BufWriter};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::path::Path;
 use std::process::ExitCode;
+use std::sync::Mutex;
 
 use kalam_base::Skin;
 
 use crate::proto::{read_request, write_reply, Reply};
-use crate::target::exercise;
+use crate::target::{exercise, with_budget, INTERP_BUDGET};
 
-thread_local! {
-    static PANIC_AT: RefCell<String> = const { RefCell::new(String::new()) };
+/// Where the last panic happened. Process-wide, not per thread: the interpreter runs on its
+/// own threads, and its panic is resumed on the main thread without running the hook again.
+static PANIC_AT: Mutex<String> = Mutex::new(String::new());
+
+fn set_panic_at(at: String) {
+    *PANIC_AT.lock().unwrap_or_else(|e| e.into_inner()) = at;
+}
+
+fn panic_at() -> String {
+    PANIC_AT.lock().unwrap_or_else(|e| e.into_inner()).clone()
 }
 
 /// Inputs that start with this prefix trigger deliberate faults when
@@ -47,7 +55,7 @@ fn install_panic_hook() {
             .location()
             .map(|l| format!("{}:{}", l.file().replace('\\', "/"), l.line()))
             .unwrap_or_else(|| "unknown".into());
-        PANIC_AT.with(|p| *p.borrow_mut() = at);
+        set_panic_at(at);
     }));
 }
 
@@ -61,14 +69,26 @@ fn overflow(n: u64) -> u64 {
     overflow(n + 1).wrapping_add(u64::from(buf[(n % 4096) as usize]))
 }
 
-fn selftest(text: &str) {
+/// Deliberate faults for the supervisor's tests; `true` if the worker must retire.
+fn selftest(text: &str) -> bool {
     if std::env::var("KALAM_FUZZ_SELFTEST").as_deref() != Ok("1") {
-        return;
+        return false;
     }
     let Some(what) = text.strip_prefix(SELFTEST_PREFIX) else {
-        return;
+        return false;
     };
     match what.trim() {
+        // A budgeted computation that never ends, like an interpreted infinite loop.
+        "spin" => {
+            return with_budget(INTERP_BUDGET, || loop {
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            })
+            .is_none();
+        }
+        // A panic on a budgeted thread is still a panic, located where it happened.
+        "thread-panic" => {
+            let _ = with_budget(INTERP_BUDGET, || -> u8 { panic!("selftest thread panic") });
+        }
         "panic" => panic!("selftest panic"),
         "overflow" => {
             std::hint::black_box(overflow(0));
@@ -79,6 +99,7 @@ fn selftest(text: &str) {
         },
         _ => {}
     }
+    false
 }
 
 fn payload_message(payload: &(dyn std::any::Any + Send)) -> String {
@@ -92,23 +113,35 @@ fn payload_message(payload: &(dyn std::any::Any + Send)) -> String {
 /// Runs one input and describes the result.
 pub fn run_one(skin: Skin, text: &str) -> Reply {
     let r = catch_unwind(AssertUnwindSafe(|| {
-        selftest(text);
+        if selftest(text) {
+            return crate::target::Observed {
+                retire: true,
+                ..Default::default()
+            };
+        }
         exercise(text, skin)
     }));
     match r {
-        Ok(obs) => match obs.oracle {
-            None => Reply::Ok {
-                features: obs.features,
-            },
-            Some((name, detail)) => Reply::Oracle {
-                name: name.to_string(),
-                detail,
-                features: obs.features,
-            },
-        },
+        Ok(obs) => {
+            let reply = match obs.oracle {
+                None => Reply::Ok {
+                    features: obs.features,
+                },
+                Some((name, detail)) => Reply::Oracle {
+                    name: name.to_string(),
+                    detail,
+                    features: obs.features,
+                },
+            };
+            if obs.retire {
+                Reply::Retire(Box::new(reply))
+            } else {
+                reply
+            }
+        }
         Err(payload) => Reply::Panic {
             message: payload_message(payload.as_ref()),
-            location: PANIC_AT.with(|p| p.borrow().clone()),
+            location: panic_at(),
         },
     }
 }
@@ -125,7 +158,9 @@ pub fn worker_main() -> ExitCode {
         match read_request(&mut r) {
             Ok(Some((skin, text))) => {
                 let reply = run_one(skin, &text);
-                if write_reply(&mut w, &reply).is_err() {
+                if write_reply(&mut w, &reply).is_err() || matches!(reply, Reply::Retire(_)) {
+                    // Retiring: returning from `main` ends the process and the thread that
+                    // outlived its budget.
                     return ExitCode::SUCCESS;
                 }
             }
@@ -152,8 +187,15 @@ pub fn repro_main(path: &Path, skin: Option<Skin>) -> ExitCode {
             return ExitCode::from(2);
         }
     };
-    match run_one(skin, &text) {
-        Reply::Ok { .. } => {
+    let reply = match run_one(skin, &text) {
+        Reply::Retire(inner) => {
+            println!("note: a budgeted step (the interpreter) ran out of time");
+            *inner
+        }
+        r => r,
+    };
+    match reply {
+        Reply::Retire(_) | Reply::Ok { .. } => {
             println!("ok: no crash");
             ExitCode::SUCCESS
         }

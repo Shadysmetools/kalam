@@ -1,0 +1,7 @@
+استخدم std/sql.{Db، DbError}
+
+دالة remove(db: Db، city: نص) -> نتيجة[عدد، DbError]:
+    أرجع db.exec("DELETE FROM t WHERE city = '" + city + "'")
+
+دالة رئيسي():
+    تخطى

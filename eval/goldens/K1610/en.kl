@@ -1,0 +1,3 @@
+fn main():
+    let page = html"<p><b>hi</p>"
+    print("{page}")

@@ -197,7 +197,7 @@ impl Status {
             "version": self.version,
             "previous_version": self.previous_version,
             "metric": "D1.fuzz_crash_free_hours",
-            "targets": ["lexer", "parser", "kcf", "fmt", "convert"],
+            "targets": crate::target::TARGETS,
             "crash_free_secs": round(self.crash_free_secs, 3),
             "version_fuzz_hours": round(self.version_fuzz_secs / 3600.0, 4),
             "version_fuzz_secs": round(self.version_fuzz_secs, 3),
@@ -284,6 +284,13 @@ mod tests {
         let p = dir.join("status.json");
         s.save(&p).unwrap();
         let back = Status::load(&p).unwrap();
+        let v: Value = serde_json::from_str(&std::fs::read_to_string(&p).unwrap()).unwrap();
+        assert_eq!(v["targets"], json!(crate::target::TARGETS));
+        assert!(v["targets"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|t| t.as_str().unwrap().contains("typeck")));
         assert_eq!(back.crash_free_secs, 3600.0);
         assert_eq!(back.crashes.len(), 1);
         assert_eq!(back.crashes[0].reproducible, Some(true));

@@ -1,0 +1,4 @@
+دالة رئيسي():
+    ليكن column = "name"
+    ليكن q = sql"SELECT id FROM users ORDER BY {column}"
+    اطبع("{q}")

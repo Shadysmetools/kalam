@@ -5,6 +5,8 @@
 //! - `0` OK: `features`;
 //! - `1` panic: `message`, `location`;
 //! - `2` oracle violation: `name`, `detail`, `features`;
+//! - `3` retire: a whole reply follows, after which the worker exits (a budgeted
+//!   computation outlived its budget on a thread that cannot be stopped); not a crash;
 //!
 //! where a string is `len: u32 LE` + bytes and `features` is `n: u32 LE` + `n` × `u32 LE`.
 
@@ -26,6 +28,8 @@ pub enum Reply {
         detail: String,
         features: Vec<u32>,
     },
+    /// The inner reply, after which the worker exits.
+    Retire(Box<Reply>),
 }
 
 fn skin_byte(s: Skin) -> u8 {
@@ -118,6 +122,10 @@ pub fn write_reply(w: &mut impl Write, reply: &Reply) -> io::Result<()> {
             put_str(w, detail)?;
             put_features(w, features)?;
         }
+        Reply::Retire(inner) => {
+            w.write_all(&[3])?;
+            return write_reply(w, inner);
+        }
     }
     w.flush()
 }
@@ -138,6 +146,13 @@ pub fn read_reply(r: &mut impl Read) -> io::Result<Reply> {
             detail: get_str(r)?,
             features: get_features(r)?,
         }),
+        3 => match read_reply(r)? {
+            Reply::Retire(_) => Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "nested retire reply",
+            )),
+            inner => Ok(Reply::Retire(Box::new(inner))),
+        },
         t => Err(io::Error::new(
             io::ErrorKind::InvalidData,
             format!("bad reply tag {t}"),
@@ -173,6 +188,12 @@ mod tests {
                 detail: "d".into(),
                 features: vec![],
             },
+            Reply::Retire(Box::new(Reply::Ok { features: vec![9] })),
+            Reply::Retire(Box::new(Reply::Oracle {
+                name: "interp_internal".into(),
+                detail: "d".into(),
+                features: vec![1],
+            })),
         ] {
             let mut buf = Vec::new();
             write_reply(&mut buf, &reply).unwrap();

@@ -1,0 +1,4 @@
+fn main():
+    let name = "Sara"
+    let page = html"""<p>hi<!-- {name} --></p>"""
+    print("{page}")

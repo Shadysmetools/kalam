@@ -1,0 +1,10 @@
+-- NUMBER TOO BIG FOR ITS TYPE ---------------------------------- main.kl  K0126
+
+This number doesn't fit in `Int`. For `Int`, the range is the whole numbers from -9223372036854775808 to 9223372036854775807 (64 bits) on every platform.
+
+2│     let big = 9223372036854775808
+                 ^^^^^^^^^^^^^^^^^^^
+
+Help: Use a smaller value, or give the value the type `BigInt` for numbers without a limit.
+
+Learn more: kalam explain K0126

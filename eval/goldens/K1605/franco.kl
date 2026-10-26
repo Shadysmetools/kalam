@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali name = "Sara"
+    khali q = sql"SELECT id FROM users /* {name} */"
+    ektb("{q}")

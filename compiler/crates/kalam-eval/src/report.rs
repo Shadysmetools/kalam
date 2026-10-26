@@ -668,6 +668,7 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
         Some(r) => holdout::run_child(
             &holdout::Runner {
                 include_m2: from_m2,
+                kalam: r.kalam.clone().or_else(|| opts.kalam.clone()),
                 ..r.clone()
             },
             root,
@@ -749,6 +750,7 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
         opts.kalam.as_deref(),
         &seeded,
         &checkpoint_ids,
+        inputs.held.aggregate().map(|a| &a["typecheck"]),
     );
     let m2_def = |id: &str| {
         sc.tiers

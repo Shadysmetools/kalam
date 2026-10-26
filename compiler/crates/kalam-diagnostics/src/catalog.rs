@@ -22,7 +22,7 @@
 //! This inline table covers the M2 strict code set (FOUNDER-QUEUE Q24): every spec §27 code
 //! in every family except retired ones, plus every code the compiler emits, plus proposed
 //! codes §27 does not list yet (`proposed: true`: the type checker's provisional K0600,
-//! K0603, K1105 and K1106). That includes the M1 P6 set (Q11). It moves to `catalog/{en,ar,franco}.toml` plus `explain/` pages once it
+//! K0603, K0804, K1105, K1106 and K1108). That includes the M1 P6 set (Q11). It moves to `catalog/{en,ar,franco}.toml` plus `explain/` pages once it
 //! grows (ARCHITECTURE.md §12.2). CI parity rule (05 P6): every code has all three languages.
 //!
 //! ar/franco: pending native review. Every Arabic and Franco text in this table was
@@ -1716,9 +1716,9 @@ pub static CATALOG: &[Entry] = &[
             "`{type}` mafeehoosh field aw method esmaha `{name}`. Ana ba-check kol call 3ala el API el 7a2ee2y, fa el esm el mettakhammen beyo2af hena badal ma yo2a3 w el program shaghal.",
         ],
         help: [
-            "Check the spelling, or pick one of the names I suggest. Names from other languages map like this: `push` → `append`, `length` and `size` → `len`, `includes` → `contains`.",
-            "راجع الكتابة، أو اختر أحد الأسماء التي أقترحها. وهذه مقابلات أسماء من لغات أخرى: `push` ← `append`، و`length` و`size` ← `len`، و`includes` ← `contains`.",
-            "Raga3 el ketaba, aw ekhtar esm men elly ana ba2tare7ha. Asamy men loghat tanya: `push` → `append`, `length` w `size` → `len`, `includes` → `contains`.",
+            "Check the spelling against the type's fields and methods. Names from other languages map like this: `push` → `append`, `length` and `size` → `len`, `includes` → `contains`.",
+            "راجع الكتابة مقابل حقول النوع ودواله. وهذه مقابلات أسماء من لغات أخرى: `push` ← `append`، و`length` و`size` ← `len`، و`includes` ← `contains`.",
+            "Raga3 el ketaba 3ala el fields wel methods bta3et el no3. Asamy men loghat tanya: `push` → `append`, `length` w `size` → `len`, `includes` → `contains`.",
         ],
         explain: [
             "Why: a method name that looks plausible but does not exist is one of the most common mistakes, from people and from code generators alike. I list the closest real names, by spelling and by a table of names from other languages. Collections are immutable, so a method such as `append` returns a new list instead of changing the old one (spec §21.3).\n\nInstead of:\n    items.push(x)\n\nwrite (with `items` declared as `var`):\n    items = items.append(x)",
@@ -1739,9 +1739,9 @@ pub static CATALOG: &[Entry] = &[
             "No3 el qeema di mesh mnaseb el makan elly etsta5demet feeh. Kalam 3omro ma by7awel ben el types lewa7do, fa lazem el etnein yetaba2o bel zabt.",
         ],
         help: [
-            "Check what this place needs (a parameter, a return type, an annotation, a function to call or something to loop over), then change the value or convert it explicitly, for example with `.to_float()`.",
-            "تحقق مما يحتاجه هذا المكان (معامل، أو نوع إرجاع، أو تعليق نوع، أو دالة تُستدعى، أو شيء يُكرَّر عليه)، ثم غيّر القيمة أو حوّلها صراحة، مثلًا بـ `.to_float()`.",
-            "Shoof el makan da me7tag eh (parameter, aw return type, aw annotation, aw dala tet3amalha call, aw 7aga te3mel 3aleiha loop), w ba3dein ghayar el qeema aw 7awelha sara7a, masalan b `.to_float()`.",
+            "Check what this place needs (a parameter, a return type, an annotation, a function to call or something to loop over); the note under the code says which types don't fit. Then change the value, or convert it explicitly, for example with `.to_float()` or `.round()` between number types.",
+            "تحقق مما يحتاجه هذا المكان (معامل، أو نوع إرجاع، أو تعليق نوع، أو دالة تُستدعى، أو شيء يُكرَّر عليه)؛ والملاحظة تحت الكود تذكر النوعين غير المتوافقين. ثم غيّر القيمة أو حوّلها صراحة، مثلًا بـ `.to_float()` أو `.round()` بين أنواع الأرقام.",
+            "Shoof el makan da me7tag eh (parameter, aw return type, aw annotation, aw dala tet3amalha call, aw 7aga te3mel 3aleiha loop); el molaheza ta7t el code bet2ol anhy anwa3 mesh mtab2a. W ba3dein ghayar el qeema aw 7awelha sara7a, masalan b `.to_float()` aw `.round()` ben anwa3 el arqam.",
         ],
         explain: [
             "Why: every value has exactly one type, and every place (a parameter, a variable with an annotation, a return) says which type it accepts. When the two differ, guessing a conversion could lose data or hide a bug, so I stop and show both.\n\nInstead of:\n    fn half(x: Float) -> Float:\n        return x / 2.0\n    let count: Int = 3\n    let h = half(count)\n\nwrite:\n    let h = half(count.to_float())",
@@ -1754,7 +1754,7 @@ pub static CATALOG: &[Entry] = &[
         code: "K0601",
         title: ["NUMBER TYPES DON'T MIX", "أنواع الأرقام لا تختلط", "ANWA3 EL ARQAM MABTETKHALATSH"],
         message: [
-            "I can't combine a `{left}` with a `{right}`. Kalam never converts numbers by itself, so you choose how.",
+            "I can't combine a value of type `{left}` with one of type `{right}`. Kalam never converts numbers by itself, so you choose how.",
             "لا أستطيع الجمع بين `{left}` و`{right}`. لا يحوّل كلام الأرقام من تلقاء نفسه، فأنت من يختار طريقة التحويل.",
             "Mesh ha2dar agma3 ben `{left}` w `{right}`. Kalam 3omro ma by7awel el arqam lewa7do, fa enta elly tekhtar ezay.",
         ],
@@ -1774,7 +1774,7 @@ pub static CATALOG: &[Entry] = &[
         code: "K0602",
         title: ["COMPARING DIFFERENT TYPES", "مقارنة أنواع مختلفة", "MOQARNA BEN TYPES MOKHTALFA"],
         message: [
-            "I can't compare a `{left}` with a `{right}` using `==`. Equality needs two values of the same type, and that type must support equality (`Eq`).",
+            "I can't compare a value of type `{left}` with one of type `{right}` using `==`. Equality needs two values of the same type, and that type must support equality (`Eq`).",
             "لا أستطيع مقارنة `{left}` بـ `{right}` باستخدام `==`. المساواة تحتاج قيمتين من النوع نفسه، ويجب أن يدعم هذا النوع المساواة (`Eq`).",
             "Mesh ha2dar a2aren `{left}` b `{right}` b `==`. El mosawah me7taga qeemtein men nafs el no3, w el no3 da lazem yed3am el mosawah (`Eq`).",
         ],
@@ -1931,6 +1931,54 @@ pub static CATALOG: &[Entry] = &[
             "Leh: el no2ta f el awel ekhtesar byeshtaghal 3ashan el type el mestanny ma3roof, zay f far3 `hasab` aw motghayer b annotation. Men gheiro momken kaza enum yeb2a feehom variant bel esm da, w ekhtiyar wa7ed yeb2a takhmeen.\n\nBadal:\n    khali s = .Circle(radius: 1.0)\n\nEkteb:\n    khali s: Shape = .Circle(radius: 1.0)\n\naw:\n    khali s = Shape.Circle(radius: 1.0)",
         ],
         proposed: false,
+    },
+    // K0804: proposed (M2 iteration 4, kalam-typeck). A type nothing fixes is `Never` and
+    // harmless, unless a trait requirement depends on it (spec §9.9 rules 4–5: the choice
+    // would change behavior) or it is part of a module constant's type (§9.9 rule 1: other
+    // code uses it). The specific reason is a label. ar/franco: pending native review.
+    Entry {
+        code: "K0804",
+        title: ["TYPE CAN'T BE WORKED OUT", "لا يمكن استنتاج النوع", "MESH 3AREF ASTANTEG EL TYPE"],
+        message: [
+            "I can't tell which type this is: all I know is `{type}`, and nothing in this code says what `_` stands for. The marked code needs that type, so I won't guess it.",
+            "لا أستطيع معرفة هذا النوع: كل ما أعرفه أنه `{type}`، ولا شيء في هذا الكود يحدد ما يمثله `_`. والكود المعلَّم يحتاج هذا النوع، فلن أخمّنه.",
+            "Mesh 3aref el type da: kol elly a3rafo enno `{type}`, w mafeesh 7aga f el code bet2ool `_` ma3naha eh. El code el mt3allem me7tag el type da, fa mesh hakhammeno.",
+        ],
+        help: [
+            "Write the type where the value is bound, for example `{kw_let} config: Config = json.decode(text){punct_try}`. A module constant takes its type from its value alone, so write it on the constant: `{kw_let} NOTHING: {core_option}[{core_int}] = {core_none}`.",
+            "اكتب النوع حيث تُربط القيمة، مثل `{kw_let} الإعداد: Config = json.decode(النص){punct_try}`. وثابت الوحدة يأخذ نوعه من قيمته وحدها، فاكتب النوع على الثابت: `{kw_let} بلا_قيمة: {core_option}[{core_int}] = {core_none}`.",
+            "Ekteb el type f el makan elly el qeema betet3arraf feeh, zay `{kw_let} config: Config = json.decode(text){punct_try}`. W sabet el module beyakhod no3o men qeemto bas, fa ekteb el type 3al sabet: `{kw_let} NOTHING: {core_option}[{core_int}] = {core_none}`.",
+        ],
+        explain: [
+            "Why: some code does different things for different types. `json.decode` reads text into the type you ask for, and printing a value shows it the way its type does. When nothing in the code says which type is meant, picking one would be a guess that changes what the program does, so the type has to be written (spec §9.9). A module constant is used by other code, so its whole type must come from its value (§9.9 rule 1). A type that nothing needs is no problem: the error type of `Ok(1)` in a function, when nothing looks at the error, for example.
+
+Instead of:
+    let config = json.decode(text)?
+    let NOTHING = None
+
+write:
+    let config: Config = json.decode(text)?
+    let NOTHING: Option[Int] = None",
+            "السبب: بعض الكود يتصرف بحسب النوع. فـ `json.decode` تقرأ النص إلى النوع الذي تطلبه، وطباعة قيمة تعرضها كما يعرضها نوعها. فإذا لم يذكر الكود أي نوع هو المقصود، كان اختيار أحدها تخمينًا يغيّر ما يفعله البرنامج، لذلك يجب أن يُكتب النوع (المواصفة §9.9). وثابت الوحدة يستخدمه كود آخر، فلا بد أن يأتي نوعه كله من قيمته (§9.9 القاعدة 1). أما النوع الذي لا يحتاجه شيء فلا مشكلة فيه، مثل نوع الخطأ في `نجاح(1)` داخل دالة حين لا ينظر شيء إلى الخطأ.
+
+بدلًا من:
+    ليكن الإعداد = json.decode(النص)؟
+    ليكن بلا_قيمة = لا_شيء
+
+اكتب:
+    ليكن الإعداد: Config = json.decode(النص)؟
+    ليكن بلا_قيمة: اختياري[عدد] = لا_شيء",
+            "Leh: fe code bey3mel 7agat mokhtalfa 3ala 7asab el type. `json.decode` bte2ra el nass w t7awelo lel type elly enta talbo, w tab3et qeema bet3redha zay ma el type bta3ha bey3redha. Law mafeesh 7aga f el code bet2ool anhy type el ma2sood, ekhtiyar wa7ed yeb2a takhmeen beyghayar el program bey3mel eh, 3ashan keda lazem el type yetketeb (el spec §9.9). W sabet el module code tany beyesta5demo, fa lazem no3o kollo yeegy men qeemto (§9.9 2a3da 1). Ama el type elly mafeesh 7aga me7tagah fa mafeehoosh moshkela, zay type el error f `naga7(1)` gowa dala lamma mafeesh 7aga betbos 3al error.
+
+Badal:
+    khali config = json.decode(text)?
+    khali NOTHING = mafeesh
+
+Ekteb:
+    khali config: Config = json.decode(text)?
+    khali NOTHING: ekhtiyari[adad] = mafeesh",
+        ],
+        proposed: true,
     },
     // ---- Patterns (K10xx, spec §11; kalam-typeck). ar/franco: pending native review.
     Entry {
@@ -2097,6 +2145,28 @@ pub static CATALOG: &[Entry] = &[
         ],
         proposed: false,
     },
+    // K1108: proposed (M2 iteration 4, kalam-typeck; FOUNDER-QUEUE Q35). The machine fix
+    // wraps the field access in parentheses. ar/franco: pending native review.
+    Entry {
+        code: "K1108",
+        title: ["FIELD CALLED LIKE A METHOD", "حقل يُستدعى كأنه دالة نوع", "FIELD BYET3AMALLO CALL KA2ENNO METHOD"],
+        message: [
+            "`{name}` is a field of `{type}` that holds a function, not a method of `{type}`. `value.{name}(…)` calls a method, so to call the function stored in the field, put the field access in parentheses first.",
+            "`{name}` حقل في `{type}` يحمل دالة، وليس دالة من دوال `{type}`. فالصيغة `القيمة.{name}(…)` تستدعي دالة النوع، ولاستدعاء الدالة المخزنة في الحقل ضع الوصول إلى الحقل بين قوسين أولًا.",
+            "`{name}` field f `{type}` shayel dala, mesh method men methods `{type}`. `qeema.{name}(…)` betendah method, fa 3ashan tendah el dala elly mt5azzena f el field, 7ot el field bein a2was el awel.",
+        ],
+        help: [
+            "Write `(value.{name})(…)`; `kalam fix` does this for you.",
+            "اكتب `(القيمة.{name})(…)`؛ ويفعل `kalam fix` ذلك نيابة عنك.",
+            "Ekteb `(qeema.{name})(…)`; w `kalam fix` bey3mel keda badalak.",
+        ],
+        explain: [
+            "Why: `x.m(…)` always calls a method of `x`'s type (spec §12.2), so a reader can tell a method call from a call of a function that is stored as data. A function in a field is a value like any other: read the field, then call the value.\n\nInstead of:\n    let n = job.run(1)\n\nwrite:\n    let n = (job.run)(1)",
+            "السبب: `x.m(…)` تستدعي دائمًا دالة من دوال نوع `x` (المواصفة §12.2)، فيميّز القارئ استدعاء دالة النوع من استدعاء دالة مخزنة كبيانات. والدالة في الحقل قيمة كأي قيمة: اقرأ الحقل، ثم استدعِ القيمة.\n\nبدلًا من:\n    ليكن ن = المهمة.run(1)\n\nاكتب:\n    ليكن ن = (المهمة.run)(1)",
+            "Leh: `x.m(…)` dayman betendah method men el type bta3 `x` (el spec §12.2), fa elly beye2ra ye2dar yefre2 ben call l method w call l dala mt5azzena ka data. El dala elly f field qeema zay ay qeema: e2ra el field, w ba3dein endah el qeema.\n\nBadal:\n    khali n = job.run(1)\n\nEkteb:\n    khali n = (job.run)(1)",
+        ],
+        proposed: true,
+    },
     // ---- Modules and globals (K12xx, spec §13; the parser). ar/franco: pending native review.
     Entry {
         code: "K1202",
@@ -2135,6 +2205,28 @@ pub static CATALOG: &[Entry] = &[
             "Why: with explicit imports, every name in a file can be traced to its module by reading the file alone, by you, a reviewer or a tool. Globs also invite guessed names: a name that seems to come from a glob may not exist at all.\n\nInstead of:\n    use std/http.*\n\nwrite:\n    use std/http.{Request, Response}",
             "السبب: مع الاستيراد الصريح يمكن تتبع كل اسم في الملف إلى وحدته بقراءة الملف وحده، سواء قرأته أنت أو مراجع أو أداة. والاستيراد بالجملة يشجع على تخمين الأسماء أيضًا: فاسم يبدو أنه آتٍ منه قد لا يكون موجودًا أصلًا.\n\nبدلًا من:\n    استخدم std/http.*\n\nاكتب:\n    استخدم std/http.{Request، Response}",
             "Leh: ma3 el import el sare7, kol esm f el file momken tet-tabba3o lel module bta3o men 2erayet el file lewa7do, sawa2 enta aw reviewer aw tool. W el import bel gomla bysha33a3 3ala takhmeen el asamy: esm shaklo gay menno momken mayeb2ash mawgood aslan.\n\nBadal:\n    hat std/http.*\n\nEkteb:\n    hat std/http.{Request, Response}",
+        ],
+        proposed: false,
+    },
+    // K1204: spec §27 erratum 2026-10-25 (FOUNDER-QUEUE Q33; kalam-typeck). The reason is a
+    // label at the part that breaks a rule. ar/franco: pending native review.
+    Entry {
+        code: "K1204",
+        title: ["NOT A CONSTANT", "ليس ثابتًا", "MESH SABET"],
+        message: [
+            "This has to be a constant, and the marked part isn't. A module-level `{kw_let}` and a field's default may use only literals, constructors, other constants and operators, and must not panic; a module constant also can't hold a capability or a `Cell`.",
+            "يجب أن يكون هذا ثابتًا، والجزء المعلَّم ليس كذلك. فـ `{kw_let}` على مستوى الوحدة والقيمة الافتراضية لحقل لا يستخدمان إلا القيم الحرفية والمُنشئات والثوابت الأخرى والعوامل، ولا يجوز أن ينهارا؛ ولا يحمل ثابت الوحدة صلاحية أو `Cell`.",
+            "Lazem da yeb2a sabet, wel goz2 el mt3allem mesh keda. `{kw_let}` 3ala mostawa el module wel default bta3 field mayesta5demosh gheir el literals wel constructors wel sawabet el tanya wel operators, w mayenfa3sh yo2a3o; w sabet el module kaman mayshelsh capability aw `Cell`.",
+        ],
+        help: [
+            "Compute the value inside `{core_main}` (or a function) and pass it down, or write it as a literal. For shared state, create the `Cell` in `{core_main}`.",
+            "احسب القيمة داخل `{core_main}` (أو داخل دالة) ومرّرها، أو اكتبها قيمة حرفية. وللحالة المشتركة أنشئ `Cell` داخل `{core_main}`.",
+            "E7seb el qeema gowa `{core_main}` (aw gowa dala) w ba3atha, aw ekteb-ha literal. W lel state el moshtarak e3mel el `Cell` gowa `{core_main}`.",
+        ],
+        explain: [
+            "Why: module constants are computed once, before `main` runs, in dependency order (spec §13.4). If one could call a function, wait for I/O, fail, or hold a capability or a `Cell`, merely importing a module could run code, stop the program or hand out a power that never came from `main`. Keeping them constant means a module has no start-up effects, and a value that would panic is reported here, at compile time.\n\nInstead of:\n    let LIMIT = config_limit()\n    let COUNTER = Cell.new(0)\n\nwrite:\n    let LIMIT = 100\n\n    fn main():\n        let counter = Cell.new(0)",
+            "السبب: تُحسب ثوابت الوحدة مرة واحدة قبل أن يبدأ `رئيسي`، بترتيب اعتمادها (المواصفة §13.4). ولو أمكن لثابت أن يستدعي دالة، أو ينتظر إدخالًا أو إخراجًا، أو يفشل، أو يحمل صلاحية أو `Cell`، لكان مجرد استيراد وحدة كافيًا لتشغيل كود أو إيقاف البرنامج أو منح صلاحية لم تأتِ من `رئيسي`. وبقاؤها ثابتة يعني أن الوحدة لا أثر لها عند البدء، وأن القيمة التي كانت ستنهار تُكتشف هنا، عند الترجمة.\n\nبدلًا من:\n    ليكن الحد = حد_الإعداد()\n    ليكن العداد = Cell.new(0)\n\nاكتب:\n    ليكن الحد = 100\n\n    دالة رئيسي():\n        ليكن العداد = Cell.new(0)",
+            "Leh: sawabet el module bet-t7seb marra wa7da, 2abl ma `ra2isi` yebda2, b tarteeb e3temadha (el spec §13.4). Law sabet ye2dar yendah dala, aw yestanna I/O, aw yefshal, aw yeshil capability aw `Cell`, mogarrad import l module momken yeshaghal code, aw yowa22af el program, aw yeddy salahiya 3omraha ma gat men `ra2isi`. W enaha tefdal sabta ma3naha en el module malhash ay asar 3and el bedaya, w en el qeema elly kanet hato2a3 bet-tekteshef hena, wa2t el compile.\n\nBadal:\n    khali LIMIT = config_limit()\n    khali COUNTER = Cell.new(0)\n\nEkteb:\n    khali LIMIT = 100\n\n    dala ra2isi():\n        khali counter = Cell.new(0)",
         ],
         proposed: false,
     },
@@ -2414,9 +2506,9 @@ pub static CATALOG: &[Entry] = &[
             "El key da shaklo secret (byekhlas b `_KEY` aw `_SECRET` aw `_TOKEN`, aw fe esmo password), bas `env.get` betraga3 nass 3adi momken yekhlas f el logs aw f JSON.",
         ],
         help: [
-            "Use `env.secret(key)`, which returns `Secret[String]`: it prints as `[REDACTED]` and can never be encoded.",
-            "استخدم `env.secret(key)`، فهي ترجع `Secret[String]`: تُطبع `[REDACTED]` ولا يمكن ترميزها أبدًا.",
-            "Esta5dem `env.secret(key)`, 3ashan betraga3 `Secret[String]`: btetteba3 `[REDACTED]` w 3omraha ma tet3amallaha encode.",
+            "Use `env.secret(key)`, which returns `Secret[{core_string}]`: it prints as `[REDACTED]` and can never be encoded.",
+            "استخدم `env.secret(key)`، فهي ترجع `Secret[{core_string}]`: تُطبع `[REDACTED]` ولا يمكن ترميزها أبدًا.",
+            "Esta5dem `env.secret(key)`, 3ashan betraga3 `Secret[{core_string}]`: btetteba3 `[REDACTED]` w 3omraha ma tet3amallaha encode.",
         ],
         explain: [
             "Why: secrets leak through ordinary code paths: a debug print, an error message, a JSON response. Keeping them in `Secret` from the moment they are read means every one of those paths is closed by the type system (spec §16.1, §18.1).\n\nInstead of:\n    let key = env.get(\"STRIPE_API_KEY\")\n\nwrite:\n    let key = env.secret(\"STRIPE_API_KEY\")",

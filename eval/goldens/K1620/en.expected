@@ -1,0 +1,10 @@
+-- SHELL CHARACTER IN A COMMAND --------------------------------- main.kl  K1620
+
+This `cmd"..."` literal contains a shell character such as `|`, `;`, `&`, `>` or `$(` outside quotes. Kalam never runs a shell, so the character would reach the program as plain text.
+
+2│     let command = cmd"ls -la | wc -l"
+                     ^^^^^^^^^^^^^^^^^^^
+
+Help: Use `proc.pipe([...])` for pipelines, and the `stdin:` and `stdout:` options for files.
+
+Learn more: kalam explain K1620

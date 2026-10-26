@@ -1,0 +1,14 @@
+-- STRING PASSED TO A SINK -------------------------------------- main.kl  K1601
+
+This place expects `Sql`, but this is `String`. A plain string here is how injection happens, so a sink never takes one.
+
+4│     return db.exec("DELETE FROM t WHERE city = '" + city + "'")
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Try: `sql"DELETE FROM t WHERE city = {`
+
+Try: `}"`
+
+Help: Write the text as a tagged literal (`sql"..."`, `html"..."` or `cmd"..."`) and put the values in holes: each hole is escaped for its context.
+
+Learn more: kalam explain K1601

@@ -1,0 +1,10 @@
+-- HOLE IN AN HTML COMMENT -------------------------------------- main.kl  K1615
+
+This hole is inside an HTML comment. Comments are sent to the browser, and a value containing `-->` would end the comment and become markup.
+
+3│     let page = html"""<p>hi<!-- {name} --></p>"""
+                                    ^^^^
+
+Help: Move the value out of the comment, or use a Kalam `#` comment, which is never sent.
+
+Learn more: kalam explain K1615

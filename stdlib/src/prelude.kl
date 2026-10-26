@@ -151,6 +151,33 @@ impl Int:
     @builtin
     export fn saturating_add(self, other: Int) -> Int => panic("builtin")
 
+    ## `self` raised to the power `exponent` (Kalam has no `**`). Panics on overflow and
+    ## on a negative exponent. `0.pow(0)` is 1.
+    @builtin
+    export fn pow(self, exponent: Int) -> Int => panic("builtin")
+
+    ## Bitwise AND of the 64-bit two's complement forms (Kalam has no `&`).
+    @builtin
+    export fn bit_and(self, other: Int) -> Int => panic("builtin")
+
+    ## Bitwise OR of the 64-bit two's complement forms (Kalam has no `|`).
+    @builtin
+    export fn bit_or(self, other: Int) -> Int => panic("builtin")
+
+    ## Bitwise exclusive OR of the 64-bit two's complement forms (Kalam has no `^`).
+    @builtin
+    export fn bit_xor(self, other: Int) -> Int => panic("builtin")
+
+    ## The 64-bit two's complement form shifted left by `by` bits; bits shifted out are
+    ## dropped. Panics when `by` is outside `0..=63`.
+    @builtin
+    export fn shift_left(self, by: Int) -> Int => panic("builtin")
+
+    ## Arithmetic shift right by `by` bits: the sign is kept, so the result is `self`
+    ## divided by 2 to the power `by`, rounded down. Panics when `by` is outside `0..=63`.
+    @builtin
+    export fn shift_right(self, by: Int) -> Int => panic("builtin")
+
 impl Float:
     ## The integer value, or `None` for NaN, infinities and values outside the `Int` range.
     ## The fraction is truncated toward zero.

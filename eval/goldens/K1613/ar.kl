@@ -1,0 +1,4 @@
+دالة رئيسي():
+    ليكن home = "https://example.com"
+    ليكن page = html"""<a href="{home}">home</a>"""
+    اطبع("{page}")

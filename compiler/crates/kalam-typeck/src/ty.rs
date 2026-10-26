@@ -13,6 +13,7 @@
 
 use std::fmt;
 
+use kalam_diagnostics::code::TypeSpelling;
 use kalam_resolve::DefId;
 
 use crate::traits::TraitRef;
@@ -254,30 +255,41 @@ impl Ty {
     /// [`Ty::display`] with the declared names of the generic parameters in scope
     /// (`Param(i)` shows as `params[i]`, so a message says `T`, not `T0`).
     pub fn display_with(&self, name: &dyn Fn(DefId) -> String, params: &[String]) -> String {
+        self.display_in(name, params, TypeSpelling::english())
+    }
+
+    /// [`Ty::display_with`] in a file's skin: core type names, `fn` and the list comma are
+    /// spelled as `kalam convert` spells them in that skin (spec §21.4 rule 1, D21). ADT
+    /// names come from `name` unchanged.
+    pub fn display_in(
+        &self,
+        name: &dyn Fn(DefId) -> String,
+        params: &[String],
+        sp: TypeSpelling,
+    ) -> String {
         let args = |ts: &[Ty]| {
-            ts.iter()
-                .map(|t| t.display_with(name, params))
-                .collect::<Vec<_>>()
-                .join(", ")
+            let shown: Vec<String> = ts.iter().map(|t| t.display_in(name, params, sp)).collect();
+            sp.join(&shown)
         };
-        let show = |t: &Ty| t.display_with(name, params);
+        let show = |t: &Ty| t.display_in(name, params, sp);
+        let core = |en: &str| sp.name(en).to_string();
         match self {
-            Ty::Int => "Int".into(),
+            Ty::Int => core("Int"),
             Ty::BigInt => "BigInt".into(),
-            Ty::Float => "Float".into(),
-            Ty::Decimal => "Decimal".into(),
-            Ty::Bool => "Bool".into(),
-            Ty::String => "String".into(),
+            Ty::Float => core("Float"),
+            Ty::Decimal => core("Decimal"),
+            Ty::Bool => core("Bool"),
+            Ty::String => core("String"),
             Ty::Bytes => "Bytes".into(),
             Ty::Unit => "()".into(),
             Ty::Never => "Never".into(),
-            Ty::List(t) => format!("List[{}]", show(t)),
-            Ty::Set(t) => format!("Set[{}]", show(t)),
-            Ty::Option(t) => format!("Option[{}]", show(t)),
+            Ty::List(t) => format!("{}[{}]", core("List"), show(t)),
+            Ty::Set(t) => format!("{}[{}]", core("Set"), show(t)),
+            Ty::Option(t) => format!("{}[{}]", core("Option"), show(t)),
             Ty::Range(t) => format!("Range[{}]", show(t)),
             Ty::Secret(t) => format!("Secret[{}]", show(t)),
-            Ty::Map(k, v) => format!("Map[{}, {}]", show(k), show(v)),
-            Ty::Result(t, e) => format!("Result[{}, {}]", show(t), show(e)),
+            Ty::Map(k, v) => format!("{}[{}]", core("Map"), sp.join(&[show(k), show(v)])),
+            Ty::Result(t, e) => format!("{}[{}]", core("Result"), sp.join(&[show(t), show(e)])),
             Ty::Tuple(ts) => format!("({})", args(ts)),
             Ty::Fn {
                 params,
@@ -289,11 +301,16 @@ impl Ty {
                 } else {
                     ""
                 };
-                format!("{sync}fn({}) -> {}", args(params), show(ret))
+                format!(
+                    "{sync}{}({}) -> {}",
+                    sp.fn_keyword(),
+                    args(params),
+                    show(ret)
+                )
             }
             Ty::Adt(d, ts) if ts.is_empty() => name(*d),
             Ty::Adt(d, ts) => format!("{}[{}]", name(*d), args(ts)),
-            Ty::Capability(c) => c.name().into(),
+            Ty::Capability(c) => sp.name(c.name()).into(),
             Ty::Sink(s) => s.name().into(),
             Ty::AnyError => "AnyError".into(),
             Ty::JsValue => "JsValue".into(),

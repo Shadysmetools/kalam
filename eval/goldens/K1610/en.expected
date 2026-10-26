@@ -1,0 +1,10 @@
+-- HTML LITERAL NOT WELL-FORMED --------------------------------- main.kl  K1610
+
+I can't read this `html"..."` literal as a well-formed HTML fragment: a tag is unclosed or wrongly nested, or an attribute value is unquoted.
+
+2│     let page = html"<p><b>hi</p>"
+                  ^^^^^^^^^^^^^^^^^^
+
+Help: Close every tag in the order it was opened, and quote every attribute value.
+
+Learn more: kalam explain K1610

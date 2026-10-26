@@ -1,0 +1,10 @@
+-- MESH SABET -------------------------------------------- main.franco.kl  K1204
+
+Lazem da yeb2a sabet, wel goz2 el mt3allem mesh keda. `khali` 3ala mostawa el module wel default bta3 field mayesta5demosh gheir el literals wel constructors wel sawabet el tanya wel operators, w mayenfa3sh yo2a3o; w sabet el module kaman mayshelsh capability aw `Cell`.
+
+3│ khali answer = load() + 1
+                  ^^^^^^ el call bta3 el dala mesh ta3beer sabet
+
+Mosa3da: E7seb el qeema gowa `ra2isi` (aw gowa dala) w ba3atha, aw ekteb-ha literal. W lel state el moshtarak e3mel el `Cell` gowa `ra2isi`.
+
+E3raf aktar: kalam explain K1204

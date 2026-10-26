@@ -1,0 +1,10 @@
+-- HOLE F COMMENT HTML ----------------------------------- main.franco.kl  K1615
+
+El hole di gowa comment HTML. W el comments betetba3at lel browser, w qeema feeha `-->` kanet hatkhallas el comment w teb2a markup.
+
+3│     khali page = html"""<p>hi<!-- {name} --></p>"""
+                                      ^^^^
+
+Mosa3da: Talla3 el qeema bara el comment, aw esta5dem comment Kalam `#` elly 3omro ma byetba3at.
+
+E3raf aktar: kalam explain K1615

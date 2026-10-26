@@ -1,6 +1,8 @@
-# Python reference for task 14. Mirrors Kalam semantics: Int is +-(2**53-1); str->int accepts
-# ASCII and Arabic-Indic digits (spec 6.2); out-of-range text is a parse error, never a float.
-INT_MAX = 2**53 - 1
+# Python reference for task 14. Mirrors Kalam semantics: Int is true 64-bit, [-2**63, 2**63-1]
+# (DECISIONS D18; FOUNDER-QUEUE Q39); str->int accepts ASCII and Arabic-Indic digits
+# (spec 6.2); out-of-range text is a parse error, never a float.
+INT_MIN = -(2**63)
+INT_MAX = 2**63 - 1
 
 
 class AgeError(Exception):
@@ -13,7 +15,7 @@ def to_int(text):
     if not body or not body.isascii() or not body.isdigit():
         return None
     value = int(digits)
-    return value if -INT_MAX <= value <= INT_MAX else None
+    return value if INT_MIN <= value <= INT_MAX else None
 
 
 def parse_age(text):

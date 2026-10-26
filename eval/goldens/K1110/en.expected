@@ -1,0 +1,16 @@
+-- CLOSURE CAPTURES A VAR --------------------------------------- main.kl  K1110
+
+This lambda uses a `var` from the enclosing function. Closures capture values, never variables that may change later.
+
+4│     let add = fn(x: Int) => x + count
+                                   ^^^^^
+
+Try:
+
+    let snapshot = count
+
+Try: `snapshot`
+
+Help: Copy the current value into a constant first, `let snapshot = v`, and use `snapshot` inside the lambda. `kalam fix` inserts the copy.
+
+Learn more: kalam explain K1110

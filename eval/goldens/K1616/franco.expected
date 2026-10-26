@@ -1,0 +1,10 @@
+-- HOLE EL EVENT ME7TAGA MESSAGE ------------------------- main.franco.kl  K1616
+
+El hole bta3et `k-click` aw `k-submit` aw `k-input` aw `k-change` di lazem tsheel qeema no3aha bey3mel derive l `Message`. El qeyam di bas elly momken tetba3at lel browser ka token mewa22a3.
+
+7│     khali page = html"""<button k-click="{count}">ok</button>"""
+                                             ^^^^^
+
+Mosa3da: Esta5dem 7ala men el enum bta3 el messages, zay `k-click="{ Msg.Save }"`, w zawed `@derive(Message)` lel enum da.
+
+E3raf aktar: kalam explain K1616

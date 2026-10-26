@@ -1,0 +1,4 @@
+fn main():
+    let name = "Sara"
+    let q = sql"DELETE FROM users WHERE name = {name}; DELETE FROM notes"
+    print("{q}")

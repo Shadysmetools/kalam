@@ -36,6 +36,9 @@ pub struct Outcome {
     /// Impl methods whose written signature differs from the trait's, with the trait's
     /// signature for that impl: the scheme callers must see.
     pub contracts: Vec<(DefId, Scheme)>,
+    /// For each of `contracts`, whether the trait's method takes `self`: callers call it the
+    /// trait's way (`x.m()` or `T.m()`).
+    pub selfs: Vec<(DefId, bool)>,
 }
 
 /// Checks every trait impl of `res.traits` against its trait.
@@ -154,7 +157,9 @@ impl ImplCx<'_> {
     }
 
     /// The first difference between the impl method `m` and the trait method `tm`, if any.
-    /// A difference in types also records the trait's signature as `m`'s contract.
+    /// Any difference also records the trait's signature as `m`'s contract (FOUNDER-QUEUE
+    /// Q37: callers always see the trait's signature, whatever the impl wrote: its `self`,
+    /// its number of type parameters, their bounds, its parameter and return types).
     fn compare(&mut self, decl: &TraitDecl, name: &str, m: DefId, tm: DefId) -> Option<String> {
         let fn_decl = |d: DefId| match self.prog.item(d).map(|i| &i.kind) {
             Some(ItemKind::Fn(f)) => Some(f),
@@ -163,24 +168,12 @@ impl ImplCx<'_> {
         let (f, tf) = (fn_decl(m)?, fn_decl(tm)?);
         let is = self.res.signatures.get(&m)?;
         let ts = self.res.signatures.get(&tm)?;
-        if f.has_self != tf.has_self {
-            return Some(if tf.has_self {
-                format!("`{name}` takes no `self` here, but the trait's `{name}` does")
-            } else {
-                format!("`{name}` takes `self` here, but the trait's `{name}` does not")
-            });
-        }
         let nt = decl.generics.len();
         let ni = self.imp.generics.len();
         // The trait method's scheme: the trait's generics, the method's own, then `Self`.
         let kt = ts.generics.len().saturating_sub(nt + 1);
         let ki = is.generics.len().saturating_sub(ni);
         let params = self.names(&is.generics);
-        if kt != ki {
-            return Some(format!(
-                "`{name}` has {ki} type parameter(s) here, but {kt} in the trait"
-            ));
-        }
         let args: Vec<Ty> = (0..ts.generics.len())
             .map(|j| {
                 if j < nt {
@@ -193,6 +186,8 @@ impl ImplCx<'_> {
             })
             .collect();
         let expected = ts.ty.subst(&args);
+        // The method's own type parameters keep the impl's names when it has as many as the
+        // trait, so the trait's bounds read naturally in messages about callers.
         let contract = Scheme {
             generics: self
                 .imp
@@ -201,8 +196,9 @@ impl ImplCx<'_> {
                 .cloned()
                 .chain((0..kt).map(|j| {
                     let g = &ts.generics[nt + j];
+                    let own = (kt == ki).then(|| is.generics[ni + j].name.clone());
                     GenericParam {
-                        name: is.generics[ni + j].name.clone(),
+                        name: own.unwrap_or_else(|| g.name.clone()),
                         bounds: g
                             .bounds
                             .iter()
@@ -217,8 +213,57 @@ impl ImplCx<'_> {
             effect_params: ts.effect_params,
             ty: expected.clone(),
         };
-        let mut detail = None;
-        if let (
+        let detail = if f.has_self != tf.has_self {
+            Some(if tf.has_self {
+                format!("`{name}` takes no `self` here, but the trait's `{name}` does")
+            } else {
+                format!("`{name}` takes `self` here, but the trait's `{name}` does not")
+            })
+        } else if kt != ki {
+            Some(format!(
+                "`{name}` has {ki} type parameter(s) here, but {kt} in the trait"
+            ))
+        } else {
+            self.signature_difference(name, f.has_self, &f.params, is, &expected, &params)
+                .or_else(|| {
+                    // The impl may require less of its type parameters than the trait,
+                    // never more.
+                    (0..kt).find_map(|j| {
+                        let allowed = &contract.generics[ni + j].bounds;
+                        let extra = is.generics[ni + j]
+                            .bounds
+                            .iter()
+                            .find(|b| !allowed.contains(b))?;
+                        let bound = match extra.id {
+                            TraitId::Builtin(b) => b.name().to_string(),
+                            TraitId::User(d) => self.res.name_of(d),
+                        };
+                        Some(format!(
+                            "type parameter `{}` of `{name}` needs `{bound}` here, which the trait does not require",
+                            is.generics[ni + j].name
+                        ))
+                    })
+                })
+        };
+        if detail.is_some() {
+            self.out.contracts.push((m, contract));
+            self.out.selfs.push((m, tf.has_self));
+        }
+        detail
+    }
+
+    /// The first parameter or return type of the impl method (`is`) that differs from the
+    /// trait's (`expected`, already in the impl's terms).
+    fn signature_difference(
+        &self,
+        name: &str,
+        has_self: bool,
+        decls: &[crate::hir::ParamDecl],
+        is: &Scheme,
+        expected: &Ty,
+        params: &[String],
+    ) -> Option<String> {
+        let (
             Ty::Fn {
                 params: ep,
                 ret: er,
@@ -229,53 +274,33 @@ impl ImplCx<'_> {
                 ret: fr,
                 ..
             },
-        ) = (&expected, &is.ty)
-        {
-            let skip = usize::from(f.has_self);
-            if ep.len() != fp.len() {
-                detail = Some(format!(
-                    "`{name}` takes {} parameter(s) here, but {} in the trait",
-                    fp.len().saturating_sub(skip),
-                    ep.len().saturating_sub(skip)
-                ));
-            } else if let Some(i) = (0..ep.len()).find(|&i| !same(&ep[i], &fp[i])) {
-                let pname = f.params.get(i).map_or("?", |p| p.name.as_str());
-                detail = Some(format!(
-                    "parameter `{pname}` of `{name}` is `{}` here, but `{}` in the trait",
-                    self.show(&fp[i], &params),
-                    self.show(&ep[i], &params)
-                ));
-            } else if !same(er, fr) {
-                detail = Some(format!(
-                    "`{name}` returns `{}` here, but `{}` in the trait",
-                    self.show(fr, &params),
-                    self.show(er, &params)
-                ));
-            }
-        }
-        if detail.is_none() {
-            // The impl may require less of its type parameters than the trait, never more.
-            for j in 0..kt {
-                let allowed = &contract.generics[ni + j].bounds;
-                if let Some(extra) = is.generics[ni + j]
-                    .bounds
-                    .iter()
-                    .find(|b| !allowed.contains(b))
-                {
-                    let bound = match extra.id {
-                        TraitId::Builtin(b) => b.name().to_string(),
-                        TraitId::User(d) => self.res.name_of(d),
-                    };
-                    return Some(format!(
-                        "type parameter `{}` of `{name}` needs `{bound}` here, which the trait does not require",
-                        is.generics[ni + j].name
-                    ));
-                }
-            }
+        ) = (expected, &is.ty)
+        else {
             return None;
+        };
+        let skip = usize::from(has_self);
+        if ep.len() != fp.len() {
+            return Some(format!(
+                "`{name}` takes {} parameter(s) here, but {} in the trait",
+                fp.len().saturating_sub(skip),
+                ep.len().saturating_sub(skip)
+            ));
         }
-        self.out.contracts.push((m, contract));
-        detail
+        if let Some(i) = (0..ep.len()).find(|&i| !same(&ep[i], &fp[i])) {
+            let pname = decls.get(i).map_or("?", |p| p.name.as_str());
+            return Some(format!(
+                "parameter `{pname}` of `{name}` is `{}` here, but `{}` in the trait",
+                self.show(&fp[i], params),
+                self.show(&ep[i], params)
+            ));
+        }
+        (!same(er, fr)).then(|| {
+            format!(
+                "`{name}` returns `{}` here, but `{}` in the trait",
+                self.show(fr, params),
+                self.show(er, params)
+            )
+        })
     }
 }
 

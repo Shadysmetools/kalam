@@ -9,7 +9,8 @@ use kalam_fuzz::supervisor::{run, Options};
 use kalam_fuzz::worker::{repro_main, worker_main};
 
 const USAGE: &str = "\
-kalam-fuzz: mutational fuzzer for the Kalam lexer, parser, KCF, fmt and convert
+kalam-fuzz: mutational fuzzer for the Kalam lexer, parser, KCF, fmt, convert, type checker
+and reference interpreter (status.json `targets`)
 
 USAGE:
     kalam-fuzz [--hours H | --minutes M | --seconds S] [OPTIONS]

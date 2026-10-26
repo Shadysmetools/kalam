@@ -1,0 +1,10 @@
+-- DALA @sync BTE3MEL SUSPEND ---------------------------- main.franco.kl  K1402
+
+El dala di 3aleiha `@sync`, ya3ny wa3d enaha 3omraha ma testanna, bas heya btenady 7aga momken te3mel suspend. W selselet el calls bet-warrik fein.
+
+2│ dala present(fs: Fs) -> mante2i => fs.exists(path"notes.txt")
+        ^^^^^^^ `present` betnady `exists` (w di bte3mel suspend)
+
+Mosa3da: Shil el call elly bystanna men el dala di, aw shil `@sync` law el dala fe3lan me7taga testanna (w saa3etha el amaken elly mo3tamda 3aleiha hatetballagh).
+
+E3raf aktar: kalam explain K1402

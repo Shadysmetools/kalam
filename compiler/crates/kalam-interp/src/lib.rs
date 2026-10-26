@@ -10,6 +10,10 @@
 //! the stdlib exists only as signature stubs until M4; a program that calls one is refused
 //! before it starts ([`unsupported_intrinsics`]).
 //!
+//! **Start-up (Q33, §13.4).** After every refusal and before `main`, all module constants
+//! are evaluated, in dependency order, once each. A constant that panics stops the program
+//! before `main` prints anything, whether or not `main` uses it.
+//!
 //! **Outcomes.** A Kalam panic (§14.4) is [`InterpError::Panic`] with its message and span,
 //! never a Rust panic. [`InterpError::Internal`] means a value had the wrong shape for an
 //! operation: for a well-typed program that is a soundness bug in the type checker, the
@@ -24,7 +28,7 @@ pub mod intrinsics;
 pub mod num;
 pub mod value;
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::rc::Rc;
 
@@ -107,6 +111,9 @@ pub fn run(program: &Program, out: &mut dyn Write, options: &Options) -> Result<
             ))
         }
     };
+    // Q33 (§13.4): every module constant is evaluated at start, after every refusal above
+    // and before `main`, so a constant that panics stops the program before it prints.
+    it.init_constants().map_err(Ctrl::into_error)?;
     let result = it
         .call_fn(entry, args, f.span.span)
         .map_err(Ctrl::into_error)?;
@@ -181,6 +188,8 @@ pub struct Interp<'p, 'o> {
     lambdas: Vec<Lambda<'p>>,
     lambda_ids: HashMap<*const Block, usize>,
     consts: HashMap<DefId, Value>,
+    /// Constants whose initializer is running (a cycle check).
+    initializing: HashSet<DefId>,
     depth: usize,
     max_depth: usize,
     /// The file of the function being run (panic locations).
@@ -196,6 +205,7 @@ impl<'p, 'o> Interp<'p, 'o> {
             lambdas: Vec::new(),
             lambda_ids: HashMap::new(),
             consts: HashMap::new(),
+            initializing: HashSet::new(),
             depth: 0,
             max_depth: options.max_depth,
             file: FileId(0),
@@ -616,7 +626,20 @@ impl<'p, 'o> Interp<'p, 'o> {
         })
     }
 
-    /// A module constant: evaluated on first use, then remembered.
+    /// Evaluates every module constant, in [`Program::consts`] order (dependency order).
+    /// A constant whose initializer needs one that is not evaluated yet (through a
+    /// function call, say) evaluates that one first, so the order is a dependency order
+    /// whatever path the initializers take.
+    fn init_constants(&mut self) -> Ev<()> {
+        let program = self.program;
+        for c in &program.consts {
+            self.constant(c.def, c.value.span)?;
+        }
+        Ok(())
+    }
+
+    /// A module constant's value. After [`Interp::init_constants`] every constant is
+    /// known; during it, a constant is evaluated when first needed, then remembered.
     fn constant(&mut self, def: DefId, span: Span) -> Ev<Value> {
         if let Some(v) = self.consts.get(&def) {
             return Ok(v.clone());
@@ -624,9 +647,20 @@ impl<'p, 'o> Interp<'p, 'o> {
         let Some(c) = self.program.constant(def) else {
             return internal(format!("missing constant {def:?}"));
         };
+        if !self.initializing.insert(def) {
+            // The checker rejects such cycles; never loop until the stack runs out.
+            return Err(Ctrl::Err(InterpError::Unsupported(format!(
+                "the value of the constant `{}` depends on itself",
+                c.name
+            ))));
+        }
         self.enter(span)?;
+        let saved = self.file;
+        self.file = c.file;
         let r = self.expr(&c.value, &mut Vec::new());
+        self.file = saved;
         self.depth -= 1;
+        self.initializing.remove(&def);
         let v = r?;
         self.consts.insert(def, v.clone());
         Ok(v)

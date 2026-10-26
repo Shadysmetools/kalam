@@ -1,0 +1,4 @@
+fn main():
+    let name = "Sara"
+    let page = html"""<button k-frobnicate="go">{name}</button>"""
+    print("{page}")

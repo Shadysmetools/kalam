@@ -14,7 +14,10 @@
 //! Anything else is [`LowerError::Unsupported`], never a silent miscompile: `Show` for a
 //! type with no user impl (spec gaps G3/G4: derived `Show` text is unspecified), trait
 //! methods on a type parameter (no dictionary passing yet), `?` into `AnyError`, ranges
-//! as values, and tagged-literal runtime semantics.
+//! as values, and tagged-literal runtime semantics. A program is also refused, fail-closed,
+//! when a constant cannot be lowered (constants are evaluated eagerly, Q33) and when its
+//! KIR would not verify, such as a type the checker left open (`Ok(1).is_ok()` never fixes
+//! `E`): a backend never receives ill-formed KIR.
 //!
 //! **`match`** lowers to a chain of tests over a temporary holding the scrutinee. Each arm's
 //! pattern becomes a conjunction of tests ([`ExprKind::IsVariant`], literal comparisons,
@@ -132,7 +135,7 @@ pub fn lower_program_entry(
             }
         }
     }
-    program.consts = lower_consts(&mut cx);
+    program.consts = lower_consts(&mut cx)?;
     let mut ordered: Vec<(DefId, FnId)> = cx.fn_ids.iter().map(|(d, i)| (*d, *i)).collect();
     ordered.sort_by_key(|(_, i)| *i);
     for (def, id) in ordered {
@@ -147,13 +150,39 @@ pub fn lower_program_entry(
     }
     program.entry = entry.and_then(|d| cx.fn_ids.get(&d).copied());
     program.entry_error_message = entry.and_then(|d| entry_error_message(&cx, d));
+    refuse_ill_formed(&program)?;
     Ok(program)
 }
 
+/// Fail closed: a program whose KIR would not verify is refused here, as
+/// [`LowerError::Unsupported`] with a location, so a backend never receives ill-formed KIR
+/// and a user program never ends in an internal error. A type the checker left open (an
+/// unconstrained type argument) is the case user programs reach; any other violation is a
+/// lowering gap, refused at the entry point.
+fn refuse_ill_formed(program: &Program) -> R<()> {
+    if let Some(at) = crate::verify::first_open_type(program) {
+        return unsupported(
+            "a value whose type is never fixed (add a type annotation)",
+            at.span,
+        );
+    }
+    if !crate::verify::verify(program).is_empty() {
+        let at = program
+            .entry
+            .and_then(|e| program.function(e))
+            .map(|f| f.span.span)
+            .unwrap_or_default();
+        return unsupported("a construct that this lowering cannot represent yet", at);
+    }
+    Ok(())
+}
+
 /// Module constants in dependency order: a constant whose initializer names a constant
-/// that is not lowered yet waits for it. One that cannot be lowered is left out, and a use
-/// of it is then [`LowerError::Unsupported`].
-fn lower_consts(cx: &mut Ctx<'_>) -> Vec<ConstDecl> {
+/// that is not lowered yet waits for it. Every constant is evaluated eagerly at start
+/// (§13.4, Q33), so one that cannot be lowered makes the whole program
+/// [`LowerError::Unsupported`] (the first such constant in declaration order), even when
+/// nothing uses it: leaving it out would hide its panic.
+fn lower_consts(cx: &mut Ctx<'_>) -> R<Vec<ConstDecl>> {
     let (prog, tc) = (cx.prog, cx.tc);
     let mut pending: Vec<DefId> = prog
         .item_ids()
@@ -161,6 +190,7 @@ fn lower_consts(cx: &mut Ctx<'_>) -> Vec<ConstDecl> {
         .filter(|d| matches!(prog.item(*d).map(|i| &i.kind), Some(ItemKind::Const(_))))
         .collect();
     let mut out = Vec::new();
+    let mut failed: Option<LowerError> = None;
     loop {
         let mut progress = false;
         let mut still = Vec::new();
@@ -172,6 +202,10 @@ fn lower_consts(cx: &mut Ctx<'_>) -> Vec<ConstDecl> {
                 continue;
             };
             let Some(ty) = tc.consts.get(&def).cloned() else {
+                failed.get_or_insert(LowerError::Unsupported {
+                    what: "a constant without a type",
+                    span: item.span,
+                });
                 continue;
             };
             let mut l = FnLower::new(cx, def);
@@ -181,6 +215,7 @@ fn lower_consts(cx: &mut Ctx<'_>) -> Vec<ConstDecl> {
                     out.push(ConstDecl {
                         def,
                         name: item.name.clone(),
+                        file: item.file,
                         ty,
                         value,
                     });
@@ -190,7 +225,9 @@ fn lower_consts(cx: &mut Ctx<'_>) -> Vec<ConstDecl> {
                     what: CONST_NOT_READY,
                     ..
                 }) => still.push(def),
-                Err(_) => {}
+                Err(e) => {
+                    failed.get_or_insert(e);
+                }
             }
         }
         for c in &out {
@@ -201,7 +238,14 @@ fn lower_consts(cx: &mut Ctx<'_>) -> Vec<ConstDecl> {
             break;
         }
     }
-    out
+    if let Some(e) = failed {
+        return Err(e);
+    }
+    // Still waiting with no progress: the constants name each other in a cycle.
+    if let Some(item) = pending.first().and_then(|d| prog.item(*d)) {
+        return unsupported("a constant whose value depends on itself", item.span);
+    }
+    Ok(out)
 }
 
 const CONST_NOT_READY: &str = "a constant that cannot be lowered";

@@ -11,20 +11,24 @@
 //! `right`; K0603 `type` (+ `op` or `trait`); K0730 `type`; K0803 `name`; K1001 `missing`;
 //! K1004 `name`; K1103 `name`; K1104 `names`; K1105 `detail`; K1107 `trait`, `detail`; K1110
 //! `name`; K1301 `found`, `expected`; K1601 `expected`, `found`; K1641 `found`; K0600
-//! `expected`/`found` or `type`.
+//! `expected`/`found` or `type`; K0804 `type`; K1108 `type`, `name`; K0401 `name`.
+//! K1204 has no args: the reason is a label at the part of the constant that breaks a rule.
 //!
 //! Every K0600 also carries a label naming the types involved ("expected `Int`, found
 //! `Float`"), since the K0600 template is type-free; generic parameters are shown by their
 //! declared names ([`TypeError::params`]), never as `T0`.
 
 use kalam_base::{FileId, Span};
+use kalam_diagnostics::code::TypeSpelling;
 use kalam_diagnostics::{Diagnostic, Fix, Label};
 use kalam_resolve::DefId;
 
 use crate::ty::{Capability, SinkType, Ty};
 
-/// Codes this crate emits that spec §27 does not list yet.
-pub const PROVISIONAL_CODES: &[&str] = &["K0600", "K0603", "K1105", "K1106"];
+/// Codes this crate emits that spec §27 does not list yet. K0804 (a type argument a trait
+/// requirement depends on is never fixed) and K1108 (a function-typed field called with
+/// method syntax, FOUNDER-QUEUE Q35) are M2 iteration 4 proposals.
+pub const PROVISIONAL_CODES: &[&str] = &["K0600", "K0603", "K0804", "K1105", "K1106", "K1108"];
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum TypeErrorKind {
@@ -118,6 +122,21 @@ pub enum TypeErrorKind {
     /// [kalam-sinks] A finding made by `kalam-sinks` (§16 K15xx, §17 K16xx/W16xx), kept
     /// as its finished diagnostic.
     Sink(Diagnostic),
+    /// A type nothing fixes that something needs (provisional K0804, §9.9): a trait
+    /// requirement depends on it (`json.decode(s)` with no expected type, `print("{None}")`),
+    /// or it is part of a module constant's type (rule 1: other code uses the constant).
+    /// `ty` keeps the open parts as variables (shown as `_`); a label says which case.
+    UninferredType { ty: Ty },
+    /// `x.f(…)` where `f` is a function-typed field of the record `ty`, not a method
+    /// (provisional K1108, FOUNDER-QUEUE Q35); the fix is `(x.f)(…)`.
+    FieldCalledAsMethod { ty: Ty, name: String },
+    /// A module constant (§13.4) or record field default (§9.4) that is not a constant
+    /// expression, would panic, depends on itself, or holds a capability or a `Cell`
+    /// (K1204, FOUNDER-QUEUE Q33). The reason is a label at the offending part.
+    NotConstant,
+    /// `.V` where no enum of a fully known program has a variant `V` (K0401, as name
+    /// resolution reports it when it knows the whole program; FOUNDER-QUEUE Q34).
+    UnknownVariant { name: String },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -203,6 +222,10 @@ impl TypeError {
             K::PathHole { .. } => "K1641",
             K::ExplicitTypeArgs => "K0922",
             K::ImplMismatch { .. } => "K1107",
+            K::UninferredType { .. } => "K0804",
+            K::FieldCalledAsMethod { .. } => "K1108",
+            K::NotConstant => "K1204",
+            K::UnknownVariant { .. } => "K0401",
         }
     }
 
@@ -212,10 +235,15 @@ impl TypeError {
         t.display_with(name, &self.params)
     }
 
+    /// [`TypeError::show`] in the skin of the error's file (spec §21.4 rule 1).
+    pub fn show_in(&self, t: &Ty, name: &dyn Fn(DefId) -> String, sp: TypeSpelling) -> String {
+        t.display_in(name, &self.params, sp)
+    }
+
     /// The label every K0600 gets, naming both types (its template names none).
-    fn type_label(&self, name: &dyn Fn(DefId) -> String) -> Option<String> {
+    fn type_label(&self, name: &dyn Fn(DefId) -> String, sp: TypeSpelling) -> Option<String> {
         use TypeErrorKind as K;
-        let show = |t: &Ty| self.show(t, name);
+        let show = |t: &Ty| self.show_in(t, name, sp);
         Some(match &self.kind {
             K::Mismatch { expected, found } if self.code() == "K0600" => {
                 format!("expected `{}`, found `{}`", show(expected), show(found))
@@ -229,8 +257,14 @@ impl TypeError {
         })
     }
 
-    /// Converts to a diagnostic. `name` renders ADT names in messages.
+    /// Converts to a diagnostic. `name` renders ADT names in messages; types are shown in
+    /// the English skin ([`TypeError::to_diagnostic_in`] takes the file's skin).
     pub fn to_diagnostic(&self, name: &dyn Fn(DefId) -> String) -> Diagnostic {
+        self.to_diagnostic_in(name, TypeSpelling::english())
+    }
+
+    /// [`TypeError::to_diagnostic`] with types spelled in the file's skin (`sp`).
+    pub fn to_diagnostic_in(&self, name: &dyn Fn(DefId) -> String, sp: TypeSpelling) -> Diagnostic {
         use TypeErrorKind as K;
         if let K::Sink(d) = &self.kind {
             let mut d = d.clone();
@@ -238,7 +272,7 @@ impl TypeError {
             return d;
         }
         let mut d = Diagnostic::new(self.code(), self.file, self.span);
-        let show = |t: &Ty| self.show(t, name);
+        let show = |t: &Ty| self.show_in(t, name, sp);
         d = match &self.kind {
             K::Mismatch { expected, found } => {
                 d.arg("expected", show(expected)).arg("found", show(found))
@@ -276,9 +310,15 @@ impl TypeError {
             K::ImplMismatch { trait_name, detail } => d
                 .arg("trait", trait_name.clone())
                 .arg("detail", detail.clone()),
+            K::UninferredType { ty } => d.arg("type", show(ty)),
+            K::FieldCalledAsMethod { ty, name } => {
+                d.arg("type", show(ty)).arg("name", name.clone())
+            }
+            // In backticks, like resolve's K0401 (`.Blue`).
+            K::UnknownVariant { name } => d.arg("name", format!("`.{name}`")),
             _ => d,
         };
-        if let Some(text) = self.type_label(name) {
+        if let Some(text) = self.type_label(name, sp) {
             d = d.label(self.span, text);
         }
         for l in &self.labels {

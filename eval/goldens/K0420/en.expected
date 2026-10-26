@@ -1,0 +1,10 @@
+-- UNKNOWN FIELD OR METHOD -------------------------------------- main.kl  K0420
+
+`List[Int]` has no field or method named `length`. I check every call against the real API, so a guessed name stops here instead of failing while the program runs.
+
+3│     let n = xs.length()
+               ^^^^^^^^^^^
+
+Help: Check the spelling against the type's fields and methods. Names from other languages map like this: `push` → `append`, `length` and `size` → `len`, `includes` → `contains`.
+
+Learn more: kalam explain K0420

@@ -2,6 +2,8 @@
 
 `total` is already declared in a scope that is visible here. Kalam does not let a new declaration hide an older one, so a name means one thing at a time.
 
+2│     let total = 1
+           ----- `total` is already declared here
 4│         let total = 2
                ^^^^^
 

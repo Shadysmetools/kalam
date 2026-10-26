@@ -1,0 +1,10 @@
+-- COMMAND PROGRAM IS NOT LITERAL ------------------------------- main.kl  K1621
+
+The first word of this `cmd"..."` literal, the program to run, comes from a hole. The program must be written in the literal, so a value can never choose what runs.
+
+3│     let command = cmd"{program} --version"
+                          ^^^^^^^
+
+Help: Write the program name literally. To choose between a few programs, use `match` with one `cmd"..."` per case.
+
+Learn more: kalam explain K1621

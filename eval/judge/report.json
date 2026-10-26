@@ -1,0 +1,581 @@
+{
+  "mean": 4.364,
+  "model": "claude-opus-5-5",
+  "n": 114,
+  "rubric_sha256": "f0cba998336a5b48e4f2ff88719bff0282cd7b4a490970e607adc66cfe4829c4",
+  "rubric_version": "becker-2026.1",
+  "sample_sha256": "268a64cf7ee2065600ec71541f2b578715d33b3e7340c69b90c2ef40ca47ac7c",
+  "schema": "kalam-judge-report/1",
+  "scores": [
+    {
+      "id": "K0103/franco",
+      "rationale": "Clear reason and fmt fix, but the Try line is four invisible spaces in backticks.",
+      "score": 4.5
+    },
+    {
+      "id": "K0105/ar",
+      "rationale": "Unicode name missing (double space after U+0024) and the reason says ASCII symbols are allowed although `$` is ASCII, so it does not explain the rejection.",
+      "score": 3.0
+    },
+    {
+      "id": "K0120/franco",
+      "rationale": "Accurate and well placed, but the fix says 'a multiple of 4' instead of naming the exact column (8).",
+      "score": 4.0
+    },
+    {
+      "id": "K0122/ar",
+      "rationale": "Correct but vague: 'align with one of the blocks above' without naming the column, no example.",
+      "score": 3.5
+    },
+    {
+      "id": "K0125/franco",
+      "rationale": "Reason (no octal), exact Try `7`, the 0o alternative and kalam fix: complete.",
+      "score": 5.0
+    },
+    {
+      "id": "K0126/ar",
+      "rationale": "States the exact Int range and two concrete fixes; no example of writing a BigInt.",
+      "score": 4.5
+    },
+    {
+      "id": "K0127/franco",
+      "rationale": "Good explanation of the Franco digit-letter trap, but it promises a spelling suggestion it does not give.",
+      "score": 4.0
+    },
+    {
+      "id": "K0129/ar",
+      "rationale": "Precise caret, rule and fix including triple quotes; nothing missing but an example.",
+      "score": 4.5
+    },
+    {
+      "id": "K0130/en",
+      "rationale": "Lists every valid escape and how to write a backslash; does not guess the intended escape.",
+      "score": 4.5
+    },
+    {
+      "id": "K0131/en",
+      "rationale": "Good reason, but the let-binding fix has no example code.",
+      "score": 4.0
+    },
+    {
+      "id": "K0132/franco",
+      "rationale": "Accurate surrogate explanation with an example of the right form.",
+      "score": 4.5
+    },
+    {
+      "id": "K0201/en",
+      "rationale": "Names the word, its skin equivalent, a Try and alternatives: a newcomer fixes it at once.",
+      "score": 5.0
+    },
+    {
+      "id": "K0250/franco",
+      "rationale": "Correct with a delete-the-`=` fix, but adds speculative causes (missing `:`, early paren) that don't apply here.",
+      "score": 4.0
+    },
+    {
+      "id": "K0251/franco",
+      "rationale": "Caret on the open paren and clear reason, but the fix lists `) ] }` instead of the `)` needed.",
+      "score": 4.0
+    },
+    {
+      "id": "K0252/franco",
+      "rationale": "Caret and 'this line ends with :' point at line 3 (`dala ra2isi():`), but the empty block belongs to line 1, so it misleads.",
+      "score": 2.0
+    },
+    {
+      "id": "K0253/ar",
+      "rationale": "Clear one-problem message with both fixes (a value or escaped braces).",
+      "score": 4.5
+    },
+    {
+      "id": "K0254/en",
+      "rationale": "Clear reason, exact caret and a fix with an example of the right argument order.",
+      "score": 5.0
+    },
+    {
+      "id": "K0255/en",
+      "rationale": "Clear rule and fix, but the caret covers only `limit`, not the statement, and there is no why.",
+      "score": 4.0
+    },
+    {
+      "id": "K0256/franco",
+      "rationale": "Rule, reason (readers see dependencies first), concrete fix and kalam fmt.",
+      "score": 5.0
+    },
+    {
+      "id": "K0259/en",
+      "rationale": "Polite and actionable for a pathological input, but it does not state the nesting limit.",
+      "score": 4.0
+    },
+    {
+      "id": "K0302/ar",
+      "rationale": "Reason and fix are clear, but the caret spans `علني مغلق دالة answer` instead of `مغلق`.",
+      "score": 4.0
+    },
+    {
+      "id": "K0303/en",
+      "rationale": "Secondary label at the private type, a clear why, and two concrete fixes.",
+      "score": 5.0
+    },
+    {
+      "id": "K0401/ar",
+      "rationale": "Try `name` is exactly right; the scope explanation uses jargon (التمهيد) and the help is long.",
+      "score": 4.5
+    },
+    {
+      "id": "K0405/franco",
+      "rationale": "Both sites labelled and the reason given, but an irrelevant tip about ال/el_ type naming adds load.",
+      "score": 4.0
+    },
+    {
+      "id": "K0413/en",
+      "rationale": "Clear reason, but a spec section reference reads as jargon and no alternative name is suggested.",
+      "score": 4.0
+    },
+    {
+      "id": "K0416/ar",
+      "rationale": "Reason and an example, but the two `x: ` / `y: ` Try fragments are terse.",
+      "score": 4.5
+    },
+    {
+      "id": "K0417/franco",
+      "rationale": "Explains why `with` is reserved and suggests a concrete new name.",
+      "score": 4.5
+    },
+    {
+      "id": "K0420/franco",
+      "rationale": "The `length -> len` mapping is useful but buried in a list (no direct Try), the caret spans the whole call and the API-checking sentence is noise.",
+      "score": 4.0
+    },
+    {
+      "id": "K0600/franco",
+      "rationale": "Label and Try ` // ` are right, but it never says `/` always gives kasri, and the generic help points to .to_float/.round.",
+      "score": 3.5
+    },
+    {
+      "id": "K0601/en",
+      "rationale": "Clear why (no implicit conversion), Try and both conversions explained.",
+      "score": 4.5
+    },
+    {
+      "id": "K0602/en",
+      "rationale": "Accurate, but the fix is generic and the crypto.equal sentence about secrets is irrelevant.",
+      "score": 3.5
+    },
+    {
+      "id": "K0612/en",
+      "rationale": "Strong reason and fixes, but the caret is on the type name, not the Secret field or the derive.",
+      "score": 4.0
+    },
+    {
+      "id": "K0650/ar",
+      "rationale": "Strong reason (bytes vs code points vs graphemes) and concrete alternatives; no worked example.",
+      "score": 4.5
+    },
+    {
+      "id": "K0710/franco",
+      "rationale": "Explains what a place is; the second fix ('give it to the variable it came from') is vague.",
+      "score": 4.0
+    },
+    {
+      "id": "K0720/franco",
+      "rationale": "Correct with a pattern example, but no rewrite of this condition and only a thin why.",
+      "score": 4.0
+    },
+    {
+      "id": "K0730/franco",
+      "rationale": "Accurate with a good analogy and concrete fixes; small wording slips.",
+      "score": 4.5
+    },
+    {
+      "id": "K0731/en",
+      "rationale": "Clear reason and fix, but the grammar slips ('a `else`', twice) and there is no example.",
+      "score": 4.0
+    },
+    {
+      "id": "K0801/en",
+      "rationale": "Explains where lambda types come from and gives the exact annotated rewrite.",
+      "score": 5.0
+    },
+    {
+      "id": "K0802/ar",
+      "rationale": "Explains why an empty literal has no type and shows an annotated example.",
+      "score": 5.0
+    },
+    {
+      "id": "K0803/franco",
+      "rationale": "Clear reason, but the fix uses a placeholder `EsmElType.Red` rather than `Light.Red`.",
+      "score": 4.0
+    },
+    {
+      "id": "K0901/en",
+      "rationale": "Names the foreign operator, explains strictness, Try `==` and kalam fix.",
+      "score": 5.0
+    },
+    {
+      "id": "K0902/ar",
+      "rationale": "Names the foreign keyword, Try `دالة` and a full signature template.",
+      "score": 5.0
+    },
+    {
+      "id": "K0903/franco",
+      "rationale": "Try `walla law` in the file's skin, the form explained and kalam fix.",
+      "score": 5.0
+    },
+    {
+      "id": "K0904/ar",
+      "rationale": "Short, accurate, says how statements end and covers both `;` and `؛`.",
+      "score": 5.0
+    },
+    {
+      "id": "K0905/franco",
+      "rationale": "Explains blocks and the full manual fix; the Try covers only the `:` part.",
+      "score": 4.5
+    },
+    {
+      "id": "K0906/franco",
+      "rationale": "Explains the optional type, Try `mafeesh` and why the compiler checks it.",
+      "score": 5.0
+    },
+    {
+      "id": "K0907/ar",
+      "rationale": "Clear and actionable, but cites internal decision 'D12' as if the reader knew it.",
+      "score": 4.5
+    },
+    {
+      "id": "K0908/en",
+      "rationale": "Explains Result-based errors with three concrete paths; no code example.",
+      "score": 4.5
+    },
+    {
+      "id": "K0909/ar",
+      "rationale": "Exact caret, Try ` += 1`, reason and the متغير requirement.",
+      "score": 5.0
+    },
+    {
+      "id": "K0910/ar",
+      "rationale": "The help gives the full form, but the three Try fragments are hard to picture.",
+      "score": 4.5
+    },
+    {
+      "id": "K0911/en",
+      "rationale": "Concise reason, Try `not ` and the full operator mapping.",
+      "score": 5.0
+    },
+    {
+      "id": "K0912/franco",
+      "rationale": "Maps both foreign forms to khali/motghayer with a Try.",
+      "score": 5.0
+    },
+    {
+      "id": "K0913/en",
+      "rationale": "Explains interpolation and gives the exact edit for both foreign forms.",
+      "score": 5.0
+    },
+    {
+      "id": "K0914/franco",
+      "rationale": "Clear rule and example `qamoos[K, V]`; the two bracket Try fragments are terse.",
+      "score": 4.5
+    },
+    {
+      "id": "K0915/en",
+      "rationale": "Explains why unwrap is refused, Try `expect(\"…\")` and alternatives.",
+      "score": 5.0
+    },
+    {
+      "id": "K0917/franco",
+      "rationale": "Explains what the dot means, Try `.` and kalam fix.",
+      "score": 5.0
+    },
+    {
+      "id": "K0918/franco",
+      "rationale": "Exact Try `xs.len()` and the mapping for str/int.",
+      "score": 5.0
+    },
+    {
+      "id": "K0919/en",
+      "rationale": "Exact rewrite `Money as Show`, but no reason beyond 'Rust's order'.",
+      "score": 4.5
+    },
+    {
+      "id": "K0920/ar",
+      "rationale": "Maps class/struct/interface to هيكل/سمة with a Try and a template.",
+      "score": 5.0
+    },
+    {
+      "id": "K0921/franco",
+      "rationale": "Correct with Try `dala double`, but no picture of the resulting code and the help wording is clumsy.",
+      "score": 4.0
+    },
+    {
+      "id": "K0922/ar",
+      "rationale": "Explains inference and gives the annotated alternative, but the example `ليكن r: T = f(x)` is generic, not this call.",
+      "score": 4.5
+    },
+    {
+      "id": "K0923/ar",
+      "rationale": "Clear fix `a.pow(b)`, but the `.pow(` / `)` Try fragments are terse.",
+      "score": 4.5
+    },
+    {
+      "id": "K0924/en",
+      "rationale": "Exact Try `\"done\"`, but it does not say what single quotes are for.",
+      "score": 4.5
+    },
+    {
+      "id": "K0925/ar",
+      "rationale": "A full rewritten match in the Arabic skin plus the `_` hint.",
+      "score": 5.0
+    },
+    {
+      "id": "K0926/franco",
+      "rationale": "Exact Try ` i fi 0..items.len()` and the inclusive-range hint.",
+      "score": 5.0
+    },
+    {
+      "id": "K1001/en",
+      "rationale": "Names the missing variant, a Try arm and why explicit arms beat `_`.",
+      "score": 5.0
+    },
+    {
+      "id": "K1002/ar",
+      "rationale": "Clear why and fix, with the likely cause named; no example.",
+      "score": 4.5
+    },
+    {
+      "id": "K1003/en",
+      "rationale": "Correct but the reason is vague ('nowhere to go') and 'use match' has no example.",
+      "score": 3.5
+    },
+    {
+      "id": "K1004/franco",
+      "rationale": "Accurate with a good why, but no example of a fixed pattern.",
+      "score": 4.0
+    },
+    {
+      "id": "K1101/en",
+      "rationale": "Try `return ` is right, but it never says that the last expression is not returned, and the else-branch help doesn't fit this body.",
+      "score": 3.5
+    },
+    {
+      "id": "K1103/franco",
+      "rationale": "Does not name the candidate traits (Named, Tagged) and the fix is a generic `Trait.label(x)`.",
+      "score": 3.5
+    },
+    {
+      "id": "K1104/en",
+      "rationale": "Clear reason and label Try, but the Try leaves `from` positional while the help example labels it, and the Try comes in fragments.",
+      "score": 4.0
+    },
+    {
+      "id": "K1106/ar",
+      "rationale": "Says 'either a duplicate impl or the orphan rule' without saying which applies, plus jargon (قاعدة اليتيم).",
+      "score": 3.0
+    },
+    {
+      "id": "K1110/ar",
+      "rationale": "Good reason and fix, but the Try names `snapshot` while the help says `لقطة`, in two fragments.",
+      "score": 4.0
+    },
+    {
+      "id": "K1202/ar",
+      "rationale": "Try `ليكن`, the reason (no global mutable state) and the Cell alternative.",
+      "score": 5.0
+    },
+    {
+      "id": "K1203/en",
+      "rationale": "Strong reason and fix, but the example lists std/http names for a std/math import.",
+      "score": 4.5
+    },
+    {
+      "id": "K1204/franco",
+      "rationale": "The label is good, but the opening sentence is vague and the rule list is dense and heavy.",
+      "score": 3.5
+    },
+    {
+      "id": "K1301/franco",
+      "rationale": "Two complete Try alternatives, but the message does not name ParseFail/LoadFail.",
+      "score": 4.0
+    },
+    {
+      "id": "K1302/franco",
+      "rationale": "Explains the Option/Result mismatch and gives the exact `.ok_or(...)` Try.",
+      "score": 5.0
+    },
+    {
+      "id": "K1303/franco",
+      "rationale": "Strong why (silent failure) and three concrete fixes.",
+      "score": 4.5
+    },
+    {
+      "id": "K1401/en",
+      "rationale": "The call chain label is helpful, but it never says why @sync is required here.",
+      "score": 4.0
+    },
+    {
+      "id": "K1402/en",
+      "rationale": "Clear with a chain label, but 'suspend' jargon and no example of moving the I/O out.",
+      "score": 4.0
+    },
+    {
+      "id": "K1501/ar",
+      "rationale": "Clear capability reason, but the 'or decode it' clause doesn't apply and there is no example of رئيسي(world).",
+      "score": 4.0
+    },
+    {
+      "id": "K1503/ar",
+      "rationale": "Clear why and fix, but not specialized to `env.secret(\"STRIPE_API_KEY\")`.",
+      "score": 4.5
+    },
+    {
+      "id": "K1601/en",
+      "rationale": "Explains injection and the Try rewrites to a sql literal; the Try comes in two fragments.",
+      "score": 4.5
+    },
+    {
+      "id": "K1602/franco",
+      "rationale": "Explains parameter binding and shows the exact quote-free form.",
+      "score": 5.0
+    },
+    {
+      "id": "K1603/franco",
+      "rationale": "Explains why holes cannot be names and gives sql.ident; no full example.",
+      "score": 4.5
+    },
+    {
+      "id": "K1604/en",
+      "rationale": "Clear rule and fix, but the caret covers the whole literal instead of the `;`.",
+      "score": 4.0
+    },
+    {
+      "id": "K1605/ar",
+      "rationale": "Clear why and a simple fix; no example.",
+      "score": 4.5
+    },
+    {
+      "id": "K1610/ar",
+      "rationale": "Lists three possible faults without saying which (the unclosed <b>), and the caret covers the whole literal.",
+      "score": 3.0
+    },
+    {
+      "id": "K1612/franco",
+      "rationale": "Explains script-context danger and gives the json-island pattern.",
+      "score": 4.5
+    },
+    {
+      "id": "K1613/ar",
+      "rationale": "Explains the javascript: risk with two concrete constructions.",
+      "score": 5.0
+    },
+    {
+      "id": "K1614/ar",
+      "rationale": "Clear reason and fix, including Attrs for dynamic sets.",
+      "score": 4.5
+    },
+    {
+      "id": "K1615/ar",
+      "rationale": "Exact reason (the --> breakout) with two concrete fixes.",
+      "score": 5.0
+    },
+    {
+      "id": "K1616/franco",
+      "rationale": "Explains the Message requirement and gives the exact `{ Msg.Save }` form.",
+      "score": 5.0
+    },
+    {
+      "id": "K1617/franco",
+      "rationale": "Caret spans the whole literal instead of `k-frobnicate`, and no closest-match suggestion is given.",
+      "score": 3.5
+    },
+    {
+      "id": "K1620/franco",
+      "rationale": "Caret spans the whole literal instead of `|`, and `proc.pipe([...])` has no example.",
+      "score": 3.5
+    },
+    {
+      "id": "K1621/en",
+      "rationale": "Precise caret, clear security reason and a match-per-program fix.",
+      "score": 4.5
+    },
+    {
+      "id": "K1631/ar",
+      "rationale": "Clear reason (a value could redirect the request to another server) and a concrete fix.",
+      "score": 4.5
+    },
+    {
+      "id": "SEC0100/en",
+      "rationale": "A mid-file U+FEFF is reported as 'file encoding' with a hedged 'or bytes that are not UTF-8', and the fmt fix speaks of a BOM.",
+      "score": 3.0
+    },
+    {
+      "id": "SEC0101/franco",
+      "rationale": "Exact Try `é` and a clear NFC reason; 'kalam' (text) reads ambiguously next to Kalam.",
+      "score": 4.5
+    },
+    {
+      "id": "SEC0102/en",
+      "rationale": "Try `\\u{7}` and a clear reason; the character name (BEL) is missing (double space).",
+      "score": 4.5
+    },
+    {
+      "id": "SEC0103/en",
+      "rationale": "Names the character, explains the risk, Try and kalam fix.",
+      "score": 5.0
+    },
+    {
+      "id": "SEC0104/en",
+      "rationale": "Code points for both names, a declaration label and a clear why.",
+      "score": 5.0
+    },
+    {
+      "id": "SEC0105/ar",
+      "rationale": "Correct caret on the Cyrillic letter, but the character name is missing and the names.toml advice is off-topic.",
+      "score": 4.0
+    },
+    {
+      "id": "SEC0106/ar",
+      "rationale": "Character name missing (U+064F with a blank) and the replacement sentence is garbled.",
+      "score": 3.5
+    },
+    {
+      "id": "SEC0110/en",
+      "rationale": "Names the character, the Trojan Source risk and the escape alternative.",
+      "score": 5.0
+    },
+    {
+      "id": "SEC0111/en",
+      "rationale": "Clear Try and fix, but the 'names look the same' reason fits code, not this string.",
+      "score": 4.5
+    },
+    {
+      "id": "SEC0112/en",
+      "rationale": "Doesn't say which category U+E000 is (private use); it lists four.",
+      "score": 4.0
+    },
+    {
+      "id": "SEC0113/ar",
+      "rationale": "Names the character and both fixes; the Try escape and the `\\n` advice differ slightly.",
+      "score": 4.5
+    },
+    {
+      "id": "SEC0120/en",
+      "rationale": "Accurate, but the hedged 'or uses the other separator' adds doubt and there is no Try.",
+      "score": 4.0
+    },
+    {
+      "id": "SEC0121/en",
+      "rationale": "Strong why with concrete lookalike pairs; no Try `7`.",
+      "score": 4.5
+    },
+    {
+      "id": "SEC0123/ar",
+      "rationale": "Explains the triple lookalike and gives Try `_` with an example.",
+      "score": 5.0
+    },
+    {
+      "id": "SEC0124/en",
+      "rationale": "Explains the lookalike risk and gives Try `1` and kalam fix.",
+      "score": 5.0
+    }
+  ]
+}

@@ -20,7 +20,10 @@
 //!   more. An exported signature that names a private type of its own module is K0303.
 //! - **One namespace per scope** (DR-11) and **no shadowing** (DR-28, §10.1): a declaration
 //!   that reuses a name visible at that point (an enclosing local or parameter, a module
-//!   item, an import or a prelude name) is K0405; declaring a core name (§7.2) is K0413
+//!   item, an import or a prelude name) is K0405, with a rename fix-it (§10.1; the new name
+//!   follows the skin's convention for values, `الشكل`/`el_shape`/`shape`, then `name_2`,
+//!   and it is machine-applicable unless the name is a function parameter's call-site label
+//!   or exported); declaring a core name (§7.2) is K0413
 //!   (`fn main` at module level is the one allowed core-name declaration). That covers item
 //!   names, local `fn`s and bare core names in `let`/`for`/`case` patterns (`let Int = 1`);
 //!   the positions where the AST keeps a plain identifier (`var`, parameters, `as`, list
@@ -71,7 +74,9 @@
 //! Stdlib modules ([`SourceModule::std`]) come from a directory of signature stubs
 //! (`stdlib/src/http.kl` is `std/http`). When `std/prelude` is among them, its exports *are*
 //! the prelude: they replace the built-in prelude symbols of the same name (so `Ordering`,
-//! `Cell` and `Show` resolve to their stub declarations), and its core-named declarations
+//! `Cell` and `Show` resolve to their stub declarations; the built-in prelude has a symbol
+//! for every name `std/prelude` exports, so a file resolved alone knows the same names,
+//! FOUNDER-QUEUE Q34), and its core-named declarations
 //! (`export extern type Int`) are the core names' stubs ([`Program::core_stub`]). Stdlib
 //! modules may declare core names and prelude names, and a stdlib parameter may share its
 //! name with a module item (parameter names are API labels: `serve(router: …)` next to
@@ -128,6 +133,9 @@ use kalam_diagnostics::Diagnostic;
 use kalam_skins::Concept;
 
 pub use skeleton::skeleton;
+/// The "did you mean" of K0401, for the type checker's K0401 on `.V` (FOUNDER-QUEUE Q34:
+/// it reports what resolve reports when resolve knows the whole program).
+pub use suggest::closest;
 
 /// A definition anywhere in the program (item, local, parameter, prelude item).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]

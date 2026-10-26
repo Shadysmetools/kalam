@@ -1,0 +1,8 @@
+@derive(Message)
+تعداد Msg:
+    Save
+
+دالة رئيسي():
+    ليكن count = 1
+    ليكن page = html"""<button k-click="{count}">ok</button>"""
+    اطبع("{page}")

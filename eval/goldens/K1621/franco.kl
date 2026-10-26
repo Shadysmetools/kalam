@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali program = "git"
+    khali command = cmd"{program} --version"
+    ektb("{command}")

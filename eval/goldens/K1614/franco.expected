@@ -1,0 +1,10 @@
+-- HOLE F ESM TAG AW ATTRIBUTE --------------------------- main.franco.kl  K1614
+
+El hole di f esm tag aw esm attribute. W el asamy heya elly bet7added el markup bey3mel eh, fa lazem tetketeb f el literal nafso.
+
+3│     khali page = html"""<{tag}>hi</p>"""
+                             ^^^
+
+Mosa3da: Ekteb el esm zay ma howa. W l magmoo3et attributes btetghayar, esta5dem `Attrs` elly asameeha list sabta.
+
+E3raf aktar: kalam explain K1614

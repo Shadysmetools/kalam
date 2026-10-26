@@ -1,0 +1,10 @@
+-- SUSPENDING FUNCTION WHERE @sync IS REQUIRED ------------------ main.kl  K1401
+
+This function is passed where a `@sync` function is required, but it can suspend: somewhere in its calls it waits for I/O or a timer. The chain of calls shows where.
+
+9│     print("{apply(step, 1)}")
+                     ^^^^ `step` calls `exists` (suspends)
+
+Help: Move the waiting call out of this function (do the I/O before or after, and pass the result in), or pass a function that doesn't suspend.
+
+Learn more: kalam explain K1401

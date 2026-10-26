@@ -1,0 +1,10 @@
+-- HOLE F SCRIPT AW STYLE -------------------------------- main.franco.kl  K1612
+
+El hole di f makan byeshtaghal ka code: attribute `on*`, aw attribute `style`, aw gowa `<script>` aw `<style>`. W mafeesh escape yekhalli el qeema amna henak.
+
+3│     khali page = html"""<script>{name}</script>"""
+                                    ^^^^
+
+Mosa3da: Ba3at el data lel scripts b `{ json(x) }` gowa `<script type="application/json">`, w ekhtar el styles b class badal hole f style.
+
+E3raf aktar: kalam explain K1612

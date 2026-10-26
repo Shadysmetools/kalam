@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali home = "https://example.com"
+    khali page = html"""<a href="{home}">home</a>"""
+    ektb("{page}")

@@ -5,8 +5,10 @@
 2│     switch n {
        ^^^^^^^^^^
 
-Garrab: `hasab n:
-        lama 0: rag3 "zero"`
+Garrab:
+
+    hasab n:
+        lama 0: rag3 "zero"
 
 Mosa3da: Ekteb `hasab x:` w ta7taha, maza7a, `lama pattern: natiga` l kol far3. W esta5dem `_` ka pattern l "ay 7aga tanya". `kalam fix` bey3mel keda lak.
 

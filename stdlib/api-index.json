@@ -2069,6 +2069,54 @@
       "doc": "The absolute value. Panics on the minimum `Int`."
     },
     {
+      "path": "Int.bit_and",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "bit_and",
+      "owner": "Int",
+      "receiver": "impl Int",
+      "signature": "fn bit_and(self, other: Int) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Bitwise AND of the 64-bit two's complement forms (Kalam has no `&`)."
+    },
+    {
+      "path": "Int.bit_or",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "bit_or",
+      "owner": "Int",
+      "receiver": "impl Int",
+      "signature": "fn bit_or(self, other: Int) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Bitwise OR of the 64-bit two's complement forms (Kalam has no `|`)."
+    },
+    {
+      "path": "Int.bit_xor",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "bit_xor",
+      "owner": "Int",
+      "receiver": "impl Int",
+      "signature": "fn bit_xor(self, other: Int) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Bitwise exclusive OR of the 64-bit two's complement forms (Kalam has no `^`)."
+    },
+    {
       "path": "Int.checked_add",
       "module": "std/prelude",
       "kind": "method",
@@ -2117,6 +2165,22 @@
       "doc": "`self - other`, or `None` on overflow."
     },
     {
+      "path": "Int.pow",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "pow",
+      "owner": "Int",
+      "receiver": "impl Int",
+      "signature": "fn pow(self, exponent: Int) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`self` raised to the power `exponent` (Kalam has no `**`). Panics on overflow and on a negative exponent. `0.pow(0)` is 1."
+    },
+    {
       "path": "Int.saturating_add",
       "module": "std/prelude",
       "kind": "method",
@@ -2131,6 +2195,38 @@
       ],
       "spellings": null,
       "doc": "`self + other`, clamped to the 64-bit bounds."
+    },
+    {
+      "path": "Int.shift_left",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "shift_left",
+      "owner": "Int",
+      "receiver": "impl Int",
+      "signature": "fn shift_left(self, by: Int) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "The 64-bit two's complement form shifted left by `by` bits; bits shifted out are dropped. Panics when `by` is outside `0..=63`."
+    },
+    {
+      "path": "Int.shift_right",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "shift_right",
+      "owner": "Int",
+      "receiver": "impl Int",
+      "signature": "fn shift_right(self, by: Int) -> Int",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "Arithmetic shift right by `by` bits: the sign is kept, so the result is `self` divided by 2 to the power `by`, rounded down. Panics when `by` is outside `0..=63`."
     },
     {
       "path": "Int.to_float",

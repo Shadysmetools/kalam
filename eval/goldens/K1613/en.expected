@@ -1,0 +1,10 @@
+-- URL ATTRIBUTE NEEDS A URL ------------------------------------ main.kl  K1613
+
+This hole fills a URL attribute (such as `href` or `src`), so its value must be a `Url`, not a `String`. A string could be a `javascript:` link.
+
+3│     let page = html"""<a href="{home}">home</a>"""
+                                   ^^^^
+
+Help: Build the link with a `url"..."` literal, or parse text with `Url.parse(s)`, which refuses `javascript:`, `data:` and `vbscript:`.
+
+Learn more: kalam explain K1613

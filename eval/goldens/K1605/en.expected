@@ -1,0 +1,10 @@
+-- SQL HOLE INSIDE A COMMENT ------------------------------------ main.kl  K1605
+
+This hole is inside an SQL comment, so the database would never see its value. It is almost always a leftover from editing the query.
+
+3│     let q = sql"SELECT id FROM users /* {name} */"
+                                            ^^^^
+
+Help: Move the hole out of the comment, or delete it.
+
+Learn more: kalam explain K1605

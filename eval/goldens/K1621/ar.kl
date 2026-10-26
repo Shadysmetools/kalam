@@ -1,0 +1,4 @@
+دالة رئيسي():
+    ليكن program = "git"
+    ليكن command = cmd"{program} --version"
+    اطبع("{command}")

@@ -1,0 +1,10 @@
+-- UNKNOWN k-* ATTRIBUTE ---------------------------------------- main.kl  K1617
+
+I don't know this `k-` attribute. The `k-` prefix is reserved for Kalam's own directives, so a misspelled one would otherwise do nothing at all.
+
+3│     let page = html"""<button k-frobnicate="go">{name}</button>"""
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Help: Check the spelling against the known directives: `k-click`, `k-submit`, `k-input`, `k-change`, `k-get`, `k-post`, `k-target` and `k-swap`.
+
+Learn more: kalam explain K1617

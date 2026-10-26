@@ -321,12 +321,111 @@ fn tagged_literals_are_refused_before_anything_runs() {
 }
 
 /// Q19 counterexample (typeck finding, M2 iter 3): the checker accepts `Ok(1).is_ok()`
-/// although nothing fixes the error type `E`, so `Result[Int, ?]` reaches KIR and the run
-/// stops with an internal error instead of either a compile error (K0802-like "needs an
-/// expected type") or a defaulted type. Un-ignore once typeck rejects or defaults it.
+/// although nothing fixes the error type `E`, so `Result[Int, ?]` reaches lowering. Since
+/// M2 iter 4 a type left open never reaches a backend: lowering refuses it fail-closed
+/// (exit 2; `kalam_ir::verify::first_open_type`, unit-tested there) instead of an internal
+/// error. Since the M2 iter 4 typeck change, the checker defaults it (`E` = `Never`), so the
+/// program type-checks and runs.
 #[test]
-#[ignore = "typeck lets an uninferred type argument through (reported to the typeck owner)"]
 fn an_uninferred_type_argument_never_reaches_the_interpreter() {
     let r = run("fn main():\n    let b = Ok(1).is_ok()\n    print(\"{b}\")\n");
     assert!(r.exit == 0 || r.exit == 1, "exit {}: {}", r.exit, r.stderr);
+}
+
+/// Q33: module constants are evaluated eagerly at start, in dependency order, so a
+/// constant that panics stops the program before `main` prints anything, whether or not
+/// `main` uses it. (When the checker learns K1204 it rejects these at compile time; then
+/// nothing runs either: exit 1 with K1204.)
+#[test]
+fn module_constants_are_evaluated_eagerly_before_main() {
+    for src in [
+        "let BOOM = 1 // 0\n\nfn main():\n    print(\"before\")\n    print(\"{BOOM}\")\n",
+        "let N = 3\nlet BOOM = 1 // 0\n\nfn main():\n    print(\"before {N}\")\n",
+        "let A = B + 1\nlet B = 1 // 0\n\nfn main():\n    print(\"before {A}\")\n",
+    ] {
+        let r = run(src);
+        assert_eq!(r.stdout, "", "{src}");
+        match r.exit {
+            101 => {
+                assert!(r.stderr.contains("division by zero"), "{}", r.stderr);
+                let line = if src.starts_with("let A") {
+                    2
+                } else {
+                    src.lines().position(|l| l.contains("1 // 0")).unwrap() + 1
+                };
+                assert!(
+                    r.stderr.contains(&format!("main.kl:{line}:")),
+                    "{}",
+                    r.stderr
+                );
+            }
+            1 => assert!(r.stderr.contains("K1204"), "{}", r.stderr),
+            other => panic!("exit {other}: {}", r.stderr),
+        }
+    }
+}
+
+/// Task 2 (M2 iter 4): a program the interpreter cannot run (a type nothing fixes; a
+/// stub-only stdlib call whose result type stays open) is refused with exit 2 before
+/// anything runs, never an internal error (exit 70) from an ill-formed KIR. Which refusal
+/// fires depends on the checker (it may default the open type); the open-type path itself
+/// is unit-tested in `kalam_ir::verify`.
+#[test]
+fn programs_the_interpreter_cannot_run_never_end_in_an_internal_error() {
+    // The checker may default or reject the open `E` (the typeck owner's choice); either
+    // way the run is never an internal error.
+    let r = run("fn main():\n    let b = Ok(1).is_ok()\n    print(\"{b}\")\n");
+    match r.exit {
+        0 => assert_eq!(r.stdout, "true\n"),
+        1 | 2 => assert_eq!(r.stdout, "", "{}", r.stderr),
+        other => panic!("exit {other}: {}", r.stderr),
+    }
+    for src in [
+        "use std/http\n\nfn main():\n    let r = http.router()\n    print(\"x\")\n",
+        "use std/http as web\n\nfn main():\n    let r = web.router()\n    print(\"x\")\n",
+    ] {
+        let r = run(src);
+        assert_eq!((r.exit, r.stdout.as_str()), (2, ""), "{src}\n{}", r.stderr);
+        assert!(r.stderr.starts_with("cannot run `main.kl`"), "{}", r.stderr);
+    }
+}
+
+/// Q36: the spec's `Int` methods (§5.9). `pow` traps on overflow (D18) and refuses a
+/// negative exponent; the bit methods work on the 64-bit two's complement form; a shift
+/// amount outside `0..=63` panics; `shift_right` is arithmetic (it floors).
+#[test]
+fn int_pow_and_bit_methods_follow_the_spec() {
+    ok(
+        "fn main():\n    let (two, one, zero, m1) = (2, 1, 0, -1)\n    let big = 9223372036854775807\n    print(\"{two.pow(62)} {two.pow(0)} {zero.pow(0)} {zero.pow(5)} {m1.pow(big)} {one.pow(big)} {m1.pow(4)}\")\n    let n = -2\n    print(\"{n.pow(63)} {(-3).pow(3)} {3037000499.pow(2)}\")\n    print(\"{12.bit_and(10)} {12.bit_or(10)} {12.bit_xor(10)} {m1.bit_and(255)} {n.bit_xor(m1)}\")\n    print(\"{one.shift_left(62)} {one.shift_left(63)} {m1.shift_left(63)} {big.shift_left(1)} {5.shift_left(0)}\")\n    print(\"{big.shift_right(62)} {n.shift_right(1)} {m1.shift_right(63)} {(-7).shift_right(1)} {7.shift_right(63)}\")\n",
+        "4611686018427387904 1 1 0 -1 1 1\n-9223372036854775808 -27 9223372030926249001\n8 14 6 255 1\n4611686018427387904 -9223372036854775808 -9223372036854775808 -2 5\n1 -1 -1 -4 0\n",
+    );
+    for (expr, msg) in [
+        ("two.pow(63)", "integer overflow"),
+        ("(0 - two).pow(64)", "integer overflow"),
+        ("3037000500.pow(2)", "integer overflow"),
+        ("two.pow(-1)", "negative exponent"),
+        ("two.shift_left(64)", "shift amount 64"),
+        ("two.shift_left(-1)", "shift amount -1"),
+        ("two.shift_right(64)", "shift amount 64"),
+    ] {
+        let src = format!(
+            "fn main():\n    let two = 2\n    print(\"before\")\n    print(\"{{{expr}}}\")\n"
+        );
+        panics(&src, "before\n", msg);
+    }
+}
+
+/// Q33: every constant is evaluated at start, so one the M2 lowering cannot represent
+/// refuses the whole program (exit 2, nothing printed) even when `main` never uses it;
+/// leaving it out would hide whatever its initializer does.
+#[test]
+fn an_unused_constant_that_cannot_be_lowered_refuses_the_program() {
+    let r = run("let F = fn(x: Int) -> Int => x + 1\n\nfn main():\n    print(\"x\")\n");
+    assert_eq!(r.stdout, "", "{}", r.stderr);
+    match r.exit {
+        2 => assert!(r.stderr.contains("line 1:"), "{}", r.stderr),
+        // If the checker rules the initializer non-constant (K1204), nothing runs either.
+        1 => assert!(r.stderr.contains("K1204"), "{}", r.stderr),
+        other => panic!("exit {other}: {}", r.stderr),
+    }
 }

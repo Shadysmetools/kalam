@@ -1,0 +1,10 @@
+-- SQL HOLE INSIDE QUOTES --------------------------------------- main.kl  K1602
+
+This hole is inside SQL quotes. Values in holes are sent to the database as parameters, never pasted into the text, so the quotes would make it a literal string.
+
+3│     let q = sql"SELECT id FROM users WHERE name = '{name}'"
+                                                       ^^^^
+
+Help: Remove the quotes around the hole: write `name = { name }`, not `name = '{ name }'`.
+
+Learn more: kalam explain K1602

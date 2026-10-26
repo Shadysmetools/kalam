@@ -1,0 +1,4 @@
+fn main():
+    let program = "git"
+    let command = cmd"{program} --version"
+    print("{command}")

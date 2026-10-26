@@ -5,6 +5,8 @@ El `?` di 3ala `ekhtiyari`, bas el dala betraga3 `natiga`. W el qeema el msh maw
 2│     khali n = xs.get(0)?
                  ^^^^^^^^^^
 
+Garrab: `.ok_or("qeema mesh mawgooda")`
+
 Mosa3da: 7awel el qeema el msh mawgooda l error el awel: `.ok_or(error)?`.
 
 E3raf aktar: kalam explain K1302

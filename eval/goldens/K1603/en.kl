@@ -1,0 +1,4 @@
+fn main():
+    let column = "name"
+    let q = sql"SELECT id FROM users ORDER BY {column}"
+    print("{q}")

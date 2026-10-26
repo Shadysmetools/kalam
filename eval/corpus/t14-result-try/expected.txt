@@ -13,7 +13,7 @@ stderr: ignore
 "-7" -> out of range: -7
 "abc" -> not a number: abc
 "" -> empty input
-"9007199254740992" -> not a number: 9007199254740992
+"9007199254740992" -> out of range: 9007199254740992
 "200" -> out of range: 200
 total = 49
 stopped: not a number: x1

@@ -2,6 +2,8 @@
 
 `کتاب` (U+06A9 U+062A U+0627 U+0628) and `كتاب` (U+0643 U+062A U+0627 U+0628) are two different names in this scope that look the same once lookalike letters are folded together (for example `ي` and `ى`, `ك` and `ک`, or a Latin letter and its Cyrillic twin). A reader can't tell which of the two a line uses.
 
+2│     let كتاب = "a"
+           ---- `كتاب` is declared here
 3│     let کتاب = "b"
            ^^^^
 

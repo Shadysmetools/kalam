@@ -1,0 +1,10 @@
+-- DALA BTE3MEL SUSPEND MAKAN @sync ---------------------- main.franco.kl  K1401
+
+El dala di metba3ata f makan 3ayez dala `@sync`, bas heya momken te3mel suspend: f 7etta men el calls bta3etha btestanna I/O aw timer. W selselet el calls bet-warrik fein.
+
+9│     ektb("{apply(step, 1)}")
+                    ^^^^ `step` betnady `exists` (w di bte3mel suspend)
+
+Mosa3da: Na2al el call elly bystanna bara el dala di (e3mel el I/O 2ablaha aw ba3daha w ba3at el natiga leeha), aw ba3at dala mabte3melsh suspend.
+
+E3raf aktar: kalam explain K1401

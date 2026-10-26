@@ -45,3 +45,7 @@ Minor design forks the loop decided provisionally. Each one is reversible. Confi
 | Q37 | Extra bounds on a trait-impl method | Callers always see the trait's signature (the K1107 erratum); the implementation is fixed to match | M2 iter 3 |
 | Q38 | SEC0104 between all-ASCII lookalikes (`l` vs `1`) cannot "name a code point" | For all-ASCII collisions, quoting both identifiers satisfies the naming rule (harness rule erratum) | M2 iter 3 |
 | Q39 | T14 expected output was written under the old 53-bit `Int` | Regenerate expected.txt from ref.py under D18's 64-bit rules (a spec-driven fix to a protected file, recorded here) | M2 iter 3 |
+| Q40 | Decimal (and other non-Int) overflow in module constants | The compile-time evaluator also covers Decimal, so §13.4's "a constant that would panic is a compile error" holds for every type | M2 iter 4 verifier |
+| Q41 | Q37 scope when an impl declares fewer bounds than its trait | The trait's signature applies to every caller, concrete receivers included | M2 iter 4 |
+| Q42 | `kalam fix` acceptance rule | A machine fix must not add any new error code at any stage; otherwise it is withheld (shown as a suggestion only) | M2 iter 4 |
+| Q43 | A judge item whose golden changes after judging | The item is marked stale automatically and re-judged before the scorecard uses it | M2 iter 4 |

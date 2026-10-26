@@ -4,7 +4,7 @@
 //!            [--append --timestamp TS [--history FILE] [--git-sha SHA] [--outcome O] [--notes TEXT]]
 //! kalam-eval freeze    [--root DIR] [--target TIER] [--timestamp TS] [--holdout DIR]
 //! kalam-eval integrity [--root DIR] [--holdout DIR]
-//! kalam-eval holdout   --root DIR --store DIR [--include-m2]
+//! kalam-eval holdout   --root DIR --store DIR [--include-m2] [--kalam PATH]
 //! kalam-eval clauses   [--root DIR] [--write | --check]
 //! kalam-eval judge-sample [--root DIR] [--check]
 //! kalam-eval judge-ingest [--root DIR] --in FILE
@@ -53,7 +53,7 @@ const USAGE: &str = "usage:
              [--append --timestamp TS [--history FILE] [--git-sha SHA] [--outcome OUTCOME] [--notes TEXT]]
   kalam-eval freeze    [--root DIR] [--target TIER] [--timestamp TS] [--holdout DIR]
   kalam-eval integrity [--root DIR] [--holdout DIR]
-  kalam-eval holdout   --root DIR --store DIR [--include-m2]
+  kalam-eval holdout   --root DIR --store DIR [--include-m2] [--kalam PATH]
   kalam-eval clauses   [--root DIR] [--write | --check]
   kalam-eval judge-sample [--root DIR] [--check]
   kalam-eval judge-ingest [--root DIR] --in FILE
@@ -196,7 +196,7 @@ fn load_scorecard(root: &Path) -> Result<Scorecard, String> {
 }
 
 /// The sealed child: aggregate JSON on stdout, nothing on stderr, even on a panic.
-fn holdout_child(root: &Path, store: &Path, include_m2: bool) -> ExitCode {
+fn holdout_child(root: &Path, store: &Path, include_m2: bool, kalam: Option<&Path>) -> ExitCode {
     std::panic::set_hook(Box::new(|_| {}));
     let Ok(sc) = load_scorecard(root) else {
         return ExitCode::from(1);
@@ -209,7 +209,7 @@ fn holdout_child(root: &Path, store: &Path, include_m2: bool) -> ExitCode {
         .unwrap_or_default();
     let hook = parity::default_hook();
     match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        holdout::aggregate(store, root, hook.as_ref(), &scope, include_m2)
+        holdout::aggregate(store, root, hook.as_ref(), &scope, include_m2, kalam)
     })) {
         Ok(v) => {
             println!("{v}");
@@ -232,7 +232,7 @@ fn main() -> ExitCode {
         let (Some(root), Some(store)) = (&args.root, &args.store) else {
             return ExitCode::from(2);
         };
-        return holdout_child(root, store, args.include_m2);
+        return holdout_child(root, store, args.include_m2, args.kalam.as_deref());
     }
     let root = match args
         .root
@@ -333,6 +333,7 @@ fn main() -> ExitCode {
             exe,
             store,
             include_m2: false,
+            kalam: args.kalam.clone(),
         }),
         _ => None,
     };

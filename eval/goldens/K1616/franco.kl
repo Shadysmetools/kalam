@@ -1,0 +1,8 @@
+@derive(Message)
+ta3dad Msg:
+    Save
+
+dala ra2isi():
+    khali count = 1
+    khali page = html"""<button k-click="{count}">ok</button>"""
+    ektb("{page}")

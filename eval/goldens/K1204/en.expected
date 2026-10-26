@@ -1,0 +1,10 @@
+-- NOT A CONSTANT ----------------------------------------------- main.kl  K1204
+
+This has to be a constant, and the marked part isn't. A module-level `let` and a field's default may use only literals, constructors, other constants and operators, and must not panic; a module constant also can't hold a capability or a `Cell`.
+
+3│ let answer = load() + 1
+                ^^^^^^ a function call is not a constant expression
+
+Help: Compute the value inside `main` (or a function) and pass it down, or write it as a literal. For shared state, create the `Cell` in `main`.
+
+Learn more: kalam explain K1204

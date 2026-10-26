@@ -1,0 +1,10 @@
+-- HTML LITERAL MESH SALEEM ------------------------------ main.franco.kl  K1610
+
+Mesh ha2dar a2ra el `html"..."` da ka 7etta HTML saleema: fe tag mesh ma2fool aw metdakhel ghalat, aw qeemet attribute men gher quotes.
+
+2│     khali page = html"<p><b>hi</p>"
+                    ^^^^^^^^^^^^^^^^^^
+
+Mosa3da: E2fel kol tag bel tarteeb el ma3koos lel fat7, w 7ott kol qeemet attribute ben quotes.
+
+E3raf aktar: kalam explain K1610

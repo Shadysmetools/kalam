@@ -1,0 +1,14 @@
+-- STRING RAYEH L SINK ----------------------------------- main.franco.kl  K1601
+
+El makan da mestanny `Sql`, bas di `nass`. W el string el 3adi hena howa bab el injection, 3ashan keda el sink 3omro ma bey2bal string.
+
+4│     rag3 db.exec("DELETE FROM t WHERE city = '" + city + "'")
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Garrab: `sql"DELETE FROM t WHERE city = {`
+
+Garrab: `}"`
+
+Mosa3da: Ekteb el kalam ka tagged literal (`sql"..."` aw `html"..."` aw `cmd"..."`) w 7ott el qeyam f holes: kol hole byet3amallaha escape 7asab makanha.
+
+E3raf aktar: kalam explain K1601

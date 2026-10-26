@@ -1,0 +1,10 @@
+-- 7ARF SHELL F COMMAND ---------------------------------- main.franco.kl  K1620
+
+El literal `cmd"..."` da feeh 7arf shell zay `|` aw `;` aw `&` aw `>` aw `$(` bara el quotes. W Kalam 3omro ma beyshaghal shell, fa el 7arf kan hayewsal lel program ka nass 3adi.
+
+2│     khali command = cmd"ls -la | wc -l"
+                       ^^^^^^^^^^^^^^^^^^^
+
+Mosa3da: Esta5dem `proc.pipe([...])` lel pipelines, wel options `stdin:` w `stdout:` lel files.
+
+E3raf aktar: kalam explain K1620

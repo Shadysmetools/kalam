@@ -1,0 +1,4 @@
+fn main():
+    let name = "Sara"
+    let q = sql"SELECT id FROM users /* {name} */"
+    print("{q}")

@@ -1,0 +1,12 @@
+-- ANWA3 EL ARQAM MABTETKHALATSH ------------------------- main.franco.kl  K0601
+
+Mesh ha2dar agma3 ben `adad` w `kasri`. Kalam 3omro ma by7awel el arqam lewa7do, fa enta elly tekhtar ezay.
+
+4│     khali total = count + ratio
+                     ^^^^^^^^^^^^^
+
+Garrab: `.to_float()`
+
+Mosa3da: 7awel taraf wa7ed sara7a: `.to_float()` bete7tafez bel kasr, w `.round()` betsheelo.
+
+E3raf aktar: kalam explain K0601

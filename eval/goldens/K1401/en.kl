@@ -1,0 +1,9 @@
+fn apply(f: @sync fn(Int) -> Int, x: Int) -> Int => f(x)
+
+fn main(world: World):
+    let fs = world.fs
+    fn step(x: Int) -> Int:
+        if fs.exists(path"flag.txt"):
+            return x + 1
+        return x
+    print("{apply(step, 1)}")

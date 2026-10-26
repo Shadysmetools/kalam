@@ -160,6 +160,25 @@ const DESCRIPTIONS: &[(&str, &str, [&str; 3])] = &[
         ],
     ),
     (
+        "K0804",
+        "type",
+        [
+            "the type as far as it is known, with `_` for the missing part",
+            "النوع بالقدر المعروف منه، و`_` مكان الجزء الناقص",
+            "el type 3ala add ma howa ma3roof, w `_` makan el goz2 el na2es",
+        ],
+    ),
+    (
+        "K1108",
+        "type",
+        ["the record's type", "نوع السجل", "no3 el record"],
+    ),
+    (
+        "K1108",
+        "name",
+        ["the field's name", "اسم الحقل", "esm el field"],
+    ),
+    (
         "K0418",
         "name",
         [

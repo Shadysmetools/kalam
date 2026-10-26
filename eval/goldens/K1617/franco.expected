@@ -1,0 +1,10 @@
+-- ATTRIBUTE k-* MESH MA3ROOF ---------------------------- main.franco.kl  K1617
+
+Mesh 3aref el attribute `k-` da. El bedaya `k-` ma7gooza lel directives bta3et Kalam, w el directive el maktooba ghalat kanet mesh hate3mel ay 7aga.
+
+3│     khali page = html"""<button k-frobnicate="go">{name}</button>"""
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Mosa3da: Raga3 el ketaba 3ala el directives el ma3roofa: `k-click`, `k-submit`, `k-input`, `k-change`, `k-get`, `k-post`, `k-target` w `k-swap`.
+
+E3raf aktar: kalam explain K1617

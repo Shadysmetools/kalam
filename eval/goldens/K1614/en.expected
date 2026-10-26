@@ -1,0 +1,10 @@
+-- HOLE IN A TAG OR ATTRIBUTE NAME ------------------------------ main.kl  K1614
+
+This hole is in a tag name or an attribute name. Names decide what the markup does, so they must be written in the literal.
+
+3│     let page = html"""<{tag}>hi</p>"""
+                           ^^^
+
+Help: Write the name literally. For a changing set of attributes, use `Attrs`, whose names are a fixed list.
+
+Learn more: kalam explain K1614

@@ -60,6 +60,7 @@ pub fn lower_program_with(
     out.world = program
         .core_stub(Concept::CoreWorld)
         .filter(|d| program.def(*d).kind == DefKind::Record);
+    out.complete = program.modules.iter().all(|m| m.loaded);
     let mut next_synthetic = program.defs.len() as u32;
     for src in sources {
         out.skins.insert(src.file, src.skin);
@@ -758,6 +759,8 @@ struct BodyLower<'a, 'p> {
     next_closure: u32,
     self_local: Option<LocalId>,
     raw_strings: Vec<(ExprId, String)>,
+    /// The method name's span in each `MethodCall` (K1108's fix, Q35).
+    method_names: Vec<(ExprId, Span)>,
     uses: HashMap<LocalId, u32>,
     /// The block level of the source line being lowered: 0 for an item, 1 for a method or
     /// a top-level function's statements, and one more per indented block (4 spaces each,
@@ -789,6 +792,7 @@ impl<'a, 'p> BodyLower<'a, 'p> {
             next_closure: 1,
             self_local,
             raw_strings: Vec::new(),
+            method_names: Vec::new(),
             uses: HashMap::new(),
             line_depth: 0,
             inline: false,
@@ -799,6 +803,9 @@ impl<'a, 'p> BodyLower<'a, 'p> {
     fn finish_into(self, out: &mut HirProgram) -> Vec<LocalDecl> {
         for (e, raw) in self.raw_strings {
             out.raw_strings.insert((self.owner, e), raw);
+        }
+        for (e, at) in self.method_names {
+            out.method_names.insert((self.owner, e), at);
         }
         for (l, n) in self.uses {
             out.local_uses.insert((self.owner, l), n);
@@ -1091,13 +1098,9 @@ impl<'a, 'p> BodyLower<'a, 'p> {
                 }
                 None => ExprKind::Error,
             },
-            ast::ExprKind::ImplicitMember(id) => {
-                match self.program().implicit_candidates(self.file, id.span) {
-                    // No variant has this name: resolve reported K0401.
-                    Some([]) => ExprKind::Error,
-                    _ => ExprKind::ImplicitMember(id.name.clone()),
-                }
-            }
+            // When no variant has this name, resolve reported K0401 if it knew the whole
+            // program; the checker says it otherwise (FOUNDER-QUEUE Q34), so the name stays.
+            ast::ExprKind::ImplicitMember(id) => ExprKind::ImplicitMember(id.name.clone()),
             ast::ExprKind::UnsafeMember(id) => ExprKind::Unsafe(id.name.clone()),
             ast::ExprKind::Paren(x) => return self.expr(x),
             ast::ExprKind::Tuple(xs) => ExprKind::Tuple(xs.iter().map(|x| self.expr(x)).collect()),
@@ -1255,7 +1258,7 @@ impl<'a, 'p> BodyLower<'a, 'p> {
             if !resolved && value_base {
                 let receiver = Box::new(self.expr(base));
                 let args = self.args(args);
-                return self.e(
+                let call = self.e(
                     ExprKind::MethodCall {
                         receiver,
                         name: id.name.clone(),
@@ -1263,6 +1266,8 @@ impl<'a, 'p> BodyLower<'a, 'p> {
                     },
                     span,
                 );
+                self.method_names.push((call.id, id.span));
+                return call;
             }
         }
         let callee = Box::new(self.expr(callee));
@@ -1445,16 +1450,14 @@ impl<'a, 'p> BodyLower<'a, 'p> {
                 PatKind::Str(decode_escapes(&raw))
             }
             ast::PatKind::Bool(b) => PatKind::Bool(*b),
+            // As for `.V` in an expression: the checker reports a name no variant has.
             ast::PatKind::Implicit { name, fields } => {
                 let (fields, rest) = self.pat_fields(fields);
-                match self.program().implicit_candidates(self.file, name.span) {
-                    Some([]) => PatKind::Error,
-                    _ => PatKind::Variant {
-                        def: None,
-                        name: name.name.clone(),
-                        fields,
-                        rest,
-                    },
+                PatKind::Variant {
+                    def: None,
+                    name: name.name.clone(),
+                    fields,
+                    rest,
                 }
             }
             ast::PatKind::Path { path, fields } => {

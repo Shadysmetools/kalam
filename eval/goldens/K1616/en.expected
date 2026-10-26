@@ -1,0 +1,10 @@
+-- EVENT HOLE NEEDS A MESSAGE ----------------------------------- main.kl  K1616
+
+This `k-click`, `k-submit`, `k-input` or `k-change` hole must hold a value whose type derives `Message`. Only those values can be sent to the browser as a signed token.
+
+7│     let page = html"""<button k-click="{count}">ok</button>"""
+                                           ^^^^^
+
+Help: Use a case of your message enum, for example `k-click="{ Msg.Save }"`, and add `@derive(Message)` to that enum.
+
+Learn more: kalam explain K1616

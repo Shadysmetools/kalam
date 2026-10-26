@@ -5,8 +5,10 @@
 2│     switch n {
        ^^^^^^^^^^
 
-Try: `match n:
-        case 0: return "zero"`
+Try:
+
+    match n:
+        case 0: return "zero"
 
 Help: Write `match x:` and, indented under it, `case pattern: result` for each arm. Use `_` as the pattern for "anything else". `kalam fix` does this for you.
 

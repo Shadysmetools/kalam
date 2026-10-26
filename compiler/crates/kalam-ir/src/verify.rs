@@ -1,12 +1,25 @@
 //! The KIR verifier: checks the invariants every pass must preserve (ARCHITECTURE.md §10.3).
 //! Run after lowering and after each pass in debug builds and tests.
 
+use kalam_base::{FileId, FileSpan, Span};
 use kalam_typeck::Ty;
 
 use crate::{Block, Callee, Expr, ExprKind, Function, Program, Stmt};
 
 /// Returns one message per violated invariant (empty when the program is well formed).
 pub fn verify(program: &Program) -> Vec<String> {
+    run(program).errors
+}
+
+/// Where the first type that is not fully inferred is (invariant 1): the expression that
+/// has it, or the declaration when only a local, a signature or a constant's type is open.
+/// Lowering refuses such a program before it is verified (a checker that leaves a type
+/// argument open, such as `E` in `Ok(1).is_ok()`, is not a compiler crash).
+pub fn first_open_type(program: &Program) -> Option<FileSpan> {
+    run(program).open
+}
+
+fn run(program: &Program) -> Verifier<'_> {
     let mut v = Verifier {
         program,
         errors: Vec::new(),
@@ -14,6 +27,8 @@ pub fn verify(program: &Program) -> Vec<String> {
         locals: 0,
         mutable: Vec::new(),
         loops: 0,
+        file: FileId(0),
+        open: None,
     };
     for f in &program.functions {
         v.function(f);
@@ -23,10 +38,12 @@ pub fn verify(program: &Program) -> Vec<String> {
         v.locals = 0;
         v.mutable = Vec::new();
         v.loops = 0;
+        v.file = c.file;
+        v.expr(&c.value);
         if !concrete(&c.ty) {
+            v.open_at(c.value.span);
             v.fail(format!("type {}", c.ty));
         }
-        v.expr(&c.value);
     }
     if let Some(id) = program.entry_error_message {
         if program.function(id).is_none() {
@@ -39,7 +56,7 @@ pub fn verify(program: &Program) -> Vec<String> {
             v.errors.push(format!("entry fn {entry} does not exist"));
         }
     }
-    v.errors
+    v
 }
 
 struct Verifier<'a> {
@@ -49,6 +66,9 @@ struct Verifier<'a> {
     locals: usize,
     mutable: Vec<bool>,
     loops: u32,
+    /// The file of the function or constant being checked.
+    file: FileId,
+    open: Option<FileSpan>,
 }
 
 /// Invariant 1: every type is fully inferred.
@@ -62,13 +82,22 @@ impl Verifier<'_> {
         self.errors.push(msg);
     }
 
+    fn open_at(&mut self, span: Span) {
+        if self.open.is_none() {
+            self.open = Some(FileSpan::new(self.file, span));
+        }
+    }
+
     fn function(&mut self, f: &Function) {
         self.fn_name = f.name.clone();
         self.locals = f.locals.len();
         self.mutable = f.locals.iter().map(|l| l.mutable).collect();
         self.loops = 0;
+        self.file = f.span.file;
+        let mut open = false;
         for (i, l) in f.locals.iter().enumerate() {
             if !concrete(&l.ty) {
+                open = true;
                 self.fail(format!("local {i} `{}` has type {}", l.name, l.ty));
             }
         }
@@ -76,9 +105,15 @@ impl Verifier<'_> {
             self.local(*p);
         }
         if !concrete(&f.ret) {
+            open = true;
             self.fail(format!("return type {}", f.ret));
         }
+        // Expressions first: an open local or signature usually has an expression with
+        // the same open type, which locates it better than the whole function.
         self.block(&f.body);
+        if open {
+            self.open_at(f.span.span);
+        }
     }
 
     fn local(&mut self, l: u32) {
@@ -164,6 +199,7 @@ impl Verifier<'_> {
 
     fn expr(&mut self, e: &Expr) {
         if !concrete(&e.ty) {
+            self.open_at(e.span);
             self.fail(format!("expression {:?} has type {}", e.span, e.ty));
         }
         match &e.kind {
@@ -248,5 +284,82 @@ impl Verifier<'_> {
             | ExprKind::Bool(_)
             | ExprKind::Unit => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use kalam_base::{FileId, FileSpan, Span};
+    use kalam_resolve::DefId;
+    use kalam_typeck::Ty;
+
+    use super::{first_open_type, verify};
+    use crate::{Block, Expr, ExprKind, Function, Instance, LocalDecl, Program, Stmt};
+
+    fn at(start: u32) -> Span {
+        Span {
+            start,
+            end: start + 1,
+        }
+    }
+
+    fn main_with(locals: Vec<LocalDecl>, stmts: Vec<Stmt>) -> Program {
+        Program {
+            functions: vec![Function {
+                id: 0,
+                def: DefId(1),
+                name: "main".into(),
+                generics: 0,
+                params: Vec::new(),
+                locals,
+                ret: Ty::Unit,
+                body: Block { stmts },
+                suspends: false,
+                instance: Instance::Sync,
+                exported: false,
+                span: FileSpan::new(FileId(0), at(0)),
+            }],
+            entry: Some(0),
+            ..Program::default()
+        }
+    }
+
+    #[test]
+    fn an_open_type_is_located_at_the_first_expression_that_has_it() {
+        let open = Ty::Result(Box::new(Ty::Int), Box::new(Ty::Var(7)));
+        let local = LocalDecl {
+            name: "r".into(),
+            ty: open.clone(),
+            mutable: false,
+        };
+        let value = Expr::new(ExprKind::Unit, open.clone(), at(23));
+        let p = main_with(
+            vec![local],
+            vec![Stmt::Let {
+                local: 0,
+                ty: open,
+                value,
+            }],
+        );
+        assert!(!verify(&p).is_empty());
+        assert_eq!(first_open_type(&p), Some(FileSpan::new(FileId(0), at(23))));
+    }
+
+    #[test]
+    fn an_open_local_without_an_open_expression_points_at_its_function() {
+        let local = LocalDecl {
+            name: "x".into(),
+            ty: Ty::list(Ty::Var(1)),
+            mutable: false,
+        };
+        let p = main_with(vec![local], Vec::new());
+        assert_eq!(first_open_type(&p), Some(FileSpan::new(FileId(0), at(0))));
+    }
+
+    #[test]
+    fn a_closed_program_has_no_open_type() {
+        let p = main_with(Vec::new(), Vec::new());
+        assert!(verify(&p).is_empty());
+        assert_eq!(first_open_type(&p), None);
     }
 }

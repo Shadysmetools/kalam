@@ -1,0 +1,4 @@
+fn main():
+    let host = "example.com"
+    let link = url"https://{host}/users"
+    print("{link}")

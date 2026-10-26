@@ -1,0 +1,10 @@
+-- PROGRAM EL COMMAND MESH LITERAL ----------------------- main.franco.kl  K1621
+
+Awel kelma f el literal `cmd"..."` da, ya3ny el program elly hayeshtaghal, gaya men hole. W el program lazem yetketeb f el literal, 3ashan 3omr ma qeema tekhtar eh elly yeshtaghal.
+
+3│     khali command = cmd"{program} --version"
+                            ^^^^^^^
+
+Mosa3da: Ekteb esm el program zay ma howa. W 3ashan tekhtar ben kaza program, esta5dem `hasab` ma3 `cmd"..."` l kol 7ala.
+
+E3raf aktar: kalam explain K1621

@@ -1,0 +1,5 @@
+@sync
+fn present(fs: Fs) -> Bool => fs.exists(path"notes.txt")
+
+fn main(world: World):
+    print("{present(world.fs)}")

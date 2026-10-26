@@ -739,8 +739,14 @@ fn map_keys_and_set_elements_must_be_eq_and_hash() {
     );
     // A record field, and a generic parameter that lacks the bounds (reported once, at the
     // declaration; the body and the callers then assume them).
+    // (Line 5 is a second, separate problem: nothing fixes `T`, and the `Eq + Hash` the
+    // construction needs depends on it, K0804; with `let i: Index[String]` it is gone.)
     assert_eq!(
         codes("type Index[T]:\n    entries: Map[T, Int]\n\nfn main():\n    let i = Index(entries: {})\n    let _ = i\n"),
+        vec![("K0603", 2), ("K0804", 5)]
+    );
+    assert_eq!(
+        codes("type Index[T]:\n    entries: Map[T, Int]\n\nfn main():\n    let i: Index[String] = Index(entries: {})\n    let _ = i\n"),
         vec![("K0603", 2)]
     );
     assert_eq!(

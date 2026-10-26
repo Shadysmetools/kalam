@@ -1,0 +1,3 @@
+دالة رئيسي():
+    ليكن command = cmd"ls -la | wc -l"
+    اطبع("{command}")

@@ -1,0 +1,7 @@
+use std/sql.{Db, DbError}
+
+fn remove(db: Db, city: String) -> Result[Int, DbError]:
+    return db.exec("DELETE FROM t WHERE city = '" + city + "'")
+
+fn main():
+    pass

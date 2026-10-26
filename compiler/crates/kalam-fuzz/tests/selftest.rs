@@ -89,6 +89,44 @@ fn panics_overflows_aborts_and_hangs_are_caught_saved_and_reproducible() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// A budgeted step that never ends (an interpreted infinite loop) retires the worker; it is
+/// not a crash or a hang, and the next input runs on a fresh worker. A panic on a budgeted
+/// thread is a panic located where it happened.
+#[test]
+fn an_over_budget_step_retires_the_worker_without_a_crash() {
+    let dir = scratch("retire");
+    for (name, body) in [
+        ("a-spin", "#!selftest:spin"),
+        ("b-fine", "fn main():\n    print(\"ok\")\n"),
+        ("c-spin", "#!selftest:spin"),
+        ("d-thread-panic", "#!selftest:thread-panic"),
+        ("e-fine", "fn main():\n    print(1)\n"),
+    ] {
+        std::fs::write(dir.join("seeds").join(format!("{name}.kl")), body).unwrap();
+    }
+    let st = fuzz(
+        &dir,
+        &["--no-mutate", "--timeout-ms", "8000", "--seconds", "120"],
+    );
+    assert_eq!(st["total_execs"], 5, "{st:#}");
+    assert_eq!(st["crashes"], 1, "{st:#}");
+    let c = &st["crash_list"][0];
+    assert_eq!(c["kind"], "panic", "{c:#}");
+    assert!(
+        c["signature"]
+            .as_str()
+            .unwrap()
+            .starts_with("panic@crates/kalam-fuzz/src/worker.rs:"),
+        "{c:#}"
+    );
+    assert!(st["targets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|t| t == "typeck"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn the_clock_resumes_on_the_same_binary_and_resets_on_a_new_one() {
     let dir = scratch("clock");

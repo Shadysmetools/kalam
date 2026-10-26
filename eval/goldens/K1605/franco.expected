@@ -1,0 +1,10 @@
+-- HOLE SQL GOWA COMMENT --------------------------------- main.franco.kl  K1605
+
+El hole di gowa comment SQL, fa el database 3omraha ma hatshoof qeemetha. W ghaleban btekoon ba2eya men ta3deel el query.
+
+3│     khali q = sql"SELECT id FROM users /* {name} */"
+                                              ^^^^
+
+Mosa3da: Talla3 el hole bara el comment, aw emsa7ha.
+
+E3raf aktar: kalam explain K1605

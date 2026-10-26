@@ -5,6 +5,13 @@
 13│     ليكن n = parse(text)؟
                  ^^^^^^^^^^^^
 
+جرّب: `.map_err(دالة(failure) => …)`
+
+جرّب:
+
+    نفذ LoadFail بصفة From[ParseFail]:
+        دالة from(value: ParseFail) -> LoadFail => انهيار("TODO")
+
 مساعدة: حوّل الخطأ عند الاستدعاء، مثل `.map_err(دالة(e) => ...)؟`، أو أضف `نفذ F بصفة From[E]` لنوع الخطأ `F` الخاص بك.
 
 لمعرفة المزيد: kalam explain K1301

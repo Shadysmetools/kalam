@@ -1,0 +1,3 @@
+dala ra2isi():
+    khali command = cmd"ls -la | wc -l"
+    ektb("{command}")

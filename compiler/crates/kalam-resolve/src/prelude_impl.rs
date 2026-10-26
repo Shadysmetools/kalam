@@ -46,6 +46,18 @@ pub const PRELUDE: &[&str] = &[
     // but written in signatures; provisional (FOUNDER fork, see the M2 report).
     "Range",
     "Iterable",
+    // The rest of what `std/prelude` exports (FOUNDER-QUEUE Q34): with the stdlib loaded
+    // its exports are the prelude, so a single-file check, which resolves the file alone
+    // first, must know the same names. `Ordering` is what `Float.total_cmp` returns and a
+    // `sort_by` comparator must be annotated with (§9.9 rule 1); `UrlError` and
+    // `RegexError` are the errors of the `Url` and `Regex` parsers; `StaticParts` and
+    // `TemplateHole` are the parameter types of `Template.build` (§17.8). The test
+    // `every_std_prelude_export_is_a_builtin_prelude_name` keeps the two lists equal.
+    "Ordering",
+    "UrlError",
+    "RegexError",
+    "StaticParts",
+    "TemplateHole",
 ];
 
 /// Prelude modules (§13.1 "the modules `log` and `json`"): the name and the module path.

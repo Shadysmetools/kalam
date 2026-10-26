@@ -2,6 +2,8 @@
 
 This exported declaration uses `Ticket`, which is private to this module. Other modules could call it, but they could not write the type it takes or returns.
 
+1│ type Ticket:
+        ------ `Ticket` is declared here without `export`
 4│ export fn make_ticket() -> Ticket => Ticket(id: 1)
                               ^^^^^^
 

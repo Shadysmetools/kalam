@@ -1,0 +1,10 @@
+-- RAKAM AKBAR MEN NO3O ---------------------------------- main.franco.kl  K0126
+
+El rakam da mesh hayeksa3 f `adad`. Lel `adad`, el mada howa el arqam el sa7ee7a men -9223372036854775808 l 9223372036854775807 (64 bit) 3ala kol platform.
+
+2│     khali big = 9223372036854775808
+                   ^^^^^^^^^^^^^^^^^^^
+
+Mosa3da: Esta5dem qeema as8ar, aw ekhali no3 el qeema `BigInt` lel arqam elly malhash 7add.
+
+E3raf aktar: kalam explain K0126

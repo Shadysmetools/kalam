@@ -1,0 +1,10 @@
+-- WORLD CAN'T BE CREATED --------------------------------------- main.kl  K1501
+
+I can't let this code construct or decode a `World`. Only `main` receives the `World`, so every power a program has can be traced back to it.
+
+2│     let root = World()
+                  ^^^^^^^
+
+Help: Take the capability you need as a parameter (`net: Net`, `fs: Fs`), and pass it down from `main`.
+
+Learn more: kalam explain K1501

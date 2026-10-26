@@ -72,23 +72,7 @@ corpus_tasks! {
     temperature_table => "t08-temperature-table",
     user_record => "t11-user-record",
     shapes_match => "t12-shapes-match",
+    // Q39: expected.txt regenerated from ref.py under D18's 64-bit `Int`.
+    result_try => "t14-result-try",
     pong_headless => "t45-pong-headless",
-}
-
-/// T14's `expected.txt` and `ref.py` predate DECISIONS D18: they model `Int` as
-/// ±(2^53−1), so `"9007199254740992".to_int()` is a parse error there. Under D18 the text
-/// is a valid `Int` (2^53 < 2^63), so `parse_age` rejects it as out of range instead. Every
-/// other line must match exactly. When the expectation is regenerated (reviewer-gated, LOOP
-/// A3), the stale line disappears and this test asks for its special case to be removed.
-#[test]
-fn result_try_matches_except_the_line_that_predates_d18() {
-    let task = "t14-result-try";
-    let stale = "\"9007199254740992\" -> not a number: 9007199254740992\n";
-    let d18 = "\"9007199254740992\" -> out of range: 9007199254740992\n";
-    let want = expected_stdout(task);
-    assert!(
-        want.contains(stale),
-        "T14's expected.txt no longer has the pre-D18 line: use corpus_tasks! for it"
-    );
-    check_task(task, &want.replace(stale, d18));
 }

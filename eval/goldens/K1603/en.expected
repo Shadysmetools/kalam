@@ -1,0 +1,10 @@
+-- SQL HOLE AS A NAME ------------------------------------------- main.kl  K1603
+
+This hole is where SQL expects a name (a table, a column, `ASC` or `DESC`), not a value. A query parameter can't fill a name, and pasting text there would open the door to injection.
+
+3│     let q = sql"SELECT id FROM users ORDER BY {column}"
+                                                  ^^^^^^
+
+Help: Build the name with `sql.ident(name, allowed: [...])`, which checks it against a fixed list, or use an enum whose cases return fixed names.
+
+Learn more: kalam explain K1603

@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali host = "example.com"
+    khali link = url"https://{host}/users"
+    ektb("{link}")

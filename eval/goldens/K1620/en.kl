@@ -1,0 +1,3 @@
+fn main():
+    let command = cmd"ls -la | wc -l"
+    print("{command}")

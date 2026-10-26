@@ -1,0 +1,9 @@
+دالة apply(f: @sync دالة(عدد) -> عدد، x: عدد) -> عدد => f(x)
+
+دالة رئيسي(world: عالم):
+    ليكن fs = world.fs
+    دالة step(x: عدد) -> عدد:
+        إذا fs.exists(path"flag.txt"):
+            أرجع x + 1
+        أرجع x
+    اطبع("{apply(step، 1)}")

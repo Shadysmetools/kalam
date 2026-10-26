@@ -5,6 +5,13 @@
 13│     khali n = parse(text)?
                   ^^^^^^^^^^^^
 
+Garrab: `.map_err(dala(failure) => …)`
+
+Garrab:
+
+    naffez LoadFail ka From[ParseFail]:
+        dala from(value: ParseFail) -> LoadFail => enhyar("TODO")
+
 Mosa3da: 7awel el error 3and el call, zay `.map_err(dala(e) => ...)?`, aw zawed `naffez F ka From[E]` l no3 el error bta3ak `F`.
 
 E3raf aktar: kalam explain K1301

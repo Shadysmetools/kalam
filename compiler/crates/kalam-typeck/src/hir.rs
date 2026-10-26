@@ -664,6 +664,12 @@ pub struct HirProgram {
     /// The program's `main` functions (top-level functions declared with the core name
     /// `main` outside the stdlib): their signature is fixed by §14.3 and §16.1 rule 1.
     pub mains: Vec<DefId>,
+    /// The span of the method name in each `x.name(…)` (`MethodCall`), by `(owner,
+    /// ExprId)`: K1108's fix closes a parenthesis right after it (FOUNDER-QUEUE Q35).
+    pub method_names: HashMap<(DefId, ExprId), Span>,
+    /// Every module of the program is loaded (none is opaque), so a variant name that no
+    /// enum has is known to be undefined (the checker's K0401 for `.V`, Q34).
+    pub complete: bool,
 }
 
 impl HirProgram {

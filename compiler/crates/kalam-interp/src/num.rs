@@ -35,6 +35,35 @@ pub fn int_mod(a: i64, b: i64) -> Option<i64> {
     })
 }
 
+/// Why `Int.pow` has no `Int` result.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PowFail {
+    NegativeExponent,
+    Overflow,
+}
+
+/// `Int.pow` (Q36): exact, checked (D18). `0.pow(0)` is 1; the bases 0, 1 and −1 take any
+/// exponent without looping.
+pub fn int_pow(base: i64, exponent: i64) -> Result<i64, PowFail> {
+    if exponent < 0 {
+        return Err(PowFail::NegativeExponent);
+    }
+    match base {
+        0 => return Ok(if exponent == 0 { 1 } else { 0 }),
+        1 => return Ok(1),
+        -1 => return Ok(if exponent % 2 == 0 { 1 } else { -1 }),
+        _ => {}
+    }
+    // |base| >= 2, so any exponent past 63 overflows.
+    let e = u32::try_from(exponent).map_err(|_| PowFail::Overflow)?;
+    base.checked_pow(e).ok_or(PowFail::Overflow)
+}
+
+/// The shift amount of `Int.shift_left`/`shift_right` (spec §5.9: outside `0..=63` panics).
+pub fn shift_amount(by: i64) -> Option<u32> {
+    u32::try_from(by).ok().filter(|b| *b <= 63)
+}
+
 /// `Float.to_int`: truncates toward zero; `None` for NaN, infinities and values outside
 /// [−2⁶³, 2⁶³) (2⁶³ itself is a `Float` and is out of range).
 pub fn float_to_int(f: f64) -> Option<i64> {
@@ -694,6 +723,33 @@ mod tests {
         assert_eq!(int_mod(i64::MIN, -1), Some(0));
         assert_eq!(int_floor_div(1, 0), None);
         assert_eq!(int_mod(1, 0), None);
+    }
+
+    #[test]
+    fn int_pow_is_exact_and_checked() {
+        assert_eq!(int_pow(2, 62), Ok(1 << 62));
+        assert_eq!(int_pow(2, 63), Err(PowFail::Overflow));
+        assert_eq!(int_pow(-2, 63), Ok(i64::MIN));
+        assert_eq!(int_pow(-2, 64), Err(PowFail::Overflow));
+        assert_eq!(int_pow(0, 0), Ok(1));
+        assert_eq!(int_pow(0, i64::MAX), Ok(0));
+        assert_eq!(int_pow(1, i64::MAX), Ok(1));
+        assert_eq!(int_pow(-1, i64::MAX), Ok(-1));
+        assert_eq!(int_pow(-1, i64::MAX - 1), Ok(1));
+        assert_eq!(int_pow(2, i64::MAX), Err(PowFail::Overflow));
+        assert_eq!(int_pow(3, -1), Err(PowFail::NegativeExponent));
+        assert_eq!(int_pow(1, -1), Err(PowFail::NegativeExponent));
+        assert_eq!(int_pow(3_037_000_499, 2), Ok(9_223_372_030_926_249_001));
+        assert_eq!(int_pow(3_037_000_500, 2), Err(PowFail::Overflow));
+    }
+
+    #[test]
+    fn shift_amounts_are_0_to_63() {
+        assert_eq!(shift_amount(0), Some(0));
+        assert_eq!(shift_amount(63), Some(63));
+        assert_eq!(shift_amount(64), None);
+        assert_eq!(shift_amount(-1), None);
+        assert_eq!(shift_amount(i64::MIN), None);
     }
 
     #[test]

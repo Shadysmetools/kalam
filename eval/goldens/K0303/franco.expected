@@ -2,6 +2,8 @@
 
 El ta3reef el mosaddar da beyesta5dem `Ticket`, w da khas bel module da. El modules el tanya te2dar tenadeeh, bas mesh hate2dar tekteb el no3 elly beyakhdo aw beyrag3o.
 
+1│ haykal Ticket:
+          ------ `Ticket` et3arraf hena men gheir `talla3`
 4│ talla3 dala make_ticket() -> Ticket => Ticket(id: 1)
                                 ^^^^^^
 

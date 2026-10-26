@@ -29,7 +29,7 @@
 pub mod lower;
 pub mod verify;
 
-use kalam_base::{FileSpan, Span};
+use kalam_base::{FileId, FileSpan, Span};
 use kalam_resolve::DefId;
 use kalam_typeck::Ty;
 
@@ -42,8 +42,10 @@ pub struct Program {
     pub functions: Vec<Function>,
     pub records: Vec<RecordDecl>,
     pub enums: Vec<EnumDecl>,
-    /// Module constants (`let NAME = …` at module level), read with [`ExprKind::Const`].
-    /// Each initializer is evaluated once, on first use (they are pure, §13.4).
+    /// Module constants (`let NAME = …` at module level), read with [`ExprKind::Const`],
+    /// in dependency order (a constant comes after every constant its initializer names).
+    /// Every initializer is evaluated once, **eagerly, before the entry point runs**
+    /// (§13.4, Q33): a constant that panics stops the program before `main` starts.
     pub consts: Vec<ConstDecl>,
     /// The function that `main` lowered to, if this package is an executable.
     pub entry: Option<FnId>,
@@ -83,6 +85,8 @@ impl Program {
 pub struct ConstDecl {
     pub def: DefId,
     pub name: String,
+    /// The file that declares it (where a panic in the initializer is reported).
+    pub file: FileId,
     pub ty: Ty,
     pub value: Expr,
 }

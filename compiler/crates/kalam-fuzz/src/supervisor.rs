@@ -252,31 +252,43 @@ impl Runner {
         if write_request(&mut p.stdin, input.skin, &input.text).is_err() {
             return self.died();
         }
-        match p.rx.recv_timeout(self.timeout) {
-            Ok(Ok(Reply::Ok { features })) => Exec::Ok(features),
-            Ok(Ok(Reply::Oracle {
+        let reply = match p.rx.recv_timeout(self.timeout) {
+            Ok(Ok(r)) => r,
+            Ok(Err(_)) | Err(RecvTimeoutError::Disconnected) => return self.died(),
+            Err(RecvTimeoutError::Timeout) => {
+                self.proc = None; // Drop kills it.
+                return Exec::Crash {
+                    kind: "timeout".into(),
+                    signature: "timeout".into(),
+                    message: format!("no result within {} ms", self.timeout.as_millis()),
+                };
+            }
+        };
+        let reply = match reply {
+            // The worker exits after this reply: start a fresh one next time (not a crash).
+            Reply::Retire(inner) => {
+                self.proc = None;
+                *inner
+            }
+            r => r,
+        };
+        match reply {
+            Reply::Ok { features } => Exec::Ok(features),
+            Reply::Oracle {
                 name,
                 detail,
                 features,
-            })) => Exec::Oracle {
+            } => Exec::Oracle {
                 name,
                 detail,
                 features,
             },
-            Ok(Ok(Reply::Panic { message, location })) => Exec::Crash {
+            Reply::Panic { message, location } => Exec::Crash {
                 kind: "panic".into(),
                 signature: format!("panic@{location}"),
                 message,
             },
-            Ok(Err(_)) | Err(RecvTimeoutError::Disconnected) => self.died(),
-            Err(RecvTimeoutError::Timeout) => {
-                self.proc = None; // Drop kills it.
-                Exec::Crash {
-                    kind: "timeout".into(),
-                    signature: "timeout".into(),
-                    message: format!("no result within {} ms", self.timeout.as_millis()),
-                }
-            }
+            Reply::Retire(_) => Exec::Ok(Vec::new()),
         }
     }
 

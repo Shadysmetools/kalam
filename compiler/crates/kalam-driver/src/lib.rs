@@ -26,7 +26,9 @@
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
+mod fix;
 mod run;
+pub use fix::{fix_file, unified_diff, AppliedFix, FixedFile, MAX_FIX_ROUNDS};
 pub use run::{run_interp, RunOutcome, MAX_CALL_DEPTH};
 
 use kalam_base::{FileId, LineIndex, Skin};
@@ -372,22 +374,57 @@ pub fn check_project(vfs: &dyn Vfs, root: &str, options: &ProjectOptions) -> Vec
 /// unreadable. The checked text has U+FFFD in place of each invalid run, so every span and
 /// line points into it.
 pub fn check_bytes(path: &str, bytes: &[u8]) -> Result<CheckedFile, NotKalamFile> {
+    check_bytes_staged(path, bytes).map(|(checked, _)| checked)
+}
+
+/// How far [`check_bytes`] got: each stage runs only when the ones before it found no
+/// error, so a file's errors all come from one stage (`kalam fix` compares them).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) enum Stage {
+    /// Source text, lexer or parser errors.
+    Syntax,
+    /// Name-resolution errors.
+    Resolve,
+    /// Type, effect, capability or sink errors.
+    Types,
+    /// No error.
+    Clean,
+}
+
+/// [`check_bytes`], and the [`Stage`] the file's errors come from.
+pub(crate) fn check_bytes_staged(
+    path: &str,
+    bytes: &[u8],
+) -> Result<(CheckedFile, Stage), NotKalamFile> {
     let skin = Skin::from_path(path).ok_or_else(|| NotKalamFile(path.to_string()))?;
     let lexed = kalam_lexer::lex_bytes(bytes, skin);
     let text = lexed.text.as_str();
     let mut parsed = kalam_parser::parse(text, &lexed.lexed, skin, FileId(0));
     let parser = std::mem::take(&mut parsed.diagnostics);
+    let errors = |ds: &[Diagnostic]| ds.iter().any(Diagnostic::is_error);
     let diagnostics =
         kalam_parser::merge_diagnostics(text, lexed.lexed.diagnostics.clone(), parser);
+    let mut stage = if errors(&diagnostics) {
+        Stage::Syntax
+    } else {
+        Stage::Clean
+    };
     let diagnostics = resolve_single(skin, &parsed, diagnostics);
+    if stage == Stage::Clean && errors(&diagnostics) {
+        stage = Stage::Resolve;
+    }
     let diagnostics = typecheck_single(skin, &parsed, diagnostics);
-    Ok(CheckedFile {
+    if stage == Stage::Clean && errors(&diagnostics) {
+        stage = Stage::Types;
+    }
+    let checked = CheckedFile {
         path: path.to_string(),
         skin,
         text: text.to_string(),
         lines: LineIndex::new(text),
         diagnostics,
-    })
+    };
+    Ok((checked, stage))
 }
 
 /// Why `kalam fmt` or `kalam convert` produced no text for a file.

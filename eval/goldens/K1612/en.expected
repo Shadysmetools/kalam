@@ -1,0 +1,10 @@
+-- HOLE IN SCRIPT OR STYLE -------------------------------------- main.kl  K1612
+
+This hole is in a place that runs as code: an `on*` attribute, a `style` attribute, or `<script>` or `<style>` content. No escaping makes a value safe there.
+
+3│     let page = html"""<script>{name}</script>"""
+                                  ^^^^
+
+Help: Pass data to scripts with `{ json(x) }` inside `<script type="application/json">`, and choose styles with a class instead of a style hole.
+
+Learn more: kalam explain K1612

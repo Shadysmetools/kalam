@@ -1,0 +1,4 @@
+دالة رئيسي():
+    ليكن name = "Sara"
+    ليكن q = sql"DELETE FROM users WHERE name = {name}; DELETE FROM notes"
+    اطبع("{q}")

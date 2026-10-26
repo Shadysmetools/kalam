@@ -1,0 +1,12 @@
+-- EL TYPES MESH MAZBOOTA -------------------------------- main.franco.kl  K0600
+
+No3 el qeema di mesh mnaseb el makan elly etsta5demet feeh. Kalam 3omro ma by7awel ben el types lewa7do, fa lazem el etnein yetaba2o bel zabt.
+
+2│     khali half: adad = 7 / 2
+                          ^^^^^ el matloob `adad`, wel mawgood `kasri`
+
+Garrab: ` // `
+
+Mosa3da: Shoof el makan da me7tag eh (parameter, aw return type, aw annotation, aw dala tet3amalha call, aw 7aga te3mel 3aleiha loop); el molaheza ta7t el code bet2ol anhy anwa3 mesh mtab2a. W ba3dein ghayar el qeema aw 7awelha sara7a, masalan b `.to_float()` aw `.round()` ben anwa3 el arqam.
+
+E3raf aktar: kalam explain K0600

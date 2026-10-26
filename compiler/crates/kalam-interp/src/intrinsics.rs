@@ -38,6 +38,12 @@ const TABLE: &[(&str, Intrinsic)] = &[
     ("Int.checked_mul", int_checked_mul),
     ("Int.wrapping_add", int_wrapping_add),
     ("Int.saturating_add", int_saturating_add),
+    ("Int.pow", int_pow),
+    ("Int.bit_and", int_bit_and),
+    ("Int.bit_or", int_bit_or),
+    ("Int.bit_xor", int_bit_xor),
+    ("Int.shift_left", int_shift_left),
+    ("Int.shift_right", int_shift_right),
     // Float (std/prelude)
     ("Float.to_int", float_to_int),
     ("Float.total_cmp", float_total_cmp),
@@ -423,6 +429,57 @@ fn int_wrapping_add(_: &mut Interp<'_, '_>, a: Vec<Value>, _: Span) -> Ev<Value>
 
 fn int_saturating_add(_: &mut Interp<'_, '_>, a: Vec<Value>, _: Span) -> Ev<Value> {
     args!(a, "Int.saturating_add", [Value::Int(x), Value::Int(y)] => int(x.saturating_add(*y)))
+}
+
+fn int_pow(it: &mut Interp<'_, '_>, a: Vec<Value>, sp: Span) -> Ev<Value> {
+    args!(a, "Int.pow", [Value::Int(x), Value::Int(e)] => match num::int_pow(*x, *e) {
+        Ok(r) => int(r),
+        Err(num::PowFail::Overflow) => it.panic("integer overflow", sp),
+        Err(num::PowFail::NegativeExponent) => {
+            it.panic(format!("negative exponent {e} in `Int.pow`"), sp)
+        }
+    })
+}
+
+fn int_bit_and(_: &mut Interp<'_, '_>, a: Vec<Value>, _: Span) -> Ev<Value> {
+    args!(a, "Int.bit_and", [Value::Int(x), Value::Int(y)] => int(x & y))
+}
+
+fn int_bit_or(_: &mut Interp<'_, '_>, a: Vec<Value>, _: Span) -> Ev<Value> {
+    args!(a, "Int.bit_or", [Value::Int(x), Value::Int(y)] => int(x | y))
+}
+
+fn int_bit_xor(_: &mut Interp<'_, '_>, a: Vec<Value>, _: Span) -> Ev<Value> {
+    args!(a, "Int.bit_xor", [Value::Int(x), Value::Int(y)] => int(x ^ y))
+}
+
+/// `shift_left`/`shift_right`: the amount must be in `0..=63` (spec §5.9).
+fn shift(it: &Interp<'_, '_>, a: Vec<Value>, sp: Span, left: bool) -> Ev<Value> {
+    let name = if left {
+        "Int.shift_left"
+    } else {
+        "Int.shift_right"
+    };
+    let [Value::Int(x), Value::Int(by)] = a.as_slice() else {
+        return bad(name, &a);
+    };
+    match num::shift_amount(*by) {
+        // Two's complement: `<<` drops the bits shifted out, `>>` is arithmetic on `i64`.
+        Some(n) if left => int(x << n),
+        Some(n) => int(x >> n),
+        None => it.panic(
+            format!("shift amount {by} is outside 0..=63 in `{name}`"),
+            sp,
+        ),
+    }
+}
+
+fn int_shift_left(it: &mut Interp<'_, '_>, a: Vec<Value>, sp: Span) -> Ev<Value> {
+    shift(it, a, sp, true)
+}
+
+fn int_shift_right(it: &mut Interp<'_, '_>, a: Vec<Value>, sp: Span) -> Ev<Value> {
+    shift(it, a, sp, false)
 }
 
 fn float_to_int(_: &mut Interp<'_, '_>, a: Vec<Value>, _: Span) -> Ev<Value> {

@@ -1,0 +1,10 @@
+-- HOLE SQL MAKAN ESM ------------------------------------ main.franco.kl  K1603
+
+El hole di f makan SQL mestanny feeh esm (table aw column aw `ASC` aw `DESC`), mesh qeema. W parameter el query mayenfa3sh yemla esm, w lez2 nass hena kan hayefta7 bab el injection.
+
+3│     khali q = sql"SELECT id FROM users ORDER BY {column}"
+                                                    ^^^^^^
+
+Mosa3da: Ebny el esm b `sql.ident(name, allowed: [...])` elly bet-check-o 3ala list sabta, aw esta5dem enum el 7alat bta3to betraga3 asamy sabta.
+
+E3raf aktar: kalam explain K1603

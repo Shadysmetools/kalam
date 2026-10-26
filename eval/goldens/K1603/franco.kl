@@ -1,0 +1,4 @@
+dala ra2isi():
+    khali column = "name"
+    khali q = sql"SELECT id FROM users ORDER BY {column}"
+    ektb("{q}")
