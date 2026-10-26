@@ -611,19 +611,29 @@ fn shape_of_a_max_height_tree_fits_a_1mib_stack() {
         .expect("shape within 1 MiB");
 }
 
-/// FOUNDER-QUEUE Q5: a word glued to a string is a tagged literal (spec §5.6), and a tag
-/// that is not one of the built-in tags (DR-29) is a parse error. Otherwise `foo"x"`, or
-/// `return"x"` in an English file, checked clean and then could not run.
+/// FOUNDER-QUEUE Q5, Q53: a word glued to a string is a tagged literal (spec §5.6), and a
+/// tag that is not one of the built-in tags (DR-29) is K0260 "unknown string tag", at the
+/// tag, naming it. Otherwise `foo"x"`, or `return"x"` in an English file, checked clean and
+/// then could not run.
 #[test]
-fn an_unknown_tag_before_a_string_is_a_parse_error() {
-    for src in [
-        "fn main():\n    let a = foo\"x\"\n",
-        "fn f() -> String:\n    return\"big\"\n",
-        "fn main():\n    let a = my_tag\"\"\"\n    x\n    \"\"\"\n",
+fn an_unknown_tag_before_a_string_is_k0260() {
+    for (src, tag) in [
+        ("fn main():\n    let a = foo\"x\"\n", "foo"),
+        ("fn f() -> String:\n    return\"big\"\n", "return"),
+        (
+            "fn main():\n    let a = my_tag\"\"\"\n    x\n    \"\"\"\n",
+            "my_tag",
+        ),
+        ("fn main():\n    let a = sqll\"SELECT 1\"\n", "sqll"),
     ] {
         let r = run(src, Skin::En);
         assert_eq!(r.lex, NONE, "{src}");
-        assert_eq!(r.parse, vec![codes::UNEXPECTED_TOKEN], "{src}");
+        assert_eq!(r.parse, vec![codes::UNKNOWN_TAG], "{src}");
+        let out = kalam_parser::parse_source(src, Skin::En, kalam_base::FileId(0));
+        let d = &out.diagnostics[0];
+        assert_eq!(d.code, "K0260");
+        assert_eq!(d.args, vec![("tag", tag.to_string())], "{src}");
+        assert_eq!(&src[d.span.start as usize..d.span.end as usize], tag);
     }
     // The built-in tags, and `f"…"` (K0913), are not affected.
     for tag in ["sql", "html", "cmd", "url", "path", "regex"] {
@@ -633,6 +643,16 @@ fn an_unknown_tag_before_a_string_is_a_parse_error() {
     assert_eq!(
         codes_of("fn main():\n    let a = f\"x\"\n", Skin::En),
         (NONE, vec![codes::F_STRING])
+    );
+    // A Franco keyword is ASCII, so glued to a string it is a tag too.
+    assert_eq!(
+        codes_of("dala f() -> nass:\n    rag3\"x\"\n", Skin::Franco).1,
+        NONE,
+        "`rag3` has a digit, so it is not a tag"
+    );
+    assert_eq!(
+        codes_of("dala ra2isi():\n    khali a = law\"x\"\n", Skin::Franco).1,
+        vec![codes::UNKNOWN_TAG]
     );
     // A non-ASCII keyword glued to a string is that keyword and a string.
     assert_eq!(

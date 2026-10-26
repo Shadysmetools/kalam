@@ -32,7 +32,7 @@ use crate::convert::Rewriter;
 use crate::doc::{self, concat, flat_text, flat_width, text, Doc, INDENT, WIDTH};
 use crate::roles::{Role, Roles};
 use crate::source::Source;
-use crate::{convert_digits, is_number, to_ascii_digits, FmtConfig};
+use crate::{convert_digits, is_number, FmtConfig};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Sep {
@@ -1111,17 +1111,6 @@ impl<'s, 'a> Printer<'s, 'a> {
                 }
                 ExprKind::Member { member, .. } => match member {
                     Member::Name(n) => concat(vec![text("."), self.id(&n.name, Role::Free)]),
-                    // A chain of numeric member indices (`t.0.1`) stays ASCII, as in
-                    // `convert` (DR-26: `t.٠.١` would re-lex as `t . ٠.١`, SEC0120).
-                    Member::Index { text: t, .. }
-                        if [i.wrapping_sub(1), i + 1]
-                            .iter()
-                            .any(|&j| ops.get(j).is_some_and(|o| is_index(o))) =>
-                    {
-                        let ascii = to_ascii_digits(t);
-                        let w = ascii.chars().count();
-                        concat(vec![text("."), Doc::Text(ascii, w)])
-                    }
                     Member::Index { text: t, .. } => concat(vec![text("."), self.digits(t)]),
                 },
                 _ => Doc::Text(
@@ -1323,15 +1312,4 @@ fn is_form(e: &Expr) -> bool {
         ExprKind::Match(_) => true,
         _ => false,
     }
-}
-
-/// `e` is a numeric member access (`t.0`).
-fn is_index(e: &Expr) -> bool {
-    matches!(
-        e.kind,
-        ExprKind::Member {
-            member: Member::Index { .. },
-            ..
-        }
-    )
 }

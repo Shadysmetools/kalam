@@ -1,0 +1,22 @@
+استخدم std.{None، Some، adad، dala، ektb, for، hasab، in, khali، law, lw، sa7, `فی`}
+
+دالة رئيسي(y: `User`، user: دالة(قاموس[عدد, Some]) -> قاموس[منطقي، نص], y: عدد):
+    _tmp()
+    لکل `عداد` في`فی`():
+        اذا (items):
+            ليكن _ = اذا n1[()]: ليس خطا والا: "{1}{`فی` <= .حالة}\nhello"
+            تحقق(-items, in: "\u{41}a, b" % x)
+            متغير `Some` = فشل.for?
+            # c1 note
+            _tmp(١٠٠، value: items.dala)
+        والا إذا ليس name[name]:
+            ليكن hasab = (١_٠٠٠،)
+            متغير n1 = ليس (.law)
+            اسم.n1(sa7: (user،), قيمة: {٢: total})
+    count(lw: (0.25).2، n1: ()، name: إذا عداد: عدد والا: khali)(`فی`، None()، y)
+
+
+دالة khali(None: ()، user: نتيجة[(منطقي، عشری)، adad]) -> قاموس[عشري، ()]:
+    ektb = (اذا "\\": "\n" وإلا: "{خطا أو .Some}") - url"{2e3} "
+    استمر
+    متغير count: قاموس[عدد، کسري] = رئيسي

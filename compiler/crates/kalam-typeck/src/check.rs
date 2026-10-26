@@ -1888,19 +1888,24 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                     } else {
                         digits
                     };
-                    self.err(
-                        span,
-                        TypeErrorKind::LiteralOutOfRange {
-                            literal,
-                            ty: Ty::Int,
-                        },
-                    );
+                    self.int_out_of_range(literal, span);
                 }
             }
             Ty::Float | Ty::Decimal => self.number_literal_range(&lit.digits(), &t, span),
             _ => {}
         }
         t
+    }
+
+    /// K0126 for an integer literal (or pattern) that is not an `Int`, with `Int`'s range as
+    /// the label, as a `Float` or `Decimal` literal gets its reason: the message names only
+    /// the literal's type.
+    fn int_out_of_range(&mut self, literal: String, span: Span) {
+        let kind = TypeErrorKind::LiteralOutOfRange {
+            literal,
+            ty: Ty::Int,
+        };
+        self.push_error(TypeError::new(kind, self.file, span).with_label(span, INT_RANGE_LABEL));
     }
 
     /// K0126 for a number literal typed `Float` or `Decimal` that the type cannot hold
@@ -3669,13 +3674,7 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                     } else {
                         value.to_string()
                     };
-                    self.err(
-                        span,
-                        TypeErrorKind::LiteralOutOfRange {
-                            literal,
-                            ty: Ty::Int,
-                        },
-                    );
+                    self.int_out_of_range(literal, span);
                 }
             }
             PatKind::Range { .. } => self.coerce(&Ty::Int, ty, span),
@@ -4298,6 +4297,11 @@ fn record_label_fix(fields: &[FieldDef], args: &[Arg]) -> Option<Fix> {
         edits,
     })
 }
+
+/// The label under an `Int` literal that is K0126 (D18), in English; the renderer
+/// translates it (`kalam_diagnostics::labels`).
+const INT_RANGE_LABEL: &str = "`Int` holds whole numbers from -9223372036854775808 to \
+     9223372036854775807 (64 bits) on every platform";
 
 /// A literal's digits for a K0126 message: in full up to 40 characters, otherwise the first
 /// 20 and the length.

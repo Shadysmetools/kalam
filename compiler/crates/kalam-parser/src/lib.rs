@@ -34,6 +34,8 @@ mod expr;
 mod grammar;
 mod mistakes;
 
+pub use mistakes::BUILTIN_TAGS;
+
 use std::collections::HashSet;
 
 use kalam_ast::{Ast, Ident, Name, NameKind, Trivia as AstTrivia, TriviaKind as AstTriviaKind};

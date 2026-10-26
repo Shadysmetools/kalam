@@ -1,0 +1,3 @@
+fn main():
+    let q = sqll"SELECT id FROM users"
+    print("ok")

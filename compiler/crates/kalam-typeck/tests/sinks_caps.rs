@@ -364,3 +364,22 @@ fn secret_is_shown_redacted_and_revealed_explicitly() {
     // §18.1: `Show` prints `[REDACTED]`; `.expose()` is the explicit reveal.
     clean("fn main():\n    let a = Secret.new(\"x\")\n    let b = Secret.new(\"x\")\n    let same = a.expose() == b.expose()\n    print(\"{a} {same}\")\n    let _ = html\"<p>{a}</p>\"\n");
 }
+
+/// FOUNDER-QUEUE Q53: the parser accepts exactly the tags kalam-sinks types (K0260 for any
+/// other), and the K0260 message lists them all.
+#[test]
+fn the_parser_and_the_sinks_agree_on_the_built_in_tags() {
+    for tag in kalam_parser::BUILTIN_TAGS {
+        assert!(kalam_sinks::Tag::from_name(tag).is_some(), "{tag}");
+    }
+    for unknown in ["f", "sqll", "shell", "raw", "return"] {
+        assert!(kalam_sinks::Tag::from_name(unknown).is_none(), "{unknown}");
+        assert!(!kalam_parser::BUILTIN_TAGS.contains(&unknown), "{unknown}");
+    }
+    let entry = kalam_diagnostics::catalog::lookup("K0260").expect("K0260 is in the catalog");
+    for msg in entry.message {
+        for tag in kalam_parser::BUILTIN_TAGS {
+            assert!(msg.contains(&format!("`{tag}`")), "{tag}: {msg}");
+        }
+    }
+}

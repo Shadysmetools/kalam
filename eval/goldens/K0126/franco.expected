@@ -1,10 +1,10 @@
--- RAKAM AKBAR MEN NO3O ---------------------------------- main.franco.kl  K0126
+-- RAKAM BARA MADA NO3O ---------------------------------- main.franco.kl  K0126
 
-El rakam da mesh hayeksa3 f `adad`. Lel `adad`, el mada howa el arqam el sa7ee7a men -9223372036854775808 l 9223372036854775807 (64 bit) 3ala kol platform.
+El rakam da mesh hayeksa3 f `adad`. El literal lazem yeb2a 2eema el no3 bta3o ye2dar yeshilha, 3ashan keda bawa2af hena badal ma aghayar el rakam.
 
 2│     khali big = 9223372036854775808
-                   ^^^^^^^^^^^^^^^^^^^
+                   ^^^^^^^^^^^^^^^^^^^ `adad` beyshel el arqam el sa7ee7a men -9223372036854775808 l 9223372036854775807 (64 bit) 3ala kol platform
 
-Mosa3da: Esta5dem qeema as8ar, aw ekhali no3 el qeema `BigInt` lel arqam elly malhash 7add.
+Mosa3da: Esta5dem qeema el no3 ye2dar yeshilha (el molaz7a ta7t el rakam bet2ol leh di mesh hateksa3), aw no3 madah awsa3: `BigInt` beyshel el arqam el sa7ee7a b ay 7agm.
 
 E3raf aktar: kalam explain K0126

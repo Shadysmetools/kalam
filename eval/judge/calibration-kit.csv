@@ -335,6 +335,19 @@ Learn more: kalam explain SEC0121","fn main():
     let count = ۷
     print(""{count}"")
 ","eval/judge/RUBRIC.md (becker-2026.1)","sha256:6209b392237fb2e897136e560db0447ebfbc892d6e18d4b05dff3b2eb6651d06"
+"K0260/franco","K0260","franco","",""," -- TAG STRING MESH MA3ROOF ------------------------------- main.franco.kl  K0260
+
+`sqll` maktooba laz2a f string, fa 2areitha tag lel string da, bas mafeesh tag bel esm da. El tags el built-in homma `sql`, `html`, `cmd`, `url`, `path` w `regex`, w btetketeb zay ba3d f kol el skins.
+
+2│     khali q = sqll""SELECT id FROM users""
+                 ^^^^
+
+Mosa3da: Law el kelma mesh ma2sood beeha tag, 7ot masafa benha w ben el quote, zay `rag3 ""done""`. W 3ashan tebny SQL aw HTML aw command aw URL aw path aw regex men 2eyam, esta5dem el tag el built-in bta3o.
+
+E3raf aktar: kalam explain K0260","dala ra2isi():
+    khali q = sqll""SELECT id FROM users""
+    ektb(""ok"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:7b8882679f7eb1cd685a9add4fc8633e0048d45822da0d86ebc14d599007eefe"
 "K1601/en","K1601","en","",""," -- STRING PASSED TO A SINK -------------------------------------- main.kl  K1601
 
 This place expects `Sql`, but this is `String`. A plain string here is how injection happens, so a sink never takes one.
@@ -405,6 +418,20 @@ E3raf aktar: kalam explain SEC0101","dala ra2isi():
     ليكن n = total(xs)
     اطبع(""total {n}"")
 ","eval/judge/RUBRIC.md (becker-2026.1)","sha256:032bc80599c8b41f255627a6e4b1c8a1001decc8ed8bcd1b0625cc1c1eb36d8c"
+"K0252/franco","K0252","franco","",""," -- BLOCK NA2ES ------------------------------------------- main.franco.kl  K0252
+
+El satr da beyekhlas b `:`, fa kont mestanni block maza7 f el satr elly ba3do, mostawa wa7ed agwa (4 masafat), bas mafeesh.
+
+1│ dala helper():
+                ^
+
+Mosa3da: Zo77 el sotoor elly tab3a lo 4 masafat zyada. W law 3ayez el block fady delwa2ty, ekteb feeh `fot`.
+
+E3raf aktar: kalam explain K0252","dala helper():
+
+dala ra2isi():
+    helper()
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:d3c0947b1a73dbb32291e0f7259e1303ec2b33322971f29decff61a4e2f96e90"
 "K1503/ar","K1503","ar","",""," -- سرّ يُقرأ كنص عادي ---------------------------------------- main.ar.kl  K1503
 
 هذا المفتاح يبدو سرًا (ينتهي بـ `_KEY` أو `_SECRET` أو `_TOKEN`، أو يسمّي كلمة مرور)، لكن `env.get` ترجع نصًا عاديًا قد ينتهي في السجلات أو في JSON.
@@ -941,7 +968,7 @@ dala ra2isi():
 4│         khali total = 2
                  ^^^^^
 
-Garrab: `el_total`
+Garrab: `total_2`
 
 Mosa3da: Edy el ta3reef el gedeed esm khas beeh. W l 2eema men no3 b nafs el esm, el code el 3araby beyzawwed ""ال"" (`الشكل: شكل`) w code el Franco beyzawwed `el_` (`el_donya: donya`).
 
@@ -950,7 +977,7 @@ E3raf aktar: kalam explain K0405","dala ra2isi():
     law total > 0:
         khali total = 2
         ektb(""{total}"")
-","eval/judge/RUBRIC.md (becker-2026.1)","sha256:f34f29088fbef76c6397bd7e8cb58ae51fb4e2a6b4ec307a1fa9812ada5e2078"
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:97f8294153b9154a92fdf72848ae520d5bbb58fa9b1f636355af690452fae675"
 "K1002/ar","K1002","ar","",""," -- فرع لا يُوصل إليه ----------------------------------------- main.ar.kl  K1002
 
 هذا الـ `عندما` لن يعمل أبدًا: الفروع التي فوقه تطابق بالفعل كل قيمة كان سيطابقها.
@@ -1053,39 +1080,3 @@ dala ra2isi():
     ليكن اسمُ = ""Sara""
     اطبع(اسمُ)
 ","eval/judge/RUBRIC.md (becker-2026.1)","sha256:8b6d066ce973e53dab4fc71b3b34a0ff9a1d14bc4a7cb520bd6dfcf7b3ce6a55"
-"K0924/en","K0924","en","",""," -- SINGLE QUOTES ------------------------------------------------ main.kl  K0924
-
-Strings use double quotes in Kalam; single quotes don't start a string.
-
-11│     print('done')
-              ^^^^^^
-
-Try: `""done""`
-
-Help: Change the single quotes to double quotes: `""...""`. `kalam fix` does this for you.
-
-Learn more: kalam explain K0924","fn describe(n: Int) -> String:
-    if n < 0:
-        return ""negative""
-    else if n == 0:
-        return ""zero""
-    else:
-        return ""positive""
-
-fn main():
-    let label = describe(5)
-    print('done')
-","eval/judge/RUBRIC.md (becker-2026.1)","sha256:ed0446fe34f4c3321d8acde21e972e8c15c2bdd42ce550446d2469052a7263be"
-"K0801/en","K0801","en","",""," -- LAMBDA PARAMETER TYPES UNKNOWN ------------------------------- main.kl  K0801
-
-I can't tell the types of this lambda's parameters. A lambda takes its parameter types from the place it is passed to, and nothing here says what they are.
-
-2│     let inc = fn(x) => x + 1
-                 ^^^^^^^^^^^^^^
-
-Help: Write the parameter types, for example `fn(x: Int) => x + 1`, or pass the lambda directly to a function that expects one.
-
-Learn more: kalam explain K0801","fn main():
-    let inc = fn(x) => x + 1
-    print(""{inc(1)}"")
-","eval/judge/RUBRIC.md (becker-2026.1)","sha256:302aa52ed411223b81bc4616226d65803d328f1c7bdcfaea721741e1d2fa8692"

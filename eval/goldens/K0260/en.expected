@@ -1,0 +1,10 @@
+-- UNKNOWN STRING TAG ------------------------------------------- main.kl  K0260
+
+`sqll` is written directly before a string, so I read it as the string's tag, but there is no tag with that name. The built-in tags are `sql`, `html`, `cmd`, `url`, `path` and `regex`, spelled the same in every skin.
+
+2│     let q = sqll"SELECT id FROM users"
+               ^^^^
+
+Help: If the word is not meant as a tag, put a space between it and the quote, as in `return "done"`. To build SQL, HTML, a command, a URL, a path or a regex from values, use the built-in tag for it.
+
+Learn more: kalam explain K0260

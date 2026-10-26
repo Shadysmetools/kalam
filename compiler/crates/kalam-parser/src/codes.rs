@@ -24,6 +24,9 @@ pub const EXPECTED_ITEM: &str = "K0255";
 pub const USE_AFTER_ITEM: &str = "K0256";
 /// Nesting deeper than the parser's limit (protects the stack; not a spec rule).
 pub const TOO_DEEP: &str = "K0259";
+/// A tagged literal whose tag is not a tag in scope (spec §27, FOUNDER-QUEUE Q53; arg:
+/// `tag`). Unlike K0250–K0259 this is a spec code.
+pub const UNKNOWN_TAG: &str = "K0260";
 
 /// Spec-defined codes the parser also emits.
 pub const UNEXPECTED_INDENT: &str = "K0120";
@@ -77,6 +80,7 @@ pub const ALL: &[&str] = &[
     EXPECTED_ITEM,
     USE_AFTER_ITEM,
     TOO_DEEP,
+    UNKNOWN_TAG,
     UNEXPECTED_INDENT,
     NOT_A_PLACE,
     CHAINED_COMPARISON,

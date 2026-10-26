@@ -21,12 +21,13 @@ uses the constants there) and this table. The test
 | K0256 | `USE_AFTER_ITEM` | A `use` after the first item (§8.2 `file`: uses come first). | The `use` is kept in the AST. |
 | K0257–K0258 | — | Unused, reserved. | |
 | K0259 | `TOO_DEEP` | Nesting deeper than the parser's limit. This protects the stack and is not a language rule. | Reported once per file. The parser stops descending (`MAX_NEST`/`MAX_HEIGHT` in `src/lib.rs`), cuts the over-deep construct short, and goes on parsing. |
-| K0260–K0269 | — | Reserved, unused. The rest of B4 today: an unterminated `"""` is the lexer's K0129. A `"""` (any quote) inside a hole is the lexer's K0131. An **unknown tag before `"…"` is not reported by the lexer or the parser**: any lowercase ASCII word right before a quote lexes as a tag. It is left to `kalam-sinks`/typeck, or it needs a code here. | |
+| K0261–K0269 | — | Reserved, unused. The rest of B4 today: an unterminated `"""` is the lexer's K0129. A `"""` (any quote) inside a hole is the lexer's K0131. An unknown tag before `"…"` is K0260, a spec code (below). | |
 
 ## Spec-defined codes the parser also emits
 
 | Code | Constant | Spec meaning used by the parser |
 |---|---|---|
+| K0260 | `UNKNOWN_TAG` | Unknown string tag (spec §27 erratum 2026-10-26, FOUNDER-QUEUE Q53; arg `tag`). Any lowercase ASCII word directly before a quote lexes as a tag (§5.6); one that is not a built-in tag (`BUILTIN_TAGS` in `src/mistakes.rs`) is reported at the tag. `f"…"` is K0913 instead. The literal is kept in the AST. |
 | K0120 | `UNEXPECTED_INDENT` | An indented line where no block is open. It is also used for an indented line after a leading-dot continuation (§5.8 rule 2) that does not start with `.`. |
 | K0710 | `NOT_A_PLACE` | The left side of `=` or `op=` is not a place. |
 | K0720 | `CHAINED_COMPARISON` | `a < b < c`. |

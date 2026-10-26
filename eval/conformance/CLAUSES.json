@@ -647,8 +647,8 @@
           "id": "§5.6.7",
           "kind": "item",
           "line": 390,
-          "sha256": "fdcaebd9640e11fb",
-          "text": "- **After a member-access `.`** (the previous token is `.`), a digit run lexes as a decimal `INT_LIT` member index only. It never absorbs a `.` or an exponent. …"
+          "sha256": "faedb6a37a111bd0",
+          "text": "- **After a member-access `.`** (the previous token is `.`), a digit run, in either digit system, lexes as a decimal `INT_LIT` member index only. It never absor…"
         },
         {
           "id": "§5.6.8",
@@ -5382,6 +5382,6 @@
     }
   ],
   "spec": "spec/KALAM-SPEC.md",
-  "spec_sha256": "5f24532d724d723885d98982632762cd417e7eba66fa65b222273fd82cf2d15b",
+  "spec_sha256": "10705a6905f095b7a4621dddc2b5827bed50d86b5ecd74c7b42a16539e7775e4",
   "units": 95
 }

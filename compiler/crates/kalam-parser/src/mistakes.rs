@@ -27,8 +27,8 @@ use crate::grammar::is_place;
 use crate::{codes, is_layout, mk_span, Parser};
 
 /// The built-in tags of tagged literals (DR-29; `kalam_sinks::Tag`). User-defined tags
-/// (spec §17.8) are not implemented yet.
-const BUILTIN_TAGS: [&str; 6] = ["sql", "html", "cmd", "url", "path", "regex"];
+/// (spec §17.8) are not implemented yet. The K0260 catalog text lists the same six.
+pub const BUILTIN_TAGS: [&str; 6] = ["sql", "html", "cmd", "url", "path", "regex"];
 
 /// How far (in tokens) a lookahead or lookbehind for a mistake's shape may scan. A
 /// ternary, a block header or a `for (…)` header is a few dozen tokens; the cap keeps every
@@ -1813,18 +1813,12 @@ impl<'t> Parser<'t> {
                 Some(Fix::machine("delete the `f`", span, "")),
             );
         } else if !BUILTIN_TAGS.contains(&tag) {
-            // FOUNDER-QUEUE Q5: an unknown tag is a parse error, never a silent error node
-            // (`return"x"` in an English file is the tag `return`, spec §5.6).
+            // FOUNDER-QUEUE Q5, Q53: an unknown tag is K0260 at the tag, never a silent error
+            // node (`return"x"` in an English file is the tag `return`, spec §5.6). The
+            // message lists the built-in tags.
             let span = mk_span(t.span.start, t.span.start + tag.len() as u32);
             self.diags.push(
-                Diagnostic::new(codes::UNEXPECTED_TOKEN, self.file, span)
-                    .arg(
-                        "expected",
-                        "a tagged literal (`sql`, `html`, `cmd`, `url`, `path` or `regex`), \
-                         or a space before the string"
-                            .to_string(),
-                    )
-                    .arg("found", format!("`{tag}\"`")),
+                Diagnostic::new(codes::UNKNOWN_TAG, self.file, span).arg("tag", tag.to_string()),
             );
         }
     }

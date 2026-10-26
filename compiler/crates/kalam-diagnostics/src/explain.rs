@@ -224,6 +224,15 @@ const DESCRIPTIONS: &[(&str, &str, [&str; 3])] = &[
         ],
     ),
     (
+        "K0260",
+        "tag",
+        [
+            "the word written before the quote, such as foo",
+            "الكلمة المكتوبة قبل علامة التنصيص، مثل foo",
+            "el kelma elly maktooba 2abl el quote, zay foo",
+        ],
+    ),
+    (
         "",
         "escape",
         [

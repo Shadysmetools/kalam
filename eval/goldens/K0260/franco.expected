@@ -1,0 +1,10 @@
+-- TAG STRING MESH MA3ROOF ------------------------------- main.franco.kl  K0260
+
+`sqll` maktooba laz2a f string, fa 2areitha tag lel string da, bas mafeesh tag bel esm da. El tags el built-in homma `sql`, `html`, `cmd`, `url`, `path` w `regex`, w btetketeb zay ba3d f kol el skins.
+
+2│     khali q = sqll"SELECT id FROM users"
+                 ^^^^
+
+Mosa3da: Law el kelma mesh ma2sood beeha tag, 7ot masafa benha w ben el quote, zay `rag3 "done"`. W 3ashan tebny SQL aw HTML aw command aw URL aw path aw regex men 2eyam, esta5dem el tag el built-in bta3o.
+
+E3raf aktar: kalam explain K0260

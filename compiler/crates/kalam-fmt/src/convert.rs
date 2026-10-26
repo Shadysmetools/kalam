@@ -17,7 +17,7 @@ use kalam_lexer::{Op, Token, TokenKind};
 use kalam_skins::{Concept, KeywordTable};
 
 use crate::roles::{Role, Roles};
-use crate::{convert_digits, to_ascii_digits, FmtConfig};
+use crate::{convert_digits, FmtConfig};
 
 pub(crate) struct Rewriter<'a> {
     pub from: Skin,
@@ -65,12 +65,6 @@ impl Rewriter<'_> {
                 }
                 TokenKind::Op(Op::Comma) => Some(self.punct(Concept::PunctComma)),
                 TokenKind::Op(Op::Question) => Some(self.punct(Concept::PunctTry)),
-                // DR-26: the lexer reads only an ASCII digit run right after `.` as a member
-                // index, so a chain of numeric member indices (`t.0.1`) stays ASCII in every
-                // skin: with Arabic-Indic digits, `t.٠.١` would re-lex as `t . ٠.١`, one
-                // float (SEC0120). A lone index (`t.0`) follows the digit setting like any
-                // other literal.
-                TokenKind::Int if in_index_chain(tokens, i) => Some(to_ascii_digits(original)),
                 TokenKind::Int | TokenKind::Float => {
                     Some(convert_digits(original, self.to, self.config))
                 }
@@ -311,21 +305,6 @@ fn layout(k: TokenKind) -> bool {
         k,
         TokenKind::Newline | TokenKind::Indent | TokenKind::Dedent | TokenKind::Eof
     )
-}
-
-/// `tokens[i]` is a numeric member index (it follows a `.`, DR-26) next to another one:
-/// `.` and a number come right after it, or right before its own `.`.
-fn in_index_chain(tokens: &[Token], i: usize) -> bool {
-    let solid = |t: &&Token| t.span.end > t.span.start;
-    let mut before = tokens[..i].iter().rev().filter(solid).map(|t| t.kind);
-    let mut after = tokens[i + 1..].iter().filter(solid).map(|t| t.kind);
-    let dot = TokenKind::Op(Op::Dot);
-    if before.next() != Some(dot) {
-        return false;
-    }
-    let index_before = before.next() == Some(TokenKind::Int) && before.next() == Some(dot);
-    let index_after = after.next() == Some(dot) && after.next() == Some(TokenKind::Int);
-    index_before || index_after
 }
 
 /// `left` followed directly by `right` lexes in `skin` as exactly two tokens, split between

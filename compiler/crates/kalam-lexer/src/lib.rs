@@ -1801,17 +1801,11 @@ impl<'a> Lexer<'a> {
         let start = self.pos();
         let first = self.peek().expect("number() is called on a digit");
 
-        // After a member-access `.`, a digit run is a decimal member index only (DR-26).
-        if self.last_is_dot() && first.is_ascii_digit() {
-            while matches!(self.peek(), Some(c) if c.is_ascii_digit()) {
-                self.i += 1;
-            }
-            self.push(TokenKind::Int, start, TokenFlags::default());
-            return;
-        }
-
-        // The same rule for an Arabic-Indic index (`ت.٠.١`): only digits are absorbed, and
-        // the run is checked below like any literal (one digit system, SEC0122 outside `ar`).
+        // After a member-access `.`, a digit run is a decimal member index only (DR-26): only
+        // digits are absorbed, never a `.`, `٫` or an exponent, so `t.0.1` and `ت.٠.١` are
+        // `t . 0 . 1`. Digits of every system are absorbed, and the run is checked below like
+        // any literal: one digit system (SEC0120/SEC0121), SEC0122 outside `ar`, and no
+        // leading zero (K0125).
         let member_index = self.last_is_dot();
         if member_index {
             while matches!(self.peek(), Some(c) if is_any_digit(c)) {
@@ -2183,6 +2177,17 @@ mod tests {
         assert_eq!(codes("t.٠.١\n", Skin::En), vec!["SEC0122", "SEC0122"]);
         // One digit system per index (SEC0120).
         assert_eq!(codes("ت.٠1\n", Skin::Ar), vec!["SEC0120"]);
+        // ... whichever system comes first: an ASCII digit run does not stop short of an
+        // Arabic-Indic or Persian digit glued to it (not two adjacent index tokens).
+        assert_eq!(codes("ت.0١\n", Skin::Ar), vec!["SEC0120"]);
+        assert_eq!(codes("t.0١\n", Skin::En), vec!["SEC0120"]);
+        assert_eq!(codes("t.1۲\n", Skin::En), vec!["SEC0121"]);
+        // An index is a decimal INT_LIT (DR-26), so a leading zero is K0125 in both digit
+        // systems (DR-22): `t.01` and `ت.٠١` agree, and converting one gives the other.
+        assert_eq!(codes("t.01\n", Skin::En), vec!["K0125"]);
+        assert_eq!(codes("ت.٠١\n", Skin::Ar), vec!["K0125"]);
+        assert_eq!(codes("t.0.10\n", Skin::En), Vec::<&str>::new());
+        assert_eq!(codes("ت.٠.١٠\n", Skin::Ar), Vec::<&str>::new());
         assert_eq!(
             kinds("0x1e+5\n", Skin::En),
             vec![T::Int, T::Op(Plus), T::Int, T::Newline, T::Eof]

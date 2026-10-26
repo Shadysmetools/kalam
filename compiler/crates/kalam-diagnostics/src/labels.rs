@@ -163,7 +163,13 @@ pub const TEMPLATES: &[[&str; 3]] = &[
         "هذا ينهار: ناتج BigInt.pow أكبر من اللازم (65536 بت أو أكثر)",
         "da beyo2a3: natiget BigInt.pow kebeera awy (65536 bit aw aktar)",
     ],
-    // K0126 on a `Float` or `Decimal` literal: why it does not fit (Q48, Q52).
+    // K0126: the range of `Int` (D18) under an `Int` literal, and why a `Float` or
+    // `Decimal` literal does not fit (Q48, Q52).
+    [
+        "`{core_int}` holds whole numbers from -9223372036854775808 to 9223372036854775807 (64 bits) on every platform",
+        "النوع `{core_int}` يحمل الأعداد الصحيحة من -9223372036854775808 إلى 9223372036854775807 (64 بت) على كل المنصات",
+        "`{core_int}` beyshel el arqam el sa7ee7a men -9223372036854775808 l 9223372036854775807 (64 bit) 3ala kol platform",
+    ],
     [
         "this is beyond the largest `{core_float}` (about 1.8e308)",
         "هذا أكبر من أكبر قيمة في `{core_float}` (حوالي 1.8e308)",

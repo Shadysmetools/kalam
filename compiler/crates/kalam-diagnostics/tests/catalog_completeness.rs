@@ -114,8 +114,8 @@ fn every_emitted_code_has_a_catalog_entry_in_three_languages() {
 
 #[test]
 fn messages_have_no_unfilled_placeholders_for_known_args() {
-    // Parser codes: K0250 gets `expected`/`found`, the rest get no args, so a stray `{x}`
-    // would be printed raw.
+    // Parser codes: K0250 gets `expected`/`found` and K0260 `tag`; these get no args, so a
+    // stray `{x}` would be printed raw.
     let no_args = [
         "K0251", "K0252", "K0253", "K0254", "K0255", "K0256", "K0259", "K0710", "K0720", "K0731",
         "K0921",
@@ -412,7 +412,7 @@ const EMITTER_ARGS: &[(&str, &[&str])] = &[
     ("K0904", &[]),
     ("K0911", &["found", "expected"]),
     ("K0924", &[]),
-    // kalam-parser (`codes.rs`): only K0250 has args. K0253 has one site with `problem`
+    // kalam-parser (`codes.rs`): only K0250 and K0260 have args. K0253 has one site with `problem`
     // and one (`error_at`) without, so `problem` is not guaranteed.
     ("K0250", &["expected", "found"]),
     ("K0251", &[]),
@@ -422,6 +422,8 @@ const EMITTER_ARGS: &[(&str, &[&str])] = &[
     ("K0255", &[]),
     ("K0256", &[]),
     ("K0259", &[]),
+    // K0260 (FOUNDER-QUEUE Q53): `mistakes.rs` `f_string`, the unknown tag.
+    ("K0260", &["tag"]),
     ("K0710", &[]),
     ("K0720", &[]),
     ("K0731", &[]),

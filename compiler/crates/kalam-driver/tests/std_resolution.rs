@@ -213,3 +213,27 @@ fn a_stdlib_default_argument_that_cannot_run_is_reported_at_the_call() {
         }
     }
 }
+
+/// FOUNDER-QUEUE Q53, Q55: an unknown string tag is K0260 in both modes, and nothing after
+/// the parser (sinks, the type checker) adds a second finding for the same literal.
+#[test]
+fn an_unknown_tag_is_k0260_alone_in_both_modes() {
+    both(
+        "fn main():\n    let q = sqll\"SELECT 1\"\n    print(\"x\")\n",
+        &[("K0260", 2)],
+    );
+    both(
+        "fn f() -> String:\n    return\"done\"\n\nfn main():\n    print(f())\n",
+        &[("K0260", 2)],
+    );
+}
+
+/// Q45 review: only the stdlib's `pow` of a number type is evaluated in a constant. A
+/// user's method named `pow` is a method call like any other (K1204), in both modes.
+#[test]
+fn a_user_method_named_pow_is_not_constant() {
+    both(
+        "type Box:\n    v: Int\n\nimpl Box:\n    fn pow(self, e: Int) -> Int => self.v\n\nlet B = Box(v: 2)\nlet Y = B.pow(3)\n\nfn main():\n    print(\"{Y}\")\n",
+        &[("K1204", 8)],
+    );
+}

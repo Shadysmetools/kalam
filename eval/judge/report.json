@@ -1,16 +1,34 @@
 {
-  "mean": 4.364,
+  "mean": 4.3783,
   "model": "claude-opus-5-5",
-  "n": 114,
+  "n": 115,
   "rubric_sha256": "f0cba998336a5b48e4f2ff88719bff0282cd7b4a490970e607adc66cfe4829c4",
   "rubric_version": "becker-2026.1",
-  "sample_sha256": "66c85dc33751a18e48fc5b7286ce1dcc6b8dd6b366b1d9902a7f6fe4a5821b5d",
+  "sample_sha256": "fa85b1918906516858a37be4954cf84fb36bb7253c91439090f6552c881a4163",
   "schema": "kalam-judge-report/1",
   "scores": [
     {
+      "id": "K0126/ar",
+      "rationale": "Accurate, caret on the literal with the exact Int range, clear why and a BigInt fix (fixed ASCII in every skin); no code example of the fix, and the help's pointer back to the label is redundant.",
+      "rendered_sha256": "sha256:a560a1dd286397fd2f0bf4f5fa2e352cf0b2257a5635f97b63d88768e555488f",
+      "score": 4.5
+    },
+    {
+      "id": "K0252/franco",
+      "rationale": "Caret now on line 1's `:` with an accurate why and a concrete `fot` fix, but no example, and 'indent the following lines' would here nest `dala ra2isi` inside `helper`.",
+      "rendered_sha256": "sha256:d3c0947b1a73dbb32291e0f7259e1303ec2b33322971f29decff61a4e2f96e90",
+      "score": 4.0
+    },
+    {
+      "id": "K0260/franco",
+      "rationale": "Clear why (glued word read as a tag), caret on `sqll`, accurate built-in tag list and a spacing example, but no direct did-you-mean `sql` for the obvious typo.",
+      "rendered_sha256": "sha256:7b8882679f7eb1cd685a9add4fc8633e0048d45822da0d86ebc14d599007eefe",
+      "score": 4.0
+    },
+    {
       "id": "K0405/franco",
-      "rationale": "Both sites labelled with a clear why, but the Try `el_total` and the help borrow the type-value naming convention, which does not fit a plain shadowed variable.",
-      "rendered_sha256": "sha256:f34f29088fbef76c6397bd7e8cb58ae51fb4e2a6b4ec307a1fa9812ada5e2078",
+      "rationale": "Both sites labelled, clear why and a fitting `total_2` fix, but the help adds an irrelevant type-name convention with Arabic-script code in a Franco message.",
+      "rendered_sha256": "sha256:97f8294153b9154a92fdf72848ae520d5bbb58fa9b1f636355af690452fae675",
       "score": 4.0
     },
     {
@@ -42,12 +60,6 @@
       "rationale": "Reason (no octal), exact Try `7`, the 0o alternative and kalam fix: complete.",
       "rendered_sha256": "sha256:2bdc948142eabf224302c8eab4e908aeb9b86ccce4083122f221cebd5ca57510",
       "score": 5.0
-    },
-    {
-      "id": "K0126/ar",
-      "rationale": "States the exact Int range and two concrete fixes; no example of writing a BigInt.",
-      "rendered_sha256": "sha256:1614445a1f36251b023e42cf7280d4e9cf884997a5fd2a75d279bf49764ab995",
-      "score": 4.5
     },
     {
       "id": "K0127/franco",
@@ -96,12 +108,6 @@
       "rationale": "Caret on the open paren and clear reason, but the fix lists `) ] }` instead of the `)` needed.",
       "rendered_sha256": "sha256:c4c4c9891b9e089af8c8b4f31dab2de6a5cd9177244bbee722451ee6f2e79dfd",
       "score": 4.0
-    },
-    {
-      "id": "K0252/franco",
-      "rationale": "Caret and 'this line ends with :' point at line 3 (`dala ra2isi():`), but the empty block belongs to line 1, so it misleads.",
-      "rendered_sha256": "sha256:7f3bba3016bb88b8af3ab7007337b66ccf9366d1a94e689208b238a1679a2301",
-      "score": 2.0
     },
     {
       "id": "K0253/ar",

@@ -591,21 +591,23 @@ pub static CATALOG: &[Entry] = &[
     },
     Entry {
         code: "K0126",
-        title: ["NUMBER TOO BIG FOR ITS TYPE", "رقم أكبر من نوعه", "RAKAM AKBAR MEN NO3O"],
+        title: ["NUMBER OUT OF RANGE FOR ITS TYPE", "رقم خارج مدى نوعه", "RAKAM BARA MADA NO3O"],
+        // `{type}` is the literal's type (`Int`, `Float` or `Decimal`, in the file's skin);
+        // the label under the literal gives that type's range or the reason it does not fit.
         message: [
-            "This number doesn't fit in `{type}`. For `{core_int}`, the range is the whole numbers from -9223372036854775808 to 9223372036854775807 (64 bits) on every platform.",
-            "هذا الرقم لا يتسع له النوع `{type}`. مدى النوع `{core_int}` هو الأعداد الصحيحة من -9223372036854775808 إلى 9223372036854775807 (64 بت) على كل المنصات.",
-            "El rakam da mesh hayeksa3 f `{type}`. Lel `{core_int}`, el mada howa el arqam el sa7ee7a men -9223372036854775808 l 9223372036854775807 (64 bit) 3ala kol platform.",
+            "This number doesn't fit in `{type}`. A literal must be a value its type can hold, so I stop here instead of changing the number.",
+            "هذا الرقم لا يتسع له النوع `{type}`. يجب أن تكون القيمة الحرفية قيمة يستطيع نوعها حملها، لذلك أتوقف هنا بدلًا من تغيير الرقم.",
+            "El rakam da mesh hayeksa3 f `{type}`. El literal lazem yeb2a 2eema el no3 bta3o ye2dar yeshilha, 3ashan keda bawa2af hena badal ma aghayar el rakam.",
         ],
         help: [
-            "Use a smaller value, or give the value the type `BigInt` for numbers without a limit.",
-            "استخدم قيمة أصغر، أو اجعل نوع القيمة `BigInt` للأعداد التي لا حد لها.",
-            "Esta5dem qeema as8ar, aw ekhali no3 el qeema `BigInt` lel arqam elly malhash 7add.",
+            "Use a value the type can hold (the note under the number says why this one doesn't fit), or a type with a larger range: `BigInt` holds whole numbers of any size.",
+            "استخدم قيمة يستطيع النوع حملها (الملاحظة تحت الرقم تشرح لماذا لا يتسع لهذه)، أو نوعًا مداه أوسع: `BigInt` يحمل الأعداد الصحيحة بأي حجم.",
+            "Esta5dem qeema el no3 ye2dar yeshilha (el molaz7a ta7t el rakam bet2ol leh di mesh hateksa3), aw no3 madah awsa3: `BigInt` beyshel el arqam el sa7ee7a b ay 7agm.",
         ],
         explain: [
-            "Why: `Int` is a checked 64-bit integer on every backend (decision D18), including JavaScript, where numbers beyond 2^53 would otherwise lose precision without a warning. A literal outside the range would be wrong before the program even runs, so I stop at compile time.\n\nInstead of:\n    let big: Int = 10000000000000000000\n\nwrite:\n    let big: BigInt = 10000000000000000000",
-            "السبب: النوع `عدد` عدد صحيح من 64 بت مع فحص للتجاوز على كل المنصات (القرار D18)، ومنها JavaScript التي تفقد فيها الأرقام الأكبر من 2^53 دقتها دون تحذير. والقيمة الحرفية الخارجة عن المدى خاطئة قبل أن يعمل البرنامج أصلًا، لذلك أتوقف عندها وقت الترجمة.\n\nبدلًا من:\n    ليكن الكبير: عدد = 10000000000000000000\n\nاكتب:\n    ليكن الكبير: BigInt = 10000000000000000000",
-            "Leh: `adad` 3adad sa7ee7 64 bit metraqab 3ala kol platform (qarar D18), w menhom JavaScript elly el arqam elly akbar men 2^53 fiha bteb2a mesh daqee2a men gher warning. W el literal elly bara el mada ghalat 2abl ma el program yeshtaghal aslan, 3ashan keda bawa2af 3ando w2t el compile.\n\nBadal:\n    khali kebeer: adad = 10000000000000000000\n\nEkteb:\n    khali kebeer: BigInt = 10000000000000000000",
+            "Why: `Int` is a checked 64-bit integer on every backend (decision D18), including JavaScript, where numbers beyond 2^53 would otherwise lose precision without a warning. A literal outside the range would be wrong before the program even runs, so I stop at compile time.\n\nInstead of:\n    let big: Int = 10000000000000000000\n\nwrite:\n    let big: BigInt = 10000000000000000000\n\nThe other number types have limits too: a `Float` literal beyond about 1.8e308 would become infinity, and a `Decimal` literal needs at most 34 significant digits and an exponent that decimal128 can reach. Those literals are stopped the same way.",
+            "السبب: النوع `عدد` عدد صحيح من 64 بت مع فحص للتجاوز على كل المنصات (القرار D18)، ومنها JavaScript التي تفقد فيها الأرقام الأكبر من 2^53 دقتها دون تحذير. والقيمة الحرفية الخارجة عن المدى خاطئة قبل أن يعمل البرنامج أصلًا، لذلك أتوقف عندها وقت الترجمة.\n\nبدلًا من:\n    ليكن الكبير: عدد = 10000000000000000000\n\nاكتب:\n    ليكن الكبير: BigInt = 10000000000000000000\n\nولأنواع الأرقام الأخرى حدود أيضًا: القيمة الحرفية من النوع `كسري` الأكبر من 1.8e308 تقريبًا تصير ما لا نهاية، والقيمة الحرفية من النوع `Decimal` لا تتجاوز 34 رقمًا معنويًا ولا أُسًّا لا يبلغه decimal128. وأتوقف عند هذه القيم بالطريقة نفسها.",
+            "Leh: `adad` 3adad sa7ee7 64 bit metraqab 3ala kol platform (qarar D18), w menhom JavaScript elly el arqam elly akbar men 2^53 fiha bteb2a mesh daqee2a men gher warning. W el literal elly bara el mada ghalat 2abl ma el program yeshtaghal aslan, 3ashan keda bawa2af 3ando w2t el compile.\n\nBadal:\n    khali kebeer: adad = 10000000000000000000\n\nEkteb:\n    khali kebeer: BigInt = 10000000000000000000\n\nW anwa3 el arqam el tanya leeha 7odood bardo: literal `kasri` akbar men 1.8e308 ta2reeban hayeb2a infinity, w literal `Decimal` lazem yeb2a feeh 34 rakam mohem bel kteer w os decimal128 ye2dar yewsalo. W bawa2af 3and el literals di bnafs el shakl.",
         ],
         proposed: false,
     },
@@ -894,7 +896,7 @@ pub static CATALOG: &[Entry] = &[
     },
     // ---- Parse errors (kalam-parser/PARSE-CODES.md). K0250–K0259 are proposed codes
     // (spec/CRITIQUE.md B4; FOUNDER-QUEUE Q1); K0710, K0720 and K0731 are spec §27 codes.
-    // Only K0250 takes code arguments (`expected`, `found`). Keywords inside these texts are
+    // Only K0250 (`expected`, `found`) and K0260 (`tag`, below) take code arguments. Keywords inside these texts are
     // keyword placeholders, so code stays in the file's skin (spec §21.4 rule 1).
     // ar/franco: pending native review.
     Entry {
@@ -1056,6 +1058,29 @@ pub static CATALOG: &[Entry] = &[
             "Leh: el compiler leeh 7add sabet lel tadakhol, 3ashan mafeesh input, mahma kan kebeer aw metwalled, ye2da yewa22a3o. W el code elly yewsal lel 7add da gameed aktar men ennu ensan yetaba3o.\n\nEl 7al: edy el agza2 elly gowa asami.\n    khali far3i = se3r * kamiya\n    khali magmoo3 = far3i + sha7n",
         ],
         proposed: true,
+    },
+    // K0260: spec §27 erratum 2026-10-26 (FOUNDER-QUEUE Q5, Q53). `{tag}` is the word glued
+    // to the quote. Tags are ASCII and identical in every skin (spec §5.6), so the list of
+    // built-in tags is the same in all three languages (`kalam_parser::BUILTIN_TAGS`).
+    Entry {
+        code: "K0260",
+        title: ["UNKNOWN STRING TAG", "وسم نص غير معروف", "TAG STRING MESH MA3ROOF"],
+        message: [
+            "`{tag}` is written directly before a string, so I read it as the string's tag, but there is no tag with that name. The built-in tags are `sql`, `html`, `cmd`, `url`, `path` and `regex`, spelled the same in every skin.",
+            "الكلمة `{tag}` ملتصقة بنص، فقرأتها وسمًا لهذا النص، لكن لا يوجد وسم بهذا الاسم. الأوسمة المدمجة هي `sql` و`html` و`cmd` و`url` و`path` و`regex`، وتُكتب بالطريقة نفسها في كل الواجهات.",
+            "`{tag}` maktooba laz2a f string, fa 2areitha tag lel string da, bas mafeesh tag bel esm da. El tags el built-in homma `sql`, `html`, `cmd`, `url`, `path` w `regex`, w btetketeb zay ba3d f kol el skins.",
+        ],
+        help: [
+            "If the word is not meant as a tag, put a space between it and the quote, as in `{kw_return} \"done\"`. To build SQL, HTML, a command, a URL, a path or a regex from values, use the built-in tag for it.",
+            "إذا لم تقصد الكلمة وسمًا، فضع مسافة بينها وبين علامة التنصيص، مثل `{kw_return} \"done\"`. ولبناء SQL أو HTML أو أمر أو رابط أو مسار أو regex من قيم، استخدم الوسم المدمج المناسب.",
+            "Law el kelma mesh ma2sood beeha tag, 7ot masafa benha w ben el quote, zay `{kw_return} \"done\"`. W 3ashan tebny SQL aw HTML aw command aw URL aw path aw regex men 2eyam, esta5dem el tag el built-in bta3o.",
+        ],
+        explain: [
+            "Why: a tag such as `sql` makes a string a value of its own type, and each hole in it is encoded for that context, so values can't inject code (spec §17). A tag is recognized only directly before a quote, so any lowercase ASCII word glued to a string is read as a tag. In an English file that includes a keyword such as `return\"x\"`. Reading an unknown tag as a plain string would silently drop the protection that a misspelled tag such as `sqll` was meant to give, so I stop at it.\n\nInstead of:\n    let q = sqll\"SELECT name FROM users\"\n    return\"done\"\n\nwrite:\n    let q = sql\"SELECT name FROM users\"\n    return \"done\"",
+            "السبب: الوسم مثل `sql` يجعل النص قيمة من نوع خاص بها، وتُرمَّز كل فجوة فيه بما يناسب سياقها، فلا تستطيع القيم حقن كود (المواصفة §17). ولا يُعرف الوسم إلا ملتصقًا بعلامة التنصيص، لذلك تُقرأ أي كلمة ASCII بحروف صغيرة ملتصقة بنص وسمًا. ولو قُرئ الوسم غير المعروف نصًا عاديًا لضاعت دون أي تنبيه الحماية التي كان يُفترض أن يعطيها وسم مكتوب خطأً مثل `sqll`، لذلك أتوقف عنده.\n\nبدلًا من:\n    ليكن q = sqll\"SELECT name FROM users\"\n\nاكتب:\n    ليكن q = sql\"SELECT name FROM users\"",
+            "Leh: el tag zay `sql` bey7awel el string l 2eema leeha no3 khas, w kol hole feeh betet3emel encode 3ala 7asab el context, fa el 2eyam mate2darsh te3mel injection (el spec §17). El tag mabyetfehemsh ella laze2 f el quote, 3ashan keda ay kelma ASCII small letters laz2a f string btet2ery tag. W f Franco da yeshmel keywords zay `law\"x\"`. Law el tag elly mesh ma3roof et2ara string 3adi, el 7emaya elly kan el mafrood tag maktoob ghalat zay `sqll` yedeeha kanet hatdee3 men gher ma 7ad ykhod baloo, 3ashan keda bawa2af 3ando.\n\nBadal:\n    khali q = sqll\"SELECT name FROM users\"\n\nEkteb:\n    khali q = sql\"SELECT name FROM users\"",
+        ],
+        proposed: false,
     },
     // ---- Statements (K07xx, spec §8). ar/franco: pending native review.
     Entry {
@@ -3175,12 +3200,29 @@ mod tests {
     fn k0126_states_the_true_64_bit_int_range() {
         // DECISIONS.md D18: `Int` is a checked 64-bit integer on every backend.
         let e = lookup("K0126").expect("K0126 is in the catalog");
+        // The message names the literal's own type: `Int`'s range is the label the type
+        // checker attaches to an `Int` literal (a `Float` or `Decimal` one gets its own).
         for msg in e.message {
-            assert!(msg.contains("9223372036854775807"), "{msg}");
+            assert!(msg.contains("`{type}`"), "{msg}");
+            assert!(!msg.contains("9223372036854775807"), "{msg}");
+            assert!(!msg.contains("{core_int}"), "{msg}");
+        }
+        let int_range = crate::labels::TEMPLATES
+            .iter()
+            .find(|t| t[0].starts_with("`{core_int}` holds whole numbers"))
+            .expect("the `Int` range label");
+        for text in int_range.iter().chain(e.explain.iter()) {
             assert!(
-                !msg.contains("2⁵³") && !msg.contains("9007199254740991"),
-                "{msg}"
+                text.contains("9223372036854775807") || text.contains("D18"),
+                "{text}"
             );
+            assert!(
+                !text.contains("2⁵³") && !text.contains("9007199254740991"),
+                "{text}"
+            );
+        }
+        for text in int_range {
+            assert!(text.contains("9223372036854775807"), "{text}");
         }
     }
 

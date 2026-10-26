@@ -1,0 +1,3 @@
+dala ra2isi():
+    khali q = sqll"SELECT id FROM users"
+    ektb("ok")

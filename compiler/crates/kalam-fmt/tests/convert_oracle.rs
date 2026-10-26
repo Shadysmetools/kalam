@@ -80,9 +80,11 @@ const SKIPPED_V5R: &[&str] = &[
 
 #[test]
 fn m1_fuzz_oracle_inputs_convert_cleanly() {
-    // All nine are clean (the fuzzer saved them because they are).
+    // All eighteen are clean (the fuzzer saved them because they are): every input under
+    // `eval/fuzz/oracle/` on 2026-10-26, including `-7` to `-14` and `convert_roundtrip-4`,
+    // found on the frozen M1 binary after the first copy. This converter handles them all.
     assert_eq!(run("m1"), Vec::<String>::new());
-    assert_eq!(cases("m1").len(), 9);
+    assert_eq!(cases("m1").len(), 18);
 }
 
 #[test]
@@ -106,7 +108,7 @@ fn assert_oracle(text: &str, from: Skin) {
 #[test]
 fn keyword_glued_to_a_string() {
     // oracle/convert_output_rejected-5.ar.kl: `إذا"x"` became `law"x"` / `if"x"`, which
-    // lex as a tagged literal with an unknown tag (K0250).
+    // lex as a tagged literal with an unknown tag (K0260).
     assert_oracle(
         "دالة f(س: منطقي):\n    إذا س == صح: أرجع\n    ليكن ن = إذا\"x\" == \"y\": 1 وإلا: 2\n",
         Skin::Ar,
@@ -142,23 +144,29 @@ fn the_space_is_added_in_every_skin_including_the_source() {
 }
 
 #[test]
-fn member_index_chains_keep_ascii_digits() {
-    // DR-26: right after `.`, an ASCII digit run is a member index. With the Arabic-Indic
-    // setting, `t.0.1` written as `t.٠.١` would re-lex as `t . ٠.١` (a float, SEC0120), so
-    // a chain of member indices stays ASCII; a lone index follows the setting.
-    let src = "fn f(t: ((Int, Int), Int)) -> Int:\n    return t.0.1 + t.1 + t.0.x.1\n";
+fn member_index_chains_follow_the_digit_setting() {
+    // DR-26 (FOUNDER-QUEUE Q54): right after `.`, a digit run of either system is a member
+    // index, so `t.٠.١` lexes as `t . ٠ . ١`. A chain of member indices follows the digit
+    // setting like a lone index; nothing is forced back to ASCII.
+    let src = "fn f(t: ((Int, Int), Int)) -> Int:\n    return t.0.1 + t.1 + t.0.x.1 + t.0.0.10\n";
     assert_oracle(src, Skin::En);
     let config = FmtConfig {
         ar_digits: kalam_fmt::ArDigits::ArabicIndic,
     };
     let ar = kalam_fmt::convert(src, Skin::En, Skin::Ar, &config).unwrap();
     assert!(
-        ar.ends_with("أرجع t.0.1 + t.\u{0661} + t.\u{0660}.x.\u{0661}\n"),
+        ar.ends_with(
+            "أرجع t.\u{0660}.\u{0661} + t.\u{0661} + t.\u{0660}.x.\u{0661} + t.\u{0660}.\u{0660}.\u{0661}\u{0660}\n"
+        ),
         "{ar}"
     );
+    assert!(errors(&ar, Skin::Ar).is_empty(), "{ar}");
+    assert_oracle(&ar, Skin::Ar);
     // `kalam fmt` prints member indices on its own path: the same rule holds there.
     // (`format_strict`: `format` would hide a printer failure behind its fallback.)
     let formatted = kalam_fmt::format_strict(&ar, Skin::Ar, &config).unwrap();
     assert_eq!(formatted, ar);
-    assert!(errors(&formatted, Skin::Ar).is_empty());
+    // And back: the Arabic-Indic chain converts to the English source.
+    let en = kalam_fmt::convert(&ar, Skin::Ar, Skin::En, &config).unwrap();
+    assert_eq!(en, src);
 }

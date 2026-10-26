@@ -1,10 +1,10 @@
--- NUMBER TOO BIG FOR ITS TYPE ---------------------------------- main.kl  K0126
+-- NUMBER OUT OF RANGE FOR ITS TYPE ----------------------------- main.kl  K0126
 
-This number doesn't fit in `Int`. For `Int`, the range is the whole numbers from -9223372036854775808 to 9223372036854775807 (64 bits) on every platform.
+This number doesn't fit in `Int`. A literal must be a value its type can hold, so I stop here instead of changing the number.
 
 2│     let big = 9223372036854775808
-                 ^^^^^^^^^^^^^^^^^^^
+                 ^^^^^^^^^^^^^^^^^^^ `Int` holds whole numbers from -9223372036854775808 to 9223372036854775807 (64 bits) on every platform
 
-Help: Use a smaller value, or give the value the type `BigInt` for numbers without a limit.
+Help: Use a value the type can hold (the note under the number says why this one doesn't fit), or a type with a larger range: `BigInt` holds whole numbers of any size.
 
 Learn more: kalam explain K0126
