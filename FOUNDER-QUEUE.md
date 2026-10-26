@@ -49,3 +49,12 @@ Minor design forks the loop decided provisionally. Each one is reversible. Confi
 | Q41 | Q37 scope when an impl declares fewer bounds than its trait | The trait's signature applies to every caller, concrete receivers included | M2 iter 4 |
 | Q42 | `kalam fix` acceptance rule | A machine fix must not add any new error code at any stage; otherwise it is withheld (shown as a suggestion only) | M2 iter 4 |
 | Q43 | A judge item whose golden changes after judging | The item is marked stale automatically and re-judged before the scorecard uses it | M2 iter 4 |
+| Q44 | `Float.pow` | Confirmed: `Float.pow(self, exponent: Float)`, and the K0923 fix rewrites `a ** b` to `a.pow(b)` | M2 iter 5 |
+| Q45 | `.pow` for Decimal and BigInt | Add `BigInt.pow(Int)` (exact) and `Decimal.pow(Int)` (exact or overflow panic) as a spec §20.1 erratum, so the K0923 fix applies to them | M2 iter 5 |
+| Q46 | `use std/task.{Cell}` (spec §20.1 lists std/task) | Add the std/task stub, re-exporting Cell | M2 iter 5 |
+| Q47 | Reading of Q41 | Bounds only: every caller sees the trait's bounds; the impl body is checked against its own bounds | M2 iter 5 |
+| Q48 | Decimal exponent-range overflow message | A separate message, "Decimal exponent out of range", in both the checker and the interpreter | M2 iter 5 |
+| Q49 | `kalam fix` chains | Accept a chain of fixes when its end state adds no new code and has strictly fewer errors (individual steps may expose errors) | M2 iter 5 |
+| Q50 | Machine fixes for warnings in a file that has errors | Allowed when they add no new code and don't raise the error count | M2 iter 5 |
+| Q51 | K0405 rename suffix differs by skin | One rule in every skin (`_2`, `_3`, …), so a fixed file converts to the same fixed file in another skin | M2 iter 5 |
+| Q52 | Float literals that overflow to infinity (`1e7000`) | K0126, like out-of-range Decimal literals | M2 iter 5 |
