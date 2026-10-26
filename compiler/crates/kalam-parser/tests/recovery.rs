@@ -38,6 +38,76 @@ fn missing_block_after_colon() {
     assert!(s.contains("(sig \"g\""), "{s}");
 }
 
+/// The merged (lexer + parser) findings of `src` as `(code, start, end)`.
+fn merged(src: &str, skin: Skin) -> Vec<(&'static str, usize, usize)> {
+    kalam_parser::parse_source(src, skin, kalam_base::FileId(0))
+        .diagnostics
+        .iter()
+        .map(|d| (d.code, d.span.start as usize, d.span.end as usize))
+        .collect()
+}
+
+#[test]
+fn a_missing_block_is_reported_at_the_colon_that_opens_it() {
+    // The judge audit (K0252/franco): K0252 says "this line ends with `:`", but its caret
+    // was on the next line holding code, often another header. It belongs on the `:`.
+    for (src, skin, header) in [
+        (
+            "fn helper():\n\nfn main():\n    helper()\n",
+            Skin::En,
+            "fn helper():",
+        ),
+        (
+            "dala helper():\n\ndala ra2isi():\n    helper()\n",
+            Skin::Franco,
+            "dala helper():",
+        ),
+        (
+            "دالة helper():\n\nدالة رئيسي():\n    helper()\n",
+            Skin::Ar,
+            "دالة helper():",
+        ),
+        // A type body (`open_body`), a comment after the colon, a block at the same level.
+        ("type T:\n\nfn main():\n    pass\n", Skin::En, "type T:"),
+        (
+            "fn main():  # later\n\n# x\nfn g():\n    pass\n",
+            Skin::En,
+            "fn main():",
+        ),
+        (
+            "fn main():\n    if true:\n    pass\n",
+            Skin::En,
+            "fn main():\n    if true:",
+        ),
+        // The end of the file right after the colon, with and without a newline.
+        ("fn main():", Skin::En, "fn main():"),
+        ("fn main():\n", Skin::En, "fn main():"),
+        (
+            "fn main():\n    while true:",
+            Skin::En,
+            "fn main():\n    while true:",
+        ),
+    ] {
+        let colon = header.len() - 1;
+        assert_eq!(
+            merged(src, skin),
+            vec![(codes::EXPECTED_BLOCK, colon, colon + 1)],
+            "{src:?}"
+        );
+    }
+    // A bad indentation on the next line is the lexer's finding alone (K0120, K0122, K0103):
+    // the missing block is not reported a second time, now on another line.
+    for (src, code) in [
+        ("fn main():\n  x()\n", "K0120"),
+        ("type T:\n  x: Int\n", "K0120"),
+        ("fn main():\n    if true:\n  x()\n", "K0122"),
+        ("fn main():\n\tx()\n", "K0103"),
+    ] {
+        let found: Vec<&str> = merged(src, Skin::En).iter().map(|f| f.0).collect();
+        assert_eq!(found, vec![code], "{src:?}");
+    }
+}
+
 #[test]
 fn unclosed_bracket_at_eof() {
     let (c, _) = errs("fn main():\n    print(\"x\"\n");

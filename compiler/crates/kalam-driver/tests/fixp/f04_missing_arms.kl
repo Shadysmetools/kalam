@@ -1,0 +1,12 @@
+enum Shape:
+    Circle(r: Int)
+    Square(side: Int)
+    Dot
+
+fn area(s: Shape) -> Int:
+    match s:
+        case .Circle(r):
+            return r * r * 3
+
+fn main():
+    print("{area(Shape.Circle(r: 2))}")

@@ -1,0 +1,7 @@
+type Job:
+    run: fn(Int) -> Int
+
+fn main():
+    let jobs = [Job(run: fn(x: Int) -> Int => x * 2)]
+    let j = jobs[0]
+    print("{j.run(21)}")

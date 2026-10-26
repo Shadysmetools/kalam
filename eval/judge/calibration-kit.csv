@@ -1,0 +1,1092 @@
+﻿"id","code","skin","human_score","notes","rendered","source","rubric","rendered_sha256"
+"K0255/en","K0255","en","",""," -- STATEMENT OUTSIDE A FUNCTION --------------------------------- main.kl  K0255
+
+I found a statement at the top level of the file. The top level holds declarations only: functions, types, traits, constants and imports.
+
+2│ limit + 1
+   ^^^^^
+
+Help: Move this line into a function, such as `main`.
+
+Learn more: kalam explain K0255","let limit = 3
+limit + 1
+
+fn main():
+    print(""{limit}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:52fc5c91f607aa2588d209876758cfdf8190ffd80682bfd159e75d3ddfa6d65e"
+"K0259/en","K0259","en","",""," -- NESTED TOO DEEPLY -------------------------------------------- main.kl  K0259
+
+This code is nested more deeply than I can read safely, so I stopped descending here.
+
+2│     let count = ((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((7))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+                                                                                  ^
+
+Help: Split the expression or block into smaller pieces, each with its own name (`let`) or function (`fn`).
+
+Learn more: kalam explain K0259","fn main():
+    let count = ((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((7))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
+    print(""{count}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:8bc8e1818df761af500eb163be755e0db993eedc28738289265224c4640645ba"
+"K1605/ar","K1605","ar","",""," -- فجوة SQL داخل تعليق --------------------------------------- main.ar.kl  K1605
+
+هذه الفجوة داخل تعليق SQL، فلن ترى قاعدة البيانات قيمتها أبدًا. وغالبًا ما تكون بقية من تعديل الاستعلام.
+
+3│     ليكن q = sql""SELECT id FROM users /* {name} */""
+                                             ^^^^
+
+مساعدة: انقل الفجوة خارج التعليق، أو احذفها.
+
+لمعرفة المزيد: kalam explain K1605","دالة رئيسي():
+    ليكن name = ""Sara""
+    ليكن q = sql""SELECT id FROM users /* {name} */""
+    اطبع(""{q}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:198f95d7a11489d63baf7a3c6927e1efa223e2cb01e834fdb6edc9a8e7c53896"
+"SEC0103/en","SEC0103","en","",""," -- INVISIBLE SPACE -------------------------------------------- main.kl  SEC0103
+
+I found U+00A0 (NO-BREAK SPACE), a space that is not the ordinary space U+0020. Kalam code uses only the ordinary space, so an invisible character can never split or join words.
+
+9│     let n = total(xs)
+              ^
+
+Try: ` `
+
+Help: Replace it with an ordinary space. `kalam fix` does this for you.
+
+Learn more: kalam explain SEC0103","fn total(items: List[Int]) -> Int:
+    var sum = 0
+    for item in items:
+        sum += item
+    return sum
+
+fn main():
+    let xs = [1, 2, 3]
+    let n = total(xs)
+    print(""total {n}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:a6efba0e632fa9f40492f45cc499aa4e66541a8310a50abd72895b92c3c1995c"
+"K0925/ar","K0925","ar","",""," -- جملة switch ----------------------------------------------- main.ar.kl  K0925
+
+`switch` و`case X ->` والفروع `x => …` من لغات أخرى. أما كلام فيتفرع على القيمة بـ `حسب`، مع سطر `عندما النمط:` لكل فرع.
+
+2│     switch n {
+       ^^^^^^^^^^
+
+جرّب:
+
+    حسب n:
+        عندما 0: أرجع ""zero""
+
+مساعدة: اكتب `حسب x:` وتحتها، بإزاحة، `عندما النمط: النتيجة` لكل فرع. واستخدم `_` نمطًا لـ ""أي شيء آخر"". الأمر `kalam fix` يفعل ذلك لك.
+
+لمعرفة المزيد: kalam explain K0925","دالة describe(n: عدد) -> نص:
+    switch n {
+        عندما 0 -> أرجع ""zero""
+    }
+    أرجع ""other""
+
+دالة رئيسي():
+    ليكن label = describe(5)
+    اطبع(label)
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:70f26da12a5c000dc1c4297c2fc7b55ef368f641ab386ce1e681e182fc55df27"
+"K1001/en","K1001","en","",""," -- MATCH DOESN'T COVER EVERY CASE ------------------------------- main.kl  K1001
+
+This `match` doesn't handle every possible value. Missing: .Amber.
+
+8│     match light:
+       ^^^^^^^^^^^^
+
+Try:
+
+    case .Amber: panic(""TODO"")
+
+Help: Add a `case` for each missing value. Listing them is better than a catch-all `_`: a variant added later is then reported here instead of slipping into the catch-all.
+
+Learn more: kalam explain K1001","enum Light:
+    Red
+    Amber
+    Green
+
+fn main():
+    let light: Light = .Red
+    match light:
+        case .Red:
+            print(""stop"")
+        case .Green:
+            print(""go"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:c89ccc5487fdf9567b938ef16dc4b6cdd72caf4af50770d437cded1cda32b79a"
+"K0201/en","K0201","en","",""," -- WORD FROM ANOTHER SKIN --------------------------------------- main.kl  K0201
+
+`اطبع` belongs to another skin. In this file, write `print`.
+
+10│     اطبع(""total {n}"")
+        ^^^^
+
+Try: `print`
+
+Help: Replace `اطبع` with `print`, or run `kalam convert` to rewrite a pasted block. If you meant a name of your own, declare it first or write it in backticks.
+
+Learn more: kalam explain K0201","fn total(items: List[Int]) -> Int:
+    var sum = 0
+    for item in items:
+        sum += item
+    return sum
+
+fn main():
+    let xs = [1, 2, 3]
+    let n = total(xs)
+    اطبع(""total {n}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:4256200d74668818dda1d132bee39d237fdd161b84fbb40e6ef9fdb0327ae4c0"
+"SEC0113/ar","SEC0113","ar","",""," -- فاصل أسطر غير معتاد ------------------------------------- main.ar.kl  SEC0113
+
+وجدت U+2028 (LINE SEPARATOR). أسطر كلام تنتهي بـ LF، أو بـ CRLF الذي يحوّله `kalam fmt` إلى LF.
+
+2│     ليكن name = ""Sa ra""
+                      ^
+
+جرّب: `\u{2028}`
+
+مساعدة: استبدل به فاصل أسطر عاديًا (LF). وداخل النص اكتب `\n` بدلًا منه.
+
+لمعرفة المزيد: kalam explain SEC0113","دالة رئيسي():
+    ليكن name = ""Sa ra""
+    اطبع(name)
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:087f36daeeb5393efa789f1e710e0ffe678e8758ced0c8982c20d7338063da38"
+"K1603/franco","K1603","franco","",""," -- HOLE SQL MAKAN ESM ------------------------------------ main.franco.kl  K1603
+
+El hole di f makan SQL mestanny feeh esm (table aw column aw `ASC` aw `DESC`), mesh qeema. W parameter el query mayenfa3sh yemla esm, w lez2 nass hena kan hayefta7 bab el injection.
+
+3│     khali q = sql""SELECT id FROM users ORDER BY {column}""
+                                                    ^^^^^^
+
+Mosa3da: Ebny el esm b `sql.ident(name, allowed: [...])` elly bet-check-o 3ala list sabta, aw esta5dem enum el 7alat bta3to betraga3 asamy sabta.
+
+E3raf aktar: kalam explain K1603","dala ra2isi():
+    khali column = ""name""
+    khali q = sql""SELECT id FROM users ORDER BY {column}""
+    ektb(""{q}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:e1d1d891e614c6192e6108c13816490b5e9d3907e38e324bcbfa41891f6048c2"
+"K1613/ar","K1613","ar","",""," -- سمة الرابط تحتاج Url -------------------------------------- main.ar.kl  K1613
+
+هذه الفجوة تملأ سمة رابط (مثل `href` أو `src`)، فيجب أن تكون قيمتها `Url` لا `نص`. فالنص قد يكون رابط `javascript:`.
+
+3│     ليكن page = html""""""<a href=""{home}"">home</a>""""""
+                                    ^^^^
+
+مساعدة: ابنِ الرابط بقيمة حرفية `url""...""`، أو حلّل النص بـ `Url.parse(s)` التي ترفض `javascript:` و`data:` و`vbscript:`.
+
+لمعرفة المزيد: kalam explain K1613","دالة رئيسي():
+    ليكن home = ""https://example.com""
+    ليكن page = html""""""<a href=""{home}"">home</a>""""""
+    اطبع(""{page}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:4220a00617127fb96f3050685a1cab4cd12cf39cdfbee1e2bb30d4f46092ae44"
+"K0125/franco","K0125","franco","",""," -- SEFR F EL AWEL ---------------------------------------- main.franco.kl  K0125
+
+`007` beyebda2 b sefr. Arqam Kalam mabtebda2sh b asfar, 3ashan `007` mayet2resh octal.
+
+9│     khali n = total(xs) + 007
+                             ^^^
+
+Garrab: `7`
+
+Mosa3da: Ekteb `7`. W law 3ayez octal ektebo b `0o`. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0125","dala total(items: qayma[adad]) -> adad:
+    motghayer sum = 0
+    lekol item fi items:
+        sum += item
+    rag3 sum
+
+dala ra2isi():
+    khali xs = [1, 2, 3]
+    khali n = total(xs) + 007
+    ektb(""total {n}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:2bdc948142eabf224302c8eab4e908aeb9b86ccce4083122f221cebd5ca57510"
+"K0131/en","K0131","en","",""," -- STRING INSIDE A HOLE ----------------------------------------- main.kl  K0131
+
+A string literal inside an interpolation hole is hard to read: the quotes inside the quotes make it unclear where the outer string ends.
+
+10│     print(""total {""n""}"")
+                      ^
+
+Help: Bind the value with `let` on the line before, then put the name in the hole.
+
+Learn more: kalam explain K0131","fn total(items: List[Int]) -> Int:
+    var sum = 0
+    for item in items:
+        sum += item
+    return sum
+
+fn main():
+    let xs = [1, 2, 3]
+    let n = total(xs)
+    print(""total {""n""}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:d30845a3da23c1dccae97ccd307f65113e30d1b89a910a3ff78cfc0665506811"
+"K1204/franco","K1204","franco","",""," -- MESH SABET -------------------------------------------- main.franco.kl  K1204
+
+Lazem da yeb2a sabet, wel goz2 el mt3allem mesh keda. `khali` 3ala mostawa el module wel default bta3 field mayesta5demosh gheir el literals wel constructors wel sawabet el tanya wel operators, w mayenfa3sh yo2a3o; w sabet el module kaman mayshelsh capability aw `Cell`.
+
+3│ khali answer = load() + 1
+                  ^^^^^^ el call bta3 el dala mesh ta3beer sabet
+
+Mosa3da: E7seb el qeema gowa `ra2isi` (aw gowa dala) w ba3atha, aw ekteb-ha literal. W lel state el moshtarak e3mel el `Cell` gowa `ra2isi`.
+
+E3raf aktar: kalam explain K1204","dala load() -> adad => 41
+
+khali answer = load() + 1
+
+dala ra2isi():
+    ektb(""{answer}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:7901ed233b2f65e5a79463f8894e32923ada64a883251fc2ff0e1c631076615b"
+"K0127/franco","K0127","franco","",""," -- RAKAM LAZE2 F 7OROOF ---------------------------------- main.franco.kl  K0127
+
+`3ala` beyebda2 b rakam, fa 2areito rakam, bas feeh 7oroof. Mafeesh esm yebda2 b rakam f ay skin.
+
+9│     khali n = 3ala
+                 ^^^^
+
+Mosa3da: Ebda2 el esm b 7arf, aw 7ot masafa ben el rakam wel kelma. W law el kelma keyword maktoob ghalat, w da beye7sal keteer f el Franco, ha2tera7 3aleek el ketaba el sa7.
+
+E3raf aktar: kalam explain K0127","dala total(items: qayma[adad]) -> adad:
+    motghayer sum = 0
+    lekol item fi items:
+        sum += item
+    rag3 sum
+
+dala ra2isi():
+    khali xs = [1, 2, 3]
+    khali n = 3ala
+    ektb(""total {n}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:78e9f28a33b6431273c1d2409b5bdb72a41f7086393b1b1c3bf74938fac4c971"
+"K0105/ar","K0105","ar","",""," -- حرف غير متوقع --------------------------------------------- main.ar.kl  K0105
+
+لا أعرف ماذا أفعل بـ U+0024  هنا. خارج النصوص والتعليقات، يستخدم كود كلام الحروف والأرقام والمسافات ورموز ASCII.
+
+8│     ليكن xs = [1، 2، 3] $
+                           ^
+
+مساعدة: احذف الحرف، أو انقله إلى داخل نص أو تعليق، فهناك يُقبل أي حرف ظاهر.
+
+لمعرفة المزيد: kalam explain K0105","دالة total(items: قائمة[عدد]) -> عدد:
+    متغير sum = 0
+    لكل item في items:
+        sum += item
+    أرجع sum
+
+دالة رئيسي():
+    ليكن xs = [1، 2، 3] $
+    ليكن n = total(xs)
+    اطبع(""total {n}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:2de9dc062667b107faa212a657297ac7f662a432c4acf257ebbcace1b9d5aab3"
+"K0250/franco","K0250","franco","",""," -- 7AGA MESH MATWAQA3A ----------------------------------- main.franco.kl  K0250
+
+Kont mestanni an expression hena, bas la2eit `=`. Fawett ba2eit el satr da w kammelt men elly ba3do.
+
+2│     khali count = = 7
+                     ^
+
+Mosa3da: Zawwed an expression hena, aw emsa7 `=` law mesh makano. W ghaleban el sabab `:` na2sa f akher satr beyefta7 block, aw qaws et2afal badry.
+
+E3raf aktar: kalam explain K0250","dala ra2isi():
+    khali count = = 7
+    ektb(""{count}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:179f76d7ed9913aa1b05b003497085ce94ca11bc38d20ae39cf57e46ef55d722"
+"SEC0112/en","SEC0112","en","",""," -- HIDDEN OR UNASSIGNED CHARACTER ----------------------------- main.kl  SEC0112
+
+I found U+E000, a tag character, private-use character, noncharacter or unassigned code point. It has no visible meaning in source code.
+
+2│     let name = ""Sara""
+                     ^
+
+Try: `\u{E000}`
+
+Help: Delete it. If a string really needs it, write it as `\u{...}`.
+
+Learn more: kalam explain SEC0112","fn main():
+    let name = ""Sara""
+    print(name)
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:6035855680b4c68d4ec148bcc2f09828e69dbc4ac57066b3968fb266e776e2ee"
+"K1616/franco","K1616","franco","",""," -- HOLE EL EVENT ME7TAGA MESSAGE ------------------------- main.franco.kl  K1616
+
+El hole bta3et `k-click` aw `k-submit` aw `k-input` aw `k-change` di lazem tsheel qeema no3aha bey3mel derive l `Message`. El qeyam di bas elly momken tetba3at lel browser ka token mewa22a3.
+
+7│     khali page = html""""""<button k-click=""{count}"">ok</button>""""""
+                                             ^^^^^
+
+Mosa3da: Esta5dem 7ala men el enum bta3 el messages, zay `k-click=""{ Msg.Save }""`, w zawed `@derive(Message)` lel enum da.
+
+E3raf aktar: kalam explain K1616"," @derive(Message)
+ta3dad Msg:
+    Save
+
+dala ra2isi():
+    khali count = 1
+    khali page = html""""""<button k-click=""{count}"">ok</button>""""""
+    ektb(""{page}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:6bad2c93cb73ee24a880decddcea66ef47c2a4f18c767ad9332be70069333c24"
+"SEC0121/en","SEC0121","en","",""," -- PERSIAN DIGITS --------------------------------------------- main.kl  SEC0121
+
+`۷` uses Persian digits such as U+06F7 (۰–۹), which look almost the same as the Arabic-Indic digits ٠–٩ but are different characters: ۴ and ٤, ۶ and ٦ are easy to confuse.
+
+2│     let count = ۷
+                   ^
+
+Help: Use ASCII digits, or the Arabic-Indic digits ٠–٩ in an Arabic-skin file.
+
+Learn more: kalam explain SEC0121","fn main():
+    let count = ۷
+    print(""{count}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:6209b392237fb2e897136e560db0447ebfbc892d6e18d4b05dff3b2eb6651d06"
+"K1601/en","K1601","en","",""," -- STRING PASSED TO A SINK -------------------------------------- main.kl  K1601
+
+This place expects `Sql`, but this is `String`. A plain string here is how injection happens, so a sink never takes one.
+
+4│     return db.exec(""DELETE FROM t WHERE city = '"" + city + ""'"")
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Try: `sql""DELETE FROM t WHERE city = {`
+
+Try: `}""`
+
+Help: Write the text as a tagged literal (`sql""...""`, `html""...""` or `cmd""...""`) and put the values in holes: each hole is escaped for its context.
+
+Learn more: kalam explain K1601","use std/sql.{Db, DbError}
+
+fn remove(db: Db, city: String) -> Result[Int, DbError]:
+    return db.exec(""DELETE FROM t WHERE city = '"" + city + ""'"")
+
+fn main():
+    pass
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:766acad9e0da85648d62e9b57f3896ef1c2171e10de70b85595ab6a70eb69fcf"
+"K1614/ar","K1614","ar","",""," -- فجوة في اسم وسم أو سمة ------------------------------------ main.ar.kl  K1614
+
+هذه الفجوة في اسم وسم أو اسم سمة. والأسماء تحدد ما تفعله الوسوم، فيجب أن تُكتب في القيمة الحرفية نفسها.
+
+3│     ليكن page = html""""""<{tag}>hi</p>""""""
+                            ^^^
+
+مساعدة: اكتب الاسم حرفيًا. ولمجموعة سمات تتغير، استخدم `Attrs` التي أسماؤها قائمة ثابتة.
+
+لمعرفة المزيد: kalam explain K1614","دالة رئيسي():
+    ليكن tag = ""p""
+    ليكن page = html""""""<{tag}>hi</p>""""""
+    اطبع(""{page}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:0a90eaeb4e119c2894451658791f73e5bdcf968a541822ace67249a203cea236"
+"SEC0101/franco","SEC0101","franco","",""," -- EL NASS MESH NFC ------------------------------------ main.franco.kl  SEC0101
+
+La2eit U+0301 (COMBINING ACUTE ACCENT) f kalam mesh b sheklo el NFC f Unicode. Nafs el 7arf momken yetkhezen code point wa7ed, aw 7arf asasi w ba3do 3alamat murakkaba; el etnein shabah ba3d bel zabt, bas lamma tqarenhom yetle3o mokhtalfeen.
+
+2│     khali name = ""Zoé""
+                       ^^
+
+Garrab: `é`
+
+Mosa3da: Shaghal `kalam fmt` aw `kalam fix`, hayekteb el kalam b NFC w mesh hayghayar ay 7aga tanya.
+
+E3raf aktar: kalam explain SEC0101","dala ra2isi():
+    khali name = ""Zoé""
+    ektb(name)
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:f421a034d2aca40f5c7936860636584fd39e501c7e89c91ce4a21d690e6cdea0"
+"K0122/ar","K0122","ar","",""," -- رجوع الإزاحة ---------------------------------------------- main.ar.kl  K0122
+
+هذا السطر يرجع إلى عمود لا تستخدمه أي كتلة محيطة، فلا أعرف أي كتلة يكمل.
+
+5│    أرجع sum
+   ^^^
+
+مساعدة: اجعله على محاذاة إحدى الكتل التي فوقه بالضبط.
+
+لمعرفة المزيد: kalam explain K0122","دالة total(items: قائمة[عدد]) -> عدد:
+    متغير sum = 0
+    لكل item في items:
+        sum += item
+   أرجع sum
+
+دالة رئيسي():
+    ليكن xs = [1، 2، 3]
+    ليكن n = total(xs)
+    اطبع(""total {n}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:032bc80599c8b41f255627a6e4b1c8a1001decc8ed8bcd1b0625cc1c1eb36d8c"
+"K0252/franco","K0252","franco","",""," -- BLOCK NA2ES ------------------------------------------- main.franco.kl  K0252
+
+El satr da beyekhlas b `:`, fa kont mestanni block maza7 f el satr elly ba3do, mostawa wa7ed agwa (4 masafat), bas mafeesh.
+
+3│ dala ra2isi():
+   ^^^^
+
+Mosa3da: Zo77 el sotoor elly tab3a lo 4 masafat zyada. W law 3ayez el block fady delwa2ty, ekteb feeh `fot`.
+
+E3raf aktar: kalam explain K0252","dala helper():
+
+dala ra2isi():
+    helper()
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:7f3bba3016bb88b8af3ab7007337b66ccf9366d1a94e689208b238a1679a2301"
+"K1503/ar","K1503","ar","",""," -- سرّ يُقرأ كنص عادي ---------------------------------------- main.ar.kl  K1503
+
+هذا المفتاح يبدو سرًا (ينتهي بـ `_KEY` أو `_SECRET` أو `_TOKEN`، أو يسمّي كلمة مرور)، لكن `env.get` ترجع نصًا عاديًا قد ينتهي في السجلات أو في JSON.
+
+1│ دالة api_key(env: Env) -> اختياري[نص] => env.get(""STRIPE_API_KEY"")
+                                                    ^^^^^^^^^^^^^^^^
+
+مساعدة: استخدم `env.secret(key)`، فهي ترجع `Secret[نص]`: تُطبع `[REDACTED]` ولا يمكن ترميزها أبدًا.
+
+لمعرفة المزيد: kalam explain K1503","دالة api_key(env: Env) -> اختياري[نص] => env.get(""STRIPE_API_KEY"")
+
+دالة رئيسي(world: عالم):
+    ليكن key = api_key(world.env)
+    اطبع(""{key.is_some()}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:9016d17f4a912d092c1fb704c60051b0173f0b98431f237a61b1c44c555224e4"
+"K1604/en","K1604","en","",""," -- SEVERAL SQL STATEMENTS --------------------------------------- main.kl  K1604
+
+This SQL literal holds more than one statement (a `;` outside quotes). Each `Sql` value is exactly one statement.
+
+3│     let q = sql""DELETE FROM users WHERE name = {name}; DELETE FROM notes""
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Help: Split it into one `sql""...""` per statement, and run them inside a transaction if they must succeed together.
+
+Learn more: kalam explain K1604","fn main():
+    let name = ""Sara""
+    let q = sql""DELETE FROM users WHERE name = {name}; DELETE FROM notes""
+    print(""{q}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:55f8989f7c26a50e0995798185653a2efd4f8af6819755365f4bb9327dfd7e4b"
+"K0730/franco","K0730","franco","",""," -- QEEMA MESH MOSTA5DAMA --------------------------------- main.franco.kl  K0730
+
+El expression da bydy qeema men no3 `Point`, w mafeesh 7aga betesta5demha. W el qeema elly btet7seb w tetrmy ghaleban ghalta, zay ennak tenady `items.append(x)` w testanna `items` tetghayar.
+
+6│     p.with(x: 2)
+       ^^^^^^^^^^^^
+
+Mosa3da: Esta5dem el qeema, masalan e7fazha b `khali` aw raga3ha lel motghayer, aw ekteb `khali _ = ...` 3ashan tesebha 3an 2asd.
+
+E3raf aktar: kalam explain K0730","haykal Point:
+    x: adad
+
+dala ra2isi():
+    khali p = Point(x: 1)
+    p.with(x: 2)
+    ektb(""{p.x}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:1550d56c0dfa2829b724fb4b18f3e70212813304e9f70f2d8f65096e48a2d40f"
+"SEC0120/en","SEC0120","en","",""," -- MIXED DIGITS ----------------------------------------------- main.kl  SEC0120
+
+The number `7٧` mixes two digit systems, or uses the other system's decimal separator (it contains U+0667). A reader could misread its value.
+
+2│     let count = 7٧
+                   ^^
+
+Help: Write each number in one system: ASCII digits with `.`, or Arabic-Indic digits with `٫`.
+
+Learn more: kalam explain SEC0120","fn main():
+    let count = 7٧
+    print(""{count}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:a57d4966dcff6563a51e956f22a7c71c734c0708ada1cb3c37ea28df8ace60cd"
+"K0650/ar","K0650","ar","",""," -- النص لا يُفهرس -------------------------------------------- main.ar.kl  K0650
+
+لا أستطيع فهرسة نص بـ `[...]`. الموضع في النص غامض: البايتات ونقاط الترميز والحروف الظاهرة كلها تُعدّ بطرق مختلفة، ويظهر الفرق في النص العربي.
+
+3│     ليكن first = name[0]
+                    ^^^^^^^
+
+مساعدة: استخدم `.chars()` أو `.graphemes()` للمرور على الحروف، أو `.slice(from, to)` لأخذ جزء من النص (والمواضع تعدّ الحروف الظاهرة).
+
+لمعرفة المزيد: kalam explain K0650","دالة رئيسي():
+    ليكن name = ""Sara""
+    ليكن first = name[0]
+    اطبع(first)
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:a9cf4efba974cafd237d9206d7139315846ff0a6d8a584b3bb34fca0f67bb58a"
+"K0420/franco","K0420","franco","",""," -- FIELD AW METHOD MESH MA3ROOFA ------------------------- main.franco.kl  K0420
+
+`qayma[adad]` mafeehoosh field aw method esmaha `length`. Ana ba-check kol call 3ala el API el 7a2ee2y, fa el esm el mettakhammen beyo2af hena badal ma yo2a3 w el program shaghal.
+
+3│     khali n = xs.length()
+                 ^^^^^^^^^^^
+
+Mosa3da: Raga3 el ketaba 3ala el fields wel methods bta3et el no3. Asamy men loghat tanya: `push` → `append`, `length` w `size` → `len`, `includes` → `contains`.
+
+E3raf aktar: kalam explain K0420","dala ra2isi():
+    khali xs = [1, 2]
+    khali n = xs.length()
+    ektb(""{n}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:4568bcc719197201e4a0fef5eec42ff068e6f757c6daf3172847818e931ba296"
+"K1302/franco","K1302","franco","",""," -- ? 3ALA OPTION F DALA BTRAGA3 RESULT ------------------- main.franco.kl  K1302
+
+El `?` di 3ala `ekhtiyari`, bas el dala betraga3 `natiga`. W el qeema el msh mawgooda malhash error yetba3at lfo2, fa lazem t2ool howa anhy error.
+
+2│     khali n = xs.get(0)?
+                 ^^^^^^^^^^
+
+Garrab: `.ok_or(""qeema mesh mawgooda"")`
+
+Mosa3da: 7awel el qeema el msh mawgooda l error el awel: `.ok_or(error)?`.
+
+E3raf aktar: kalam explain K1302","dala head(xs: qayma[adad]) -> natiga[adad, nass]:
+    khali n = xs.get(0)?
+    rag3 naga7(n)
+
+dala ra2isi():
+    khali _ = head([2])
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:473d2454797aa878090d6944370e27cdae6ee918190537085ab93624f9ec58ed"
+"K0913/en","K0913","en","",""," -- STRING PREFIX OR TEMPLATE ------------------------------------ main.kl  K0913
+
+Kalam strings need no `f` prefix, and no backticks with `${…}`. Every `""…""` string already fills holes written as `{…}`.
+
+10│     print(f""total {n}"")
+              ^
+
+Help: Delete the `f` prefix, or change the backticks to `""` and each `${` to `{`. `kalam fix` does this for you.
+
+Learn more: kalam explain K0913","fn total(items: List[Int]) -> Int:
+    var sum = 0
+    for item in items:
+        sum += item
+    return sum
+
+fn main():
+    let xs = [1, 2, 3]
+    let n = total(xs)
+    print(f""total {n}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:c6cbf9e8849899f99875e460fe7e81c618bbaba5b5988f31aa387dc35bfc7548"
+"K0130/en","K0130","en","",""," -- UNKNOWN ESCAPE ----------------------------------------------- main.kl  K0130
+
+I don't know the escape `\q`. The escapes are `\n \t \r \\ \"" \{ \} \0` and `\u{...}`.
+
+10│     print(""total\q {n}"")
+                    ^^
+
+Help: Use one of those escapes. For a literal backslash, write `\\`; for any other character, write `\u{...}` with its hexadecimal code point.
+
+Learn more: kalam explain K0130","fn total(items: List[Int]) -> Int:
+    var sum = 0
+    for item in items:
+        sum += item
+    return sum
+
+fn main():
+    let xs = [1, 2, 3]
+    let n = total(xs)
+    print(""total\q {n}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:5952aa26791ba30155ac99b1c1fdee7b5c726aa1506fab6d82f02e79746eca0e"
+"K1003/en","K1003","en","",""," -- PATTERN CAN FAIL HERE ---------------------------------------- main.kl  K1003
+
+This pattern doesn't match every value, but `let` and `for` have nowhere to go when a pattern fails.
+
+3│     let Some(n) = found
+           ^^^^^^^
+
+Help: Use `match` with a `case` for each possibility.
+
+Learn more: kalam explain K1003","fn main():
+    let found: Option[Int] = Some(1)
+    let Some(n) = found
+    print(""{n}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:1200eab55f3bac82a1bc76e70a8db7c8390370ab50576164a7eb5d5602e6d358"
+"K0612/en","K0612","en","",""," -- SECRET IN AN ENCODED TYPE ------------------------------------ main.kl  K0612
+
+This type derives `Encode`, but one of its fields is a `Secret`. Encoding it would write the secret into JSON or onto the wire, so I stop here rather than hide it behind a redaction.
+
+2│ type Login:
+        ^^^^^
+
+Help: Remove `Encode` from the `@derive` list, or define a separate output type without the secret field and encode that one.
+
+Learn more: kalam explain K0612"," @derive(Encode)
+type Login:
+    user: String
+    password: Secret[String]
+
+fn main():
+    print(""ok"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:ffa0ca4b009b2b35210c1948bb8f0516d79be09a21473da08deb12658a30a52e"
+"K1110/ar","K1110","ar","",""," -- دالة مجهولة تلتقط متغيرًا --------------------------------- main.ar.kl  K1110
+
+هذه الدالة المجهولة تستخدم `متغير` من الدالة المحيطة بها. والدوال المجهولة تلتقط قيمًا، ولا تلتقط أبدًا متغيرات قد تتغير لاحقًا.
+
+4│     ليكن add = دالة(x: عدد) => x + count
+                                      ^^^^^
+
+جرّب:
+
+    ليكن snapshot = count
+
+جرّب: `snapshot`
+
+مساعدة: انسخ القيمة الحالية في ثابت أولًا، `ليكن لقطة = v`، واستخدم `لقطة` داخل الدالة المجهولة. والأمر `kalam fix` يضيف النسخة.
+
+لمعرفة المزيد: kalam explain K1110","دالة رئيسي():
+    متغير count = 1
+    count += 1
+    ليكن add = دالة(x: عدد) => x + count
+    اطبع(""{add(1)}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:318a353eac27ea49507067be4015a8575de90f07ca0327979e4859299c3d9335"
+"K1103/franco","K1103","franco","",""," -- METHOD MESH WADE7A ------------------------------------ main.franco.kl  K1103
+
+Fe aktar men method esmaha `label` tenfa3 hena: el type nafso aw kaza trait men el traits bta3to bey3arrafoha. W ana mesh ha5tar wa7da badalak.
+
+18│     ektb(item.label())
+             ^^^^^^^^^^^^
+
+Mosa3da: Sammy el trait elly 2asdak 3aleiha: ekteb `Trait.label(x)` badal `x.label()`.
+
+E3raf aktar: kalam explain K1103","sefa Named:
+    dala label(nafso) -> nass
+
+sefa Tagged:
+    dala label(nafso) -> nass
+
+haykal Item:
+    id: adad
+
+naffez Item ka Named:
+    dala label(nafso) -> nass => ""named""
+
+naffez Item ka Tagged:
+    dala label(nafso) -> nass => ""tagged""
+
+dala ra2isi():
+    khali item = Item(id: 1)
+    ektb(item.label())
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:752e33875be352df88e0bb5d69e9b02187072d6534963737328f086b2a1d8ee9"
+"K0918/franco","K0918","franco","",""," -- DALA GAHZA MEN LOGHA TANYA ---------------------------- main.franco.kl  K0918
+
+`len(xs)` w `str(x)` w `int(s)` dawal gahza f loghat tanya. F Kalam homa methods aw holes f string, fa betban f el autocomplete ba3d el `.`.
+
+3│     khali n = len(xs)
+                 ^^^^^^^
+
+Garrab: `xs.len()`
+
+Mosa3da: Ekteb `xs.len()` badal `len(xs)`, w `""{ x }""` badal `str(x)`, w `s.to_int()?` badal `int(s)`. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0918","dala ra2isi():
+    khali xs = [1, 2, 3]
+    khali n = len(xs)
+    ektb(""{n}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:54480f15d432032144965d4300a7e3ae1e7422c43edc09638455261f99da0166"
+"K1402/en","K1402","en","",""," -- @sync FUNCTION SUSPENDS -------------------------------------- main.kl  K1402
+
+This function is marked `@sync`, a promise that it never waits, but it calls something that can suspend. The chain of calls shows where.
+
+2│ fn present(fs: Fs) -> Bool => fs.exists(path""notes.txt"")
+      ^^^^^^^ `present` calls `exists` (suspends)
+
+Help: Remove the waiting call from this function, or remove `@sync` if the function really needs to wait (callers that rely on it will then be reported).
+
+Learn more: kalam explain K1402"," @sync
+fn present(fs: Fs) -> Bool => fs.exists(path""notes.txt"")
+
+fn main(world: World):
+    print(""{present(world.fs)}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:4b2b19a68a8ebc01638fe4ac2580dabe9168febe5ab778cd3a7fd797b1eff1e5"
+"K0601/en","K0601","en","",""," -- NUMBER TYPES DON'T MIX --------------------------------------- main.kl  K0601
+
+I can't combine a value of type `Int` with one of type `Float`. Kalam never converts numbers by itself, so you choose how.
+
+4│     let total = count + ratio
+                   ^^^^^^^^^^^^^
+
+Try: `.to_float()`
+
+Help: Convert one side explicitly: `.to_float()` keeps the fraction, `.round()` drops it.
+
+Learn more: kalam explain K0601","fn main():
+    let count = 1
+    let ratio = 2.5
+    let total = count + ratio
+    print(""{total}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:528e42c5d9fc8c78b13b7a08f47c7aae847515457b0615780f61ca6944dbc5dc"
+"K0908/en","K0908","en","",""," -- EXCEPTIONS FROM ANOTHER LANGUAGE ----------------------------- main.kl  K0908
+
+`try`, `catch`, `throw` and `raise` aren't Kalam keywords. Expected errors are values of type `Result`, so every function that can fail says so in its type.
+
+10│     try:
+        ^^^
+
+Help: To fail, write `return Err(…)`. To pass a call's error up to your caller, put `?` after the call. To handle it, use `match` on the result.
+
+Learn more: kalam explain K0908","fn describe(n: Int) -> String:
+    if n < 0:
+        return ""negative""
+    else if n == 0:
+        return ""zero""
+    else:
+        return ""positive""
+
+fn main():
+    try:
+        print(describe(5))
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:1d452e7cce8e05f96624814e026e3c43314cc4d67403ebded374c5ec5d5a12b9"
+"K0912/franco","K0912","franco","",""," -- KELMAT EL TAGHYEER MEN LOGHA TANYA -------------------- main.franco.kl  K0912
+
+`let mut` w `const` men loghat tanya. F Kalam `khali` bet3arraf esm mayetghayarsh, w `motghayer` bet3arraf esm yenfa3 yetghayar.
+
+8│     const xs = [1, 2, 3]
+       ^^^^^
+
+Garrab: `khali`
+
+Mosa3da: Ekteb `motghayer x` badal `let mut x`, w `khali x` badal `const x`. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0912","dala total(items: qayma[adad]) -> adad:
+    motghayer sum = 0
+    lekol item fi items:
+        sum += item
+    rag3 sum
+
+dala ra2isi():
+    const xs = [1, 2, 3]
+    khali n = total(xs)
+    ektb(""total {n}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:fb99b17f1f820b0ddbfec92d8428174c967f63bcf68bb45665e13d11d096ee07"
+"K0905/franco","K0905","franco","",""," -- AQWAS KA BLOCK ---------------------------------------- main.franco.kl  K0905
+
+El blocks f Kalam mabtesta5demsh `{ … }`. El block beyebda2 b `:` f akher el satr w beykammel f el sotoor el maza7a mostawa wa7ed agwa.
+
+2│     law n < 0 { rag3 ""negative"" }
+                 ^
+
+Garrab: `: `
+
+Mosa3da: Ghayar el `{` b `:` f akher el satr, w zo77 el gesm 4 masafat, w emsa7 el `}` elly f el akher. `kalam fix` bey3mel keda lak.
+
+E3raf aktar: kalam explain K0905","dala describe(n: adad) -> nass:
+    law n < 0 { rag3 ""negative"" }
+    law n == 0:
+        rag3 ""zero""
+    walla:
+        rag3 ""positive""
+
+dala ra2isi():
+    khali label = describe(5)
+    ektb(label)
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:e6f3c073249e59ed38afb3aa766a3ef3854907640764657c449d8c88e1088f23"
+"SEC0110/en","SEC0110","en","",""," -- HIDDEN TEXT-DIRECTION CHARACTER ---------------------------- main.kl  SEC0110
+
+I found U+202E (RIGHT-TO-LEFT OVERRIDE). It changes how the line is displayed without changing how it compiles, which is how Trojan Source attacks work. Arabic text never needs it raw.
+
+8│     let xs = [1, 2, 3]  # ‮reversed
+                             ^
+
+Help: Delete it. If a string really needs it, write it as an escape, `\u{...}`, so readers can see it.
+
+Learn more: kalam explain SEC0110","fn total(items: List[Int]) -> Int:
+    var sum = 0
+    for item in items:
+        sum += item
+    return sum
+
+fn main():
+    let xs = [1, 2, 3]  # ‮reversed
+    let n = total(xs)
+    print(""total {n}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:2cb216a2d0102fd9ff26dd69f56dad5133a0676ae99532a2d43530faba37c1a2"
+"K0902/ar","K0902","ar","",""," -- كلمة دالة من لغة أخرى ------------------------------------- main.ar.kl  K0902
+
+الكلمات `def` و`function` و`func` تبدأ الدوال في لغات أخرى. أما كلام فيعرّف الدالة بـ `دالة`.
+
+1│ def describe(n: عدد) -> نص:
+   ^^^
+
+جرّب: `دالة`
+
+مساعدة: اكتب `دالة الاسم(المعامل: النوع):` وأعطِ كل معامل نوعه. الأمر `kalam fix` يغيّر الكلمة ويترك مكان النوع `_` لتملأه.
+
+لمعرفة المزيد: kalam explain K0902","def describe(n: عدد) -> نص:
+    إذا n < 0:
+        أرجع ""negative""
+    وإلا إذا n == 0:
+        أرجع ""zero""
+    وإلا:
+        أرجع ""positive""
+
+دالة رئيسي():
+    ليكن label = describe(5)
+    اطبع(label)
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:ca352f30640ec99f7f1aecbc172786093db31235be46983b7ac9e2737585df63"
+"SEC0104/en","SEC0104","en","",""," -- NAMES THAT LOOK THE SAME ----------------------------------- main.kl  SEC0104
+
+`کتاب` (U+06A9 U+062A U+0627 U+0628) and `كتاب` (U+0643 U+062A U+0627 U+0628) are two different names in this scope that look the same once lookalike letters are folded together (for example `ي` and `ى`, `ك` and `ک`, or a Latin letter and its Cyrillic twin). A reader can't tell which of the two a line uses.
+
+2│     let كتاب = ""a""
+           ---- `كتاب` is declared here
+3│     let کتاب = ""b""
+           ^^^^
+
+Help: Rename one of the two names so they differ in a way a reader can see, and update its uses.
+
+Learn more: kalam explain SEC0104","fn main():
+    let كتاب = ""a""
+    let کتاب = ""b""
+    print(كتاب)
+    print(کتاب)
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:faa168fdeee2c07322507e17ef78ea1d1d7af9d1dbf7d70270d3e2737a31be0b"
+"K1203/en","K1203","en","",""," -- GLOB IMPORT -------------------------------------------------- main.kl  K1203
+
+I don't accept glob imports (`*`). A glob hides where each name comes from, and a new export upstream could silently change what a name in this file means.
+
+1│ use std/math.*
+               ^^
+
+Help: List the names you use, for example `use std/http.{Request, Response}`.
+
+Learn more: kalam explain K1203","use std/math.*
+
+fn main():
+    print(""ok"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:b4c6988deeb8b832bbac4d998813198485048fe26facf0a719c0a8dd2ce4eddd"
+"K0907/ar","K0907","ar","",""," -- async أو await -------------------------------------------- main.ar.kl  K0907
+
+ليس في كلام `async` ولا `await`. المترجم يعرف بنفسه أي الدوال تنتظر إدخالًا أو إخراجًا، ويتولى الانتظار عنك (القرار D12).
+
+1│ async دالة describe(n: عدد) -> نص:
+   ^^^^^
+
+مساعدة: احذف `async` و`await` واكتب استدعاءً عاديًا. الأمر `kalam fix` يفعل ذلك لك.
+
+لمعرفة المزيد: kalam explain K0907","async دالة describe(n: عدد) -> نص:
+    إذا n < 0:
+        أرجع ""negative""
+    وإلا إذا n == 0:
+        أرجع ""zero""
+    وإلا:
+        أرجع ""positive""
+
+دالة رئيسي():
+    ليكن label = describe(5)
+    اطبع(label)
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:1581de76a571331a7c86b3cfd4b080585d0f0267e8243ec058423640a878e968"
+"K0911/en","K0911","en","",""," -- SYMBOLIC LOGIC OPERATOR -------------------------------------- main.kl  K0911
+
+Kalam writes `!` as `not`. Logic is spelled with words so it reads the same as the rest of the line.
+
+2│     if !(n >= 0):
+          ^
+
+Try: `not `
+
+Help: Replace `!` with `not`. In general, `&&` is `and`, `||` is `or` and `!` is `not`. `kalam fix` does this for you.
+
+Learn more: kalam explain K0911","fn describe(n: Int) -> String:
+    if !(n >= 0):
+        return ""negative""
+    else if n == 0:
+        return ""zero""
+    else:
+        return ""positive""
+
+fn main():
+    let label = describe(5)
+    print(label)
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:8149dc540a832f219399e576f8756b48ac7643f3c9fe450990cb39567f8a40df"
+"K0923/ar","K0923","ar","",""," -- عامل الأس ------------------------------------------------- main.ar.kl  K0923
+
+ليس في كلام العامل `**`. ارفع العدد إلى قوة بالدالة العضو `.pow()`.
+
+9│     ليكن n = total(xs) ** 2
+                          ^^
+
+جرّب: `.pow(`
+
+جرّب: `)`
+
+مساعدة: اكتب `a.pow(b)` بدلًا من `a ** b`. الأمر `kalam fix` يفعل ذلك لك.
+
+لمعرفة المزيد: kalam explain K0923","دالة total(items: قائمة[عدد]) -> عدد:
+    متغير sum = 0
+    لكل item في items:
+        sum += item
+    أرجع sum
+
+دالة رئيسي():
+    ليكن xs = [1، 2، 3]
+    ليكن n = total(xs) ** 2
+    اطبع(""total {n}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:2c8b0281504a1450206b65e4123ec017e777d29e990a890a2efa2498f34bff87"
+"K0910/ar","K0910","ar","",""," -- العامل الثلاثي -------------------------------------------- main.ar.kl  K0910
+
+ليس في كلام `c ? a : b`. فالشرط `إذا` تعبير، ويمكنك استخدامه في أي مكان تُوضع فيه قيمة.
+
+10│     ليكن label = 5 > 0 ? ""positive"" : ""negative""
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+جرّب: `إذا `
+
+جرّب: `: `
+
+جرّب: ` وإلا: `
+
+مساعدة: اكتب `إذا c: a وإلا: b`. الأمر `kalam fix` يفعل ذلك لك.
+
+لمعرفة المزيد: kalam explain K0910","دالة describe(n: عدد) -> نص:
+    إذا n < 0:
+        أرجع ""negative""
+    وإلا إذا n == 0:
+        أرجع ""zero""
+    وإلا:
+        أرجع ""positive""
+
+دالة رئيسي():
+    ليكن label = 5 > 0 ? ""positive"" : ""negative""
+    اطبع(label)
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:8bbd8e16385bc4767a14339815312dfcdf9cc91d0529f3dbe41042a5856d094b"
+"K0710/franco","K0710","franco","",""," -- MAYENFA3SH TEDDILO QEEMA ------------------------------ main.franco.kl  K0710
+
+El naw7eya el shmal men `=` lazem tekoon makan: variable, w momken ba3do `.field` aw `[index]`, w aslo met3arraf b `motghayer`. Da qeema met7asba, fa mafeesh makan net7afaz feeh el natiga.
+
+9│     total(xs) = 3
+       ^^^^^^^^^
+
+Mosa3da: Erbot el qeema b esm gedeed b `khali` badal keda, aw eddi el qeema lel variable elly gat menno.
+
+E3raf aktar: kalam explain K0710","dala total(items: qayma[adad]) -> adad:
+    motghayer sum = 0
+    lekol item fi items:
+        sum += item
+    rag3 sum
+
+dala ra2isi():
+    khali xs = [1, 2, 3]
+    total(xs) = 3
+    ektb(""done"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:7134499fa8975f5a10f74b522b5abe1d421f5dc54af21e92767f18469fdae825"
+"K0405/franco","K0405","franco","",""," -- ESM MESTA5DEM ABLAN ----------------------------------- main.franco.kl  K0405
+
+`total` met3arraf ablan f scope bayen hena. Kalam mesh beysma7 l ta3reef gedeed yekhabbi ta3reef a2dam, fa el esm leeh ma3na wa7ed f kol wa2t.
+
+2│     khali total = 1
+             ----- `total` et3arraf hena el awel
+4│         khali total = 2
+                 ^^^^^
+
+Garrab: `el_total`
+
+Mosa3da: Edy el ta3reef el gedeed esm khas beeh. W l 2eema men no3 b nafs el esm, el code el 3araby beyzawwed ""ال"" (`الشكل: شكل`) w code el Franco beyzawwed `el_` (`el_donya: donya`).
+
+E3raf aktar: kalam explain K0405","dala ra2isi():
+    khali total = 1
+    law total > 0:
+        khali total = 2
+        ektb(""{total}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:f34f29088fbef76c6397bd7e8cb58ae51fb4e2a6b4ec307a1fa9812ada5e2078"
+"K1002/ar","K1002","ar","",""," -- فرع لا يُوصل إليه ----------------------------------------- main.ar.kl  K1002
+
+هذا الـ `عندما` لن يعمل أبدًا: الفروع التي فوقه تطابق بالفعل كل قيمة كان سيطابقها.
+
+11│         عندما .Red:
+                  ^^^^
+
+مساعدة: انقل هذا الفرع فوق الفرع الذي يغطيه (وغالبًا يكون فرعًا عامًا `_` وُضع مبكرًا)، أو احذفه.
+
+لمعرفة المزيد: kalam explain K1002","تعداد Light:
+    Red
+    Amber
+    Green
+
+دالة رئيسي():
+    ليكن light: Light = .Red
+    حسب light:
+        عندما _:
+            اطبع(""any"")
+        عندما .Red:
+            اطبع(""stop"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:f73d2f29a999779f049595097110a3c5b4813490107b2001bc431e4e4eb3a216"
+"K0251/franco","K0251","franco","",""," -- QAWS MESH MA2FOOL ------------------------------------- main.franco.kl  K0251
+
+El qaws da lessa maftoo7 lamma el satr aw el file khelso, fa mesh 3aref el expression elly gowah bte5las fein.
+
+3│     ektb(""{count}""
+           ^
+
+Mosa3da: Zawwed el qaws elly ye2felo `)` aw `]` aw `}` fein ma el expression bte5las.
+
+E3raf aktar: kalam explain K0251","dala ra2isi():
+    khali count = 7
+    ektb(""{count}""
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:c4c4c9891b9e089af8c8b4f31dab2de6a5cd9177244bbee722451ee6f2e79dfd"
+"K0922/ar","K0922","ar","",""," -- معاملات نوع صريحة ----------------------------------------- main.ar.kl  K0922
+
+لا يقبل كلام معاملات نوع صريحة في الاستدعاء مثل `f[T](x)`، بل يستنتجها من المعاملات ومن النوع الذي تتوقعه.
+
+5│     ليكن head = first[عدد](xs)
+                   ^^^^^^^^^^
+
+مساعدة: احذف `[T]` من الاستدعاء واكتب نوع النتيجة بدلًا من ذلك: `ليكن r: T = f(x)`. الأمر `kalam fix` يفعل ذلك لك.
+
+لمعرفة المزيد: kalam explain K0922","دالة first[T](xs: قائمة[T]) -> اختياري[T] => xs.get(0)
+
+دالة رئيسي():
+    ليكن xs = [1، 2، 3]
+    ليكن head = first[عدد](xs)
+    اطبع(""{head.is_some()}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:023611c8c92c4eb8ae264c0ab38a83e7a48764b9eb7920c42f387d7e719acfe0"
+"K0129/ar","K0129","ar","",""," -- نص غير مكتمل ---------------------------------------------- main.ar.kl  K0129
+
+هذا النص لا ينتهي بـ `""`. النص `""...""` ينتهي في السطر نفسه الذي يبدأ فيه.
+
+10│     اطبع(""total
+             ^^^^^^
+
+مساعدة: أضف `""` الختامية قبل نهاية السطر. وللنصوص متعددة الأسطر استخدم `""""""`.
+
+لمعرفة المزيد: kalam explain K0129","دالة total(items: قائمة[عدد]) -> عدد:
+    متغير sum = 0
+    لكل item في items:
+        sum += item
+    أرجع sum
+
+دالة رئيسي():
+    ليكن xs = [1، 2، 3]
+    ليكن n = total(xs)
+    اطبع(""total
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:3007feabb070bbb373f060cfff37c94bc097a9fdab903bf5e11598cf917275ce"
+"K0803/franco","K0803","franco","",""," -- EL MEMBER EL MOKHTASAR ME7TAG TYPE -------------------- main.franco.kl  K0803
+
+Mesh 3aref `.Red` tab3a anhy type. El member el mokhtasar zay `.Red` byetdawar 3aleih f el type el mestanny f el makan da, w mafeesh 7aga hena bet2ool howa anhy type.
+
+7│     khali c = .Red
+                 ^^^^
+
+Mosa3da: Ekteb el type 2oddamo, `EsmElType.Red`, aw zawed annotation 3ashan el type el mestanny yeb2a ma3roof.
+
+E3raf aktar: kalam explain K0803","ta3dad Light:
+    Red
+    Amber
+    Green
+
+dala ra2isi():
+    khali c = .Red
+    ektb(""{c}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:058971a5972b227db0f5b9c3295d5b2521e7d5f75cf1169097a0e4b31d519e53"
+"SEC0106/ar","SEC0106","ar","",""," -- علامة داخل اسم ------------------------------------------ main.ar.kl  SEC0106
+
+لا يمكن أن يظهر U+064F  داخل كلمة محجوزة أو اسم، لأنه يغيّر شكل الكلمة دون أن يغيّر ما هي.
+
+2│     ليكن اسمُ = ""Sara""
+               ^
+
+مساعدة: احذف العلامة، أو استبدل بالحرف المعروض شكلًا الحرفَ العادي. الأمر `kalam fix` يفعل ذلك لك.
+
+لمعرفة المزيد: kalam explain SEC0106","دالة رئيسي():
+    ليكن اسمُ = ""Sara""
+    اطبع(اسمُ)
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:8b6d066ce973e53dab4fc71b3b34a0ff9a1d14bc4a7cb520bd6dfcf7b3ce6a55"
+"K0924/en","K0924","en","",""," -- SINGLE QUOTES ------------------------------------------------ main.kl  K0924
+
+Strings use double quotes in Kalam; single quotes don't start a string.
+
+11│     print('done')
+              ^^^^^^
+
+Try: `""done""`
+
+Help: Change the single quotes to double quotes: `""...""`. `kalam fix` does this for you.
+
+Learn more: kalam explain K0924","fn describe(n: Int) -> String:
+    if n < 0:
+        return ""negative""
+    else if n == 0:
+        return ""zero""
+    else:
+        return ""positive""
+
+fn main():
+    let label = describe(5)
+    print('done')
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:ed0446fe34f4c3321d8acde21e972e8c15c2bdd42ce550446d2469052a7263be"

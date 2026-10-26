@@ -39,6 +39,7 @@ const TABLE: &[(&str, Intrinsic)] = &[
     ("Int.wrapping_add", int_wrapping_add),
     ("Int.saturating_add", int_saturating_add),
     ("Int.pow", int_pow),
+    ("Float.pow", math_pow),
     ("Int.bit_and", int_bit_and),
     ("Int.bit_or", int_bit_or),
     ("Int.bit_xor", int_bit_xor),

@@ -1,0 +1,12 @@
+تعداد Shape:
+    Circle(r: عدد)
+    Square(side: عدد)
+    Dot
+
+دالة area(s: Shape) -> عدد:
+    حسب s:
+        عندما .Circle(r):
+            أرجع r * r * 3
+
+دالة رئيسي():
+    اطبع("{area(Shape.Circle(r: 2))}")

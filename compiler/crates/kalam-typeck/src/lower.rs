@@ -64,6 +64,21 @@ pub fn lower_program_with(
     let mut next_synthetic = program.defs.len() as u32;
     for src in sources {
         out.skins.insert(src.file, src.skin);
+        if !src.std {
+            let comments = src
+                .ast
+                .trivia
+                .iter()
+                .filter(|t| {
+                    matches!(
+                        t.kind,
+                        ast::TriviaKind::Comment | ast::TriviaKind::DocComment
+                    )
+                })
+                .map(|t| t.span)
+                .collect();
+            out.comments.insert(src.file, comments);
+        }
     }
     let mut order: Vec<&SourceModule<'_>> = sources.iter().collect();
     order.sort_by(|a, b| (&a.path, a.file).cmp(&(&b.path, b.file)));

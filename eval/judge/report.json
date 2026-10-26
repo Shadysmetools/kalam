@@ -4,577 +4,691 @@
   "n": 114,
   "rubric_sha256": "f0cba998336a5b48e4f2ff88719bff0282cd7b4a490970e607adc66cfe4829c4",
   "rubric_version": "becker-2026.1",
-  "sample_sha256": "268a64cf7ee2065600ec71541f2b578715d33b3e7340c69b90c2ef40ca47ac7c",
+  "sample_sha256": "66c85dc33751a18e48fc5b7286ce1dcc6b8dd6b366b1d9902a7f6fe4a5821b5d",
   "schema": "kalam-judge-report/1",
   "scores": [
     {
+      "id": "K0405/franco",
+      "rationale": "Both sites labelled with a clear why, but the Try `el_total` and the help borrow the type-value naming convention, which does not fit a plain shadowed variable.",
+      "rendered_sha256": "sha256:f34f29088fbef76c6397bd7e8cb58ae51fb4e2a6b4ec307a1fa9812ada5e2078",
+      "score": 4.0
+    },
+    {
       "id": "K0103/franco",
       "rationale": "Clear reason and fmt fix, but the Try line is four invisible spaces in backticks.",
+      "rendered_sha256": "sha256:7745723f41130e8587f0d3f4492021cdcb44b5db8b93ef4dee27ca09a3843839",
       "score": 4.5
     },
     {
       "id": "K0105/ar",
       "rationale": "Unicode name missing (double space after U+0024) and the reason says ASCII symbols are allowed although `$` is ASCII, so it does not explain the rejection.",
+      "rendered_sha256": "sha256:2de9dc062667b107faa212a657297ac7f662a432c4acf257ebbcace1b9d5aab3",
       "score": 3.0
     },
     {
       "id": "K0120/franco",
       "rationale": "Accurate and well placed, but the fix says 'a multiple of 4' instead of naming the exact column (8).",
+      "rendered_sha256": "sha256:0bbe228b0a96fe594cce5394a941d1916b6dcbd8a08e4363dc2536657f87375e",
       "score": 4.0
     },
     {
       "id": "K0122/ar",
       "rationale": "Correct but vague: 'align with one of the blocks above' without naming the column, no example.",
+      "rendered_sha256": "sha256:032bc80599c8b41f255627a6e4b1c8a1001decc8ed8bcd1b0625cc1c1eb36d8c",
       "score": 3.5
     },
     {
       "id": "K0125/franco",
       "rationale": "Reason (no octal), exact Try `7`, the 0o alternative and kalam fix: complete.",
+      "rendered_sha256": "sha256:2bdc948142eabf224302c8eab4e908aeb9b86ccce4083122f221cebd5ca57510",
       "score": 5.0
     },
     {
       "id": "K0126/ar",
       "rationale": "States the exact Int range and two concrete fixes; no example of writing a BigInt.",
+      "rendered_sha256": "sha256:1614445a1f36251b023e42cf7280d4e9cf884997a5fd2a75d279bf49764ab995",
       "score": 4.5
     },
     {
       "id": "K0127/franco",
       "rationale": "Good explanation of the Franco digit-letter trap, but it promises a spelling suggestion it does not give.",
+      "rendered_sha256": "sha256:78e9f28a33b6431273c1d2409b5bdb72a41f7086393b1b1c3bf74938fac4c971",
       "score": 4.0
     },
     {
       "id": "K0129/ar",
       "rationale": "Precise caret, rule and fix including triple quotes; nothing missing but an example.",
+      "rendered_sha256": "sha256:3007feabb070bbb373f060cfff37c94bc097a9fdab903bf5e11598cf917275ce",
       "score": 4.5
     },
     {
       "id": "K0130/en",
       "rationale": "Lists every valid escape and how to write a backslash; does not guess the intended escape.",
+      "rendered_sha256": "sha256:5952aa26791ba30155ac99b1c1fdee7b5c726aa1506fab6d82f02e79746eca0e",
       "score": 4.5
     },
     {
       "id": "K0131/en",
       "rationale": "Good reason, but the let-binding fix has no example code.",
+      "rendered_sha256": "sha256:d30845a3da23c1dccae97ccd307f65113e30d1b89a910a3ff78cfc0665506811",
       "score": 4.0
     },
     {
       "id": "K0132/franco",
       "rationale": "Accurate surrogate explanation with an example of the right form.",
+      "rendered_sha256": "sha256:e938cccf3f0e3f46fb1756f7c61639f8c2488fb0f31737f9759df9d81db9fb82",
       "score": 4.5
     },
     {
       "id": "K0201/en",
       "rationale": "Names the word, its skin equivalent, a Try and alternatives: a newcomer fixes it at once.",
+      "rendered_sha256": "sha256:4256200d74668818dda1d132bee39d237fdd161b84fbb40e6ef9fdb0327ae4c0",
       "score": 5.0
     },
     {
       "id": "K0250/franco",
       "rationale": "Correct with a delete-the-`=` fix, but adds speculative causes (missing `:`, early paren) that don't apply here.",
+      "rendered_sha256": "sha256:179f76d7ed9913aa1b05b003497085ce94ca11bc38d20ae39cf57e46ef55d722",
       "score": 4.0
     },
     {
       "id": "K0251/franco",
       "rationale": "Caret on the open paren and clear reason, but the fix lists `) ] }` instead of the `)` needed.",
+      "rendered_sha256": "sha256:c4c4c9891b9e089af8c8b4f31dab2de6a5cd9177244bbee722451ee6f2e79dfd",
       "score": 4.0
     },
     {
       "id": "K0252/franco",
       "rationale": "Caret and 'this line ends with :' point at line 3 (`dala ra2isi():`), but the empty block belongs to line 1, so it misleads.",
+      "rendered_sha256": "sha256:7f3bba3016bb88b8af3ab7007337b66ccf9366d1a94e689208b238a1679a2301",
       "score": 2.0
     },
     {
       "id": "K0253/ar",
       "rationale": "Clear one-problem message with both fixes (a value or escaped braces).",
+      "rendered_sha256": "sha256:230405851fed947d196f1219be1f23532fc4967dc3bf1eaa211f6c97d5029d44",
       "score": 4.5
     },
     {
       "id": "K0254/en",
       "rationale": "Clear reason, exact caret and a fix with an example of the right argument order.",
+      "rendered_sha256": "sha256:7ed7b028d17297501acf42309b1731b48f34f2f36b13ba089910605ebe599114",
       "score": 5.0
     },
     {
       "id": "K0255/en",
       "rationale": "Clear rule and fix, but the caret covers only `limit`, not the statement, and there is no why.",
+      "rendered_sha256": "sha256:52fc5c91f607aa2588d209876758cfdf8190ffd80682bfd159e75d3ddfa6d65e",
       "score": 4.0
     },
     {
       "id": "K0256/franco",
       "rationale": "Rule, reason (readers see dependencies first), concrete fix and kalam fmt.",
+      "rendered_sha256": "sha256:e3a4106160bf393212349bfdf333ab5e9f6bc16598bbf72f80a15c9106f2fc12",
       "score": 5.0
     },
     {
       "id": "K0259/en",
       "rationale": "Polite and actionable for a pathological input, but it does not state the nesting limit.",
+      "rendered_sha256": "sha256:8bc8e1818df761af500eb163be755e0db993eedc28738289265224c4640645ba",
       "score": 4.0
     },
     {
       "id": "K0302/ar",
       "rationale": "Reason and fix are clear, but the caret spans `علني مغلق دالة answer` instead of `مغلق`.",
+      "rendered_sha256": "sha256:d574066cdef4714dd2b40fe466544c4c89d9b355135951fdf658ab93bae9ca75",
       "score": 4.0
     },
     {
       "id": "K0303/en",
       "rationale": "Secondary label at the private type, a clear why, and two concrete fixes.",
+      "rendered_sha256": "sha256:5233d57ec0a3f52542b9577eab9ff05bd903af4b6ec4013f70d20884caa61f5a",
       "score": 5.0
     },
     {
       "id": "K0401/ar",
       "rationale": "Try `name` is exactly right; the scope explanation uses jargon (التمهيد) and the help is long.",
+      "rendered_sha256": "sha256:9dc8eaff532deee77b4f786563c31387b1bb0d304c47a63376998edd8b3249f1",
       "score": 4.5
-    },
-    {
-      "id": "K0405/franco",
-      "rationale": "Both sites labelled and the reason given, but an irrelevant tip about ال/el_ type naming adds load.",
-      "score": 4.0
     },
     {
       "id": "K0413/en",
       "rationale": "Clear reason, but a spec section reference reads as jargon and no alternative name is suggested.",
+      "rendered_sha256": "sha256:013dde9a86ef797e04195dc7c4e0baa755f43ab67c413ff35dde518ea88ca258",
       "score": 4.0
     },
     {
       "id": "K0416/ar",
       "rationale": "Reason and an example, but the two `x: ` / `y: ` Try fragments are terse.",
+      "rendered_sha256": "sha256:09f1d23a4d405d9254476fcddea020acf3a1d51fef3bcb31ff1d73f0f817b534",
       "score": 4.5
     },
     {
       "id": "K0417/franco",
       "rationale": "Explains why `with` is reserved and suggests a concrete new name.",
+      "rendered_sha256": "sha256:e1fe4f1a3d8e18ab256fe70b82bd0ab4ee0471ed3587a4c0c73d1b0bb0bb8d9b",
       "score": 4.5
     },
     {
       "id": "K0420/franco",
       "rationale": "The `length -> len` mapping is useful but buried in a list (no direct Try), the caret spans the whole call and the API-checking sentence is noise.",
+      "rendered_sha256": "sha256:4568bcc719197201e4a0fef5eec42ff068e6f757c6daf3172847818e931ba296",
       "score": 4.0
     },
     {
       "id": "K0600/franco",
       "rationale": "Label and Try ` // ` are right, but it never says `/` always gives kasri, and the generic help points to .to_float/.round.",
+      "rendered_sha256": "sha256:d24cf0731195869b931f256ac372d0b7b8779e356c27ddd08c9324d8820b1e07",
       "score": 3.5
     },
     {
       "id": "K0601/en",
       "rationale": "Clear why (no implicit conversion), Try and both conversions explained.",
+      "rendered_sha256": "sha256:528e42c5d9fc8c78b13b7a08f47c7aae847515457b0615780f61ca6944dbc5dc",
       "score": 4.5
     },
     {
       "id": "K0602/en",
       "rationale": "Accurate, but the fix is generic and the crypto.equal sentence about secrets is irrelevant.",
+      "rendered_sha256": "sha256:4be6a39b74b9b1dd9d0315c750db271c27e1b33d33a2d0adde1cc4b9612d4d25",
       "score": 3.5
     },
     {
       "id": "K0612/en",
       "rationale": "Strong reason and fixes, but the caret is on the type name, not the Secret field or the derive.",
+      "rendered_sha256": "sha256:ffa0ca4b009b2b35210c1948bb8f0516d79be09a21473da08deb12658a30a52e",
       "score": 4.0
     },
     {
       "id": "K0650/ar",
       "rationale": "Strong reason (bytes vs code points vs graphemes) and concrete alternatives; no worked example.",
+      "rendered_sha256": "sha256:a9cf4efba974cafd237d9206d7139315846ff0a6d8a584b3bb34fca0f67bb58a",
       "score": 4.5
     },
     {
       "id": "K0710/franco",
       "rationale": "Explains what a place is; the second fix ('give it to the variable it came from') is vague.",
+      "rendered_sha256": "sha256:7134499fa8975f5a10f74b522b5abe1d421f5dc54af21e92767f18469fdae825",
       "score": 4.0
     },
     {
       "id": "K0720/franco",
       "rationale": "Correct with a pattern example, but no rewrite of this condition and only a thin why.",
+      "rendered_sha256": "sha256:9cfb0c940f97b48fe1d61dff47c74556935bed166169031425d17d61c44c1eca",
       "score": 4.0
     },
     {
       "id": "K0730/franco",
       "rationale": "Accurate with a good analogy and concrete fixes; small wording slips.",
+      "rendered_sha256": "sha256:1550d56c0dfa2829b724fb4b18f3e70212813304e9f70f2d8f65096e48a2d40f",
       "score": 4.5
     },
     {
       "id": "K0731/en",
       "rationale": "Clear reason and fix, but the grammar slips ('a `else`', twice) and there is no example.",
+      "rendered_sha256": "sha256:4d3f276025e81645afabbc86fb8b83c14a4be706c6c5e9de51622a6a3b65956d",
       "score": 4.0
     },
     {
       "id": "K0801/en",
       "rationale": "Explains where lambda types come from and gives the exact annotated rewrite.",
+      "rendered_sha256": "sha256:302aa52ed411223b81bc4616226d65803d328f1c7bdcfaea721741e1d2fa8692",
       "score": 5.0
     },
     {
       "id": "K0802/ar",
       "rationale": "Explains why an empty literal has no type and shows an annotated example.",
+      "rendered_sha256": "sha256:e5db242ee86cbcc449df745a7fa14c5d31b5d074753cad2c4378e807c16ac578",
       "score": 5.0
     },
     {
       "id": "K0803/franco",
       "rationale": "Clear reason, but the fix uses a placeholder `EsmElType.Red` rather than `Light.Red`.",
+      "rendered_sha256": "sha256:058971a5972b227db0f5b9c3295d5b2521e7d5f75cf1169097a0e4b31d519e53",
       "score": 4.0
     },
     {
       "id": "K0901/en",
       "rationale": "Names the foreign operator, explains strictness, Try `==` and kalam fix.",
+      "rendered_sha256": "sha256:8fd30dd63bd5d6f43519e413fd98960981d2e507093e21725ef758da46b0ad34",
       "score": 5.0
     },
     {
       "id": "K0902/ar",
       "rationale": "Names the foreign keyword, Try `دالة` and a full signature template.",
+      "rendered_sha256": "sha256:ca352f30640ec99f7f1aecbc172786093db31235be46983b7ac9e2737585df63",
       "score": 5.0
     },
     {
       "id": "K0903/franco",
       "rationale": "Try `walla law` in the file's skin, the form explained and kalam fix.",
+      "rendered_sha256": "sha256:70f8294dae71f2e6d3d5fc7d11333bc2a6650bfb16001b364dfb515ff51b4e3a",
       "score": 5.0
     },
     {
       "id": "K0904/ar",
       "rationale": "Short, accurate, says how statements end and covers both `;` and `؛`.",
+      "rendered_sha256": "sha256:33e7273dae9254c3e1ba5a12a2fd95f17d855dcc4cb5aaca5b532f3eb7e3678c",
       "score": 5.0
     },
     {
       "id": "K0905/franco",
       "rationale": "Explains blocks and the full manual fix; the Try covers only the `:` part.",
+      "rendered_sha256": "sha256:e6f3c073249e59ed38afb3aa766a3ef3854907640764657c449d8c88e1088f23",
       "score": 4.5
     },
     {
       "id": "K0906/franco",
       "rationale": "Explains the optional type, Try `mafeesh` and why the compiler checks it.",
+      "rendered_sha256": "sha256:618e3b9cc46cb63baaae60489114d4217afdb358018b39cd046fe4d0ca8d0aa4",
       "score": 5.0
     },
     {
       "id": "K0907/ar",
       "rationale": "Clear and actionable, but cites internal decision 'D12' as if the reader knew it.",
+      "rendered_sha256": "sha256:1581de76a571331a7c86b3cfd4b080585d0f0267e8243ec058423640a878e968",
       "score": 4.5
     },
     {
       "id": "K0908/en",
       "rationale": "Explains Result-based errors with three concrete paths; no code example.",
+      "rendered_sha256": "sha256:1d452e7cce8e05f96624814e026e3c43314cc4d67403ebded374c5ec5d5a12b9",
       "score": 4.5
     },
     {
       "id": "K0909/ar",
       "rationale": "Exact caret, Try ` += 1`, reason and the متغير requirement.",
+      "rendered_sha256": "sha256:05670538b948e69c89a13b0a37dd6c784ed55a56f4d2100dafa5a1789d7bb473",
       "score": 5.0
     },
     {
       "id": "K0910/ar",
       "rationale": "The help gives the full form, but the three Try fragments are hard to picture.",
+      "rendered_sha256": "sha256:8bbd8e16385bc4767a14339815312dfcdf9cc91d0529f3dbe41042a5856d094b",
       "score": 4.5
     },
     {
       "id": "K0911/en",
       "rationale": "Concise reason, Try `not ` and the full operator mapping.",
+      "rendered_sha256": "sha256:8149dc540a832f219399e576f8756b48ac7643f3c9fe450990cb39567f8a40df",
       "score": 5.0
     },
     {
       "id": "K0912/franco",
       "rationale": "Maps both foreign forms to khali/motghayer with a Try.",
+      "rendered_sha256": "sha256:fb99b17f1f820b0ddbfec92d8428174c967f63bcf68bb45665e13d11d096ee07",
       "score": 5.0
     },
     {
       "id": "K0913/en",
       "rationale": "Explains interpolation and gives the exact edit for both foreign forms.",
+      "rendered_sha256": "sha256:c6cbf9e8849899f99875e460fe7e81c618bbaba5b5988f31aa387dc35bfc7548",
       "score": 5.0
     },
     {
       "id": "K0914/franco",
       "rationale": "Clear rule and example `qamoos[K, V]`; the two bracket Try fragments are terse.",
+      "rendered_sha256": "sha256:dd109bcb60612c2ea34aa63a28557a928deb6afb57d1e0cd35b80686e1fef9df",
       "score": 4.5
     },
     {
       "id": "K0915/en",
       "rationale": "Explains why unwrap is refused, Try `expect(\"…\")` and alternatives.",
+      "rendered_sha256": "sha256:3a0880a16a87f8bac731059ea16a79688d233191f4eca5ba170d96fe2cb64951",
       "score": 5.0
     },
     {
       "id": "K0917/franco",
       "rationale": "Explains what the dot means, Try `.` and kalam fix.",
+      "rendered_sha256": "sha256:c9105b177acbb4721fe7ca3aa801e9e12396941c33c269df6bbc06af592edda6",
       "score": 5.0
     },
     {
       "id": "K0918/franco",
       "rationale": "Exact Try `xs.len()` and the mapping for str/int.",
+      "rendered_sha256": "sha256:54480f15d432032144965d4300a7e3ae1e7422c43edc09638455261f99da0166",
       "score": 5.0
     },
     {
       "id": "K0919/en",
       "rationale": "Exact rewrite `Money as Show`, but no reason beyond 'Rust's order'.",
+      "rendered_sha256": "sha256:a4106fa37ff2f668b33d3c2a4760ba983048d59e7e915e9c34080412f02f6720",
       "score": 4.5
     },
     {
       "id": "K0920/ar",
       "rationale": "Maps class/struct/interface to هيكل/سمة with a Try and a template.",
+      "rendered_sha256": "sha256:3631a64ff2b15d6e708e122964626f3bee34be766f4f384ba40a51dc71ba75f8",
       "score": 5.0
     },
     {
       "id": "K0921/franco",
       "rationale": "Correct with Try `dala double`, but no picture of the resulting code and the help wording is clumsy.",
+      "rendered_sha256": "sha256:b4791c0e6202caebf6e9695e4c661a67822792647983c16b1fc93e60d953726b",
       "score": 4.0
     },
     {
       "id": "K0922/ar",
       "rationale": "Explains inference and gives the annotated alternative, but the example `ليكن r: T = f(x)` is generic, not this call.",
+      "rendered_sha256": "sha256:023611c8c92c4eb8ae264c0ab38a83e7a48764b9eb7920c42f387d7e719acfe0",
       "score": 4.5
     },
     {
       "id": "K0923/ar",
       "rationale": "Clear fix `a.pow(b)`, but the `.pow(` / `)` Try fragments are terse.",
+      "rendered_sha256": "sha256:2c8b0281504a1450206b65e4123ec017e777d29e990a890a2efa2498f34bff87",
       "score": 4.5
     },
     {
       "id": "K0924/en",
       "rationale": "Exact Try `\"done\"`, but it does not say what single quotes are for.",
+      "rendered_sha256": "sha256:ed0446fe34f4c3321d8acde21e972e8c15c2bdd42ce550446d2469052a7263be",
       "score": 4.5
     },
     {
       "id": "K0925/ar",
       "rationale": "A full rewritten match in the Arabic skin plus the `_` hint.",
+      "rendered_sha256": "sha256:70f26da12a5c000dc1c4297c2fc7b55ef368f641ab386ce1e681e182fc55df27",
       "score": 5.0
     },
     {
       "id": "K0926/franco",
       "rationale": "Exact Try ` i fi 0..items.len()` and the inclusive-range hint.",
+      "rendered_sha256": "sha256:b1ee8f9e92e91f44df27364ec47f1e5c1f6ae16c6130922b8f65ab549d0e25b4",
       "score": 5.0
     },
     {
       "id": "K1001/en",
       "rationale": "Names the missing variant, a Try arm and why explicit arms beat `_`.",
+      "rendered_sha256": "sha256:c89ccc5487fdf9567b938ef16dc4b6cdd72caf4af50770d437cded1cda32b79a",
       "score": 5.0
     },
     {
       "id": "K1002/ar",
       "rationale": "Clear why and fix, with the likely cause named; no example.",
+      "rendered_sha256": "sha256:f73d2f29a999779f049595097110a3c5b4813490107b2001bc431e4e4eb3a216",
       "score": 4.5
     },
     {
       "id": "K1003/en",
       "rationale": "Correct but the reason is vague ('nowhere to go') and 'use match' has no example.",
+      "rendered_sha256": "sha256:1200eab55f3bac82a1bc76e70a8db7c8390370ab50576164a7eb5d5602e6d358",
       "score": 3.5
     },
     {
       "id": "K1004/franco",
       "rationale": "Accurate with a good why, but no example of a fixed pattern.",
+      "rendered_sha256": "sha256:954510c0c7ccb3721b38007f39df3a6b5493f0530d8afd8bcfe1929486554368",
       "score": 4.0
     },
     {
       "id": "K1101/en",
       "rationale": "Try `return ` is right, but it never says that the last expression is not returned, and the else-branch help doesn't fit this body.",
+      "rendered_sha256": "sha256:4cccba31a3bd07cdf2461100a843cba3ebf08f8e44e6326c117c2b182444c9f1",
       "score": 3.5
     },
     {
       "id": "K1103/franco",
       "rationale": "Does not name the candidate traits (Named, Tagged) and the fix is a generic `Trait.label(x)`.",
+      "rendered_sha256": "sha256:752e33875be352df88e0bb5d69e9b02187072d6534963737328f086b2a1d8ee9",
       "score": 3.5
     },
     {
       "id": "K1104/en",
       "rationale": "Clear reason and label Try, but the Try leaves `from` positional while the help example labels it, and the Try comes in fragments.",
+      "rendered_sha256": "sha256:5aaadb2e172b2b1cce49ccd9baf29b68c71902bb708759c32dbe6e6f14b55473",
       "score": 4.0
     },
     {
       "id": "K1106/ar",
       "rationale": "Says 'either a duplicate impl or the orphan rule' without saying which applies, plus jargon (قاعدة اليتيم).",
+      "rendered_sha256": "sha256:fd91a414b5d098c75782250c50d65d573a020e2c0b9dda1bcf2e20a1d1a5677b",
       "score": 3.0
     },
     {
       "id": "K1110/ar",
       "rationale": "Good reason and fix, but the Try names `snapshot` while the help says `لقطة`, in two fragments.",
+      "rendered_sha256": "sha256:318a353eac27ea49507067be4015a8575de90f07ca0327979e4859299c3d9335",
       "score": 4.0
     },
     {
       "id": "K1202/ar",
       "rationale": "Try `ليكن`, the reason (no global mutable state) and the Cell alternative.",
+      "rendered_sha256": "sha256:09bae14b97208269bf493864bee908c73d49b1a5695ef2629a996a271387f9a4",
       "score": 5.0
     },
     {
       "id": "K1203/en",
       "rationale": "Strong reason and fix, but the example lists std/http names for a std/math import.",
+      "rendered_sha256": "sha256:b4c6988deeb8b832bbac4d998813198485048fe26facf0a719c0a8dd2ce4eddd",
       "score": 4.5
     },
     {
       "id": "K1204/franco",
       "rationale": "The label is good, but the opening sentence is vague and the rule list is dense and heavy.",
+      "rendered_sha256": "sha256:7901ed233b2f65e5a79463f8894e32923ada64a883251fc2ff0e1c631076615b",
       "score": 3.5
     },
     {
       "id": "K1301/franco",
       "rationale": "Two complete Try alternatives, but the message does not name ParseFail/LoadFail.",
+      "rendered_sha256": "sha256:15947d72ccd6666d2752d7eb48cb048db4dc6255759ec6d3fa06d6e6eda391c9",
       "score": 4.0
     },
     {
       "id": "K1302/franco",
       "rationale": "Explains the Option/Result mismatch and gives the exact `.ok_or(...)` Try.",
+      "rendered_sha256": "sha256:473d2454797aa878090d6944370e27cdae6ee918190537085ab93624f9ec58ed",
       "score": 5.0
     },
     {
       "id": "K1303/franco",
       "rationale": "Strong why (silent failure) and three concrete fixes.",
+      "rendered_sha256": "sha256:c04a4f3676eeb3bab1e25c5b0455a8af358d7bd5bab77837084b6e82bd44f1a2",
       "score": 4.5
     },
     {
       "id": "K1401/en",
       "rationale": "The call chain label is helpful, but it never says why @sync is required here.",
+      "rendered_sha256": "sha256:90734dbc8f44b77012cb59f0133f65401bc61893f132d1d68b4248d5d7d0bd90",
       "score": 4.0
     },
     {
       "id": "K1402/en",
       "rationale": "Clear with a chain label, but 'suspend' jargon and no example of moving the I/O out.",
+      "rendered_sha256": "sha256:4b2b19a68a8ebc01638fe4ac2580dabe9168febe5ab778cd3a7fd797b1eff1e5",
       "score": 4.0
     },
     {
       "id": "K1501/ar",
       "rationale": "Clear capability reason, but the 'or decode it' clause doesn't apply and there is no example of رئيسي(world).",
+      "rendered_sha256": "sha256:692adcfc75575069d4bdab4c9da4fef604871841b518baf1c8708bb7844b8af2",
       "score": 4.0
     },
     {
       "id": "K1503/ar",
       "rationale": "Clear why and fix, but not specialized to `env.secret(\"STRIPE_API_KEY\")`.",
+      "rendered_sha256": "sha256:9016d17f4a912d092c1fb704c60051b0173f0b98431f237a61b1c44c555224e4",
       "score": 4.5
     },
     {
       "id": "K1601/en",
       "rationale": "Explains injection and the Try rewrites to a sql literal; the Try comes in two fragments.",
+      "rendered_sha256": "sha256:766acad9e0da85648d62e9b57f3896ef1c2171e10de70b85595ab6a70eb69fcf",
       "score": 4.5
     },
     {
       "id": "K1602/franco",
       "rationale": "Explains parameter binding and shows the exact quote-free form.",
+      "rendered_sha256": "sha256:290f7a24e71729cdc57613787307e244a7630577ffe40b2cf36cf86fa00c78a1",
       "score": 5.0
     },
     {
       "id": "K1603/franco",
       "rationale": "Explains why holes cannot be names and gives sql.ident; no full example.",
+      "rendered_sha256": "sha256:e1d1d891e614c6192e6108c13816490b5e9d3907e38e324bcbfa41891f6048c2",
       "score": 4.5
     },
     {
       "id": "K1604/en",
       "rationale": "Clear rule and fix, but the caret covers the whole literal instead of the `;`.",
+      "rendered_sha256": "sha256:55f8989f7c26a50e0995798185653a2efd4f8af6819755365f4bb9327dfd7e4b",
       "score": 4.0
     },
     {
       "id": "K1605/ar",
       "rationale": "Clear why and a simple fix; no example.",
+      "rendered_sha256": "sha256:198f95d7a11489d63baf7a3c6927e1efa223e2cb01e834fdb6edc9a8e7c53896",
       "score": 4.5
     },
     {
       "id": "K1610/ar",
       "rationale": "Lists three possible faults without saying which (the unclosed <b>), and the caret covers the whole literal.",
+      "rendered_sha256": "sha256:518a719d18c2410eec92c620f23b625a581b5687bbf55284b9466a7caf65aa74",
       "score": 3.0
     },
     {
       "id": "K1612/franco",
       "rationale": "Explains script-context danger and gives the json-island pattern.",
+      "rendered_sha256": "sha256:e38b01e81bcfed98c1a67da069922a6680a3769d7facd4d92d24569586278fc3",
       "score": 4.5
     },
     {
       "id": "K1613/ar",
       "rationale": "Explains the javascript: risk with two concrete constructions.",
+      "rendered_sha256": "sha256:4220a00617127fb96f3050685a1cab4cd12cf39cdfbee1e2bb30d4f46092ae44",
       "score": 5.0
     },
     {
       "id": "K1614/ar",
       "rationale": "Clear reason and fix, including Attrs for dynamic sets.",
+      "rendered_sha256": "sha256:0a90eaeb4e119c2894451658791f73e5bdcf968a541822ace67249a203cea236",
       "score": 4.5
     },
     {
       "id": "K1615/ar",
       "rationale": "Exact reason (the --> breakout) with two concrete fixes.",
+      "rendered_sha256": "sha256:175869a8a083a03b8d1d17e4d6447161039cb9fa803db491f445bf7a819c3e12",
       "score": 5.0
     },
     {
       "id": "K1616/franco",
       "rationale": "Explains the Message requirement and gives the exact `{ Msg.Save }` form.",
+      "rendered_sha256": "sha256:6bad2c93cb73ee24a880decddcea66ef47c2a4f18c767ad9332be70069333c24",
       "score": 5.0
     },
     {
       "id": "K1617/franco",
       "rationale": "Caret spans the whole literal instead of `k-frobnicate`, and no closest-match suggestion is given.",
+      "rendered_sha256": "sha256:bb5676bdaa1b786e5d1463a6ad4ac2baf595309178e8645ab231cdb648352a94",
       "score": 3.5
     },
     {
       "id": "K1620/franco",
       "rationale": "Caret spans the whole literal instead of `|`, and `proc.pipe([...])` has no example.",
+      "rendered_sha256": "sha256:af9918b31c0f18332f7e828ae013d9e05066c3148483be05cae07ab87e884444",
       "score": 3.5
     },
     {
       "id": "K1621/en",
       "rationale": "Precise caret, clear security reason and a match-per-program fix.",
+      "rendered_sha256": "sha256:6295057a406e3c2f022ed04d00069ac7e526636f8b2752f3f535c63db6217f94",
       "score": 4.5
     },
     {
       "id": "K1631/ar",
       "rationale": "Clear reason (a value could redirect the request to another server) and a concrete fix.",
+      "rendered_sha256": "sha256:4c721810e8b6da57c1010f6a85294f2484378a93a76ce046a27677e44b6a394e",
       "score": 4.5
     },
     {
       "id": "SEC0100/en",
       "rationale": "A mid-file U+FEFF is reported as 'file encoding' with a hedged 'or bytes that are not UTF-8', and the fmt fix speaks of a BOM.",
+      "rendered_sha256": "sha256:96c7df2f338a2c7529397bd3f0ec28bcd847b3e5d738cd02b44eeca5b8c925fd",
       "score": 3.0
     },
     {
       "id": "SEC0101/franco",
       "rationale": "Exact Try `é` and a clear NFC reason; 'kalam' (text) reads ambiguously next to Kalam.",
+      "rendered_sha256": "sha256:f421a034d2aca40f5c7936860636584fd39e501c7e89c91ce4a21d690e6cdea0",
       "score": 4.5
     },
     {
       "id": "SEC0102/en",
       "rationale": "Try `\\u{7}` and a clear reason; the character name (BEL) is missing (double space).",
+      "rendered_sha256": "sha256:b1040189484d8048c9320ed2cc7a98f661c008bef3ae9f6e214b428b7425b01a",
       "score": 4.5
     },
     {
       "id": "SEC0103/en",
       "rationale": "Names the character, explains the risk, Try and kalam fix.",
+      "rendered_sha256": "sha256:a6efba0e632fa9f40492f45cc499aa4e66541a8310a50abd72895b92c3c1995c",
       "score": 5.0
     },
     {
       "id": "SEC0104/en",
       "rationale": "Code points for both names, a declaration label and a clear why.",
+      "rendered_sha256": "sha256:faa168fdeee2c07322507e17ef78ea1d1d7af9d1dbf7d70270d3e2737a31be0b",
       "score": 5.0
     },
     {
       "id": "SEC0105/ar",
       "rationale": "Correct caret on the Cyrillic letter, but the character name is missing and the names.toml advice is off-topic.",
+      "rendered_sha256": "sha256:f83cd169f0f94d14aa6ea1d3e69b2cffec888da03d1010d7d3dd072b7cdbf223",
       "score": 4.0
     },
     {
       "id": "SEC0106/ar",
       "rationale": "Character name missing (U+064F with a blank) and the replacement sentence is garbled.",
+      "rendered_sha256": "sha256:8b6d066ce973e53dab4fc71b3b34a0ff9a1d14bc4a7cb520bd6dfcf7b3ce6a55",
       "score": 3.5
     },
     {
       "id": "SEC0110/en",
       "rationale": "Names the character, the Trojan Source risk and the escape alternative.",
+      "rendered_sha256": "sha256:2cb216a2d0102fd9ff26dd69f56dad5133a0676ae99532a2d43530faba37c1a2",
       "score": 5.0
     },
     {
       "id": "SEC0111/en",
       "rationale": "Clear Try and fix, but the 'names look the same' reason fits code, not this string.",
+      "rendered_sha256": "sha256:3a582abe97c6f95e393a127cd38ab907148490d89a6aeaeb64fe273d6c141bf9",
       "score": 4.5
     },
     {
       "id": "SEC0112/en",
       "rationale": "Doesn't say which category U+E000 is (private use); it lists four.",
+      "rendered_sha256": "sha256:6035855680b4c68d4ec148bcc2f09828e69dbc4ac57066b3968fb266e776e2ee",
       "score": 4.0
     },
     {
       "id": "SEC0113/ar",
       "rationale": "Names the character and both fixes; the Try escape and the `\\n` advice differ slightly.",
+      "rendered_sha256": "sha256:087f36daeeb5393efa789f1e710e0ffe678e8758ced0c8982c20d7338063da38",
       "score": 4.5
     },
     {
       "id": "SEC0120/en",
       "rationale": "Accurate, but the hedged 'or uses the other separator' adds doubt and there is no Try.",
+      "rendered_sha256": "sha256:a57d4966dcff6563a51e956f22a7c71c734c0708ada1cb3c37ea28df8ace60cd",
       "score": 4.0
     },
     {
       "id": "SEC0121/en",
       "rationale": "Strong why with concrete lookalike pairs; no Try `7`.",
+      "rendered_sha256": "sha256:6209b392237fb2e897136e560db0447ebfbc892d6e18d4b05dff3b2eb6651d06",
       "score": 4.5
     },
     {
       "id": "SEC0123/ar",
       "rationale": "Explains the triple lookalike and gives Try `_` with an example.",
+      "rendered_sha256": "sha256:8234eb1308ec99a94841fe9795bae284bfcf8d90f5a9f03d9511af0f97633795",
       "score": 5.0
     },
     {
       "id": "SEC0124/en",
       "rationale": "Explains the lookalike risk and gives Try `1` and kalam fix.",
+      "rendered_sha256": "sha256:f7a2bd9f52a4c65af3d8684261637ec8516b24a7ab73e3225be01f662665fcab",
       "score": 5.0
     }
   ]

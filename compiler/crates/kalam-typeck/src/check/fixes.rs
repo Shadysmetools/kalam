@@ -4,7 +4,8 @@
 //! - K1001's missing arms as `case` arms with `panic("TODO")` bodies (§11 rule 1, Q32);
 //! - K1110's `let snapshot = v` before the closure, with the uses renamed (§12.3);
 //! - K1302's `.ok_or(…)` and K1301's `.map_err(…)` and `impl F as From[E]` (§14.3);
-//! - `//` for an `Int / Int` division where an `Int` is expected (FOUNDER-QUEUE Q31).
+//! - `//` for an `Int / Int` division where an `Int` is expected (FOUNDER-QUEUE Q31);
+//! - K0916's `print(a, b)` → `print("{a} {b}")` (§21.3).
 //!
 //! Every inserted keyword and core name is spelled the way the file's skin spells it.
 
@@ -391,5 +392,90 @@ impl BodyCx<'_, '_> {
             Span::new(place.span.end, value.span.start),
             format!(" = {name} // "),
         ))
+    }
+
+    /// K0916's fix (§21.3): `print(a, b)` → `print("{a} {b}")`, the values joined by spaces
+    /// in one string. Each value becomes a hole, except a plain one-line string literal,
+    /// whose text joins the string (a string literal inside a hole is K0131). The edits
+    /// only add quotes, braces and spaces around the arguments as written, so the callee
+    /// and the code keep the file's skin, and `،` between the arguments goes too.
+    ///
+    /// `None` when an argument is labelled (it has no place in the string), would put a
+    /// string literal inside a hole (K0131; a value-form `if` or `match` is counted too), or
+    /// when a comment sits among the arguments (the edits would delete it, and no error
+    /// would say so).
+    pub(super) fn print_fix(&self, args: &[hir::Arg]) -> Option<Fix> {
+        let (first, last) = (args.first()?, args.last()?);
+        let (from, to) = (first.value.span.start, last.value.span.end);
+        let commented = self
+            .prog()
+            .comments
+            .get(&self.file)
+            .is_some_and(|cs| cs.iter().any(|c| c.start < to && c.end > from));
+        if commented {
+            return None;
+        }
+        let literal = |a: &hir::Arg| {
+            matches!(a.value.kind, ExprKind::Str(_))
+                && self
+                    .prog()
+                    .raw_strings
+                    .contains_key(&(self.owner, a.value.id))
+        };
+        let nested_string = |a: &hir::Arg| {
+            let mut found = false;
+            super::walk_expr(&a.value, &mut |e| {
+                found |= matches!(
+                    e.kind,
+                    ExprKind::Str(_)
+                        | ExprKind::Interp(_)
+                        | ExprKind::Tagged { .. }
+                        | ExprKind::If { .. }
+                        | ExprKind::Match { .. }
+                );
+            });
+            found
+        };
+        if args.len() < 2
+            || args
+                .iter()
+                .any(|a| a.label.is_some() || (!literal(a) && nested_string(a)))
+        {
+            return None;
+        }
+        let lit: Vec<bool> = args.iter().map(literal).collect();
+        let mut edits = Vec::new();
+        // A string literal's own quotes open and close the joined string, and the quotes
+        // between two arguments go.
+        if !lit[0] {
+            let at = args[0].value.span.start;
+            edits.push(Edit {
+                span: Span::new(at, at),
+                insert: "\"{".into(),
+            });
+        }
+        for i in 1..args.len() {
+            let start = args[i - 1].value.span.end - u32::from(lit[i - 1]);
+            let end = args[i].value.span.start + u32::from(lit[i]);
+            let close = if lit[i - 1] { "" } else { "}" };
+            let open = if lit[i] { "" } else { "{" };
+            edits.push(Edit {
+                span: Span::new(start, end),
+                insert: format!("{close} {open}"),
+            });
+        }
+        let n = args.len() - 1;
+        if !lit[n] {
+            let at = args[n].value.span.end;
+            edits.push(Edit {
+                span: Span::new(at, at),
+                insert: "}\"".into(),
+            });
+        }
+        Some(Fix {
+            title: "join the values in one string".into(),
+            applicability: Applicability::Machine,
+            edits,
+        })
     }
 }

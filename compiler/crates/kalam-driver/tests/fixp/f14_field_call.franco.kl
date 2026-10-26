@@ -1,0 +1,7 @@
+haykal Job:
+    run: dala(adad) -> adad
+
+dala ra2isi():
+    khali jobs = [Job(run: dala(x: adad) -> adad => x * 2)]
+    khali j = jobs[0]
+    ektb("{j.run(21)}")

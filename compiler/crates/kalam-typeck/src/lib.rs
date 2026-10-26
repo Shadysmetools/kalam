@@ -32,6 +32,7 @@ pub mod adt;
 pub mod builder;
 pub mod check;
 mod conform;
+mod const_num;
 mod consts;
 mod decls;
 pub mod error;

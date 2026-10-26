@@ -200,6 +200,11 @@ impl Float:
     @builtin
     export fn abs(self) -> Float => panic("builtin")
 
+    ## `self` raised to the power `exponent` (Kalam has no `**`), with IEEE semantics, as
+    ## `math.pow`: `(2.0).pow(0.5)` is the square root of 2.
+    @builtin
+    export fn pow(self, exponent: Float) -> Float => panic("builtin")
+
 impl Bytes:
     ## The number of bytes.
     @builtin

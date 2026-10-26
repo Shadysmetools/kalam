@@ -9,10 +9,9 @@
 use std::io::Write;
 
 use kalam_base::{FileId, LineIndex, Skin};
-use kalam_diagnostics::Diagnostic;
 use kalam_skins::Concept;
 
-use crate::{check_bytes, embedded_stdlib, CheckedFile, NotKalamFile};
+use crate::{check_bytes, embedded_stdlib, resolve_with_std, with_std, CheckedFile, NotKalamFile};
 
 /// Stack of the thread that type-checks, lowers and interprets (only touched pages are
 /// committed). Interpretation recurses per Kalam call and per nested expression.
@@ -113,28 +112,20 @@ fn compile_and_run(skin: Skin, text: &str, out: &mut (dyn Write + Send)) -> RunO
     let Some(std) = embedded_stdlib() else {
         return RunOutcome::Internal("the embedded stdlib stubs do not parse".into());
     };
-    let mut sources = vec![kalam_resolve::SourceModule {
-        path: kalam_resolve::ModulePath("main".to_string()),
-        file: FileId(0),
-        skin,
-        ast: &parsed.ast,
-        std: false,
-    }];
-    for (i, (path, out)) in std.iter().enumerate() {
-        sources.push(kalam_resolve::SourceModule {
-            path: path.clone(),
-            file: FileId(1 + i as u32),
-            skin: Skin::En,
-            ast: &out.ast,
-            std: true,
-        });
-    }
-    let (program, resolved) =
-        kalam_resolve::resolve_program(&sources, &kalam_resolve::Options::default());
-    if resolved.iter().any(Diagnostic::is_error) {
-        return RunOutcome::Unsupported(
-            "the file declares a name the stdlib stubs also declare, so it cannot be compiled against them".into(),
-        );
+    // The same resolution `kalam check FILE` makes (FOUNDER-QUEUE Q34), which reported any
+    // error it finds before this point: one found here means the two disagree.
+    let sources = with_std(skin, &parsed.ast, std);
+    let (program, resolved) = resolve_with_std(&sources);
+    let errors: Vec<&str> = resolved
+        .iter()
+        .filter(|d| d.is_error())
+        .map(|d| d.code)
+        .collect();
+    if !errors.is_empty() {
+        return RunOutcome::Internal(format!(
+            "resolving the file against the stdlib stubs found {} that `kalam check` did not report",
+            errors.join(", ")
+        ));
     }
     // Signatures only: the stubs' `panic("builtin")` bodies would hide the intrinsics.
     let hir = kalam_typeck::lower::lower_program_with(&program, &sources, false);

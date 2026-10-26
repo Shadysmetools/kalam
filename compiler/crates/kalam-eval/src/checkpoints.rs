@@ -18,13 +18,18 @@
 //!   exactly the expected error codes (`others: none`) on an expected line, through the same
 //!   directory mode against the stdlib (a stdlib error is an unexpected code).
 //!
-//! T05, T10 and T13 are held out (LOOP.md §6.2): the harness never reads them. For
-//! `roadmap.M2.typecheck` the sealed held-out runner reports counts only ([`held_typecheck`]:
-//! files checked, passed and failed, tasks seen, whether the type checker ran), through the
-//! same directory-mode route, and the checkpoint passes only when the dev files and every
-//! held-out file pass, with all held-out tasks seen. The other checkpoints have no held-out
-//! aggregate: a scope that includes a held-out task can be `fail` (a dev task fails) or
-//! `not_measurable`, never `pass`.
+//! T05, T10 and T13 are held out (LOOP.md §6.2): the harness never reads them. The sealed
+//! held-out runner reports counts only, through the same route as dev:
+//!
+//! - for `roadmap.M2.typecheck`, [`held_typecheck`] (files checked, passed and failed, tasks
+//!   seen, whether the type checker ran);
+//! - for `roadmap.M2.interpreter`, [`held_interpreter`] (the held-out T05 and T13 `run`
+//!   files on `kalam run --interp`: files run, passed and failed, files that could not be
+//!   run, tasks seen, whether the interpreter is available).
+//!
+//! Each of those checkpoints passes only when the dev files and every held-out file pass,
+//! with every held-out task in its scope seen; a held-out failure fails it. `roadmap.M2.negative`
+//! has no held-out task.
 
 use crate::cli::KalamCli;
 use crate::corpus::{self, Case};
@@ -342,9 +347,151 @@ fn typecheck_status(
     }
 }
 
-pub fn interpreter(cli: &Result<KalamCli, String>, cases: &[Case]) -> Checkpoint {
-    let tasks: Vec<u32> = vec![1, 2, 5, 11, 12, 13, 14];
-    let conditional: Vec<u32> = vec![8];
+/// The tasks of `roadmap.M2.interpreter`, and the conditional T08.
+const INTERP_TASKS: &[u32] = &[1, 2, 5, 11, 12, 13, 14];
+const INTERP_CONDITIONAL: &[u32] = &[8];
+
+/// What `kalam run --interp` made of the `run` cases of `tasks` (dev or held-out).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct InterpCounts {
+    pub passed: usize,
+    pub total: usize,
+    /// `task/case skin: ...` per file with the wrong stdout or exit, or a case without a
+    /// `--- stdout` section (dev evidence only: the held-out aggregate keeps the number).
+    pub failed: Vec<String>,
+    /// Files the binary could not run at all (an infrastructure error, not a verdict).
+    pub unchecked: Vec<String>,
+    pub tasks: BTreeSet<String>,
+}
+
+/// Runs every `run` case of `tasks` in `cases`, every skin, on `kalam run --interp` and
+/// compares stdout and the exit code with `expected.txt` (stdin from its `stdin: file`).
+pub fn interp_counts(cli: &KalamCli, cases: &[Case], tasks: &[u32]) -> InterpCounts {
+    let mut n = InterpCounts::default();
+    for c in cases
+        .iter()
+        .filter(|c| in_tasks(c, tasks) && c.expect.kind.as_deref() == Some("run"))
+    {
+        n.tasks.insert(c.task.clone());
+        let text = fs::read_to_string(c.dir.join("expected.txt")).unwrap_or_default();
+        let want = parse_run_expect(&text);
+        let stdin = want
+            .stdin_file
+            .as_ref()
+            .map(|f| fs::read(c.dir.join(f)).unwrap_or_default());
+        for f in &c.files {
+            n.total += 1;
+            let label = format!("{}/{} {}", c.task, c.case, f.skin.id());
+            let Some(out) = &want.stdout else {
+                n.failed
+                    .push(format!("{label}: expected.txt has no `--- stdout` section"));
+                continue;
+            };
+            match read(c, f).and_then(|b| cli.run_interp(f.skin, &b, stdin.as_deref())) {
+                Ok(r) if r.exit == Some(want.exit.unwrap_or(0)) && &r.stdout == out => {
+                    n.passed += 1
+                }
+                Ok(r) => n.failed.push(format!(
+                    "{label}: exit {:?}, stdout matches: {}",
+                    r.exit,
+                    &r.stdout == out
+                )),
+                Err(e) => n.unchecked.push(format!("{label}: {e}")),
+            }
+        }
+    }
+    n
+}
+
+/// The held-out `interpreter` aggregate (runs inside the sealed child): counts and booleans
+/// only, never a task, case, file, stdout or message.
+pub fn held_interpreter(cli: &Result<KalamCli, String>, cases: &[Case]) -> Value {
+    let none = |interp: bool| {
+        json!({"status": "not_measurable", "files_passed": 0, "files": 0, "files_failed": 0,
+               "unchecked": 0, "tasks": 0, "interpreter": interp})
+    };
+    let Ok(cli) = cli else {
+        return none(false);
+    };
+    if cli.interp_available().is_err() {
+        return none(false);
+    }
+    let n = interp_counts(cli, cases, INTERP_TASKS);
+    json!({
+        "status": "measured",
+        "files_passed": n.passed,
+        "files": n.total,
+        "files_failed": n.failed.len(),
+        "unchecked": n.unchecked.len(),
+        "tasks": n.tasks.len(),
+        "interpreter": true,
+    })
+}
+
+/// The held-out `interpreter` aggregate as the checkpoint reads it.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct HeldInterp {
+    pub files_passed: u64,
+    pub files: u64,
+    pub files_failed: u64,
+    pub unchecked: u64,
+    pub tasks: u64,
+}
+
+impl HeldInterp {
+    /// `None` unless the aggregate was measured with the interpreter available.
+    pub fn from_json(v: &Value) -> Option<HeldInterp> {
+        if v["status"] != "measured" || v["interpreter"] != true {
+            return None;
+        }
+        let n = |k: &str| v[k].as_u64();
+        Some(HeldInterp {
+            files_passed: n("files_passed")?,
+            files: n("files")?,
+            files_failed: n("files_failed")?,
+            unchecked: n("unchecked")?,
+            tasks: n("tasks")?,
+        })
+    }
+}
+
+/// `roadmap.M2.interpreter`: a wrong output (dev or held-out) fails it; a file that could
+/// not be run leaves it not measurable; with held-out tasks in scope it passes only on a
+/// measured held-out aggregate in which every file passed and every held-out task was seen.
+fn interpreter_status(
+    dev: &InterpCounts,
+    held: &[String],
+    held_run: Option<HeldInterp>,
+) -> &'static str {
+    if !dev.failed.is_empty() || held_run.is_some_and(|h| h.files_failed > 0) {
+        return "fail";
+    }
+    if !dev.unchecked.is_empty() {
+        return "not_measurable";
+    }
+    if held.is_empty() {
+        return verdict(&[], dev.passed, dev.total, &[]);
+    }
+    match held_run {
+        Some(h)
+            if h.unchecked == 0
+                && h.files > 0
+                && h.files_passed == h.files
+                && h.tasks >= held.len() as u64 =>
+        {
+            verdict(&[], dev.passed, dev.total, &[])
+        }
+        _ => "not_measurable",
+    }
+}
+
+/// `held_agg`: the held-out aggregate's `interpreter` value, `None` when the held-out runner
+/// did not run or reported none.
+pub fn interpreter(
+    cli: &Result<KalamCli, String>,
+    cases: &[Case],
+    held_agg: Option<&Value>,
+) -> Checkpoint {
     let target = "T01, T02, T05, T11-T14 (and T08 if it needs no float formatting) run on the reference interpreter with the expected output".to_string();
     let nm = |why: String| Checkpoint {
         id: "roadmap.M2.interpreter",
@@ -360,63 +507,40 @@ pub fn interpreter(cli: &Result<KalamCli, String>, cases: &[Case]) -> Checkpoint
     if let Err(w) = cli.interp_available() {
         return nm(w);
     }
-    let run_case = |c: &Case, failed: &mut Vec<String>| -> (usize, usize) {
-        let text = fs::read_to_string(c.dir.join("expected.txt")).unwrap_or_default();
-        let want = parse_run_expect(&text);
-        let stdin = want
-            .stdin_file
-            .as_ref()
-            .map(|f| fs::read(c.dir.join(f)).unwrap_or_default());
-        let (mut p, mut t) = (0, 0);
-        for f in &c.files {
-            t += 1;
-            let label = format!("{}/{} {}", c.task, c.case, f.skin.id());
-            let Some(out) = &want.stdout else {
-                failed.push(format!("{label}: expected.txt has no `--- stdout` section"));
-                continue;
-            };
-            match read(c, f).and_then(|b| cli.run_interp(f.skin, &b, stdin.as_deref())) {
-                Ok(r) if r.exit == Some(want.exit.unwrap_or(0)) && &r.stdout == out => p += 1,
-                Ok(r) => failed.push(format!(
-                    "{label}: exit {:?}, stdout matches: {}",
-                    r.exit,
-                    &r.stdout == out
-                )),
-                Err(e) => failed.push(format!("{label}: {e}")),
-            }
-        }
-        (p, t)
-    };
-    let (mut passed, mut total, mut failed) = (0, 0, Vec::new());
-    for c in cases
-        .iter()
-        .filter(|c| in_tasks(c, &tasks) && c.expect.kind.as_deref() == Some("run"))
-    {
-        let (p, t) = run_case(c, &mut failed);
-        passed += p;
-        total += t;
-    }
-    let (mut cp, mut ct, mut cfail) = (0, 0, Vec::new());
-    for c in cases
-        .iter()
-        .filter(|c| in_tasks(c, &conditional) && c.expect.kind.as_deref() == Some("run"))
-    {
-        let (p, t) = run_case(c, &mut cfail);
-        cp += p;
-        ct += t;
-    }
-    let held = held_out_in(&tasks);
+    let dev = interp_counts(cli, cases, INTERP_TASKS);
+    let cond = interp_counts(cli, cases, INTERP_CONDITIONAL);
+    let held = held_out_in(INTERP_TASKS);
+    let held_run = held_agg.and_then(HeldInterp::from_json);
+    let (passed, total) = (dev.passed, dev.total);
+    let (cp, ct) = (cond.passed, cond.total);
     Checkpoint {
         id: "roadmap.M2.interpreter",
         target,
-        status: verdict(&failed, passed, total, &held),
-        value: json!({"dev_files_passed": passed, "dev_files": total, "conditional_T08": {"passed": cp, "files": ct}}),
+        status: interpreter_status(&dev, &held, held_run),
+        value: json!({"dev_files_passed": passed, "dev_files": total, "dev_tasks": dev.tasks.len(),
+                      "conditional_T08": {"passed": cp, "files": ct},
+                      "held_out": held_agg.cloned().unwrap_or(Value::Null)}),
         evidence: format!(
-            "`{} run --interp` per skin: dev {passed}/{total} files give the expected stdout and exit; failures {:?}; \
-             T08 (conditional, not required) {cp}/{ct}{}; held-out tasks {held:?} are not run",
+            "`{} run --interp` per skin: dev {passed}/{total} files of {} tasks give the expected stdout and exit; \
+             failures {:?}; could not be run {} {:?}; T08 (conditional, not required) {cp}/{ct}{}; held-out tasks {held:?}: {}",
             cli.exe.display(),
-            failed.iter().take(5).collect::<Vec<_>>(),
-            cfail.first().map(|f| format!(" (first: {f})")).unwrap_or_default()
+            dev.tasks.len(),
+            dev.failed.iter().take(5).collect::<Vec<_>>(),
+            dev.unchecked.len(),
+            dev.unchecked.iter().take(2).collect::<Vec<_>>(),
+            cond.failed
+                .iter()
+                .chain(&cond.unchecked)
+                .next()
+                .map(|f| format!(" (first: {f})"))
+                .unwrap_or_default(),
+            match held_run {
+                None => "the held-out runner reported no measured interpreter aggregate".to_string(),
+                Some(h) => format!(
+                    "{}/{} files of {} tasks give the expected output, {} wrong, {} could not be run",
+                    h.files_passed, h.files, h.tasks, h.files_failed, h.unchecked
+                ),
+            }
         ),
     }
 }
@@ -496,13 +620,16 @@ pub fn negative(cli: &Result<KalamCli, String>, cases: &[Case], std: &Path) -> C
 }
 
 /// All M2 checkpoints over the dev corpus at `corpus_dir`, against the stdlib at `std`;
-/// `held_typecheck` is the held-out aggregate's `typecheck` value, if any.
+/// `held` is the held-out runner's aggregate (its `typecheck` and `interpreter` parts), if
+/// it ran.
 pub fn m2(
     cli: &Result<KalamCli, String>,
     corpus_dir: &Path,
     std: &Path,
-    held_typecheck: Option<&Value>,
+    held: Option<&Value>,
 ) -> Vec<Checkpoint> {
+    let part = |k: &str| held.map(|a| &a[k]).filter(|v| !v.is_null());
+    let (held_typecheck, held_interp) = (part("typecheck"), part("interpreter"));
     let cases = match corpus::discover(corpus_dir) {
         Ok(c) => c,
         Err(e) => {
@@ -510,14 +637,14 @@ pub fn m2(
             let cli_err: Result<KalamCli, String> = Err(why);
             return vec![
                 typecheck(&cli_err, &[], std, held_typecheck),
-                interpreter(&cli_err, &[]),
+                interpreter(&cli_err, &[], held_interp),
                 negative(&cli_err, &[], std),
             ];
         }
     };
     vec![
         typecheck(cli, &cases, std, held_typecheck),
-        interpreter(cli, &cases),
+        interpreter(cli, &cases, held_interp),
         negative(cli, &cases, std),
     ]
 }
@@ -628,6 +755,80 @@ mod tests {
                               "files_failed": 0, "unchecked": 0, "tasks": 3, "type_checker": true});
         assert_eq!(HeldTypecheck::from_json(&measured), Some(held(9, 9, 0, 3)));
         // counts and booleans only
+        for (_, x) in measured.as_object().unwrap() {
+            assert!(x.is_u64() || x.is_boolean() || x == "measured");
+        }
+    }
+
+    fn dev(passed: usize, total: usize, failed: usize, unchecked: usize) -> InterpCounts {
+        InterpCounts {
+            passed,
+            total,
+            failed: vec!["x".into(); failed],
+            unchecked: vec!["x".into(); unchecked],
+            tasks: BTreeSet::new(),
+        }
+    }
+
+    fn hi(passed: u64, files: u64, failed: u64, tasks: u64) -> HeldInterp {
+        HeldInterp {
+            files_passed: passed,
+            files,
+            files_failed: failed,
+            unchecked: files - passed - failed,
+            tasks,
+        }
+    }
+
+    #[test]
+    fn the_held_out_aggregate_decides_the_interpreter_checkpoint() {
+        // T05 and T13 are the held-out tasks in this scope (T10 is not)
+        let held = held_out_in(INTERP_TASKS);
+        assert_eq!(held, vec!["T05", "T13"]);
+        let st = |d: InterpCounts, h: Option<HeldInterp>| interpreter_status(&d, &held, h);
+        assert_eq!(st(dev(15, 15, 0, 0), Some(hi(6, 6, 0, 2))), "pass");
+        // a wrong held-out output fails it, even with dev clean
+        assert_eq!(st(dev(15, 15, 0, 0), Some(hi(5, 6, 1, 2))), "fail");
+        // a dev failure fails it whatever the held-out side says
+        assert_eq!(st(dev(14, 15, 1, 0), None), "fail");
+        // unknowns: a held-out file not run, a held-out task missing, no files, no aggregate
+        assert_eq!(
+            st(dev(15, 15, 0, 0), Some(hi(5, 6, 0, 2))),
+            "not_measurable"
+        );
+        assert_eq!(
+            st(dev(15, 15, 0, 0), Some(hi(3, 3, 0, 1))),
+            "not_measurable"
+        );
+        assert_eq!(
+            st(dev(15, 15, 0, 0), Some(hi(0, 0, 0, 0))),
+            "not_measurable"
+        );
+        assert_eq!(st(dev(15, 15, 0, 0), None), "not_measurable");
+        // a dev file that could not be run is not a verdict
+        assert_eq!(
+            st(dev(14, 15, 0, 1), Some(hi(6, 6, 0, 2))),
+            "not_measurable"
+        );
+        // a scope without held-out tasks is judged on dev alone
+        assert_eq!(interpreter_status(&dev(3, 3, 0, 0), &[], None), "pass");
+        assert_eq!(
+            interpreter_status(&dev(0, 0, 0, 0), &[], None),
+            "not_measurable"
+        );
+    }
+
+    #[test]
+    fn the_held_out_interpreter_aggregate_round_trips_and_names_nothing() {
+        let v = held_interpreter(&Err("no kalam binary".into()), &[]);
+        assert_eq!(v["status"], "not_measurable");
+        assert!(HeldInterp::from_json(&v).is_none());
+        let measured = json!({"status": "measured", "files_passed": 6, "files": 6,
+                              "files_failed": 0, "unchecked": 0, "tasks": 2, "interpreter": true});
+        assert_eq!(HeldInterp::from_json(&measured), Some(hi(6, 6, 0, 2)));
+        let mut off = measured.clone();
+        off["interpreter"] = json!(false);
+        assert!(HeldInterp::from_json(&off).is_none());
         for (_, x) in measured.as_object().unwrap() {
             assert!(x.is_u64() || x.is_boolean() || x == "measured");
         }

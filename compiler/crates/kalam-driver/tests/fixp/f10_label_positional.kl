@@ -1,0 +1,7 @@
+type Pt:
+    x: Int
+    y: Int
+
+fn main():
+    let p = Pt(1, 2)
+    print("{p.x - p.y}")

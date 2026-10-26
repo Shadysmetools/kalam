@@ -199,6 +199,9 @@ pub struct M2Inputs {
     pub catalog_codes: Vec<String>,
     pub fix: Result<FixRun, String>,
     pub judge: Result<(f64, String), String>,
+    /// The judge report compared with the current sample, item by item (FOUNDER-QUEUE Q43):
+    /// `judge::Staleness::to_json`, or why it could not be compared.
+    pub judge_items: Result<Value, String>,
     pub lexhaz: Result<Option<RejectResult>, String>,
     pub catalog_full: CatalogReport,
     pub checkpoints: Vec<Checkpoint>,
@@ -219,7 +222,7 @@ pub fn compute(
     kalam: Option<&Path>,
     seeded: &[SuiteCase],
     checkpoint_ids: &[String],
-    held_typecheck: Option<&Value>,
+    held: Option<&Value>,
 ) -> M2Inputs {
     let spec_units = clauses::index(spec_text);
     let clauses_checked =
@@ -247,14 +250,23 @@ pub fn compute(
         .as_ref()
         .map(|g| goldens::fix_rate(hook, &goldens::fix_corpus(g, seeded)));
     let fix = fix.map_err(|e| e.clone());
+    let judge_sample = golden_files.clone().and_then(|g| {
+        let rubric = read(root, judge::RUBRIC_PATH)
+            .ok_or_else(|| format!("{} does not exist", judge::RUBRIC_PATH))?;
+        judge::sample(&g, &rubric)
+    });
+    let (committed_sample, judge_report) = (
+        read(root, judge::SAMPLE_PATH),
+        read(root, judge::REPORT_PATH),
+    );
+    let judge_items = judge_sample.clone().and_then(|cur| {
+        judge::assess(&cur, committed_sample.as_deref(), judge_report.as_deref())
+            .map(|(_, st)| st.to_json())
+    });
     let judge = judge::measure(
-        golden_files.clone().and_then(|g| {
-            let rubric = read(root, judge::RUBRIC_PATH)
-                .ok_or_else(|| format!("{} does not exist", judge::RUBRIC_PATH))?;
-            judge::sample(&g, &rubric)
-        }),
-        read(root, judge::SAMPLE_PATH).as_deref(),
-        read(root, judge::REPORT_PATH).as_deref(),
+        judge_sample,
+        committed_sample.as_deref(),
+        judge_report.as_deref(),
         read(root, judge::CALIBRATION_PATH).as_deref(),
     );
     let lexhaz = suites::load(&root.join(suites::SUITES_DIR).join(suites::LEXHAZ)).map(|c| {
@@ -272,7 +284,7 @@ pub fn compute(
     let catalog_full = diagcat::measure_in(spec_text, &diagcat::builtin_entries(), None);
     let std_dir = root.join(STDLIB_DIR);
     let checkpoints = if checkpoint_ids.iter().any(|c| c.starts_with("roadmap.M2.")) {
-        checkpoints::m2(&cli, &root.join("eval/corpus"), &std_dir, held_typecheck)
+        checkpoints::m2(&cli, &root.join("eval/corpus"), &std_dir, held)
     } else {
         Vec::new()
     };
@@ -285,6 +297,7 @@ pub fn compute(
         catalog_codes,
         fix,
         judge,
+        judge_items,
         lexhaz,
         catalog_full,
         checkpoints,
@@ -550,6 +563,7 @@ impl M2Inputs {
             "fix_rate": match &self.fix { Ok(r) => goldens::fix_json(r), Err(e) => json!({"status": "missing", "reason": e}) },
             "p8_k0301_projects": self.projects_json(),
             "judge": match &self.judge { Ok((m, ev)) => json!({"mean": m, "evidence": ev}), Err(e) => json!({"status": "not_measurable", "reason": e}) },
+            "judge_items": match &self.judge_items { Ok(v) => v.clone(), Err(e) => json!({"status": "not_measurable", "reason": e}) },
         })
     }
 }
@@ -764,6 +778,7 @@ mod tests {
             catalog_codes: vec![],
             fix: Err("x".into()),
             judge: Err("x".into()),
+            judge_items: Err("x".into()),
             lexhaz: Err("x".into()),
             catalog_full: diagcat::measure_in("", &[], None),
             checkpoints: vec![],

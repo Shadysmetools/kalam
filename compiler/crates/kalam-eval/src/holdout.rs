@@ -30,6 +30,8 @@
 //!                    "deferred_m2", "defects", "unchecked"} | null,
 //!  "typecheck": {"status": "measured"|"not_measurable", "files_passed", "files", "files_failed",
 //!                "unchecked", "tasks", "type_checker"} | null,
+//!  "interpreter": {"status": "measured"|"not_measurable", "files_passed", "files", "files_failed",
+//!                  "unchecked", "tasks", "interpreter"} | null,
 //!  "leak": {"hits"}}
 //! ```
 //!
@@ -38,6 +40,12 @@
 //! against `<root>/stdlib`, the same route as dev. It needs the `kalam` binary (`--kalam
 //! PATH` or `KALAM_BIN`); without one it is `not_measurable`, and it is `null` when the
 //! corpus could not be read.
+//!
+//! `interpreter` feeds `roadmap.M2.interpreter` ([`crate::checkpoints::held_interpreter`]):
+//! every `run` case of the held-out tasks in that checkpoint's scope, all skins, on `kalam run
+//! --interp` with the stdout and exit code of the task's `expected.txt`, the same route as
+//! dev. It is `not_measurable` without a `kalam` binary or when the interpreter is not
+//! available, and `null` when the corpus could not be read.
 
 use crate::checkpoints;
 use crate::cli::KalamCli;
@@ -132,12 +140,16 @@ pub fn aggregate(
         }
     };
 
-    let typecheck = corpus::discover(&corpus_dir)
+    let cli = KalamCli::locate(kalam);
+    let (typecheck, interpreter) = corpus::discover(&corpus_dir)
         .map(|cases| {
             let std = root.join(crate::m2::STDLIB_DIR);
-            checkpoints::held_typecheck(&KalamCli::locate(kalam), &cases, &std)
+            (
+                checkpoints::held_typecheck(&cli, &cases, &std),
+                checkpoints::held_interpreter(&cli, &cases),
+            )
         })
-        .unwrap_or(Value::Null);
+        .unwrap_or((Value::Null, Value::Null));
 
     // suites
     let load = |name: &str| suite_dir(store, name).and_then(|d| suites::load(&d).ok().flatten());
@@ -175,6 +187,7 @@ pub fn aggregate(
         "trojan": trojan,
         "diag_recovery": recovery,
         "typecheck": typecheck,
+        "interpreter": interpreter,
         "leak": {"hits": integrity::scan_sources(root, &needles).len()},
     })
 }

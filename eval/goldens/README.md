@@ -55,7 +55,18 @@ These goldens feed `D5.golden_coverage`. They are also half of the corpus for `D
   - K1503's help spells `Secret[{core_string}]` in the file's skin.
 - **Sources** are English programs written from the type checker's and kalam-sinks' spec tests (`kalam-typeck/tests/sinks_caps.rs`, `kalam-effects/src/tests.rs`). The `ar` and `franco` sources are `kalam convert` output. Each rendering was reviewed by hand with the checks above. The checks were also scripted: the first error is the code; no rule-3 word appears in English prose; no English core type name appears inside backticks in an `ar` or `franco` rendering; any "`kalam fix` …" claim has a machine fix in the JSON.
 - **K1204** is brand new (FOUNDER-QUEUE Q33, in progress in another slice this iteration). Its golden records today's text. Its labels are in the label table, so `ar`/`franco` show them.
-- **K0405** has a rename fix from name resolution that is still being written this iteration (`total_2` in every skin). Its golden was not re-blessed for that change: it fails until the fix settles (the renaming convention per skin is still open in that slice).
+- **K0405** has a rename fix from name resolution that is still being written this iteration (`total_2` in every skin). Its golden was not re-blessed for that change: it fails until the fix settles (the renaming convention per skin is still open in that slice). It was re-blessed in iteration 5 (below).
+
+## Changed in M2 iteration 5 (2026-10-25)
+
+- **K0405 re-blessed** (en, ar, franco). Name resolution's rename fix has settled, and each rendering gained one `Try:` line with the new name. The en and ar renderings show `total_2`. The franco rendering shows `el_total`, following the skin's value convention (spec §10.1, DR-28). The en and ar sources declare an ASCII `total`, so no Arabic article is added. The rest of each rendering is unchanged. It was reviewed line by line with the checks above:
+  - the first error is K0405;
+  - the header and footer follow the template;
+  - the prose has no rule-3 word;
+  - every `Try:` is in the file's skin;
+  - the fix is `applicability: machine` in the JSON.
+- **Each fix leaves a clean file.** `kalam fix` applies the fix in all three skins, and the result re-checks with no diagnostics. With K0405 matching, all 114 goldens match: 114 of the 145 catalog codes, 78.6 %.
+- **The `kalam fix` acceptance rule** (FOUNDER-QUEUE Q42) is now tested over every golden source (`compiler/crates/kalam-driver/tests/fix_rule.rs`). A fixed golden re-checks with fewer errors and no new error code, and a second `kalam fix` run changes nothing.
 
 ## Catalog codes without goldens, and why
 

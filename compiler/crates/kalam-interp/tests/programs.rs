@@ -429,3 +429,12 @@ fn an_unused_constant_that_cannot_be_lowered_refuses_the_program() {
         other => panic!("exit {other}: {}", r.stderr),
     }
 }
+
+#[test]
+fn float_pow_runs_like_math_pow() {
+    // The prelude stub `Float.pow` (the K0923 fix target for a Float `**`) must also run.
+    ok(
+        "fn main():\n    let x: Float = 2.0\n    print(\"{x.pow(3.0)}\")\n",
+        "8.0\n",
+    );
+}

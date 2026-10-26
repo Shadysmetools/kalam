@@ -394,6 +394,9 @@ impl<'t> Parser<'t> {
             self.skip_line();
             return false;
         }
+        // K0252 says "this line ends with `:`": it points at that colon, not at whatever
+        // comes next (often the next declaration's line).
+        let colon = self.cur_span();
         self.bump();
         if !self.at_op_newline() {
             self.expected("a new line after `:`");
@@ -402,8 +405,7 @@ impl<'t> Parser<'t> {
         }
         self.bump();
         if self.peek() != TokenKind::Indent {
-            let span = self.cur_span();
-            self.error_at(codes::EXPECTED_BLOCK, span);
+            self.error_at(codes::EXPECTED_BLOCK, colon);
             return false;
         }
         self.bump();
@@ -739,6 +741,8 @@ impl<'t> Parser<'t> {
                 span: self.span_from(start),
             }
         } else {
+            // A missing block (K0252) is reported at this colon (see `open_body`).
+            let colon = self.cur_span();
             self.bump();
             if self.peek() == TokenKind::Newline {
                 self.bump();
@@ -762,8 +766,7 @@ impl<'t> Parser<'t> {
                         }
                     }
                 } else {
-                    let span = self.cur_span();
-                    self.error_at(codes::EXPECTED_BLOCK, span);
+                    self.error_at(codes::EXPECTED_BLOCK, colon);
                     Block {
                         stmts: Vec::new(),
                         inline: false,
@@ -771,8 +774,7 @@ impl<'t> Parser<'t> {
                     }
                 }
             } else if matches!(self.peek(), TokenKind::Dedent | TokenKind::Eof) {
-                let span = self.cur_span();
-                self.error_at(codes::EXPECTED_BLOCK, span);
+                self.error_at(codes::EXPECTED_BLOCK, colon);
                 Block {
                     stmts: Vec::new(),
                     inline: false,

@@ -1,0 +1,135 @@
+//! FOUNDER-QUEUE Q34: `kalam check FILE` resolves `std/…` against the stdlib signature stubs
+//! exactly as `kalam check DIR` does with the stdlib directory: a missing stdlib module, or
+//! a member a stub module does not have, is K0401 in both (the M2 iteration-4 verifier's
+//! p04–p06). `kalam run --interp` checks the file the same way first, so it reports that
+//! finding instead of a reason that blamed the file for declaring a stub's name.
+
+use std::path::{Path, PathBuf};
+
+use kalam_driver::{
+    check_project, check_source, run_interp, MemoryVfs, ProjectOptions, RunOutcome,
+};
+
+fn repo() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..")
+}
+
+fn line_of(src: &str, at: u32) -> usize {
+    src[..(at as usize).min(src.len())].matches('\n').count() + 1
+}
+
+/// `(code, line)` of every finding of `kalam check main.kl`.
+fn single(src: &str) -> Vec<(&'static str, usize)> {
+    check_source("main.kl", src)
+        .unwrap()
+        .diagnostics
+        .iter()
+        .map(|d| (d.code, line_of(src, d.span.start)))
+        .collect()
+}
+
+/// `(code, line)` of every finding in `src/main.kl` of a package checked with the
+/// repository's stdlib directory, as `kalam check DIR` does.
+fn project(src: &str) -> Vec<(&'static str, usize)> {
+    let mut vfs = MemoryVfs::default();
+    vfs.files.insert("app/src/main.kl".into(), src.into());
+    let stubs = repo().join("stdlib/src");
+    for e in std::fs::read_dir(&stubs).unwrap().flatten() {
+        let name = e.file_name().to_string_lossy().into_owned();
+        if name.ends_with(".kl") {
+            let text = std::fs::read_to_string(e.path()).unwrap();
+            vfs.files.insert(format!("std/src/{name}"), text);
+        }
+    }
+    let options = ProjectOptions {
+        package: "app".into(),
+        std_dir: Some("std".into()),
+    };
+    let files = check_project(&vfs, "app", &options);
+    let stray: Vec<_> = files
+        .iter()
+        .filter(|f| f.path != "app/src/main.kl" && f.has_errors())
+        .map(|f| f.path.clone())
+        .collect();
+    assert!(stray.is_empty(), "errors in the stdlib: {stray:?}");
+    files
+        .iter()
+        .filter(|f| f.path == "app/src/main.kl")
+        .flat_map(|f| f.diagnostics.iter())
+        .map(|d| (d.code, line_of(src, d.span.start)))
+        .collect()
+}
+
+/// Both modes agree, and say `want`.
+fn both(src: &str, want: &[(&str, usize)]) {
+    let (s, p) = (single(src), project(src));
+    assert_eq!(s, p, "single-file and project modes disagree on\n{src}");
+    assert_eq!(s, want, "{src}");
+}
+
+#[test]
+fn a_missing_std_member_or_module_is_k0401_in_both_modes() {
+    // p04: `std/http` has no `nope`.
+    both(
+        "use std/http\n\nfn main():\n    let r = http.nope()\n    print(\"x\")\n",
+        &[("K0401", 4)],
+    );
+    // p05: the stubs have no `std/task` module.
+    both(
+        "use std/task.{Cell}\n\nfn main():\n    let c = Cell.new(0)\n    print(\"x\")\n",
+        &[("K0401", 1)],
+    );
+    // p06: no such module.
+    both(
+        "use std/nonexistent\n\nfn main():\n    print(\"x\")\n",
+        &[("K0401", 1)],
+    );
+    // An item a stub module does not export.
+    both(
+        "use std/http.{Nope}\n\nfn main():\n    print(\"x\")\n",
+        &[("K0401", 1)],
+    );
+    // What the stubs have still resolves and type-checks.
+    both(
+        "use std/http\nuse std/math.{sqrt}\n\nfn main():\n    let r = http.router()\n    print(\"{sqrt(2.0)}\")\n",
+        &[],
+    );
+}
+
+#[test]
+fn a_missing_std_member_is_a_type_error_found_by_check_not_by_the_run() {
+    // Before Q34, single-file mode skipped the type check here and `kalam run --interp`
+    // refused the file because it "declares a name the stdlib stubs also declare".
+    let src = "use std/http\n\nfn main():\n    let r = http.nope()\n    print(\"x\")\n";
+    let mut out = Vec::new();
+    match run_interp("main.kl", src.as_bytes(), &mut out).unwrap() {
+        RunOutcome::Rejected(checked) => {
+            let codes: Vec<&str> = checked.diagnostics.iter().map(|d| d.code).collect();
+            assert_eq!(codes, ["K0401"]);
+        }
+        other => panic!(
+            "expected the K0401 of `kalam check`, got exit {}: {}",
+            other.exit_code(),
+            other.stderr_text("main.kl")
+        ),
+    }
+    assert!(out.is_empty());
+    // A missing module no longer runs as if it were opaque.
+    let src = "use std/nonexistent\n\nfn main():\n    print(\"x\")\n";
+    let mut out = Vec::new();
+    let outcome = run_interp("main.kl", src.as_bytes(), &mut out).unwrap();
+    assert!(
+        matches!(outcome, RunOutcome::Rejected(_)),
+        "exit {}",
+        outcome.exit_code()
+    );
+    assert!(out.is_empty());
+}
+
+#[test]
+fn imports_of_the_files_own_package_stay_opaque_in_single_file_mode() {
+    // Only the stdlib is loaded with the file: its package's other modules are not, so a
+    // `use` of one stays unchecked (no K0401).
+    let src = "use app/db.{Store}\n\nfn main():\n    print(\"x\")\n";
+    assert_eq!(single(src), vec![]);
+}

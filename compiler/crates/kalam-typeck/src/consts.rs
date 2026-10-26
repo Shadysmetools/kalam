@@ -10,13 +10,25 @@
 //! to constant expressions. Calls of functions (stdlib ones included: none is marked
 //! `const` yet), method calls, `if`, `match`, indexing, `?` and `unsafe.*` are not.
 //!
-//! Each constant is then **evaluated** as far as the checker can: `Int` arithmetic exactly,
-//! with the §9.2 rules (checked 64-bit, D18; `//` floors; `%` takes the divisor's sign;
-//! dividing by zero panics, `Int / Int` included), and `BigInt` division by zero. A
-//! constant whose evaluation would panic is a compile error (§13.4), reported at the
-//! operation that panics. Values flow through other constants in dependency order (the
-//! checker checks constants in that order), so `let B = A + 1` overflows when `A` is
-//! `Int`'s maximum. Other arithmetic (`Decimal` overflow) is not evaluated yet.
+//! Each constant is then **evaluated** as far as the checker can, with the reference
+//! interpreter's rules, so that "a constant that would panic is a compile error" (§13.4)
+//! holds for every type (FOUNDER-QUEUE Q40):
+//! - `Int` exactly, with the §9.2 rules (checked 64-bit, D18; `//` floors; `%` takes the
+//!   divisor's sign; dividing by zero panics, `Int / Int` included);
+//! - `BigInt` exactly (no overflow; dividing by zero panics), up to a size bound;
+//! - `Decimal` exactly, as decimal128: `+ - *` panic when the exact result needs more than
+//!   34 significant digits or leaves the exponent range (`const_num`);
+//! - `Float` with IEEE arithmetic (it never panics, but its comparisons decide `and`/`or`),
+//!   `Bool`, plain `String` text, `()`;
+//! - records (built by their constructor, read by field, copied by `.with`) and tuples (read
+//!   by `.0`, `.1`, …), so a value flows through them, and `==`/`!=` on them.
+//!
+//! A constant whose evaluation would panic is reported at the operation that panics, with
+//! the interpreter's panic message. Values flow through other constants in dependency
+//! order (the checker checks constants in that order), so `let B = A + 1` overflows when
+//! `A` is `Int`'s maximum. What is not evaluated (a field filled from its default, a list,
+//! a variant's payload, an interpolated string, a number beyond the size bound) is
+//! `Other`: it never makes a panic certain, so no verdict is guessed.
 //!
 //! A constant that depends on itself (a cycle of constants) has no evaluation order: one
 //! K1204 per cycle. A **module constant** also may not hold a capability or a `Cell`
@@ -27,6 +39,7 @@
 //! One K1204 per constant, at the part that breaks a rule, with the reason as a label.
 //! Nothing is reported for an initializer that already has an error (root cause first).
 
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 use kalam_base::{FileId, Span};
@@ -34,20 +47,124 @@ use kalam_resolve::DefId;
 
 use crate::adt::AdtKind;
 use crate::check::TypeckResults;
+use crate::const_num::{Big, Dec, MAX_BIG_BITS};
 use crate::error::{TypeError, TypeErrorKind};
 use crate::hir::{BinOp, Expr, ExprKind, HirProgram, ItemKind, LangItem, StrPart, UnOp};
 use crate::ty::Ty;
 
 /// A constant's value as far as the checker evaluates it.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 enum Val {
     Int(i64),
-    /// A `BigInt` that fits `i128`.
-    Big(i128),
+    /// A `BigInt`, exactly.
+    Big(Big),
+    Dec(Dec),
+    Float(f64),
     /// Tracked so `and`/`or` skip what they do not evaluate.
     Bool(bool),
-    /// Not evaluated (or not a number): it never panics here.
+    /// A string's text (literals and `+`; an interpolated string is `Other`).
+    Str(String),
+    Unit,
+    Tuple(Vec<Val>),
+    /// A record: the fields given to its constructor (or `.with`), by name. A field left
+    /// to its default is absent, so reading it is `Other`.
+    Record(Vec<(String, Val)>),
+    /// Not evaluated (or a value nothing here inspects): it never panics here.
     Other,
+}
+
+/// The most values (tuple and record parts, counted recursively) or string bytes one value
+/// may hold before it is `Other`: constants can double a value at each step, and the type
+/// checker is a fuzz target.
+const MAX_VALUE_SIZE: usize = 4096;
+
+impl Val {
+    /// The number of parts of the value, for [`MAX_VALUE_SIZE`].
+    fn size(&self) -> usize {
+        match self {
+            Val::Tuple(xs) => 1 + xs.iter().map(Val::size).sum::<usize>(),
+            Val::Record(fs) => 1 + fs.iter().map(|(_, v)| v.size()).sum::<usize>(),
+            Val::Str(s) => 1 + s.len(),
+            _ => 1,
+        }
+    }
+
+    /// `self`, or `Other` when it is too large to keep.
+    fn bounded(self) -> Val {
+        if self.size() > MAX_VALUE_SIZE {
+            Val::Other
+        } else {
+            self
+        }
+    }
+
+    /// A `BigInt` result, or `Other` beyond the size bound.
+    fn big(b: Big) -> Val {
+        if b.bits() > MAX_BIG_BITS {
+            Val::Other
+        } else {
+            Val::Big(b)
+        }
+    }
+
+    /// `self == other` when both are known (`None` otherwise): structural for records and
+    /// tuples, by value for `Decimal` (`1.5 == 1.50`), IEEE for `Float`.
+    fn equals(&self, other: &Val) -> Option<bool> {
+        Some(match (self, other) {
+            (Val::Int(x), Val::Int(y)) => x == y,
+            (Val::Big(x), Val::Big(y)) => x == y,
+            (Val::Dec(x), Val::Dec(y)) => x.cmp_value(y) == Ordering::Equal,
+            (Val::Float(x), Val::Float(y)) => x == y,
+            (Val::Bool(x), Val::Bool(y)) => x == y,
+            (Val::Str(x), Val::Str(y)) => x == y,
+            (Val::Unit, Val::Unit) => true,
+            (Val::Tuple(xs), Val::Tuple(ys)) if xs.len() == ys.len() => {
+                let mut all = true;
+                for (x, y) in xs.iter().zip(ys) {
+                    all &= x.equals(y)?;
+                }
+                all
+            }
+            (Val::Record(xs), Val::Record(ys)) => {
+                if xs.len() != ys.len() {
+                    return None;
+                }
+                let mut all = true;
+                for (name, x) in xs {
+                    let (_, y) = ys.iter().find(|(n, _)| n == name)?;
+                    all &= x.equals(y)?;
+                }
+                all
+            }
+            _ => return None,
+        })
+    }
+
+    /// The order of two values of an ordered type, as the interpreter compares them
+    /// (numbers, strings, `Bool`, `()`, and tuples lexicographically), or `None` (unknown,
+    /// or `NaN` for `Float`). Records are not ordered here.
+    fn order(&self, other: &Val) -> Option<Ordering> {
+        match (self, other) {
+            (Val::Int(x), Val::Int(y)) => Some(x.cmp(y)),
+            (Val::Big(x), Val::Big(y)) => Some(x.cmp(y)),
+            (Val::Dec(x), Val::Dec(y)) => Some(x.cmp_value(y)),
+            (Val::Float(x), Val::Float(y)) => x.partial_cmp(y),
+            // UTF-8 byte order is code-point order.
+            (Val::Str(x), Val::Str(y)) => Some(x.cmp(y)),
+            (Val::Bool(x), Val::Bool(y)) => Some(x.cmp(y)),
+            (Val::Unit, Val::Unit) => Some(Ordering::Equal),
+            (Val::Tuple(xs), Val::Tuple(ys)) => {
+                for (x, y) in xs.iter().zip(ys) {
+                    match x.order(y)? {
+                        Ordering::Equal => {}
+                        o => return Some(o),
+                    }
+                }
+                Some(xs.len().cmp(&ys.len()))
+            }
+            _ => None,
+        }
+    }
 }
 
 /// Why a constant is not one: the span to point at and the label's text.
@@ -373,24 +490,39 @@ impl Cx<'_> {
     }
 
     /// Evaluates a constant expression (`not_constant` found nothing in it): the value, or
-    /// the operation that panics. Constants named in it have their value in `values`.
+    /// the operation that panics, with the interpreter's message. Constants named in it
+    /// have their value in `values`. Parts are evaluated in the interpreter's order: left
+    /// to right, a receiver before its arguments, arguments in source order.
     fn eval(&self, e: &Expr, values: &HashMap<DefId, Option<Val>>) -> Result<Val, Problem> {
-        let panics = |why: &str| Err((e.span, format!("this panics: {why}")));
-        match &e.kind {
-            ExprKind::Int(Some(v)) => Ok(match self.ty(e) {
+        let panics = |why: &str| (e.span, format!("this panics: {why}"));
+        Ok(match &e.kind {
+            // Literals take their type from the context (§5.6), as KIR's lowering does.
+            ExprKind::Int(Some(v)) => match self.ty(e) {
                 Ty::Int => i64::try_from(*v).map_or(Val::Other, Val::Int),
-                Ty::BigInt => i128::try_from(*v).map_or(Val::Other, Val::Big),
+                Ty::BigInt => Val::big(Big::from_u128(*v)),
+                Ty::Decimal => Dec::from_u128(*v).map_or(Val::Other, Val::Dec),
+                Ty::Float => Val::Float(*v as f64),
                 _ => Val::Other,
-            }),
-            ExprKind::Bool(b) => Ok(Val::Bool(*b)),
-            ExprKind::Def(d) => Ok(values.get(d).copied().flatten().unwrap_or(Val::Other)),
+            },
+            ExprKind::Float(text) => match self.ty(e) {
+                Ty::Decimal => Dec::parse(text).map_or(Val::Other, Val::Dec),
+                Ty::Float => {
+                    let clean: String = text.chars().filter(|c| *c != '_').collect();
+                    clean.parse::<f64>().map_or(Val::Other, Val::Float)
+                }
+                _ => Val::Other,
+            },
+            ExprKind::Str(s) => Val::Str(s.clone()).bounded(),
+            ExprKind::Bool(b) => Val::Bool(*b),
+            ExprKind::Unit => Val::Unit,
+            ExprKind::Def(d) => values.get(d).cloned().flatten().unwrap_or(Val::Other),
             ExprKind::Unary {
                 op: UnOp::Not,
                 operand,
-            } => Ok(match self.eval(operand, values)? {
+            } => match self.eval(operand, values)? {
                 Val::Bool(b) => Val::Bool(!b),
                 _ => Val::Other,
-            }),
+            },
             // `and`/`or` short-circuit (§10.6): the right side runs only when the left one
             // does not decide. When the left side is not evaluated here, neither is the
             // right side's panic certain.
@@ -399,9 +531,9 @@ impl Cx<'_> {
                 lhs,
                 rhs,
             } => match self.eval(lhs, values)? {
-                Val::Bool(b) if b == (*op == BinOp::Or) => Ok(Val::Bool(b)),
-                Val::Bool(_) => self.eval(rhs, values),
-                _ => Ok(self.eval(rhs, values).unwrap_or(Val::Other)),
+                Val::Bool(b) if b == (*op == BinOp::Or) => Val::Bool(b),
+                Val::Bool(_) => self.eval(rhs, values)?,
+                _ => self.eval(rhs, values).unwrap_or(Val::Other),
             },
             ExprKind::Unary {
                 op: UnOp::Neg,
@@ -414,46 +546,124 @@ impl Cx<'_> {
                     }
                 }
                 match self.eval(operand, values)? {
-                    Val::Int(x) => x
-                        .checked_neg()
-                        .map_or_else(|| panics("integer overflow"), |r| Ok(Val::Int(r))),
-                    Val::Big(x) => Ok(x.checked_neg().map_or(Val::Other, Val::Big)),
-                    Val::Bool(_) | Val::Other => Ok(Val::Other),
+                    Val::Int(x) => {
+                        Val::Int(x.checked_neg().ok_or_else(|| panics("integer overflow"))?)
+                    }
+                    Val::Big(x) => Val::Big(x.negated()),
+                    Val::Dec(x) => Val::Dec(x.negated()),
+                    Val::Float(x) => Val::Float(-x),
+                    _ => Val::Other,
                 }
             }
             ExprKind::Binary { op, lhs, rhs } => {
                 let a = self.eval(lhs, values)?;
                 let b = self.eval(rhs, values)?;
-                match (a, b) {
-                    (Val::Int(x), Val::Int(y)) => {
-                        int_op(*op, x, y).map_err(|why| (e.span, format!("this panics: {why}")))
+                binary(*op, &a, &b).map_err(panics)?
+            }
+            // A record built by its constructor holds the fields given to it; a variant,
+            // `Some`, `Ok` or `Err` is not inspected, but its arguments still run.
+            ExprKind::Call { callee, args } => {
+                let mut fields = Vec::with_capacity(args.len());
+                for a in args {
+                    let v = self.eval(&a.value, values)?;
+                    if let Some(label) = &a.label {
+                        fields.push((label.clone(), v));
                     }
-                    (Val::Big(x), Val::Big(y)) => {
-                        if matches!(op, BinOp::IntDiv | BinOp::Rem | BinOp::Div) && y == 0 {
-                            return panics("division by zero");
-                        }
-                        Ok(match op {
-                            BinOp::Add => x.checked_add(y).map_or(Val::Other, Val::Big),
-                            BinOp::Sub => x.checked_sub(y).map_or(Val::Other, Val::Big),
-                            BinOp::Mul => x.checked_mul(y).map_or(Val::Other, Val::Big),
-                            _ => Val::Other,
-                        })
-                    }
-                    _ => Ok(Val::Other),
                 }
+                match callee.kind {
+                    ExprKind::Def(d) if self.is_record(d) => Val::Record(fields).bounded(),
+                    _ => Val::Other,
+                }
+            }
+            // `.with` (the only method call a constant may make): a copy of the record with
+            // the fields given replaced.
+            ExprKind::MethodCall { receiver, args, .. } => {
+                let base = self.eval(receiver, values)?;
+                let mut given = Vec::with_capacity(args.len());
+                for a in args {
+                    let v = self.eval(&a.value, values)?;
+                    if let Some(label) = &a.label {
+                        given.push((label.clone(), v));
+                    }
+                }
+                match base {
+                    Val::Record(mut fields) => {
+                        for (label, v) in given {
+                            match fields.iter_mut().find(|(n, _)| *n == label) {
+                                Some(slot) => slot.1 = v,
+                                None => fields.push((label, v)),
+                            }
+                        }
+                        Val::Record(fields).bounded()
+                    }
+                    _ => Val::Other,
+                }
+            }
+            ExprKind::Field { base, name } => match self.eval(base, values)? {
+                Val::Record(fields) => fields
+                    .into_iter()
+                    .find(|(n, _)| n == name)
+                    .map_or(Val::Other, |(_, v)| v),
+                _ => Val::Other,
+            },
+            ExprKind::TupleField { base, index } => match self.eval(base, values)? {
+                Val::Tuple(xs) => xs.into_iter().nth(*index as usize).unwrap_or(Val::Other),
+                _ => Val::Other,
+            },
+            ExprKind::Tuple(xs) => {
+                let mut out = Vec::with_capacity(xs.len());
+                for x in xs {
+                    out.push(self.eval(x, values)?);
+                }
+                Val::Tuple(out).bounded()
             }
             _ => {
                 for c in children(e) {
                     self.eval(c, values)?;
                 }
-                Ok(Val::Other)
+                Val::Other
             }
-        }
+        })
     }
 }
 
-/// `x op y` on two `Int`s with the §9.2 rules: the value (`Other` for a comparison or a
-/// `Float` quotient) or why it panics.
+/// `a op b` (not `and`/`or`) with the interpreter's rules for the operands' type: the value
+/// (`Other` when it is not evaluated) or the panic message.
+fn binary(op: BinOp, a: &Val, b: &Val) -> Result<Val, &'static str> {
+    if matches!(op, BinOp::Eq | BinOp::NotEq) {
+        let eq = a.equals(b);
+        return Ok(eq.map_or(Val::Other, |eq| Val::Bool(eq == (op == BinOp::Eq))));
+    }
+    match (a, b) {
+        (Val::Int(x), Val::Int(y)) => int_op(op, *x, *y),
+        (Val::Float(x), Val::Float(y)) => Ok(float_op(op, *x, *y)),
+        (Val::Big(x), Val::Big(y)) => big_op(op, x, y),
+        (Val::Dec(x), Val::Dec(y)) => dec_op(op, x, y),
+        (Val::Str(x), Val::Str(y)) if op == BinOp::Add => Ok(Val::Str(format!("{x}{y}")).bounded()),
+        // A divisor known to be zero panics whatever the other operand is.
+        (_, Val::Int(0)) if matches!(op, BinOp::IntDiv | BinOp::Div) => Err("division by zero"),
+        (_, Val::Int(0)) if op == BinOp::Rem => Err("modulo by zero"),
+        (_, Val::Big(y)) if y.is_zero() && matches!(op, BinOp::IntDiv | BinOp::Rem) => {
+            Err("division by zero")
+        }
+        _ => Ok(a.order(b).map_or(Val::Other, |o| compare(op, o))),
+    }
+}
+
+/// The result of the comparison `op` for operands in order `o` (`Other` for any other
+/// operator).
+fn compare(op: BinOp, o: Ordering) -> Val {
+    Val::Bool(match op {
+        BinOp::Lt => o == Ordering::Less,
+        BinOp::Le => o != Ordering::Greater,
+        BinOp::Gt => o == Ordering::Greater,
+        BinOp::Ge => o != Ordering::Less,
+        _ => return Val::Other,
+    })
+}
+
+/// `x op y` on two `Int`s with the §9.2 rules: the value (`Float` for `/`) or why it
+/// panics.
 fn int_op(op: BinOp, x: i64, y: i64) -> Result<Val, &'static str> {
     let overflow = "integer overflow";
     let checked = |r: Option<i64>| r.map(Val::Int).ok_or(overflow);
@@ -485,15 +695,53 @@ fn int_op(op: BinOp, x: i64, y: i64) -> Result<Val, &'static str> {
         }
         // `Int / Int` is a `Float` (§9.2), and dividing by zero still panics.
         BinOp::Div if y == 0 => Err("division by zero"),
-        BinOp::Div => Ok(Val::Other),
+        BinOp::Div => Ok(Val::Float(x as f64 / y as f64)),
         BinOp::Eq => Ok(Val::Bool(x == y)),
         BinOp::NotEq => Ok(Val::Bool(x != y)),
-        BinOp::Lt => Ok(Val::Bool(x < y)),
-        BinOp::Le => Ok(Val::Bool(x <= y)),
-        BinOp::Gt => Ok(Val::Bool(x > y)),
-        BinOp::Ge => Ok(Val::Bool(x >= y)),
+        BinOp::Lt | BinOp::Le | BinOp::Gt | BinOp::Ge => Ok(compare(op, x.cmp(&y))),
         BinOp::And | BinOp::Or => Ok(Val::Other),
     }
+}
+
+/// `x op y` on two `Float`s: IEEE arithmetic and comparisons, which never panic.
+fn float_op(op: BinOp, x: f64, y: f64) -> Val {
+    match op {
+        BinOp::Add => Val::Float(x + y),
+        BinOp::Sub => Val::Float(x - y),
+        BinOp::Mul => Val::Float(x * y),
+        BinOp::Div => Val::Float(x / y),
+        BinOp::Lt => Val::Bool(x < y),
+        BinOp::Le => Val::Bool(x <= y),
+        BinOp::Gt => Val::Bool(x > y),
+        BinOp::Ge => Val::Bool(x >= y),
+        _ => Val::Other,
+    }
+}
+
+/// `x op y` on two `BigInt`s: exact, and dividing by zero panics (§9.2).
+fn big_op(op: BinOp, x: &Big, y: &Big) -> Result<Val, &'static str> {
+    Ok(match op {
+        BinOp::Add => Val::big(x.add(y)),
+        BinOp::Sub => Val::big(x.sub(y)),
+        BinOp::Mul => Val::big(x.mul(y)),
+        BinOp::IntDiv | BinOp::Rem => {
+            let (q, r) = x.divmod_floor(y).ok_or("division by zero")?;
+            Val::big(if op == BinOp::IntDiv { q } else { r })
+        }
+        _ => compare(op, x.cmp(y)),
+    })
+}
+
+/// `x op y` on two `Decimal`s: exact, and a result that needs more than 34 significant
+/// digits (or leaves the exponent range) panics, as decimal128 arithmetic does (§9.2).
+fn dec_op(op: BinOp, x: &Dec, y: &Dec) -> Result<Val, &'static str> {
+    let overflow = "Decimal overflow (more than 34 digits)";
+    Ok(match op {
+        BinOp::Add => Val::Dec(x.add(y).ok_or(overflow)?),
+        BinOp::Sub => Val::Dec(x.sub(y).ok_or(overflow)?),
+        BinOp::Mul => Val::Dec(x.mul(y).ok_or(overflow)?),
+        _ => compare(op, x.cmp_value(y)),
+    })
 }
 
 /// Strongly connected components of a small graph (Tarjan, iterative), each as node
@@ -557,19 +805,83 @@ fn sccs(edges: &[Vec<usize>]) -> Vec<Vec<usize>> {
 mod tests {
     use super::*;
 
+    /// A short text for a value, so results compare with `assert_eq!`.
+    fn shown(r: Result<Val, &'static str>) -> String {
+        match r {
+            Ok(Val::Int(i)) => format!("int {i}"),
+            Ok(Val::Float(f)) => format!("float {f}"),
+            Ok(Val::Bool(b)) => format!("bool {b}"),
+            Ok(Val::Other) => "other".to_string(),
+            Ok(v) => format!("{v:?}"),
+            Err(why) => format!("panic: {why}"),
+        }
+    }
+
     #[test]
     fn int_ops_follow_spec_section_9_2() {
-        assert_eq!(int_op(BinOp::IntDiv, -7, 2), Ok(Val::Int(-4)));
-        assert_eq!(int_op(BinOp::Rem, -7, 3), Ok(Val::Int(2)));
-        assert_eq!(int_op(BinOp::Rem, 7, -3), Ok(Val::Int(-2)));
-        assert_eq!(int_op(BinOp::Rem, i64::MIN, -1), Ok(Val::Int(0)));
-        assert_eq!(int_op(BinOp::IntDiv, i64::MIN, -1), Err("integer overflow"));
-        assert_eq!(int_op(BinOp::IntDiv, 1, 0), Err("division by zero"));
-        assert_eq!(int_op(BinOp::Rem, 1, 0), Err("modulo by zero"));
-        assert_eq!(int_op(BinOp::Div, 1, 0), Err("division by zero"));
-        assert_eq!(int_op(BinOp::Div, 7, 2), Ok(Val::Other));
-        assert_eq!(int_op(BinOp::Add, i64::MAX, 1), Err("integer overflow"));
-        assert_eq!(int_op(BinOp::Lt, 1, 2), Ok(Val::Bool(true)));
+        let op = |o, x, y| shown(int_op(o, x, y));
+        assert_eq!(op(BinOp::IntDiv, -7, 2), "int -4");
+        assert_eq!(op(BinOp::Rem, -7, 3), "int 2");
+        assert_eq!(op(BinOp::Rem, 7, -3), "int -2");
+        assert_eq!(op(BinOp::Rem, i64::MIN, -1), "int 0");
+        assert_eq!(op(BinOp::IntDiv, i64::MIN, -1), "panic: integer overflow");
+        assert_eq!(op(BinOp::IntDiv, 1, 0), "panic: division by zero");
+        assert_eq!(op(BinOp::Rem, 1, 0), "panic: modulo by zero");
+        assert_eq!(op(BinOp::Div, 1, 0), "panic: division by zero");
+        assert_eq!(op(BinOp::Div, 7, 2), "float 3.5");
+        assert_eq!(op(BinOp::Add, i64::MAX, 1), "panic: integer overflow");
+        assert_eq!(op(BinOp::Lt, 1, 2), "bool true");
+    }
+
+    #[test]
+    fn operations_on_other_types_follow_the_interpreter() {
+        let bin = |o, a: Val, b: Val| shown(binary(o, &a, &b));
+        // IEEE comparisons are defined for NaN (false), and never panic.
+        let nan = f64::NAN;
+        assert_eq!(
+            bin(BinOp::Lt, Val::Float(nan), Val::Float(1.0)),
+            "bool false"
+        );
+        assert_eq!(
+            bin(BinOp::NotEq, Val::Float(nan), Val::Float(nan)),
+            "bool true"
+        );
+        assert_eq!(
+            bin(BinOp::Div, Val::Float(1.0), Val::Float(0.0)),
+            "float inf"
+        );
+        // A divisor known to be zero panics even when the dividend is not known.
+        assert_eq!(
+            bin(BinOp::Rem, Val::Other, Val::Int(0)),
+            "panic: modulo by zero"
+        );
+        assert_eq!(
+            bin(BinOp::IntDiv, Val::Other, Val::Big(Big::zero())),
+            "panic: division by zero"
+        );
+        // Unknown operands decide nothing.
+        assert_eq!(bin(BinOp::Add, Val::Other, Val::Int(1)), "other");
+        assert_eq!(bin(BinOp::Eq, Val::Other, Val::Int(1)), "other");
+        // Strings: `+` and code-point order.
+        let s = |t: &str| Val::Str(t.to_string());
+        assert_eq!(bin(BinOp::Lt, s("a"), s("b")), "bool true");
+        assert_eq!(bin(BinOp::Eq, s("ab"), s("ab")), "bool true");
+        // Tuples and records compare structurally; a missing field is not known.
+        let rec = |x: i64| Val::Record(vec![("x".into(), Val::Int(x))]);
+        assert_eq!(bin(BinOp::Eq, rec(1), rec(1)), "bool true");
+        assert_eq!(bin(BinOp::NotEq, rec(1), rec(2)), "bool true");
+        assert_eq!(bin(BinOp::Eq, rec(1), Val::Record(Vec::new())), "other");
+        let tup = Val::Tuple(vec![Val::Int(1), Val::Other]);
+        assert_eq!(bin(BinOp::Eq, tup.clone(), tup), "other");
+        // Tuples are ordered lexicographically, as the interpreter orders them.
+        let pair = |a: i64, b: i64| Val::Tuple(vec![Val::Int(a), Val::Int(b)]);
+        assert_eq!(bin(BinOp::Lt, pair(1, 3), pair(1, 2)), "bool false");
+        assert_eq!(bin(BinOp::Ge, pair(2, 0), pair(1, 9)), "bool true");
+        // Values too large to keep are not kept.
+        assert!(matches!(
+            Val::Str("x".repeat(MAX_VALUE_SIZE)).bounded(),
+            Val::Other
+        ));
     }
 
     #[test]

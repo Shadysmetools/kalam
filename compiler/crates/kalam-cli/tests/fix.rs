@@ -102,3 +102,23 @@ fn usage_errors() {
     let _ = fs::remove_dir_all(&dir);
     assert_eq!(code, Some(2), "{err}");
 }
+
+#[test]
+fn a_fix_that_would_add_an_error_code_is_withheld_and_reported() {
+    // FOUNDER-QUEUE Q42: `d.pow(2)` would give K0420 (`Decimal` has no `pow`), a code
+    // the file does not have, so the K0923 fix is only a suggestion.
+    let src = "fn main():\n    let d: Decimal = 2.5\n    let r = d ** 2\n    print(\"{r}\")\n";
+    let dir = files("withheld", &[("main.kl", src)]);
+    let main = dir.join("main.kl");
+    let (code, out, err) = kalam(&[], &main);
+    let text = fs::read_to_string(&main).unwrap();
+    let _ = fs::remove_dir_all(&dir);
+    assert_eq!(code, Some(1), "{out}\n{err}");
+    assert_eq!(text, src);
+    assert!(!out.contains("fixed"), "{out}");
+    assert!(
+        err.contains("the K0923 fix (call `.pow`) was withheld, so it is only a suggestion: it would add K0420"),
+        "{err}"
+    );
+    assert!(err.contains("K0923"), "{err}");
+}

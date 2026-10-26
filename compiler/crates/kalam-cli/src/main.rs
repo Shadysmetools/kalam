@@ -285,7 +285,8 @@ fn fix_targets(paths: &[&String]) -> Result<Vec<String>, String> {
 
 /// `kalam fix [--dry-run] FILE|DIR...` (spec §21.3, §21.5): applies the machine-applicable
 /// fixes `kalam check` reports, file by file, to a fixpoint (`kalam_driver::fix_file`: a
-/// suggestion is never applied, and a fix that makes the file worse is undone). Each file
+/// suggestion is never applied, and a fix that would add an error code or not lower the
+/// error count is withheld and reported as a suggestion, FOUNDER-QUEUE Q42). Each file
 /// is checked as `kalam check FILE` checks it; a DIR is walked file by file, not as one
 /// package. Then the diagnostics left are printed as `kalam check` prints them.
 ///
@@ -333,10 +334,15 @@ fn fix(args: &[String]) -> ExitCode {
                 "note: `{path}` is not valid UTF-8, so `kalam fix` left it unchanged (see SEC0100)"
             );
         }
-        for r in &fixed.rejected {
+        for w in &fixed.withheld {
+            let why = if w.new_codes.is_empty() {
+                "it would not leave fewer errors".to_string()
+            } else {
+                format!("it would add {}", w.new_codes.join(", "))
+            };
             eprintln!(
-                "note: {path}:{}: the {} fix ({}) was not applied: it made the file worse",
-                r.line, r.code, r.title
+                "note: {path}:{}: the {} fix ({}) was withheld, so it is only a suggestion: {why}",
+                w.fix.line, w.fix.code, w.fix.title
             );
         }
         if fixed.changed() {

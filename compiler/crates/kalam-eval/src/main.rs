@@ -7,7 +7,10 @@
 //! kalam-eval holdout   --root DIR --store DIR [--include-m2] [--kalam PATH]
 //! kalam-eval clauses   [--root DIR] [--write | --check]
 //! kalam-eval judge-sample [--root DIR] [--check]
-//! kalam-eval judge-ingest [--root DIR] --in FILE
+//! kalam-eval judge-ingest [--root DIR] --in FILE [--merge]
+//! kalam-eval judge-stale [--root DIR]
+//! kalam-eval judge-calibration-kit [--root DIR]
+//! kalam-eval judge-calibrate [--root DIR] --grader NAME CSV
 //! ```
 //!
 //! `--kalam PATH` (or `KALAM_BIN`) names the `kalam` binary used by the M2 checkpoints and
@@ -24,7 +27,15 @@
 //! - `judge-sample` writes the pinned judge sample `eval/judge/sample.json` (src/judge.rs);
 //!   `--check` exits 1 when the committed sample is stale.
 //! - `judge-ingest --in FILE` validates externally produced judge scores against the pinned
-//!   sample and rubric and writes `eval/judge/report.json`.
+//!   sample and rubric and writes `eval/judge/report.json`. With `--merge`, FILE scores only
+//!   the re-judged items (at least every stale and unjudged one) and the other rows are kept.
+//! - `judge-stale` prints the report items whose rendered golden (or rubric) changed since
+//!   judging, the sampled items the report does not score and the judged items no longer
+//!   sampled (FOUNDER-QUEUE Q43); it exits 1 while any item is stale or unjudged.
+//! - `judge-calibration-kit` writes `eval/judge/calibration-kit.csv`: 60 judged, non-stale
+//!   sample items for a human to grade blind (empty `human_score` column).
+//! - `judge-calibrate --grader NAME CSV` reads the graded kit (>= 50 grades) and writes
+//!   `eval/judge/calibration.json`, printing the mean absolute error against the judge.
 //!
 //! The default command prints the JSON scorecard on stdout. With `--append`, it also appends
 //! one line to `eval/history.jsonl` (or `--history FILE`). The timestamp is always passed in,
@@ -56,7 +67,10 @@ const USAGE: &str = "usage:
   kalam-eval holdout   --root DIR --store DIR [--include-m2] [--kalam PATH]
   kalam-eval clauses   [--root DIR] [--write | --check]
   kalam-eval judge-sample [--root DIR] [--check]
-  kalam-eval judge-ingest [--root DIR] --in FILE
+  kalam-eval judge-ingest [--root DIR] --in FILE [--merge]
+  kalam-eval judge-stale [--root DIR]
+  kalam-eval judge-calibration-kit [--root DIR]
+  kalam-eval judge-calibrate [--root DIR] --grader NAME CSV
   (scorecard runs also take --kalam PATH: the kalam binary for the M2 checkpoints)";
 
 #[derive(Default)]
@@ -82,6 +96,10 @@ struct Args {
     write: bool,
     check: bool,
     input: Option<PathBuf>,
+    merge: bool,
+    grader: Option<String>,
+    /// The positional CSV of `judge-calibrate`.
+    csv: Option<PathBuf>,
 }
 
 fn parse_args(argv: &[String]) -> Result<Args, String> {
@@ -89,9 +107,15 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
     let mut it = argv.iter().peekable();
     if let Some(cmd) = it.peek().filter(|c| !c.starts_with('-')) {
         match cmd.as_str() {
-            "freeze" | "integrity" | "holdout" | "clauses" | "judge-sample" | "judge-ingest" => {
-                a.command = Some(cmd.to_string())
-            }
+            "freeze"
+            | "integrity"
+            | "holdout"
+            | "clauses"
+            | "judge-sample"
+            | "judge-ingest"
+            | "judge-stale"
+            | "judge-calibration-kit"
+            | "judge-calibrate" => a.command = Some(cmd.to_string()),
             other => return Err(format!("unknown command `{other}`\n{USAGE}")),
         }
         it.next();
@@ -123,7 +147,15 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
             "--write" => a.write = true,
             "--check" => a.check = true,
             "--in" => a.input = Some(val()?.into()),
+            "--merge" => a.merge = true,
+            "--grader" => a.grader = Some(val()?),
             "-h" | "--help" => return Err(USAGE.into()),
+            csv if a.command.as_deref() == Some("judge-calibrate")
+                && !csv.starts_with('-')
+                && a.csv.is_none() =>
+            {
+                a.csv = Some(csv.into())
+            }
             other => return Err(format!("unknown argument `{other}`\n{USAGE}")),
         }
     }
@@ -132,6 +164,14 @@ fn parse_args(argv: &[String]) -> Result<Args, String> {
     }
     if a.command.as_deref() == Some("judge-ingest") && a.input.is_none() {
         return Err("judge-ingest needs --in FILE".into());
+    }
+    if a.command.as_deref() == Some("judge-calibrate") && (a.csv.is_none() || a.grader.is_none()) {
+        return Err(
+            "judge-calibrate needs --grader NAME (the human who graded) and the graded CSV".into(),
+        );
+    }
+    if a.merge && a.command.as_deref() != Some("judge-ingest") {
+        return Err("--merge belongs to judge-ingest".into());
     }
     if a.run_props && a.props_report.is_some() {
         return Err("--run-props and --props-report exclude each other".into());
@@ -251,6 +291,9 @@ fn main() -> ExitCode {
         Some("clauses") => return clauses_cmd(&root, &args),
         Some("judge-sample") => return judge_sample_cmd(&root, &args),
         Some("judge-ingest") => return judge_ingest_cmd(&root, &args),
+        Some("judge-stale") => return judge_stale_cmd(&root),
+        Some("judge-calibration-kit") => return judge_kit_cmd(&root),
+        Some("judge-calibrate") => return judge_calibrate_cmd(&root, &args),
         _ => {}
     }
     let sc = match load_scorecard(&root) {
@@ -473,10 +516,26 @@ fn judge_sample_cmd(root: &Path, args: &Args) -> ExitCode {
             _ => fail(format!("{} is missing or stale", judge::SAMPLE_PATH)),
         };
     }
-    let text = format!(
-        "{}\n",
-        serde_json::to_string_pretty(&sample).expect("JSON serializes")
-    );
+    // FOUNDER-QUEUE Q43: before the scored sample is replaced, the report's rows keep the
+    // text they were judged on (`rendered_sha256`), so only changed items become stale.
+    let old = std::fs::read_to_string(root.join(judge::SAMPLE_PATH))
+        .ok()
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok());
+    let report = std::fs::read_to_string(root.join(judge::REPORT_PATH))
+        .ok()
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok());
+    if let (Some(old), Some(report)) = (old.filter(|o| *o != sample), report) {
+        if let Some(pinned) = judge::pin_hashes(&report, &old) {
+            if let Err(e) = write_rel(root, judge::REPORT_PATH, &json_text(&pinned)) {
+                return fail(e);
+            }
+            eprintln!(
+                "pinned the judged rendering of every row of {} (scores unchanged)",
+                judge::REPORT_PATH
+            );
+        }
+    }
+    let text = json_text(&sample);
     match write_rel(root, judge::SAMPLE_PATH, &text) {
         Ok(()) => {
             eprintln!(
@@ -527,9 +586,19 @@ fn judge_ingest_cmd(root: &Path, args: &Args) -> ExitCode {
         Ok(v) => v,
         Err(e) => return fail(e),
     };
-    let report = match judge::ingest(&pinned, &scores) {
-        Ok(r) => r,
-        Err(e) => return fail(format!("rejected: {e}")),
+    let report = if args.merge {
+        let existing = std::fs::read_to_string(root.join(judge::REPORT_PATH)).ok();
+        match judge::assess(&pinned, None, existing.as_deref())
+            .and_then(|(old, st)| judge::ingest_merge(&pinned, &old, &st, &scores))
+        {
+            Ok(r) => r,
+            Err(e) => return fail(format!("rejected: {e}")),
+        }
+    } else {
+        match judge::ingest(&pinned, &scores) {
+            Ok(r) => r,
+            Err(e) => return fail(format!("rejected: {e}")),
+        }
     };
     let text = format!(
         "{}\n",
@@ -548,6 +617,119 @@ fn judge_ingest_cmd(root: &Path, args: &Args) -> ExitCode {
         }
         Err(e) => fail(e),
     }
+}
+
+fn json_text(v: &serde_json::Value) -> String {
+    format!(
+        "{}\n",
+        serde_json::to_string_pretty(v).expect("JSON serializes")
+    )
+}
+
+/// The current sample, the committed report and their item-by-item comparison
+/// (FOUNDER-QUEUE Q43).
+fn judge_state(
+    root: &Path,
+) -> Result<(serde_json::Value, serde_json::Value, judge::Staleness), String> {
+    let current = current_sample(root)?;
+    let committed = std::fs::read_to_string(root.join(judge::SAMPLE_PATH)).ok();
+    let report = std::fs::read_to_string(root.join(judge::REPORT_PATH)).ok();
+    let (report, st) = judge::assess(&current, committed.as_deref(), report.as_deref())?;
+    Ok((current, report, st))
+}
+
+/// `kalam-eval judge-stale`: the stale, unjudged and removed items as JSON; exit 1 while any
+/// item is stale or unjudged.
+fn judge_stale_cmd(root: &Path) -> ExitCode {
+    let (_, _, st) = match judge_state(root) {
+        Ok(s) => s,
+        Err(e) => return fail(e),
+    };
+    print!("{}", json_text(&st.to_json()));
+    if st.is_clean() {
+        eprintln!(
+            "every one of the {} sampled items is judged on its current rendering",
+            st.current.len()
+        );
+        ExitCode::SUCCESS
+    } else {
+        eprintln!(
+            "{} stale and {} unjudged item(s): re-judge them, then `kalam-eval judge-ingest --merge --in FILE`",
+            st.stale.len(),
+            st.unjudged.len()
+        );
+        ExitCode::from(1)
+    }
+}
+
+/// `kalam-eval judge-calibration-kit`: writes the blind grading kit.
+fn judge_kit_cmd(root: &Path) -> ExitCode {
+    let (current, _, st) = match judge_state(root) {
+        Ok(s) => s,
+        Err(e) => return fail(e),
+    };
+    match judge::kit_csv(&current, &st) {
+        Ok((csv, n)) => match write_rel(root, judge::KIT_PATH, &csv) {
+            Ok(()) => {
+                eprintln!(
+                    "wrote {} ({n} items to grade with {}; fill `human_score` with 0-5, then \
+                     `kalam-eval judge-calibrate --grader NAME {}`)",
+                    judge::KIT_PATH,
+                    judge::RUBRIC_PATH,
+                    judge::KIT_PATH
+                );
+                ExitCode::SUCCESS
+            }
+            Err(e) => fail(e),
+        },
+        Err(e) => fail(e),
+    }
+}
+
+/// `kalam-eval judge-calibrate --grader NAME CSV`: writes `eval/judge/calibration.json`.
+fn judge_calibrate_cmd(root: &Path, args: &Args) -> ExitCode {
+    let (Some(csv), Some(grader)) = (&args.csv, &args.grader) else {
+        return ExitCode::from(2);
+    };
+    let (_, report, st) = match judge_state(root) {
+        Ok(s) => s,
+        Err(e) => return fail(e),
+    };
+    let text = match std::fs::read_to_string(csv) {
+        Ok(t) => t,
+        Err(e) => return fail(format!("{}: {e}", csv.display())),
+    };
+    let (grades, skipped) = match judge::read_grades(&text, &st) {
+        Ok(g) => g,
+        Err(e) => return fail(format!("rejected, nothing written: {e}")),
+    };
+    for s in &skipped {
+        eprintln!("left out: {s}");
+    }
+    let (doc, mae) = match judge::calibration_doc(grader, &grades, &st, &report) {
+        Ok(d) => d,
+        Err(e) => return fail(format!("rejected, nothing written: {e}")),
+    };
+    if !st.is_clean() {
+        eprintln!(
+            "note: {} judge item(s) are stale or unjudged, so D5.judge_score stays not measurable until they are re-judged (`kalam-eval judge-stale`)",
+            st.stale.len() + st.unjudged.len()
+        );
+    }
+    if let Err(e) = write_rel(root, judge::CALIBRATION_PATH, &json_text(&doc)) {
+        return fail(e);
+    }
+    eprintln!(
+        "wrote {}: {} grades by {grader:?}, mean absolute error {mae:.3} against the judge ({})",
+        judge::CALIBRATION_PATH,
+        doc["n"],
+        if mae <= judge::CALIBRATION_MAE {
+            format!("<= {}: the judge is calibrated", judge::CALIBRATION_MAE)
+        } else {
+            format!("> {}: the judge is not trusted", judge::CALIBRATION_MAE)
+        }
+    );
+    ExitCode::SUCCESS
 }
 
 #[cfg(test)]
@@ -595,6 +777,35 @@ mod tests {
         assert!(parse_args(&argv(&["judge-ingest"])).is_err());
         let a = parse_args(&argv(&["judge-ingest", "--in", "s.json"])).unwrap();
         assert_eq!(a.command.as_deref(), Some("judge-ingest"));
+        assert!(
+            parse_args(&argv(&["judge-ingest", "--in", "s.json", "--merge"]))
+                .unwrap()
+                .merge
+        );
+        assert!(parse_args(&argv(&["judge-stale", "--merge"])).is_err());
+        assert_eq!(
+            parse_args(&argv(&["judge-stale"]))
+                .unwrap()
+                .command
+                .as_deref(),
+            Some("judge-stale")
+        );
+        assert!(parse_args(&argv(&["judge-calibration-kit"])).is_ok());
+        // judge-calibrate takes the CSV as its one positional argument and a named grader
+        let a = parse_args(&argv(&["judge-calibrate", "--grader", "Shady", "kit.csv"])).unwrap();
+        assert_eq!(a.csv, Some(PathBuf::from("kit.csv")));
+        assert_eq!(a.grader.as_deref(), Some("Shady"));
+        assert!(parse_args(&argv(&["judge-calibrate", "kit.csv"])).is_err());
+        assert!(parse_args(&argv(&["judge-calibrate", "--grader", "x"])).is_err());
+        assert!(parse_args(&argv(&[
+            "judge-calibrate",
+            "--grader",
+            "x",
+            "a.csv",
+            "b.csv"
+        ]))
+        .is_err());
+        assert!(parse_args(&argv(&["judge-stale", "kit.csv"])).is_err());
         let a = parse_args(&argv(&["--kalam", "k.exe"])).unwrap();
         assert_eq!(a.kalam, Some(PathBuf::from("k.exe")));
         let a = parse_args(&argv(&["--props-report", "E:/tmp/r.json"])).unwrap();

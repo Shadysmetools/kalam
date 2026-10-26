@@ -188,7 +188,7 @@
       "code": "K0405",
       "id": "K0405/franco",
       "message_language": "franco",
-      "rendered": "-- ESM MESTA5DEM ABLAN ----------------------------------- main.franco.kl  K0405\n\n`total` met3arraf ablan f scope bayen hena. Kalam mesh beysma7 l ta3reef gedeed yekhabbi ta3reef a2dam, fa el esm leeh ma3na wa7ed f kol wa2t.\n\n2│     khali total = 1\n             ----- `total` et3arraf hena el awel\n4│         khali total = 2\n                 ^^^^^\n\nMosa3da: Edy el ta3reef el gedeed esm khas beeh. W l 2eema men no3 b nafs el esm, el code el 3araby beyzawwed \"ال\" (`الشكل: شكل`) w code el Franco beyzawwed `el_` (`el_donya: donya`).\n\nE3raf aktar: kalam explain K0405",
+      "rendered": "-- ESM MESTA5DEM ABLAN ----------------------------------- main.franco.kl  K0405\n\n`total` met3arraf ablan f scope bayen hena. Kalam mesh beysma7 l ta3reef gedeed yekhabbi ta3reef a2dam, fa el esm leeh ma3na wa7ed f kol wa2t.\n\n2│     khali total = 1\n             ----- `total` et3arraf hena el awel\n4│         khali total = 2\n                 ^^^^^\n\nGarrab: `el_total`\n\nMosa3da: Edy el ta3reef el gedeed esm khas beeh. W l 2eema men no3 b nafs el esm, el code el 3araby beyzawwed \"ال\" (`الشكل: شكل`) w code el Franco beyzawwed `el_` (`el_donya: donya`).\n\nE3raf aktar: kalam explain K0405",
       "skin": "franco",
       "source": "dala ra2isi():\n    khali total = 1\n    law total > 0:\n        khali total = 2\n        ektb(\"{total}\")\n"
     },
@@ -918,7 +918,7 @@
   "rubric_sha256": "f0cba998336a5b48e4f2ff88719bff0282cd7b4a490970e607adc66cfe4829c4",
   "rubric_version": "becker-2026.1",
   "rule": "one item per eval/goldens code; skin = Skin::ALL[sha256(seed + code)[0] % 3]; rendered = the committed .expected text",
-  "sample_sha256": "268a64cf7ee2065600ec71541f2b578715d33b3e7340c69b90c2ef40ca47ac7c",
+  "sample_sha256": "66c85dc33751a18e48fc5b7286ce1dcc6b8dd6b366b1d9902a7f6fe4a5821b5d",
   "schema": "kalam-judge-sample/1",
   "seed": "kalam-judge-sample/1"
 }

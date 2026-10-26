@@ -1,10 +1,14 @@
 //! Regression tests for the wrong verdicts the M2 iteration-3 verifier found (its W1–W8 and
-//! open item 1), and for the FOUNDER-QUEUE decisions Q33–Q37 behind them.
+//! open item 1), and for the FOUNDER-QUEUE decisions Q33–Q37 behind them; then for the
+//! iteration-4 verifier's repros (`n04`–`n06`, `t02`/`t05`, `p04`–`p06`, `f07`) and the
+//! decisions Q34, Q40 and Q41 behind them.
 //!
 //! Every program is checked the two ways `kalam check` checks a file:
 //! - **single-file** (`kalam check FILE`, what conformance and `kalam run --interp` use):
-//!   the file is resolved alone first, then again together with the stdlib signature stubs
-//!   (default options: nothing else is loaded), and type-checked without the stubs' bodies;
+//!   the file is resolved alone first, then again together with the stdlib signature stubs,
+//!   with the stdlib loaded as in project mode (a missing `std/…` module or member is K0401,
+//!   Q34; other modules of the package stay opaque), and type-checked without the stubs'
+//!   bodies;
 //! - **project** (`kalam check DIR`): the file is `src/main.kl` of a package, resolved with
 //!   the stdlib directory loaded (FOUNDER-QUEUE Q34: both modes give the same verdict).
 //!
@@ -46,8 +50,12 @@ struct Outcome {
 }
 
 fn run(mode: Mode, src: &str) -> Outcome {
+    run_in(mode, Skin::En, src)
+}
+
+fn run_in(mode: Mode, skin: Skin, src: &str) -> Outcome {
     let std = stdlib();
-    let main = kalam_parser::parse_source(src, Skin::En, FileId(0));
+    let main = kalam_parser::parse_source(src, skin, FileId(0));
     let mut diags: Vec<Diagnostic> = main
         .diagnostics
         .iter()
@@ -68,7 +76,7 @@ fn run(mode: Mode, src: &str) -> Outcome {
     let (path, options) = match mode {
         Mode::Single => {
             // First the file alone (every import opaque), as `kalam check FILE` does.
-            let (_, alone) = resolve_file(FileId(0), Skin::En, &main.ast);
+            let (_, alone) = resolve_file(FileId(0), skin, &main.ast);
             diags.extend(alone.into_iter().filter(|d| d.is_error()));
             if !diags.is_empty() {
                 return Outcome {
@@ -76,10 +84,15 @@ fn run(mode: Mode, src: &str) -> Outcome {
                     checked: None,
                 };
             }
-            (ModulePath("main".into()), Options::default())
+            // Then with the stubs, the stdlib loaded as in project mode (Q34).
+            let options = Options {
+                std_loaded: true,
+                ..Options::default()
+            };
+            (ModulePath("main".into()), options)
         }
         Mode::Project => (
-            ModulePath::from_file("app", "src/main.kl"),
+            ModulePath::from_file("app", &format!("src/main{}", skin.extension())),
             Options {
                 package: "app".into(),
                 whole_package: true,
@@ -90,7 +103,7 @@ fn run(mode: Mode, src: &str) -> Outcome {
     let mut sources = vec![SourceModule {
         path,
         file: FileId(0),
-        skin: Skin::En,
+        skin,
         ast: &main.ast,
         std: false,
     }];
@@ -106,15 +119,16 @@ fn run(mode: Mode, src: &str) -> Outcome {
     let (program, resolved) = resolve_program(&sources, &options);
     let resolved: Vec<Diagnostic> = resolved.into_iter().filter(|d| d.is_error()).collect();
     if !resolved.is_empty() {
-        if mode == Mode::Single {
-            // The driver skips the type check rather than guess (kalam-driver crate docs).
-            return Outcome {
-                diags,
-                checked: None,
-            };
-        }
+        let stray: Vec<_> = resolved.iter().filter(|d| d.file != FileId(0)).collect();
+        assert!(
+            stray.is_empty(),
+            "resolve findings in the stdlib: {stray:#?}"
+        );
+        // Both modes report what resolving against the stubs finds in the file (Q34), and
+        // the type check waits for it.
+        diags.extend(resolved);
         return Outcome {
-            diags: resolved,
+            diags,
             checked: None,
         };
     }
@@ -140,8 +154,8 @@ fn line_of(src: &str, at: u32) -> usize {
     src[..(at as usize).min(src.len())].matches('\n').count() + 1
 }
 
-fn codes_in(mode: Mode, src: &str) -> Vec<(&'static str, usize)> {
-    run(mode, src)
+fn codes_in(mode: Mode, skin: Skin, src: &str) -> Vec<(&'static str, usize)> {
+    run_in(mode, skin, src)
         .diags
         .iter()
         .map(|d| (d.code, line_of(src, d.span.start)))
@@ -150,8 +164,13 @@ fn codes_in(mode: Mode, src: &str) -> Vec<(&'static str, usize)> {
 
 /// `(code, line)` of every finding, the same in both modes (Q34).
 fn codes(src: &str) -> Vec<(&'static str, usize)> {
-    let single = codes_in(Mode::Single, src);
-    let project = codes_in(Mode::Project, src);
+    codes_skin(Skin::En, src)
+}
+
+/// [`codes`] for a file in `skin`.
+fn codes_skin(skin: Skin, src: &str) -> Vec<(&'static str, usize)> {
+    let single = codes_in(Mode::Single, skin, src);
+    let project = codes_in(Mode::Project, skin, src);
     assert_eq!(
         single, project,
         "single-file and project modes disagree on\n{src}"
@@ -161,12 +180,22 @@ fn codes(src: &str) -> Vec<(&'static str, usize)> {
 
 /// The first finding, as single-file mode reports it (both modes agree, see [`codes`]).
 fn first(src: &str) -> Diagnostic {
-    codes(src);
-    run(Mode::Single, src)
+    first_skin(Skin::En, src)
+}
+
+/// [`first`] for a file in `skin`.
+fn first_skin(skin: Skin, src: &str) -> Diagnostic {
+    codes_skin(skin, src);
+    run_in(Mode::Single, skin, src)
         .diags
         .into_iter()
         .next()
         .expect("a finding")
+}
+
+/// The source text a diagnostic's primary span covers.
+fn span_text<'a>(src: &'a str, d: &Diagnostic) -> &'a str {
+    &src[d.span.start as usize..d.span.end as usize]
 }
 
 /// Every type the checker recorded for the file's own bodies is closed: no inference
@@ -196,8 +225,13 @@ fn assert_closed(checked: &Checked, src: &str) {
 
 /// Clean in both modes, with every type closed.
 fn clean(src: &str) {
+    clean_skin(Skin::En, src);
+}
+
+/// [`clean`] for a file in `skin`.
+fn clean_skin(skin: Skin, src: &str) {
     for mode in [Mode::Single, Mode::Project] {
-        let out = run(mode, src);
+        let out = run_in(mode, skin, src);
         let found: Vec<_> = out
             .diags
             .iter()
@@ -591,4 +625,284 @@ fn a_suspending_result_passed_to_a_sync_parameter_is_one_flow_at_the_argument() 
         .map(|(_, f)| &src[f.span.start as usize..f.span.end as usize])
         .collect();
     assert_eq!(to_sync, vec!["make(world.fs)"]);
+}
+
+// ---- (6) Q40, n04–n06: evaluation through records, tuples, `.with` and `Decimal` ----------
+
+/// One K1204 in `src`, at `line`, whose primary span is the operation `at` and whose label
+/// gives the interpreter's panic message for it (`why`).
+fn panics_at(src: &str, line: usize, at: &str, why: &str) {
+    assert_eq!(codes(src), vec![("K1204", line)], "{src}");
+    let d = first(src);
+    assert_eq!(span_text(src, &d), at, "{src}");
+    let want = format!("this panics: {why}");
+    assert!(
+        d.labels.iter().any(|l| l.text == want),
+        "{:?}\n{src}",
+        d.labels
+    );
+}
+
+#[test]
+fn a_constant_panics_through_a_record_field() {
+    // n04: the interpreter panics at 6:9, on `P.x + 1`, with "integer overflow".
+    let n04 = "type Pt:\n    x: Int\n    y: Int\n\nlet P = Pt(x: 9223372036854775807, y: 0)\nlet Q = P.x + 1\n\nfn main():\n    print(\"start\")\n    print(\"{Q}\")\n";
+    panics_at(n04, 6, "P.x + 1", "integer overflow");
+    // A field of a field.
+    panics_at(
+        "type In:\n    n: Int\n\ntype Out:\n    inner: In\n\nlet O = Out(inner: In(n: -9223372036854775807 - 1))\nlet N = -O.inner.n\n\nfn main():\n    print(\"{N}\")\n",
+        8,
+        "-O.inner.n",
+        "integer overflow",
+    );
+    // The value read is the one given for that field, whatever the order of the labels.
+    clean("type Pt:\n    x: Int\n    y: Int\n\nlet P = Pt(y: 9223372036854775807, x: 0)\nlet Q = P.x + 1\n\nfn main():\n    print(\"{Q}\")\n");
+    // A field filled from its default is not evaluated here: no verdict is guessed.
+    clean("type Cfg:\n    limit: Int = 5\n\nlet L = Cfg().limit + 1\n\nfn main():\n    print(\"{L}\")\n");
+}
+
+#[test]
+fn a_constant_panics_through_a_tuple_field_and_with() {
+    // n05: `P2.x` is `T.0` through `.with`, the largest `Int`; doubling it in the hole
+    // overflows (the same `let`s inside `main` panic there at runtime).
+    let n05 = "type Pt:\n    x: Int\n    y: Int\n\nlet T = (9223372036854775807, \"a\")\nlet P = Pt(x: 1, y: 2)\nlet P2 = P.with(x: T.0)\nlet S = \"{P2.x * 2}\"\n\nfn main():\n    print(\"start\")\n    print(S)\n";
+    panics_at(n05, 8, "P2.x * 2", "integer overflow");
+    // Nested tuples.
+    panics_at(
+        "let T = ((1, 9223372036854775807), 2)\nlet U = T.0.1 + T.1\n\nfn main():\n    print(\"{U}\")\n",
+        2,
+        "T.0.1 + T.1",
+        "integer overflow",
+    );
+    // `.with` keeps the fields it does not name, and replaces the ones it names.
+    panics_at(
+        "type Pt:\n    x: Int\n    y: Int\n\nlet P = Pt(x: 9223372036854775807, y: 0).with(y: 5)\nlet Q = P.x + P.y\n\nfn main():\n    print(\"{Q}\")\n",
+        6,
+        "P.x + P.y",
+        "integer overflow",
+    );
+    clean("type Pt:\n    x: Int\n    y: Int\n\nlet P = Pt(x: 9223372036854775807, y: 0).with(x: 5)\nlet Q = P.x + 1\n\nfn main():\n    print(\"{Q}\")\n");
+}
+
+#[test]
+fn equality_and_float_comparisons_decide_and_or_as_the_interpreter_does() {
+    // `or` runs its right side only when its left side is false (§10.6), so whether the
+    // constant panics depends on the comparison: records, tuples and `Float`s included.
+    let base = "type Pt:\n    x: Int\n    y: Int\n\nlet A = Pt(x: 1, y: 2)\nlet B = A.with(y: 2)\n";
+    clean(&format!(
+        "{base}let OK = A == B or 1 // 0 == 0\n\nfn main():\n    print(\"{{OK}}\")\n"
+    ));
+    panics_at(
+        &format!("{base}let BAD = A != B or 1 // 0 == 0\n\nfn main():\n    print(\"{{BAD}}\")\n"),
+        7,
+        "1 // 0",
+        "division by zero",
+    );
+    clean("let OK = (1, \"a\") == (1, \"a\") or 1 // 0 == 0\n\nfn main():\n    print(\"{OK}\")\n");
+    panics_at(
+        "let BAD = 1.5 > 2.0 or 1 // 0 == 0\n\nfn main():\n    print(\"{BAD}\")\n",
+        1,
+        "1 // 0",
+        "division by zero",
+    );
+    clean("let OK = 1.5 < 2.0 or 1 // 0 == 0\n\nfn main():\n    print(\"{OK}\")\n");
+}
+
+#[test]
+fn decimal_constants_are_evaluated_exactly_with_34_digits() {
+    // n06 (Q40): `Decimal` `+ - *` trap when the exact result needs more than 34
+    // significant digits (decimal128, §9.2). The interpreter panics at 2:19, the first
+    // `D1 * D1`.
+    let n06 = "let D1: Decimal = 9999999999999999999999999999999999.0\nlet D2: Decimal = D1 * D1 * D1 * D1 * D1 * D1 * D1 * D1 * D1 * D1\nlet D3: Decimal = D2 * D2 * D2 * D2 * D2 * D2 * D2 * D2 * D2 * D2\nlet D4: Decimal = D3 * D3 * D3 * D3 * D3 * D3 * D3 * D3 * D3 * D3\nlet D5: Decimal = D4 * D4 * D4 * D4 * D4 * D4 * D4 * D4 * D4 * D4\n\nfn main():\n    print(\"start\")\n";
+    let overflow = "Decimal overflow (more than 34 digits)";
+    panics_at(n06, 2, "D1 * D1", overflow);
+    let nines = "let A: Decimal = 9999999999999999999999999999999999\n";
+    // 10^34 has 35 digits, but its trailing zeros go into the exponent: it fits.
+    clean(&format!(
+        "{nines}let B = A + 1\n\nfn main():\n    print(\"{{B}}\")\n"
+    ));
+    // 10^34 + 1 needs 35 significant digits; so does its negation.
+    panics_at(
+        &format!("{nines}let B = A + 2\n\nfn main():\n    print(\"{{B}}\")\n"),
+        2,
+        "A + 2",
+        overflow,
+    );
+    panics_at(
+        &format!("{nines}let B = -A - 2\n\nfn main():\n    print(\"{{B}}\")\n"),
+        2,
+        "-A - 2",
+        overflow,
+    );
+    // A fraction counts: 10^33 + 0.1 needs 35 digits.
+    panics_at(
+        "let A: Decimal = 1000000000000000000000000000000000\nlet B = A + 0.1\n\nfn main():\n    print(\"{B}\")\n",
+        2,
+        "A + 0.1",
+        overflow,
+    );
+    // 10^21 * 10^21 has 43 digits, but 42 of them are trailing zeros: it fits.
+    clean("let A: Decimal = 1000000000000000000000.0\nlet B = A * A * 3\n\nfn main():\n    print(\"{B}\")\n");
+    // The exponent range of decimal128 counts too, at both ends.
+    clean("let E: Decimal = 1e6111\nlet F = E * 10\nlet T: Decimal = 1e-6176\nlet U = T * 1\n\nfn main():\n    print(\"{F} {U}\")\n");
+    panics_at(
+        "let E: Decimal = 1e6111\nlet F = E * E\n\nfn main():\n    print(\"{F}\")\n",
+        2,
+        "E * E",
+        overflow,
+    );
+    panics_at(
+        "let T: Decimal = 1e-6176\nlet U = T * 0.1\n\nfn main():\n    print(\"{U}\")\n",
+        2,
+        "T * 0.1",
+        overflow,
+    );
+    // Through a record field and a tuple.
+    panics_at(
+        "type Money:\n    amount: Decimal\n    count: Int\n\nlet M = Money(amount: 9999999999999999999999999999999999.0, count: 1).with(count: 2)\nlet P = (M, 1)\nlet T = P.0.amount * 2\n\nfn main():\n    print(\"{T}\")\n",
+        7,
+        "P.0.amount * 2",
+        overflow,
+    );
+    // Comparisons of `Decimal`s decide `and`/`or` too (`1.50 == 1.5`).
+    clean("let A: Decimal = 1.50\nlet OK = A == 1.5 or 1 // 0 == 0\n\nfn main():\n    print(\"{OK}\")\n");
+}
+
+#[test]
+fn bigint_constants_are_exact_so_a_zero_divisor_is_always_found() {
+    // `BigInt` has no overflow (§9.2), so its values are kept exactly: a divisor that is
+    // zero is found however large the numbers on the way were.
+    panics_at(
+        "let B: BigInt = 340282366920938463463374607431768211455\nlet Z = B * B - B * B\nlet Q: BigInt = 10 // Z\n\nfn main():\n    print(\"{Q}\")\n",
+        3,
+        "10 // Z",
+        "division by zero",
+    );
+    clean("let B: BigInt = 340282366920938463463374607431768211455\nlet Q = B * B // B\nlet R = Q % 7\n\nfn main():\n    print(\"{Q} {R}\")\n");
+}
+
+// ---- (7) Q41, t02/t05: every caller sees the trait's signature ----------------------------
+
+#[test]
+fn concrete_callers_see_the_trait_bounds_even_when_the_impl_has_fewer() {
+    let head = "trait Picker:\n    fn pick[T: Ord](self, xs: List[T]) -> Option[T]\n\ntype First:\n    tag: Int\n\nimpl First as Picker:\n    fn pick[U](self, xs: List[U]) -> Option[U]:\n        return xs.first()\n\n";
+    // t02: the impl's `pick[U]` drops the trait's `Ord`, but a concrete receiver still
+    // calls the trait's `pick[T: Ord]` (Q41), and `Float` is not `Ord` (DR-23).
+    let t02 = format!("{head}fn main():\n    print(\"{{First(tag: 1).pick([3.5, 1.5])}}\")\n");
+    assert_eq!(codes(&t02), vec![("K0603", 12)]);
+    // t05: through a generic `P: Picker`, the same verdict.
+    let t05 = format!("{head}fn via[P: Picker](p: P) -> Option[Float] => p.pick([3.5, 1.5])\n\nfn main():\n    print(\"{{via(First(tag: 1))}}\")\n");
+    assert_eq!(codes(&t05), vec![("K0603", 11)]);
+    // With an `Ord` element type both paths are fine.
+    clean(&format!(
+        "{head}fn via[P: Picker](p: P) -> Option[Int] => p.pick([3, 1])\n\nfn main():\n    print(\"{{First(tag: 1).pick([3, 1])}} {{via(First(tag: 2))}}\")\n"
+    ));
+    // t01: the impl's own body is checked against what it wrote, so it may not use the
+    // `Ord` it dropped.
+    assert_eq!(
+        codes("trait Picker:\n    fn pick[T: Ord](self, xs: List[T]) -> Option[T]\n\ntype Lowest:\n    tag: Int\n\nimpl Lowest as Picker:\n    fn pick[U](self, xs: List[U]) -> Option[U]:\n        return xs.sorted().first()\n\nfn main():\n    print(\"{Lowest(tag: 1).pick([3, 1, 2])}\")\n"),
+        vec![("K0603", 9)]
+    );
+}
+
+// ---- (8) Q34, p04–p06: `std/…` resolves against the stubs in both modes -------------------
+
+#[test]
+fn std_members_and_modules_resolve_against_the_stubs_in_both_modes() {
+    // p04: a member `std/http` does not have.
+    assert_eq!(
+        codes("use std/http\n\nfn main():\n    let r = http.nope()\n    print(\"x\")\n"),
+        vec![("K0401", 4)]
+    );
+    // p05: the stubs have no `std/task` module (spec §20.1 lists it; `Cell` is in the
+    // prelude).
+    assert_eq!(
+        codes("use std/task.{Cell}\n\nfn main():\n    let c = Cell.new(0)\n    print(\"x\")\n"),
+        vec![("K0401", 1)]
+    );
+    // p06: a module that does not exist.
+    assert_eq!(
+        codes("use std/nonexistent\n\nfn main():\n    print(\"x\")\n"),
+        vec![("K0401", 1)]
+    );
+    // A name a stub module does not export, imported directly.
+    assert_eq!(
+        codes("use std/http.{Nope}\n\nfn main():\n    print(\"x\")\n"),
+        vec![("K0401", 1)]
+    );
+    clean("use std/http.{Response}\nuse std/math\n\nfn main():\n    let x = math.sqrt(2.0)\n    print(\"{x}\")\n");
+}
+
+// ---- (9) §21.3 K0916: `print(a, b)` gets its machine fix, in the file's skin -------------
+
+#[test]
+fn print_with_several_arguments_is_k0916_with_a_machine_fix() {
+    let src = "fn main():\n    let a = 1\n    let b = \"x\"\n    print(a, b)\n";
+    assert_eq!(codes(src), vec![("K0916", 4)]);
+    let fix = first(src).fixes.first().cloned().expect("a fix");
+    assert_eq!(fix.applicability, Applicability::Machine);
+    let fixed = apply(src, &fix);
+    assert!(fixed.contains("    print(\"{a} {b}\")\n"), "{fixed}");
+    clean(&fixed);
+    // A plain string argument joins the text instead of becoming a hole (a string inside
+    // a hole is K0131).
+    let src = "fn main():\n    let total = 3\n    print(\"Total:\", total, \"items\")\n";
+    let fixed = apply(src, &first(src).fixes[0]);
+    assert!(fixed.contains("print(\"Total: {total} items\")"), "{fixed}");
+    clean(&fixed);
+    let src = "fn main():\n    print(\"a\", \"b\")\n";
+    let fixed = apply(src, &first(src).fixes[0]);
+    assert!(fixed.contains("print(\"a b\")"), "{fixed}");
+    clean(&fixed);
+    // Arabic: `،` separates the arguments, and `اطبع` keeps its spelling.
+    let ar = "دالة رئيسي():\n    ليكن a = 1\n    ليكن b = 2\n    اطبع(a، b)\n";
+    let d = first_skin(Skin::Ar, ar);
+    assert_eq!(d.code, "K0916");
+    let fixed = apply(ar, &d.fixes[0]);
+    assert!(fixed.contains("اطبع(\"{a} {b}\")"), "{fixed}");
+    clean_skin(Skin::Ar, &fixed);
+    // Franco.
+    let fr = "dala ra2isi():\n    khali a = 1\n    ektb(a, \"x\")\n";
+    let d = first_skin(Skin::Franco, fr);
+    assert_eq!(d.code, "K0916");
+    let fixed = apply(fr, &d.fixes[0]);
+    assert!(fixed.contains("ektb(\"{a} x\")"), "{fixed}");
+    clean_skin(Skin::Franco, &fixed);
+    // Arguments over several lines are joined on one line.
+    let src = "fn main():\n    let a = 1\n    print(\n        a,\n        \"x\",\n    )\n";
+    let fixed = apply(src, &first(src).fixes[0]);
+    assert!(fixed.contains("\"{a} x\""), "{fixed}");
+    clean(&fixed);
+    // A string literal inside an argument would end up inside a hole, a labelled argument
+    // has no place in the string, and a comment among the arguments would be deleted
+    // without any error saying so: no machine fix.
+    for src in [
+        "fn main():\n    let m = {\"k\": 1}\n    print(m.get(\"k\"), 2)\n",
+        "fn main():\n    print(1, end: \"\")\n",
+        "fn main():\n    let a = 1\n    print(a,  # the count\n        2)\n",
+    ] {
+        let d = first(src);
+        assert_eq!(d.code, "K0916", "{src}");
+        assert!(
+            d.fixes
+                .iter()
+                .all(|f| f.applicability == Applicability::Suggestion),
+            "{src}: {:?}",
+            d.fixes
+        );
+    }
+}
+
+// ---- (10) §5.9, §21.3 K0923: `Float` has `.pow`, so the fix of `a ** b` type-checks ------
+
+#[test]
+fn float_has_pow_so_the_power_fix_type_checks() {
+    // `a ** b` is written `a.pow(b)` (§5.9, §21.3), for a `Float` base too (Q36: the spec
+    // wins over the stubs).
+    clean("fn main():\n    let r = (2.0).pow(0.5)\n    let x = 3.0\n    let y = x.pow(2)\n    print(\"{r} {y}\")\n");
+    // The exponent is a `Float`; an `Int` variable does not convert (§9.1).
+    assert!(
+        !codes("fn main():\n    let n = 2\n    let y = (3.0).pow(n)\n    print(\"{y}\")\n")
+            .is_empty()
+    );
 }

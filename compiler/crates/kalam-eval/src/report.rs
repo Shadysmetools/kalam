@@ -750,7 +750,7 @@ pub fn run(sc: &Scorecard, opts: &Options) -> Result<Run, String> {
         opts.kalam.as_deref(),
         &seeded,
         &checkpoint_ids,
-        inputs.held.aggregate().map(|a| &a["typecheck"]),
+        inputs.held.aggregate(),
     );
     let m2_def = |id: &str| {
         sc.tiers
@@ -1404,7 +1404,9 @@ mod tests {
                 holdout: None,
                 run_props: false,
                 props_report: None,
-                kalam: None,
+                // never a real binary, even when the test runner has KALAM_BIN set (these
+                // tests describe a run without one)
+                kalam: Some("no-such-kalam-binary".into()),
             },
         )
         .unwrap()

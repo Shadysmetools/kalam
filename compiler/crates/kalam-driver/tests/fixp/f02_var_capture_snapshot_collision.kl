@@ -1,0 +1,6 @@
+fn main():
+    var n = 1
+    let f = fn() => n + 1
+    n = 5
+    let snapshot = 100
+    print("{f()} {snapshot} {n}")

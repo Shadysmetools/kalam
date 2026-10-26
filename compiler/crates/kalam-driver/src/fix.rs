@@ -2,36 +2,42 @@
 //!
 //! Only fixes with `applicability: machine` are applied; a `suggestion` needs a human or a
 //! model to choose, so it is never applied. The file is checked exactly as `kalam check FILE`
-//! checks it ([`crate::check_bytes`]), and the loop runs to a fixpoint:
+//! checks it ([`crate::check_bytes`]), and the loop runs to a fixpoint.
+//!
+//! **The acceptance rule** (FOUNDER-QUEUE Q42, the `D5.machine_fix_rate` rule): a fix is
+//! kept only if the file it gives has no error code the file did not have, at any stage
+//! (lexer, parser, name resolution, types), and fewer errors. When the file has no error,
+//! a fix must leave it with none and with fewer warnings. A fix that fails the rule is
+//! *withheld*: the text stays as it was, and the fix is shown as a suggestion. Each stage
+//! runs only when the ones before it are clean, so removing a stray `;` can reveal type
+//! errors the file had all along. Their codes are new to `kalam check`, so that fix is
+//! withheld too, and the person sees what it would expose before choosing it.
 //!
 //! 1. Check the text. Take the first machine fix of every diagnostic, in source order, and
 //!    keep those whose edits overlap no fix taken before (touching counts as overlapping,
 //!    so two zero-width edits at one offset never race); the rest wait for the next round.
-//! 2. Apply them together and check again. The round is kept only if the file got better:
-//!    it reaches a later pipeline [`Stage`], or it stays at the same stage with no error code
-//!    it did not have, and fewer errors (or as many errors and fewer findings in all). This is
-//!    the `D5.machine_fix_rate` rule, widened to stages. Each stage runs only when the ones
-//!    before it are clean, so the errors a later stage reports were hidden until now: a
-//!    stray `;` next to two type errors is still removed, although the file then shows two
-//!    errors instead of one. A fix that sends the file back to an earlier stage is undone.
-//! 3. If the round made the file worse, its fixes are tried one at a time instead, each kept
-//!    only if it alone makes the file better. A fix that makes it worse is remembered (by
-//!    code, title and inserted text) and not tried again.
-//! 4. Stop when no fix is left to try, when a text repeats, or after [`MAX_FIX_ROUNDS`].
+//! 2. Apply them together and check again. If the result passes the rule, keep the round.
+//! 3. Otherwise try the round's fixes one at a time; the first that passes on its own is
+//!    kept, and each one tried before it is withheld for now.
+//! 4. After a kept change, every fix is tried again (the text changed, so a fix withheld
+//!    before may pass now). Stop when a round keeps nothing, when a text repeats, or after
+//!    [`MAX_FIX_ROUNDS`]. Each kept change lowers the error count (or, with no error, the
+//!    warning count), so the loop ends; when it ends because no fix passes, `kalam fix` on
+//!    the result changes nothing.
 //!
 //! A file that is not valid UTF-8 is never changed: `check_bytes` reads each invalid run as
 //! U+FFFD, and writing that text back would silently replace the bytes.
 
 use std::collections::HashSet;
 
-use kalam_diagnostics::{Applicability, Diagnostic, Edit, Fix};
+use kalam_diagnostics::{Applicability, Edit, Fix};
 
-use crate::{check_bytes_staged, CheckedFile, NotKalamFile, Stage};
+use crate::{check_bytes, CheckedFile, NotKalamFile};
 
 /// The most check-and-apply rounds `kalam fix` runs on one file.
 pub const MAX_FIX_ROUNDS: usize = 32;
 
-/// One fix `kalam fix` applied (or tried and undid).
+/// One fix `kalam fix` applied (or withheld).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AppliedFix {
     pub code: &'static str,
@@ -39,6 +45,15 @@ pub struct AppliedFix {
     pub title: String,
     /// 1-based line of the diagnostic, in the text the fix was applied to.
     pub line: usize,
+}
+
+/// A machine fix that `kalam fix` withheld (module docs), and why.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct WithheldFix {
+    pub fix: AppliedFix,
+    /// The error codes that applying it alone would add, in order of first appearance.
+    /// Empty when it adds none but does not lower the error count.
+    pub new_codes: Vec<&'static str>,
 }
 
 /// The outcome of `kalam fix` on one file.
@@ -50,8 +65,9 @@ pub struct FixedFile {
     pub fixed: String,
     /// Kept fixes, in the order they were applied.
     pub applied: Vec<AppliedFix>,
-    /// Machine fixes that were tried and undone because the file got worse.
-    pub rejected: Vec<AppliedFix>,
+    /// Machine fixes of `fixed` that the acceptance rule withholds. In `checked`, each is
+    /// shown as a suggestion.
+    pub withheld: Vec<WithheldFix>,
     /// `kalam check` of `fixed`: what is left for a human.
     pub checked: CheckedFile,
     /// The file is not valid UTF-8, so it was left unchanged.
@@ -64,57 +80,74 @@ impl FixedFile {
     }
 }
 
-/// What a round compares: how far the pipeline got and what it found.
+/// What a round compares: the file's diagnostics and how many there are.
 struct Snapshot {
     checked: CheckedFile,
-    stage: Stage,
     errors: usize,
     all: usize,
-    error_codes: HashSet<&'static str>,
 }
 
 fn snapshot(path: &str, text: &str) -> Result<Snapshot, NotKalamFile> {
-    let (checked, stage) = check_bytes_staged(path, text.as_bytes())?;
-    let errors: Vec<&Diagnostic> = checked
-        .diagnostics
-        .iter()
-        .filter(|d| d.is_error())
-        .collect();
+    let checked = check_bytes(path, text.as_bytes())?;
     Ok(Snapshot {
-        stage,
-        errors: errors.len(),
+        errors: error_codes(&checked).count(),
         all: checked.diagnostics.len(),
-        error_codes: errors.iter().map(|d| d.code).collect(),
         checked,
     })
 }
 
-/// True when `after` is closer to a clean file than `before` (module docs, step 2).
-fn better(before: &Snapshot, after: &Snapshot) -> bool {
-    if after.stage != before.stage {
-        return after.stage > before.stage;
-    }
-    if after
-        .error_codes
+fn error_codes(checked: &CheckedFile) -> impl Iterator<Item = &'static str> + '_ {
+    checked
+        .diagnostics
         .iter()
-        .any(|c| !before.error_codes.contains(c))
-    {
+        .filter(|d| d.is_error())
+        .map(|d| d.code)
+}
+
+/// The error codes `after` reports that `before` does not, in order of first appearance.
+fn new_codes(before: &Snapshot, after: &Snapshot) -> Vec<&'static str> {
+    let old: HashSet<&str> = error_codes(&before.checked).collect();
+    let mut out: Vec<&'static str> = Vec::new();
+    for c in error_codes(&after.checked) {
+        if !old.contains(c) && !out.contains(&c) {
+            out.push(c);
+        }
+    }
+    out
+}
+
+/// The acceptance rule (module docs): `after` adds no error code and has fewer errors, or,
+/// with no error on either side, fewer warnings.
+fn better(before: &Snapshot, after: &Snapshot) -> bool {
+    if !new_codes(before, after).is_empty() {
         return false;
     }
-    (after.errors, after.all) < (before.errors, before.all)
+    if before.errors > 0 {
+        after.errors < before.errors
+    } else {
+        after.errors == 0 && after.all < before.all
+    }
+}
+
+/// What identifies a fix in a check: its code, title and inserted texts.
+type FixKey = (&'static str, String, Vec<String>);
+
+fn fix_key(code: &'static str, fix: &Fix) -> FixKey {
+    (
+        code,
+        fix.title.clone(),
+        fix.edits.iter().map(|e| e.insert.clone()).collect(),
+    )
 }
 
 /// A machine fix found in one round.
 struct Candidate {
     fix: Fix,
     info: AppliedFix,
-    key: (String, String, Vec<String>),
+    key: FixKey,
 }
 
-fn candidates(
-    snap: &Snapshot,
-    rejected: &HashSet<(String, String, Vec<String>)>,
-) -> Vec<Candidate> {
+fn candidates(snap: &Snapshot) -> Vec<Candidate> {
     let text = &snap.checked.text;
     let mut out = Vec::new();
     for d in &snap.checked.diagnostics {
@@ -128,14 +161,6 @@ fn candidates(
         if fix.edits.is_empty() || !edits_fit(text, &fix.edits) {
             continue;
         }
-        let key = (
-            d.code.to_string(),
-            fix.title.clone(),
-            fix.edits.iter().map(|e| e.insert.clone()).collect(),
-        );
-        if rejected.contains(&key) {
-            continue;
-        }
         let start = (d.span.start as usize).min(text.len());
         out.push(Candidate {
             info: AppliedFix {
@@ -143,8 +168,8 @@ fn candidates(
                 title: fix.title.clone(),
                 line: text[..start].matches('\n').count() + 1,
             },
+            key: fix_key(d.code, fix),
             fix: fix.clone(),
-            key,
         });
     }
     out
@@ -188,7 +213,7 @@ pub fn fix_file(path: &str, bytes: &[u8]) -> Result<FixedFile, NotKalamFile> {
         fixed: original.clone(),
         original,
         applied: Vec::new(),
-        rejected: Vec::new(),
+        withheld: Vec::new(),
         checked: CheckedFile {
             path: String::new(),
             skin: snap.checked.skin,
@@ -202,13 +227,8 @@ pub fn fix_file(path: &str, bytes: &[u8]) -> Result<FixedFile, NotKalamFile> {
         result.checked = snap.checked;
         return Ok(result);
     }
-    let mut rejected = HashSet::new();
-    let mut seen = HashSet::new();
     for _ in 0..MAX_FIX_ROUNDS {
-        if !seen.insert(snap.checked.text.clone()) {
-            break;
-        }
-        let found = candidates(&snap, &rejected);
+        let found = candidates(&snap);
         if found.is_empty() {
             break;
         }
@@ -233,22 +253,38 @@ pub fn fix_file(path: &str, bytes: &[u8]) -> Result<FixedFile, NotKalamFile> {
             snap = after;
             continue;
         }
-        // Step 3: one at a time; the first fix that helps on its own is kept.
-        let mut progressed = false;
+        // Step 3: one at a time; the first fix that passes on its own is kept.
+        let mut withheld = Vec::new();
+        let mut kept = None;
         for c in &found {
             let after = snapshot(path, &apply(&text, &[&c.fix]))?;
             if better(&snap, &after) {
-                result.applied.push(c.info.clone());
-                snap = after;
-                progressed = true;
+                kept = Some((c.info.clone(), after));
                 break;
             }
-            rejected.insert(c.key.clone());
-            result.rejected.push(c.info.clone());
+            withheld.push(WithheldFix {
+                fix: c.info.clone(),
+                new_codes: new_codes(&snap, &after),
+            });
         }
-        if !progressed {
-            break;
+        if let Some((info, after)) = kept {
+            // Step 4: the text changed, so every fix is tried again.
+            result.applied.push(info);
+            snap = after;
+            continue;
         }
+        // No fix passes on this text: each is shown as a suggestion.
+        let keys: HashSet<&FixKey> = found.iter().map(|c| &c.key).collect();
+        for d in &mut snap.checked.diagnostics {
+            let code = d.code;
+            for f in &mut d.fixes {
+                if f.applicability == Applicability::Machine && keys.contains(&fix_key(code, f)) {
+                    f.applicability = Applicability::Suggestion;
+                }
+            }
+        }
+        result.withheld = withheld;
+        break;
     }
     result.fixed = snap.checked.text.clone();
     result.checked = snap.checked;
@@ -258,16 +294,11 @@ pub fn fix_file(path: &str, bytes: &[u8]) -> Result<FixedFile, NotKalamFile> {
 fn snapshot_bytes(path: &str, bytes: &[u8]) -> Result<Snapshot, NotKalamFile> {
     match std::str::from_utf8(bytes) {
         Ok(text) => snapshot(path, text),
-        Err(_) => {
-            let (checked, stage) = check_bytes_staged(path, bytes)?;
-            Ok(Snapshot {
-                stage,
-                errors: 0,
-                all: 0,
-                error_codes: HashSet::new(),
-                checked,
-            })
-        }
+        Err(_) => Ok(Snapshot {
+            checked: check_bytes(path, bytes)?,
+            errors: 0,
+            all: 0,
+        }),
     }
 }
 
@@ -451,19 +482,30 @@ mod tests {
     }
 
     #[test]
-    fn a_fixed_syntax_error_can_reveal_a_type_error_that_is_fixed_next() {
-        // K0904 (parse) hides K1302 (types) until the `;` is gone.
-        let src = "fn head(xs: List[Int]) -> Result[Int, String]:\n    let n = xs.get(0)?;\n    return Ok(n)\n\nfn main():\n    let _ = head([2])\n";
+    fn a_syntax_fix_that_reveals_a_new_type_error_is_withheld() {
+        // K0904 (parse) hides K1302 (types): removing the `;` would add K1302, a code the
+        // file does not have, so the fix is withheld and shown as a suggestion (Q42).
+        let src = "fn head(xs: List[Int]) -> Result[Int, String]:
+    let n = xs.get(0)?;
+    return Ok(n)
+
+fn main():
+    let _ = head([2])
+";
         let f = fix("main.kl", src);
-        assert_eq!(codes(&f.applied), ["K0904", "K1302"]);
-        assert!(
-            f.fixed
-                .contains("let n = xs.get(0).ok_or(\"missing value\")?\n"),
-            "{}",
-            f.fixed
-        );
-        assert!(!f.checked.has_errors(), "{:?}", f.checked.diagnostics);
-        assert_eq!(fix("main.kl", &f.fixed).fixed, f.fixed);
+        assert!(!f.changed() && f.applied.is_empty(), "{}", f.fixed);
+        assert_eq!(f.withheld.len(), 1);
+        assert_eq!(f.withheld[0].fix.code, "K0904");
+        assert_eq!(f.withheld[0].new_codes, ["K1302"]);
+        let d = &f.checked.diagnostics[0];
+        assert_eq!(d.code, "K0904");
+        assert!(d
+            .fixes
+            .iter()
+            .all(|x| x.applicability == Applicability::Suggestion));
+        // A second run withholds it again and changes nothing.
+        let again = fix("main.kl", &f.fixed);
+        assert!(!again.changed() && again.withheld.len() == 1);
     }
 
     #[test]
@@ -490,8 +532,7 @@ mod tests {
     print(\"{a}\")
 ",
         );
-        assert_eq!(one_type_error.stage, Stage::Types);
-        // Same stage: fewer errors and no new code is better; a new code is not.
+        // Fewer errors and no new code is better; a new code is not.
         let clean = snap(
             "fn main():
     let a: Int = 1
@@ -506,34 +547,37 @@ mod tests {
     print(\"{a + b}\")
 ",
         );
-        assert_eq!(other_code.stage, Stage::Types);
         assert!(!better(&one_type_error, &other_code));
-        // Back to an earlier stage is worse, whatever the counts.
+        assert_eq!(new_codes(&one_type_error, &other_code), ["K0601"]);
+        // The stage does not matter: a syntax error that gives way to an error of another
+        // code (at a later stage) is a new code, and the other way round too.
         let syntax = snap(
             "fn main():
     let a: Int = 1;
     print(\"{a}\")
 ",
         );
-        assert_eq!(syntax.stage, Stage::Syntax);
         assert!(!better(&one_type_error, &syntax));
-        assert!(better(&syntax, &one_type_error));
+        assert!(!better(&syntax, &one_type_error));
+        // As many errors, same codes: not better.
+        assert!(!better(&one_type_error, &one_type_error));
     }
 
     #[test]
-    fn a_syntax_fix_is_kept_even_when_it_reveals_more_type_errors() {
-        // Two type errors hide behind one `;` (the parser stops the pipeline): removing it is
-        // progress, and the type errors are then reported.
+    fn a_syntax_fix_that_reveals_other_errors_is_withheld() {
+        // Two type errors hide behind one `;` (the parser stops the pipeline): removing it
+        // would show K0600 twice, a code the file does not have (Q42).
         let src = "fn main():
     let a: Int = \"x\"
     let b: Int = \"y\";
     print(\"{a} {b}\")
 ";
         let f = fix("main.kl", src);
-        assert_eq!(codes(&f.applied), ["K0904"]);
-        assert!(f.rejected.is_empty());
+        assert!(!f.changed() && f.applied.is_empty());
+        assert_eq!(f.withheld.len(), 1);
+        assert_eq!(f.withheld[0].new_codes, ["K0600"]);
         let left: Vec<&str> = f.checked.diagnostics.iter().map(|d| d.code).collect();
-        assert_eq!(left, ["K0600", "K0600"]);
+        assert_eq!(left, ["K0904"]);
     }
 
     #[test]

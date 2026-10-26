@@ -136,6 +136,23 @@ fn inside_any(spans: &[Span], start: u32, end: u32) -> bool {
     i > 0 && end <= spans[i - 1].end
 }
 
+/// The offset of the first character at or after `from` that is not white space or part
+/// of a `#` comment (the end of `text` if there is none).
+fn next_code(text: &str, from: u32) -> u32 {
+    let start = (from as usize).min(text.len());
+    let mut comment = false;
+    for (i, c) in text[start..].char_indices() {
+        if c == '\n' {
+            comment = false;
+        } else if !comment && c == '#' {
+            comment = true;
+        } else if !comment && !c.is_whitespace() {
+            return (start + i) as u32;
+        }
+    }
+    text.len() as u32
+}
+
 fn is_name_char(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 }
@@ -263,8 +280,16 @@ pub(crate) fn drop_cascades(
         .into_iter()
         .filter(|d| {
             let l = line(d);
-            // The lexer already said what is wrong with this line's indentation.
-            let layout = matches!(d.code, "K0120" | "K0252" | "K0255") && layout_lines.contains(&l);
+            // The lexer already said what is wrong with this line's indentation. K0252 sits
+            // on the `:` that opens the missing block, so the line in question is the next
+            // one holding code.
+            let layout_line = if d.code == "K0252" {
+                lines.line_of(next_code(text, d.span.end))
+            } else {
+                l
+            };
+            let layout = matches!(d.code, "K0120" | "K0252" | "K0255")
+                && layout_lines.contains(&layout_line);
             // An unterminated string swallowed the closing bracket.
             let swallowed = d.code == "K0251" && string_lines.contains(&l);
             !(layout || swallowed)

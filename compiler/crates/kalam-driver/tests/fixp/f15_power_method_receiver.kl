@@ -1,0 +1,4 @@
+fn main():
+    let xs = [1, 2]
+    let n = xs.len() ** 2 + xs.first().unwrap_or(0) ** 3
+    print("{n}")

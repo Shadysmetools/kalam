@@ -1,0 +1,6 @@
+fn main():
+    let a = 3
+    let x = -2 ** 2
+    let y = a + 1 ** 2
+    let z = 2 ** 3 ** 2
+    print("{x} {y} {z}")

@@ -29,7 +29,12 @@ const SECRET_TASK: &str = "t05-zebra-secret-name";
 const SECRET_TEXT: &str = "zebra-secret-greeting";
 
 fn store() -> PathBuf {
-    let s = temp_dir("store");
+    store_at("store")
+}
+
+/// The synthetic store in its own directory (tests run in parallel).
+fn store_at(tag: &str) -> PathBuf {
+    let s = temp_dir(tag);
     let en = format!("fn main():\n    print(\"{SECRET_TEXT}\")\n");
     let ar = format!("دالة رئيسي():\n    اطبع(\"{SECRET_TEXT}\")\n");
     let fr = format!("dala ra2isi():\n    ektb(\"{SECRET_TEXT}\")\n");
@@ -99,7 +104,7 @@ fn child_prints_aggregates_only() {
 /// the one held-out task's three files are checked.
 #[test]
 fn child_reports_a_typecheck_aggregate_with_counts_only() {
-    let s = store();
+    let s = store_at("typecheck");
     let runner = Runner {
         exe: PathBuf::from(env!("CARGO_BIN_EXE_kalam-eval")),
         store: s.clone(),
@@ -139,6 +144,75 @@ fn child_reports_a_typecheck_aggregate_with_counts_only() {
     for (k, x) in t.as_object().unwrap() {
         assert!(x.is_u64() || x.is_boolean() || k == "status", "{k}: {x}");
     }
+}
+
+/// The held-out interpreter aggregate (`roadmap.M2.interpreter`): counts only. Without a
+/// `kalam` binary it is not measurable; with one (`KALAM_BIN`) the held-out T05 task's three
+/// files run on `kalam run --interp` against its `expected.txt`.
+#[test]
+fn child_reports_an_interpreter_aggregate_with_counts_only() {
+    let s = store_at("interp");
+    let runner = Runner {
+        exe: PathBuf::from(env!("CARGO_BIN_EXE_kalam-eval")),
+        store: s.clone(),
+        include_m2: true,
+        kalam: Some(s.join("no-such-kalam.exe")),
+    };
+    let missing = holdout::run_child(&runner, &repo_root());
+    let real = std::env::var_os("KALAM_BIN").map(|k| {
+        holdout::run_child(
+            &Runner {
+                kalam: Some(PathBuf::from(k)),
+                ..runner.clone()
+            },
+            &repo_root(),
+        )
+    });
+    // a wrong expected output must count as a held-out failure, never leak the output
+    let wrong = std::env::var_os("KALAM_BIN").map(|k| {
+        write(
+            &s,
+            &format!("corpus/{SECRET_TASK}/expected.txt"),
+            "kind: run\n--- stdout\nzebra-other-output\n",
+        );
+        holdout::run_child(
+            &Runner {
+                kalam: Some(PathBuf::from(k)),
+                ..runner.clone()
+            },
+            &repo_root(),
+        )
+    });
+    let _ = fs::remove_dir_all(&s);
+    let v = missing.aggregate().expect("measured").clone();
+    assert_eq!(v["interpreter"]["status"], "not_measurable", "{v}");
+    assert_eq!(v["interpreter"]["files"], 0, "{v}");
+    let (Some(real), Some(wrong)) = (real, wrong) else {
+        eprintln!("KALAM_BIN is not set: the measured half of this test is skipped");
+        return;
+    };
+    for held in [&real, &wrong] {
+        let text = held.to_json().to_string();
+        for secret in [SECRET_TASK, SECRET_TEXT, "zebra", "main.kl", "t05", "src/"] {
+            assert!(!text.contains(secret), "leaked {secret}: {text}");
+        }
+        let t = &held.aggregate().expect("measured")["interpreter"];
+        for (k, x) in t.as_object().unwrap() {
+            assert!(x.is_u64() || x.is_boolean() || k == "status", "{k}: {x}");
+        }
+    }
+    let t = &real.aggregate().unwrap()["interpreter"];
+    assert_eq!(t["status"], "measured", "{t}");
+    assert_eq!(t["interpreter"], true, "{t}");
+    assert_eq!(t["files"], 3, "{t}");
+    assert_eq!(t["files_passed"], 3, "{t}");
+    assert_eq!(t["files_failed"], 0, "{t}");
+    assert_eq!(t["unchecked"], 0, "{t}");
+    assert_eq!(t["tasks"], 1, "{t}");
+    let w = &wrong.aggregate().unwrap()["interpreter"];
+    assert_eq!(w["files"], 3, "{w}");
+    assert_eq!(w["files_failed"], 3, "{w}");
+    assert_eq!(w["files_passed"], 0, "{w}");
 }
 
 #[test]

@@ -1424,6 +1424,22 @@
       "doc": "True when `self` and `other` differ by at most `tol`."
     },
     {
+      "path": "Float.pow",
+      "module": "std/prelude",
+      "kind": "method",
+      "name": "pow",
+      "owner": "Float",
+      "receiver": "impl Float",
+      "signature": "fn pow(self, exponent: Float) -> Float",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`self` raised to the power `exponent` (Kalam has no `**`), with IEEE semantics, as `math.pow`: `(2.0).pow(0.5)` is the square root of 2."
+    },
+    {
       "path": "Float.to_int",
       "module": "std/prelude",
       "kind": "method",

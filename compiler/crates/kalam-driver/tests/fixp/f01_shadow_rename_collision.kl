@@ -1,0 +1,7 @@
+fn main():
+    let total = 1
+    if total > 0:
+        let total = 2
+        print("{total}")
+    let total_2 = 5
+    print("{total} {total_2}")

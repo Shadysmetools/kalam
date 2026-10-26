@@ -2321,7 +2321,8 @@ impl<'c, 'p> BodyCx<'c, 'p> {
             // `print[T: Show](value: T)` (§9.7: `Show` is what `print` uses).
             LangItem::Print => {
                 if args.len() > 1 {
-                    self.err(e.span, TypeErrorKind::PrintArity);
+                    let fixes = self.print_fix(args).into_iter().collect();
+                    self.err_fix(e.span, TypeErrorKind::PrintArity, fixes);
                 } else {
                     arity(self, 1);
                 }

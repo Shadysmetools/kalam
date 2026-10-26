@@ -667,6 +667,10 @@ pub struct HirProgram {
     /// The span of the method name in each `x.name(…)` (`MethodCall`), by `(owner,
     /// ExprId)`: K1108's fix closes a parenthesis right after it (FOUNDER-QUEUE Q35).
     pub method_names: HashMap<(DefId, ExprId), Span>,
+    /// The `#` and `##` comments of each file outside the stdlib, in source order: a fix
+    /// that rewrites a stretch of code with a comment in it would delete the comment
+    /// (K0916's fix then stays a suggestion).
+    pub comments: HashMap<FileId, Vec<Span>>,
     /// Every module of the program is loaded (none is opaque), so a variant name that no
     /// enum has is known to be undefined (the checker's K0401 for `.V`, Q34).
     pub complete: bool,

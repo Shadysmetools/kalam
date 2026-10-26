@@ -19,16 +19,18 @@
 //! import opaque), exactly as before, and reports what that finds. When that is clean, the
 //! file is type-checked against the stdlib signature stubs, which this crate embeds
 //! (`stdlib/src`, the same text `kalam check --std` reads): the file is resolved a second
-//! time together with them, so `xs.len()` and `use std/http` have their real types. If
-//! that second resolution finds an error the first did not (a stub name the file reuses),
-//! the type check is skipped rather than guessed. Imports of other modules stay opaque.
+//! time together with them, with the stdlib loaded as project mode loads it, so `xs.len()`
+//! and `use std/http` have their real types, and a `std/…` module or member the stubs do
+//! not have is K0401 in both modes (FOUNDER-QUEUE Q34). What that second resolution finds
+//! in the file is reported, and the type check then waits for it. Imports of the file's
+//! other package modules stay opaque.
 
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
 mod fix;
 mod run;
-pub use fix::{fix_file, unified_diff, AppliedFix, FixedFile, MAX_FIX_ROUNDS};
+pub use fix::{fix_file, unified_diff, AppliedFix, FixedFile, WithheldFix, MAX_FIX_ROUNDS};
 pub use run::{run_interp, RunOutcome, MAX_CALL_DEPTH};
 
 use kalam_base::{FileId, LineIndex, Skin};
@@ -205,11 +207,39 @@ fn typecheck_single(
     let Some(std) = embedded_stdlib() else {
         return diagnostics;
     };
+    let sources = with_std(skin, &parsed.ast, std);
+    let (program, resolved) = resolve_with_std(&sources);
+    if resolved.iter().any(Diagnostic::is_error) {
+        // What resolving against the stubs finds in the file is reported, as project mode
+        // reports it (FOUNDER-QUEUE Q34), and the type check waits for it. An error in a
+        // stub itself would be a broken stdlib: then the type check is skipped silently.
+        let (own, stubs): (Vec<Diagnostic>, Vec<Diagnostic>) =
+            resolved.into_iter().partition(|d| d.file == FileId(0));
+        if stubs.iter().any(Diagnostic::is_error) {
+            return diagnostics;
+        }
+        return append_resolved(diagnostics, own);
+    }
+    // Type checking plus suspension inference (K1401, K1402, W0421; spec §15).
+    let typed = kalam_effects::diagnose_against_std(&program, &sources)
+        .into_iter()
+        .filter(|d| d.file == FileId(0))
+        .collect();
+    append_resolved(diagnostics, typed)
+}
+
+/// The single-file program: the file as module `main` (file 0), then the embedded stdlib
+/// stubs (files 1, 2, …).
+pub(crate) fn with_std<'a>(
+    skin: Skin,
+    ast: &'a kalam_ast::Ast,
+    std: &'a StdModules,
+) -> Vec<kalam_resolve::SourceModule<'a>> {
     let mut sources = vec![kalam_resolve::SourceModule {
         path: kalam_resolve::ModulePath("main".to_string()),
         file: FileId(0),
         skin,
-        ast: &parsed.ast,
+        ast,
         std: false,
     }];
     for (i, (path, out)) in std.iter().enumerate() {
@@ -221,19 +251,21 @@ fn typecheck_single(
             std: true,
         });
     }
-    // `std_loaded: false`: a `std/...` module the stubs do not have stays opaque, as in the
-    // plain single-file resolution.
-    let (program, resolved) =
-        kalam_resolve::resolve_program(&sources, &kalam_resolve::Options::default());
-    if resolved.iter().any(Diagnostic::is_error) {
-        return diagnostics;
-    }
-    // Type checking plus suspension inference (K1401, K1402, W0421; spec §15).
-    let typed = kalam_effects::diagnose_against_std(&program, &sources)
-        .into_iter()
-        .filter(|d| d.file == FileId(0))
-        .collect();
-    append_resolved(diagnostics, typed)
+    sources
+}
+
+/// Resolves [`with_std`]'s program the way project mode resolves a package with the stdlib
+/// directory (FOUNDER-QUEUE Q34): the stdlib is loaded, so a `std/…` module the stubs do
+/// not have, or a member a stub module lacks, is K0401. The file's own package is not
+/// loaded, so its imports of other package modules stay opaque.
+pub(crate) fn resolve_with_std(
+    sources: &[kalam_resolve::SourceModule<'_>],
+) -> (kalam_resolve::Program, Vec<Diagnostic>) {
+    let options = kalam_resolve::Options {
+        std_loaded: true,
+        ..kalam_resolve::Options::default()
+    };
+    kalam_resolve::resolve_program(sources, &options)
 }
 
 /// `earlier` followed by the resolver's findings, minus any that repeat an earlier finding
@@ -374,57 +406,22 @@ pub fn check_project(vfs: &dyn Vfs, root: &str, options: &ProjectOptions) -> Vec
 /// unreadable. The checked text has U+FFFD in place of each invalid run, so every span and
 /// line points into it.
 pub fn check_bytes(path: &str, bytes: &[u8]) -> Result<CheckedFile, NotKalamFile> {
-    check_bytes_staged(path, bytes).map(|(checked, _)| checked)
-}
-
-/// How far [`check_bytes`] got: each stage runs only when the ones before it found no
-/// error, so a file's errors all come from one stage (`kalam fix` compares them).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) enum Stage {
-    /// Source text, lexer or parser errors.
-    Syntax,
-    /// Name-resolution errors.
-    Resolve,
-    /// Type, effect, capability or sink errors.
-    Types,
-    /// No error.
-    Clean,
-}
-
-/// [`check_bytes`], and the [`Stage`] the file's errors come from.
-pub(crate) fn check_bytes_staged(
-    path: &str,
-    bytes: &[u8],
-) -> Result<(CheckedFile, Stage), NotKalamFile> {
     let skin = Skin::from_path(path).ok_or_else(|| NotKalamFile(path.to_string()))?;
     let lexed = kalam_lexer::lex_bytes(bytes, skin);
     let text = lexed.text.as_str();
     let mut parsed = kalam_parser::parse(text, &lexed.lexed, skin, FileId(0));
     let parser = std::mem::take(&mut parsed.diagnostics);
-    let errors = |ds: &[Diagnostic]| ds.iter().any(Diagnostic::is_error);
     let diagnostics =
         kalam_parser::merge_diagnostics(text, lexed.lexed.diagnostics.clone(), parser);
-    let mut stage = if errors(&diagnostics) {
-        Stage::Syntax
-    } else {
-        Stage::Clean
-    };
     let diagnostics = resolve_single(skin, &parsed, diagnostics);
-    if stage == Stage::Clean && errors(&diagnostics) {
-        stage = Stage::Resolve;
-    }
     let diagnostics = typecheck_single(skin, &parsed, diagnostics);
-    if stage == Stage::Clean && errors(&diagnostics) {
-        stage = Stage::Types;
-    }
-    let checked = CheckedFile {
+    Ok(CheckedFile {
         path: path.to_string(),
         skin,
         text: text.to_string(),
         lines: LineIndex::new(text),
         diagnostics,
-    };
-    Ok((checked, stage))
+    })
 }
 
 /// Why `kalam fmt` or `kalam convert` produced no text for a file.

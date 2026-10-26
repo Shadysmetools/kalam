@@ -18,6 +18,11 @@
 //! **Recovery.** A mismatching method keeps its written signature for checking its own
 //! body, but every caller sees the trait's signature (the contract), so the root cause is
 //! reported once, at the impl, and not again at each call.
+//!
+//! **Fewer bounds (FOUNDER-QUEUE Q41).** A method that requires less of its type parameters
+//! than the trait is no K1107, and its body is checked against what it wrote; but every
+//! caller, a concrete receiver included, sees the trait's bounds, so `First(…).pick(xs)`
+//! and a call through `P: Picker` accept the same arguments.
 
 use kalam_base::Span;
 use kalam_resolve::DefId;
@@ -248,6 +253,11 @@ impl ImplCx<'_> {
         if detail.is_some() {
             self.out.contracts.push((m, contract));
             self.out.selfs.push((m, tf.has_self));
+        } else if let Some(bounded) = with_trait_bounds(is, &contract, ni, kt) {
+            // FOUNDER-QUEUE Q41: the impl may require less of its type parameters than the
+            // trait, but every caller, a concrete receiver included, still proves what the
+            // trait requires. The impl's body keeps its own signature.
+            self.out.contracts.push((m, bounded));
         }
         detail
     }
@@ -309,4 +319,29 @@ impl ImplCx<'_> {
 /// Suspension bits are `kalam-effects`' and are not compared.
 fn same(a: &Ty, b: &Ty) -> bool {
     InferCtx::new().unify(a, b).is_ok()
+}
+
+/// The impl method's scheme `is` with the bounds of its own `kt` type parameters (after
+/// the impl's `ni`) taken from the trait's `contract`, when the impl declares fewer of
+/// them; `None` when they are the same. Only the bounds change: the types and suspension
+/// bits stay the impl's (they already match the trait's).
+fn with_trait_bounds(is: &Scheme, contract: &Scheme, ni: usize, kt: usize) -> Option<Scheme> {
+    let fewer = (ni..ni + kt).any(|j| match (is.generics.get(j), contract.generics.get(j)) {
+        (Some(own), Some(trait_param)) => {
+            trait_param.bounds.iter().any(|b| !own.bounds.contains(b))
+        }
+        _ => false,
+    });
+    if !fewer {
+        return None;
+    }
+    let mut bounded = is.clone();
+    for j in ni..ni + kt {
+        if let (Some(own), Some(trait_param)) =
+            (bounded.generics.get_mut(j), contract.generics.get(j))
+        {
+            own.bounds = trait_param.bounds.clone();
+        }
+    }
+    Some(bounded)
 }
