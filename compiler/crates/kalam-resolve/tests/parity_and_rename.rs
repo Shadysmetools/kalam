@@ -151,28 +151,34 @@ fn a_shadowing_local_is_renamed_with_its_uses() {
 }
 
 #[test]
-fn the_rename_follows_the_skins_convention() {
-    // §10.1: in Arabic a value takes the article (`الشكل: شكل`), in Franco `el_`.
+fn the_rename_uses_one_suffix_rule_in_every_skin() {
+    // FOUNDER-QUEUE Q51: `_2`, `_3`, … in every skin, so a fixed file converts to the same
+    // fixed file in another skin (no Arabic article, no Franco `el_`, no English lowercase).
     assert_eq!(
         renamed(
             "a.ar.kl",
             "هيكل شكل:\n    ضلع: عدد\n\nدالة رئيسي():\n    ليكن شكل = 1\n    اطبع(\"{شكل}\")\n"
         ),
-        "هيكل شكل:\n    ضلع: عدد\n\nدالة رئيسي():\n    ليكن الشكل = 1\n    اطبع(\"{الشكل}\")\n"
+        "هيكل شكل:\n    ضلع: عدد\n\nدالة رئيسي():\n    ليكن شكل_2 = 1\n    اطبع(\"{شكل_2}\")\n"
     );
     assert_eq!(
         renamed(
             "a.franco.kl",
             "dala ra2isi():\n    khali kotob = 1\n    law kotob > 0:\n        khali kotob = 2\n        ektb(\"{kotob}\")\n"
         ),
-        "dala ra2isi():\n    khali kotob = 1\n    law kotob > 0:\n        khali el_kotob = 2\n        ektb(\"{el_kotob}\")\n"
+        "dala ra2isi():\n    khali kotob = 1\n    law kotob > 0:\n        khali kotob_2 = 2\n        ektb(\"{kotob_2}\")\n"
     );
-    // A Latin name in an Arabic file gets no Arabic article (that would mix scripts).
     let fixed = renamed(
         "a.ar.kl",
         "دالة رئيسي():\n    ليكن total = 1\n    إذا total > 0:\n        ليكن total = 2\n        اطبع(\"{total}\")\n",
     );
     assert!(fixed.contains("ليكن total_2 = 2"), "{fixed}");
+    // The suffix skips names the file already has, the same way in every skin.
+    let fixed = renamed(
+        "a.franco.kl",
+        "dala ra2isi():\n    khali total = 1\n    law total > 0:\n        khali total = 2\n        ektb(\"{total}\")\n    khali total_2 = 5\n    ektb(\"{total} {total_2}\")\n",
+    );
+    assert!(fixed.contains("khali total_3 = 2"), "{fixed}");
 }
 
 #[test]
@@ -198,14 +204,14 @@ fn a_rename_that_cannot_be_mechanical_is_only_suggested_or_absent() {
 }
 
 #[test]
-fn types_get_a_number_and_functions_follow_the_value_convention() {
-    // One namespace (DR-11): a function named like a type is renamed the way a value is
-    // (lowercase in English, §13.3); a second type of one name just gets a number.
+fn types_and_functions_get_a_number() {
+    // One namespace (DR-11): a function named like a type, and a second type of one name,
+    // get a number (Q51: one rule for every declaration in every skin).
     let fixed = renamed(
         "a.kl",
         "type Shape:\n    a: Int\n\nfn Shape() -> Int => 1\n\nfn main():\n    print(\"x\")\n",
     );
-    assert!(fixed.contains("fn shape() -> Int => 1"), "{fixed}");
+    assert!(fixed.contains("fn Shape_2() -> Int => 1"), "{fixed}");
     let fixed = renamed(
         "a.kl",
         "type Point:\n    x: Int\n\ntype Point:\n    y: Int\n\nfn main():\n    print(\"x\")\n",

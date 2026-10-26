@@ -121,8 +121,9 @@ pub fn check_source(path: &str, text: &str) -> Result<CheckedFile, NotKalamFile>
     // order: typeck → effects → sinks/caps.
     let mut parsed = kalam_parser::parse_source(text, skin, FileId(0));
     let diagnostics = std::mem::take(&mut parsed.diagnostics);
+    let parse = diagnostics.clone();
     let diagnostics = resolve_single(skin, &parsed, diagnostics);
-    let diagnostics = typecheck_single(skin, &parsed, diagnostics);
+    let diagnostics = typecheck_single(skin, &parsed, &parse, diagnostics);
     Ok(CheckedFile {
         path: path.to_string(),
         skin,
@@ -170,6 +171,7 @@ const STDLIB: &[(&str, &str)] = &[
     ("set", include_str!("../../../../stdlib/src/set.kl")),
     ("sql", include_str!("../../../../stdlib/src/sql.kl")),
     ("string", include_str!("../../../../stdlib/src/string.kl")),
+    ("task", include_str!("../../../../stdlib/src/task.kl")),
     ("time", include_str!("../../../../stdlib/src/time.kl")),
 ];
 
@@ -194,14 +196,16 @@ fn embedded_stdlib() -> Option<&'static StdModules> {
         .as_ref()
 }
 
-/// The type checker on one file (see the crate docs), after a clean lex, parse and
-/// resolve. Its findings come after the earlier ones, in source order.
+/// The type checker on one file (see the crate docs), after a clean lex and parse
+/// (`parse`: their findings) and resolve. Its findings come after the earlier ones, in
+/// source order.
 fn typecheck_single(
     skin: Skin,
     parsed: &kalam_parser::ParseOutput,
+    parse: &[Diagnostic],
     diagnostics: Vec<Diagnostic>,
 ) -> Vec<Diagnostic> {
-    if diagnostics.iter().any(Diagnostic::is_error) {
+    if parse.iter().any(Diagnostic::is_error) {
         return diagnostics;
     }
     let Some(std) = embedded_stdlib() else {
@@ -218,7 +222,13 @@ fn typecheck_single(
         if stubs.iter().any(Diagnostic::is_error) {
             return diagnostics;
         }
-        return append_resolved(diagnostics, own);
+        // In project mode's order: the lexer's and parser's findings, then resolve's, then
+        // anything only the opaque pass found. So a missing stdlib module or member is
+        // reported even when the file has other name errors.
+        return append_resolved(append_resolved(parse.to_vec(), own), diagnostics);
+    }
+    if diagnostics.iter().any(Diagnostic::is_error) {
+        return diagnostics;
     }
     // Type checking plus suspension inference (K1401, K1402, W0421; spec §15).
     let typed = kalam_effects::diagnose_against_std(&program, &sources)
@@ -413,8 +423,9 @@ pub fn check_bytes(path: &str, bytes: &[u8]) -> Result<CheckedFile, NotKalamFile
     let parser = std::mem::take(&mut parsed.diagnostics);
     let diagnostics =
         kalam_parser::merge_diagnostics(text, lexed.lexed.diagnostics.clone(), parser);
+    let parse = diagnostics.clone();
     let diagnostics = resolve_single(skin, &parsed, diagnostics);
-    let diagnostics = typecheck_single(skin, &parsed, diagnostics);
+    let diagnostics = typecheck_single(skin, &parsed, &parse, diagnostics);
     Ok(CheckedFile {
         path: path.to_string(),
         skin,

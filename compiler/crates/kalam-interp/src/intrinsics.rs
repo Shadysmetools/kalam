@@ -21,7 +21,7 @@ use std::rc::Rc;
 use kalam_base::Span;
 use kalam_ir::{Callee, ExprKind, Program, Stmt};
 
-use crate::num::{self, BigInt, Decimal, ParseFail, Rounding};
+use crate::num::{self, BigInt, DecPowFail, Decimal, DivFail, ParseFail, Rounding};
 use crate::value::{compare, OrderedMap, Value};
 use crate::{internal, Ctrl, Ev, Interp, InterpError};
 
@@ -133,10 +133,12 @@ const TABLE: &[(&str, Intrinsic)] = &[
     ("BigInt.from", big_from),
     ("BigInt.parse", big_parse),
     ("BigInt.to_int", big_to_int),
+    ("BigInt.pow", big_pow),
     ("Decimal.from", dec_from),
     ("Decimal.parse", str_to_decimal),
     ("Decimal.div", dec_div),
     ("Decimal.round", dec_round),
+    ("Decimal.pow", dec_pow),
     // Secret (std/prelude): the wrapped value itself; only `Show` differs (lowering).
     ("Secret.new", identity),
     ("Secret.expose", identity),
@@ -1095,6 +1097,16 @@ fn big_to_int(_: &mut Interp<'_, '_>, a: Vec<Value>, _: Span) -> Ev<Value> {
     args!(a, "BigInt.to_int", [Value::BigInt(b)] => Ok(option(b.to_i64().map(Value::Int))))
 }
 
+fn big_pow(it: &mut Interp<'_, '_>, a: Vec<Value>, sp: Span) -> Ev<Value> {
+    args!(a, "BigInt.pow", [Value::BigInt(b), Value::Int(e)] => match b.pow(*e) {
+        Ok(r) => Ok(Value::BigInt(Rc::new(r))),
+        Err(num::PowFail::Overflow) => it.panic(num::BIG_POW_TOO_LARGE, sp),
+        Err(num::PowFail::NegativeExponent) => {
+            it.panic(format!("negative exponent {e} in `BigInt.pow`"), sp)
+        }
+    })
+}
+
 fn dec_from(_: &mut Interp<'_, '_>, a: Vec<Value>, _: Span) -> Ev<Value> {
     args!(a, "Decimal.from", [Value::Int(x)] => Ok(Value::Decimal(Rc::new(Decimal::from_i64(*x)))))
 }
@@ -1122,8 +1134,8 @@ fn dec_div(it: &mut Interp<'_, '_>, a: Vec<Value>, sp: Span) -> Ev<Value> {
         let mode = rounding(it, r)?;
         match x.div(y, *scale, mode) {
             Ok(d) => Ok(Value::Decimal(Rc::new(d))),
-            Err(true) => it.panic("division by zero", sp),
-            Err(false) => it.panic("Decimal overflow (more than 34 digits)", sp),
+            Err(DivFail::DivisionByZero) => it.panic("division by zero", sp),
+            Err(DivFail::Overflow(f)) => it.panic(f.message(), sp),
         }
     })
 }
@@ -1132,8 +1144,18 @@ fn dec_round(it: &mut Interp<'_, '_>, a: Vec<Value>, sp: Span) -> Ev<Value> {
     args!(a, "Decimal.round", [Value::Decimal(x), Value::Int(scale), r] => {
         let mode = rounding(it, r)?;
         match x.round(*scale, mode) {
-            Some(d) => Ok(Value::Decimal(Rc::new(d))),
-            None => it.panic("Decimal overflow (more than 34 digits)", sp),
+            Ok(d) => Ok(Value::Decimal(Rc::new(d))),
+            Err(f) => it.panic(f.message(), sp),
+        }
+    })
+}
+
+fn dec_pow(it: &mut Interp<'_, '_>, a: Vec<Value>, sp: Span) -> Ev<Value> {
+    args!(a, "Decimal.pow", [Value::Decimal(x), Value::Int(e)] => match x.pow(*e) {
+        Ok(d) => Ok(Value::Decimal(Rc::new(d))),
+        Err(DecPowFail::Overflow(f)) => it.panic(f.message(), sp),
+        Err(DecPowFail::NegativeExponent) => {
+            it.panic(format!("negative exponent {e} in `Decimal.pow`"), sp)
         }
     })
 }

@@ -138,6 +138,48 @@ pub const TEMPLATES: &[[&str; 3]] = &[
         "da beyo2a3: 2esma 3ala sefr",
     ],
     [
+        "this panics: modulo by zero",
+        "هذا ينهار: باقي قسمة على صفر",
+        "da beyo2a3: ba2y 2esma 3ala sefr",
+    ],
+    // The two decimal128 traps have separate messages (FOUNDER-QUEUE Q48).
+    [
+        "this panics: {core_decimal} overflow (more than 34 digits)",
+        "هذا ينهار: تجاوز لسعة {core_decimal} (أكثر من 34 رقمًا)",
+        "da beyo2a3: overflow f {core_decimal} (aktar men 34 rakam)",
+    ],
+    [
+        "this panics: {core_decimal} exponent out of range",
+        "هذا ينهار: أُسّ {core_decimal} خارج المدى",
+        "da beyo2a3: el os bta3 {core_decimal} bara el mada",
+    ],
+    [
+        "this panics: negative exponent {0} in `{1}`",
+        "هذا ينهار: أُسّ سالب {0} في `{1}`",
+        "da beyo2a3: os salib {0} f `{1}`",
+    ],
+    [
+        "this panics: BigInt.pow result too large (65536 bits or more)",
+        "هذا ينهار: ناتج BigInt.pow أكبر من اللازم (65536 بت أو أكثر)",
+        "da beyo2a3: natiget BigInt.pow kebeera awy (65536 bit aw aktar)",
+    ],
+    // K0126 on a `Float` or `Decimal` literal: why it does not fit (Q48, Q52).
+    [
+        "this is beyond the largest `{core_float}` (about 1.8e308)",
+        "هذا أكبر من أكبر قيمة في `{core_float}` (حوالي 1.8e308)",
+        "da akbar men akbar qeema f `{core_float}` (ta2reeban 1.8e308)",
+    ],
+    [
+        "this needs more than 34 significant digits",
+        "هذا يحتاج إلى أكثر من 34 رقمًا معنويًا",
+        "da me7tag aktar men 34 rakam mohem",
+    ],
+    [
+        "{core_decimal} exponent out of range",
+        "أُسّ {core_decimal} خارج المدى",
+        "el os bta3 {core_decimal} bara el mada",
+    ],
+    [
         "a module constant can't hold the capability `{0}`",
         "لا يحمل ثابت الوحدة الصلاحية `{0}`",
         "sabet el module mayshelsh el capability `{0}`",

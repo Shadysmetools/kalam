@@ -30,3 +30,9 @@ impl Decimal:
     ## The value rounded to `scale` fraction digits.
     @builtin
     export fn round(self, scale: Int, rounding: Rounding = .HalfEven) -> Decimal => panic("builtin")
+
+    ## `self` raised to the power `exponent` (Kalam has no `**`), exactly: `x.pow(3)` is
+    ## `x * x * x`. `x.pow(0)` is 1. Panics on a negative exponent, and when the result
+    ## needs more than 34 digits or its exponent is out of range.
+    @builtin
+    export fn pow(self, exponent: Int) -> Decimal => panic("builtin")

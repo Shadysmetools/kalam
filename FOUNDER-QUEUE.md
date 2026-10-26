@@ -58,3 +58,6 @@ Minor design forks the loop decided provisionally. Each one is reversible. Confi
 | Q50 | Machine fixes for warnings in a file that has errors | Allowed when they add no new code and don't raise the error count | M2 iter 5 |
 | Q51 | K0405 rename suffix differs by skin | One rule in every skin (`_2`, `_3`, …), so a fixed file converts to the same fixed file in another skin | M2 iter 5 |
 | Q52 | Float literals that overflow to infinity (`1e7000`) | K0126, like out-of-range Decimal literals | M2 iter 5 |
+| Q53 | Unknown string tags (`foo"x"`) were reported as generic K0250 | New code K0260 "unknown string tag", with its own message (built-in tags listed). Glued ASCII-lowercase words before a quote count as tags | M2 iter 6 verifier |
+| Q54 | Converter workaround that kept chained numeric indices in ASCII digits | Remove it: the lexer now accepts `ت.٠.١` (DR-26) | M2 iter 6 |
+| Q55 | Single-file `kalam check` diagnostics after an earlier error | Report the full set, in the same order as project mode (identical code lists in both modes) | M2 iter 6 |

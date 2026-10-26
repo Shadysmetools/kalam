@@ -62,8 +62,8 @@ use crate::error::{tag_of, TypeError, TypeErrorKind};
 use crate::exhaust;
 use crate::hir::{
     self, Arg, Arm, AssignOp, BinOp, Block, BodyValue, BuiltinType, Expr, ExprId, ExprKind, FnDecl,
-    GenericParamDecl, HirProgram, IfBranch, ItemKind, LangItem, LocalId, Pat, PatKind, Stmt,
-    StmtKind, StrPart, TraitBound, TypeKind, UnOp,
+    GenericParamDecl, HirProgram, IfBranch, IntLit, ItemKind, LangItem, LocalId, Pat, PatKind,
+    Stmt, StmtKind, StrPart, TraitBound, TypeKind, UnOp,
 };
 use crate::traits::{
     erase_vars, Answer, BuiltinTrait, CoherenceError, ImplDecl, MethodCandidate, TraitDecl,
@@ -710,7 +710,8 @@ impl Collector<'_> {
                     self.absorb(id, out);
                     // §9.4: field defaults are constant expressions (§13.4, K1204).
                     for d in r.fields.iter().filter_map(|f| f.default.as_ref()) {
-                        let found = const_eval.field_default(&self.res, id, file, d, clean);
+                        let found =
+                            const_eval.field_default(self.prog, &self.res, id, file, d, clean);
                         if let Some(e) = found {
                             self.res.errors.push(e);
                         }
@@ -1572,16 +1573,20 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         let exp = self.infer.shallow(expected);
         match &e.kind {
             ExprKind::Int(v) => {
-                let t = self.int_literal(*v, false, &exp, e.span);
+                let t = self.int_literal(v, false, &exp, e.span);
                 self.coerce_expr(e, &t, &exp);
                 self.record(e, t)
             }
-            ExprKind::Float(_) => {
+            ExprKind::Float(text) => {
                 let t = if exp == Ty::Decimal {
                     Ty::Decimal
                 } else {
                     Ty::Float
                 };
+                // Against another type the mismatch (K0600) is the one report.
+                if matches!(exp, Ty::Float | Ty::Decimal | Ty::Var(_) | Ty::Error) {
+                    self.number_literal_range(text, &t, e.span);
+                }
                 self.coerce_expr(e, &t, &exp);
                 self.record(e, t)
             }
@@ -1703,8 +1708,11 @@ impl<'c, 'p> BodyCx<'c, 'p> {
     fn synth_inner(&mut self, e: &Expr) -> Ty {
         let t = match &e.kind {
             ExprKind::Error | ExprKind::Unsafe(_) | ExprKind::TypeName(_) => Ty::Error,
-            ExprKind::Int(v) => self.int_literal(*v, false, &Ty::Int, e.span),
-            ExprKind::Float(_) => Ty::Float,
+            ExprKind::Int(v) => self.int_literal(v, false, &Ty::Int, e.span),
+            ExprKind::Float(text) => {
+                self.number_literal_range(text, &Ty::Float, e.span);
+                Ty::Float
+            }
             ExprKind::Str(_) => Ty::String,
             ExprKind::Bool(_) => Ty::Bool,
             ExprKind::Unit => Ty::Unit,
@@ -1857,36 +1865,76 @@ impl<'c, 'p> BodyCx<'c, 'p> {
     }
 
     /// Spec §5.6: an integer literal is `Int` unless the expected type is `Float`,
-    /// `Decimal` or `BigInt`. K0126 when an `Int` literal does not fit in 64 bits; the
-    /// direct operand of unary `-` counts as negative, so −2⁶³ is legal.
-    fn int_literal(&mut self, value: Option<u128>, negative: bool, exp: &Ty, span: Span) -> Ty {
+    /// `Decimal` or `BigInt`. K0126 when an `Int` literal does not fit in 64 bits (the
+    /// direct operand of unary `-` counts as negative, so −2⁶³ is legal), and when a
+    /// `Float` or `Decimal` one is out of that type's range ([`Self::number_literal_range`]).
+    /// A `BigInt` literal has no limit.
+    fn int_literal(&mut self, lit: &IntLit, negative: bool, exp: &Ty, span: Span) -> Ty {
         let t = match exp {
             Ty::Float | Ty::Decimal | Ty::BigInt => exp.clone(),
             _ => Ty::Int,
         };
-        if t == Ty::Int {
-            let limit = if negative {
-                1u128 << 63
-            } else {
-                (1u128 << 63) - 1
-            };
-            if value.map_or(true, |v| v > limit) {
-                let digits = value.map_or_else(|| "…".to_string(), |v| v.to_string());
-                let literal = if negative {
-                    format!("-{digits}")
+        match t {
+            Ty::Int => {
+                let limit = if negative {
+                    1u128 << 63
                 } else {
-                    digits
+                    (1u128 << 63) - 1
                 };
-                self.err(
-                    span,
-                    TypeErrorKind::LiteralOutOfRange {
-                        literal,
-                        ty: Ty::Int,
-                    },
-                );
+                if lit.small().map_or(true, |v| v > limit) {
+                    let digits = shown_literal(&lit.digits());
+                    let literal = if negative {
+                        format!("-{digits}")
+                    } else {
+                        digits
+                    };
+                    self.err(
+                        span,
+                        TypeErrorKind::LiteralOutOfRange {
+                            literal,
+                            ty: Ty::Int,
+                        },
+                    );
+                }
             }
+            Ty::Float | Ty::Decimal => self.number_literal_range(&lit.digits(), &t, span),
+            _ => {}
         }
         t
+    }
+
+    /// K0126 for a number literal typed `Float` or `Decimal` that the type cannot hold
+    /// (FOUNDER-QUEUE Q52, Q48), with the reason as a label: a `Float` literal that would be
+    /// infinite (an underflow to 0 is not an error), or a `Decimal` literal that decimal128
+    /// cannot hold exactly even after clamping (`1e6144` is 10³³ × 10⁶¹¹ and fits; `1e6145`
+    /// and `1e-6177` do not). The reference interpreter accepts exactly the other literals.
+    fn number_literal_range(&mut self, text: &str, ty: &Ty, span: Span) {
+        let why = match ty {
+            Ty::Float => {
+                let clean: String = text.chars().filter(|c| *c != '_').collect();
+                clean
+                    .parse::<f64>()
+                    .is_ok_and(f64::is_infinite)
+                    .then_some("this is beyond the largest `Float` (about 1.8e308)")
+            }
+            Ty::Decimal => match crate::const_num::Dec::parse(text) {
+                Some(Err(f)) => Some(match f {
+                    crate::const_num::DecFail::Digits => {
+                        "this needs more than 34 significant digits"
+                    }
+                    crate::const_num::DecFail::Exponent => "Decimal exponent out of range",
+                }),
+                _ => None,
+            },
+            _ => None,
+        };
+        if let Some(why) = why {
+            let kind = TypeErrorKind::LiteralOutOfRange {
+                literal: shown_literal(text),
+                ty: ty.clone(),
+            };
+            self.push_error(TypeError::new(kind, self.file, span).with_label(span, why));
+        }
     }
 
     /// A numeric literal (or a negated one) typed from `hint` without coercion; both the
@@ -1895,15 +1943,16 @@ impl<'c, 'p> BodyCx<'c, 'p> {
         let hint = self.resolve(hint);
         match &e.kind {
             ExprKind::Int(v) => {
-                let t = self.int_literal(*v, false, &hint, e.span);
+                let t = self.int_literal(v, false, &hint, e.span);
                 self.record(e, t)
             }
-            ExprKind::Float(_) => {
+            ExprKind::Float(text) => {
                 let t = if hint == Ty::Decimal {
                     Ty::Decimal
                 } else {
                     Ty::Float
                 };
+                self.number_literal_range(text, &t, e.span);
                 self.record(e, t)
             }
             ExprKind::Unary {
@@ -1911,8 +1960,16 @@ impl<'c, 'p> BodyCx<'c, 'p> {
                 operand,
             } => {
                 let t = match &operand.kind {
-                    ExprKind::Int(v) => self.int_literal(*v, true, &hint, e.span),
-                    ExprKind::Float(_) if hint == Ty::Decimal => Ty::Decimal,
+                    ExprKind::Int(v) => self.int_literal(v, true, &hint, e.span),
+                    ExprKind::Float(text) => {
+                        let t = if hint == Ty::Decimal {
+                            Ty::Decimal
+                        } else {
+                            Ty::Float
+                        };
+                        self.number_literal_range(text, &t, operand.span);
+                        t
+                    }
                     _ => Ty::Float,
                 };
                 self.record(operand, t.clone());
@@ -4240,4 +4297,16 @@ fn record_label_fix(fields: &[FieldDef], args: &[Arg]) -> Option<Fix> {
         applicability: Applicability::Machine,
         edits,
     })
+}
+
+/// A literal's digits for a K0126 message: in full up to 40 characters, otherwise the first
+/// 20 and the length.
+fn shown_literal(text: &str) -> String {
+    let n = text.chars().count();
+    if n <= 40 {
+        text.to_string()
+    } else {
+        let head: String = text.chars().take(20).collect();
+        format!("{head}… ({n} characters)")
+    }
 }

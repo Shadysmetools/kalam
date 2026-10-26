@@ -105,9 +105,9 @@ fn usage_errors() {
 
 #[test]
 fn a_fix_that_would_add_an_error_code_is_withheld_and_reported() {
-    // FOUNDER-QUEUE Q42: `d.pow(2)` would give K0420 (`Decimal` has no `pow`), a code
+    // FOUNDER-QUEUE Q42: `s.pow(2)` would give K0420 (`String` has no `pow`), a code
     // the file does not have, so the K0923 fix is only a suggestion.
-    let src = "fn main():\n    let d: Decimal = 2.5\n    let r = d ** 2\n    print(\"{r}\")\n";
+    let src = "fn main():\n    let s = \"ab\"\n    let r = s ** 2\n    print(\"{r}\")\n";
     let dir = files("withheld", &[("main.kl", src)]);
     let main = dir.join("main.kl");
     let (code, out, err) = kalam(&[], &main);
@@ -121,4 +121,26 @@ fn a_fix_that_would_add_an_error_code_is_withheld_and_reported() {
         "{err}"
     );
     assert!(err.contains("K0923"), "{err}");
+}
+
+#[test]
+fn a_chain_of_fixes_is_applied_when_its_end_adds_no_code() {
+    // FOUNDER-QUEUE Q49: removing the `;` reveals K0405 (a code the file does not have),
+    // whose rename fix removes it again: the chain ends with no new code and no error.
+    let src = "fn main():\n    let total = 1\n    if total > 0:\n        let total = 2;\n        print(\"{total}\")\n";
+    let dir = files("chain", &[("main.kl", src)]);
+    let main = dir.join("main.kl");
+    let (code, out, err) = kalam(&[], &main);
+    let text = fs::read_to_string(&main).unwrap();
+    let _ = fs::remove_dir_all(&dir);
+    assert_eq!(code, Some(0), "{out}\n{err}");
+    assert_eq!(
+        text,
+        "fn main():\n    let total = 1\n    if total > 0:\n        let total_2 = 2\n        print(\"{total_2}\")\n"
+    );
+    assert!(
+        out.contains("2 fixes (K0904 line 4, K0405 line 4)"),
+        "{out}"
+    );
+    assert!(err.is_empty(), "{err}");
 }

@@ -1094,7 +1094,10 @@ impl<'a, 'p> BodyLower<'a, 'p> {
     fn expr_inner(&mut self, e: &ast::Expr) -> Expr {
         let span = e.span;
         let kind = match &e.kind {
-            ast::ExprKind::Int(lit) => ExprKind::Int(lit.value),
+            ast::ExprKind::Int(lit) => ExprKind::Int(match lit.value {
+                Some(v) => IntLit::Small(v),
+                None => IntLit::Large(crate::const_num::literal_digits(&lit.text)),
+            }),
             ast::ExprKind::Float(lit) => ExprKind::Float(lit.text.clone()),
             ast::ExprKind::Str(lit) => return self.str_lit(lit, span),
             ast::ExprKind::Tagged { tag, lit } => return self.tagged(tag, lit, span),

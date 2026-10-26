@@ -405,20 +405,6 @@ E3raf aktar: kalam explain SEC0101","dala ra2isi():
     ليكن n = total(xs)
     اطبع(""total {n}"")
 ","eval/judge/RUBRIC.md (becker-2026.1)","sha256:032bc80599c8b41f255627a6e4b1c8a1001decc8ed8bcd1b0625cc1c1eb36d8c"
-"K0252/franco","K0252","franco","",""," -- BLOCK NA2ES ------------------------------------------- main.franco.kl  K0252
-
-El satr da beyekhlas b `:`, fa kont mestanni block maza7 f el satr elly ba3do, mostawa wa7ed agwa (4 masafat), bas mafeesh.
-
-3│ dala ra2isi():
-   ^^^^
-
-Mosa3da: Zo77 el sotoor elly tab3a lo 4 masafat zyada. W law 3ayez el block fady delwa2ty, ekteb feeh `fot`.
-
-E3raf aktar: kalam explain K0252","dala helper():
-
-dala ra2isi():
-    helper()
-","eval/judge/RUBRIC.md (becker-2026.1)","sha256:7f3bba3016bb88b8af3ab7007337b66ccf9366d1a94e689208b238a1679a2301"
 "K1503/ar","K1503","ar","",""," -- سرّ يُقرأ كنص عادي ---------------------------------------- main.ar.kl  K1503
 
 هذا المفتاح يبدو سرًا (ينتهي بـ `_KEY` أو `_SECRET` أو `_TOKEN`، أو يسمّي كلمة مرور)، لكن `env.get` ترجع نصًا عاديًا قد ينتهي في السجلات أو في JSON.
@@ -1090,3 +1076,16 @@ fn main():
     let label = describe(5)
     print('done')
 ","eval/judge/RUBRIC.md (becker-2026.1)","sha256:ed0446fe34f4c3321d8acde21e972e8c15c2bdd42ce550446d2469052a7263be"
+"K0801/en","K0801","en","",""," -- LAMBDA PARAMETER TYPES UNKNOWN ------------------------------- main.kl  K0801
+
+I can't tell the types of this lambda's parameters. A lambda takes its parameter types from the place it is passed to, and nothing here says what they are.
+
+2│     let inc = fn(x) => x + 1
+                 ^^^^^^^^^^^^^^
+
+Help: Write the parameter types, for example `fn(x: Int) => x + 1`, or pass the lambda directly to a function that expects one.
+
+Learn more: kalam explain K0801","fn main():
+    let inc = fn(x) => x + 1
+    print(""{inc(1)}"")
+","eval/judge/RUBRIC.md (becker-2026.1)","sha256:302aa52ed411223b81bc4616226d65803d328f1c7bdcfaea721741e1d2fa8692"

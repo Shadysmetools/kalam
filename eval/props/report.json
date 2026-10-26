@@ -1,8 +1,8 @@
 {
   "cases": 10000,
   "cases_drawn": 10000,
-  "commit": "77d6511dd45c6ca4757e29fc1e41cb7873d49443",
-  "elapsed_secs": 271.1,
+  "commit": "234e1fc5ae6f9bb5d24b89135590dd4daf5be8dc",
+  "elapsed_secs": 282.9,
   "failures": 0,
   "meets_m1": true,
   "metric": "D1.property_tests",
@@ -12,7 +12,7 @@
   "profile": "release",
   "properties": [
     {
-      "busy_secs": 64.2,
+      "busy_secs": 65.0,
       "cases": 10000,
       "description": "random AST printed in each skin (en, ar, franco) parses cleanly to the same AST (kalam_fmt::normalized_shape)",
       "examples": [],
@@ -23,7 +23,7 @@
       "passed": true
     },
     {
-      "busy_secs": 345.4,
+      "busy_secs": 342.6,
       "cases": 10000,
       "description": "fmt succeeds without its fallback, fmt(fmt(x)) == fmt(x), and fmt keeps the AST and the comments, in every skin",
       "examples": [],
@@ -34,7 +34,7 @@
       "passed": true
     },
     {
-      "busy_secs": 1850.5,
+      "busy_secs": 2044.3,
       "cases": 10000,
       "description": "all 6 ordered skin pairs (X->Y->X) and all six 3-hop cycles come back byte-identical; every intermediate parses to the same AST and comments; converting fmt output gives formatted output (G2 fixpoint)",
       "examples": [],
@@ -47,7 +47,7 @@
       "passed": true
     },
     {
-      "busy_secs": 187.5,
+      "busy_secs": 220.3,
       "cases": 10000,
       "description": "KCF bytes of the same program are equal across the three skin printouts and across every conversion step (spec §4.4 G1); a program accepted in some skins but not others fails (G-PAR scope rule), one rejected in all three is unsupported (not run)",
       "examples": [],
@@ -61,7 +61,7 @@
       "passed": true
     },
     {
-      "busy_secs": 414.4,
+      "busy_secs": 427.9,
       "cases": 10000,
       "description": "KCF hash == SHA-256(KCF bytes), skin inference agrees with the file's skin, re-parsing gives the same hash, hashes are equal across skins and stable under re-formatting",
       "examples": [],
@@ -74,7 +74,7 @@
       "passed": true
     },
     {
-      "busy_secs": 183.5,
+      "busy_secs": 236.5,
       "cases": 10000,
       "description": "P3: for every ordered skin pair X->Y, converting the X printout to Y and then Y->Y          again gives byte-identical text (print_Y(parse(print_Y(parse_X(s)))) ==          print_Y(parse_X(s)))",
       "examples": [],
@@ -98,7 +98,7 @@
       "passed": true
     },
     {
-      "busy_secs": 21.7,
+      "busy_secs": 23.1,
       "cases": 30000,
       "description": "lex + parse never panic on hostile text (bidi, ZWJ, tatweel, BOM, NUL, CR, tabs, deep brackets, unfinished strings) in any skin",
       "examples": [],
@@ -109,7 +109,7 @@
       "passed": true
     },
     {
-      "busy_secs": 17.9,
+      "busy_secs": 19.1,
       "cases": 30000,
       "description": "the CST of any input, valid or not, reproduces the input byte for byte",
       "examples": [],
@@ -120,7 +120,7 @@
       "passed": true
     },
     {
-      "busy_secs": 199.7,
+      "busy_secs": 204.6,
       "cases": 10000,
       "description": "report only: kcf(fmt(x)) == kcf(x) for generated programs (known open: fmt's blank-line, trailing-comma and one-line-block normalization changes KCF)",
       "examples": [

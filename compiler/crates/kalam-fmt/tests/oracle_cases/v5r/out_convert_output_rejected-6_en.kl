@@ -1,0 +1,63 @@
+use std.{`None`, `Some`, ektb, lama, law, `let`, lw, ليكن, لکل, و}
+
+fn عداد(x: (), value: List[Set[Decimal]], n1: Map[Set[String], Int]) => total
+
+
+export fn y() -> Bool:
+    lama(
+         Int(),
+        {100: _tmp},
+         ""
+    )
+    if 0:
+        fn total(user: fn() -> String) -> Decimal => (65535)() and count(
+            self
+        )
+        let (_, _): (نوع[()], fn(Decimal) -> Decimal) = (3.0e-2)() == ().اسم
+        fn `None`(items: Decimal, total: String, user: Int = false) -> Point => (0x1F > 2e3)(self, (1).value)
+        panic.n1(not 7)(
+              (print, World, lama),
+            (.Some)..=(.None)
+        )
+    else if 0:
+        for total in true:
+            panic(self, value: 42)
+            عداد(()..value, قيمة: if main: false else: 1.5, x: 1_000)
+    else if []:
+        let value = false
+        n1(items, 42, if value: اسم else if total: عداد else: true)
+        if (2 // 10.0)():
+            assert()
+            عداد((1, 0x1F), user: 1.5, ektb: " ")
+            let (_, lw) = [3.0e-2, 7 != true]
+        else if ():
+            let (`Some`, `let`) = (not .Empty)(not `عداد`or ["\u{41}", World, 2e3], (value))
+        else if None - 3.0e-2:
+            continue
+            break
+            var x = .None
+            count[1000 and .Some] = []..=(if count: name else if ليكن: ليكن else: 2)
+        else:
+            let value: Set[(Int, String)] = ()
+            let و = items
+            # c1 a, b?
+            user(items)
+            y([lw, main])(true?, -false, items: [`Some`, .حالة])
+    else:
+        match 10.0:
+            case Point(..):
+                عداد[2 / `Some`].value = not (if count: 15 else: 0.25)
+                let _tmp = {0: 42, 0x1F: -print}
+
+                print(65535 + n1, لکل + x, if .Some: عداد else if 10.0: total else: "؟،{n1}: ")
+                _tmp *= 10.0
+            case Shape(user: [1..=15, 2..=0 as count, ..], _ | _ | اسم, ..) as n1:
+                continue
+
+export opaque type User:
+    items: fn() -> Int = (law..=42).Some
+    items: Float
+
+fn total(`Some`: String, items: Option[
+      String
+]) => user

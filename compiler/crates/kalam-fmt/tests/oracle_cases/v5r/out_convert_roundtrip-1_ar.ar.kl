@@ -1,0 +1,6 @@
+استخدم std.{adad، ektb، if، wala، `ليكن`}
+
+
+دالة `ليكن`[T](if: اختياري[(User، منطقي)]، y: نتيجة[مجموعة[adad]، نص]، n1: Item):
+    ليكن name = (wala - y) / 0
+    count(())("{value}\t{name؟}"؟، `ektb`و -3.0e-2)

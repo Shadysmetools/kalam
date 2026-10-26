@@ -1,0 +1,5 @@
+# std/task (spec §15.7, §20.1): structured concurrency, plus `Cell`. At M2 it re-exports the
+# prelude's `Cell` (FOUNDER-QUEUE Q46), so `use std/task.{Cell}` works; the §15.7 functions
+# (`task.all`, `task.both`, `task.race`, `task.timeout`, `task.sleep`, `task.scope`) are
+# added with the runtime that runs them.
+export use std/prelude.{Cell}

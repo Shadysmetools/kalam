@@ -105,7 +105,13 @@ pub fn run_interp(
 fn compile_and_run(skin: Skin, text: &str, out: &mut (dyn Write + Send)) -> RunOutcome {
     let lines = LineIndex::new(text);
     let at = |offset: u32| {
-        let lc = lines.line_col(text, offset.min(text.len() as u32));
+        // Defensive: a span from another file must never panic here (`line_col` needs a
+        // char boundary). Lowering reports a stdlib default at its call site.
+        let mut offset = (offset as usize).min(text.len());
+        while !text.is_char_boundary(offset) {
+            offset -= 1;
+        }
+        let lc = lines.line_col(text, offset as u32);
         (lc.line, lc.col)
     };
     let parsed = kalam_parser::parse_source(text, skin, FileId(0));

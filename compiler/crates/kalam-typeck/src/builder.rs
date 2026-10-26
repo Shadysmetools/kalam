@@ -54,7 +54,7 @@ impl Builder {
     // -- expressions ----------------------------------------------------------------------
 
     pub fn int(&mut self, v: u128) -> Expr {
-        self.e(ExprKind::Int(Some(v)))
+        self.e(ExprKind::Int(IntLit::Small(v)))
     }
 
     pub fn float(&mut self, text: &str) -> Expr {

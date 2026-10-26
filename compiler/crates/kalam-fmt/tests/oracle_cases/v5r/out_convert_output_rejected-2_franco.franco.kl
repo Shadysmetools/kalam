@@ -1,0 +1,19 @@
+hat std.{None, Some, `adad`, `ektb`, `fe`ka لکل}
+hat std/db ka user
+
+dala `ektb`(_tmp: nass, None: (mante2i, natiga[nass, adad], (mante2i, ashri, nass)) = 10.0):
+    dala None(اسم: nass) -> Box: khali total = 100
+    fot
+
+
+haykal Shape[U: Eq] = ashri
+
+haykal Box:
+    total: dala(Box) -> dala(mante2i, نوع) -> adad
+    لکل: mante2i
+
+
+haykal `adad`:
+    user: ekhtiyari[qamoos[mante2i, mante2i]]
+    fe: qamoos[ashri, mante2i]
+    items: magmoo3a[Some[mante2i]]

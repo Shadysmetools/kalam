@@ -1810,9 +1810,18 @@ impl<'a> Lexer<'a> {
             return;
         }
 
+        // The same rule for an Arabic-Indic index (`ت.٠.١`): only digits are absorbed, and
+        // the run is checked below like any literal (one digit system, SEC0122 outside `ar`).
+        let member_index = self.last_is_dot();
+        if member_index {
+            while matches!(self.peek(), Some(c) if is_any_digit(c)) {
+                self.i += 1;
+            }
+        }
+
         let prefixed = first == '0' && matches!(self.peek_at(1), Some('x' | 'b' | 'o'));
         let mut plain_int = true;
-        while let Some(c) = self.peek() {
+        while let Some(c) = self.peek().filter(|_| !member_index) {
             if is_assigned_alphanumeric(c, char::is_alphanumeric) || c == '_' {
                 if !(is_any_digit(c) || c == '_') {
                     plain_int = false;
@@ -2156,6 +2165,24 @@ mod tests {
                 T::Eof
             ]
         );
+        // DR-26 holds for Arabic-Indic digits too: `ت.٠.١` is `ت . ٠ . ١`, not a float.
+        assert_eq!(
+            kinds("ت.٠.١\n", Skin::Ar),
+            vec![
+                T::Ident,
+                T::Op(Dot),
+                T::Int,
+                T::Op(Dot),
+                T::Int,
+                T::Newline,
+                T::Eof
+            ]
+        );
+        assert_eq!(codes("ت.٠.١٢\n", Skin::Ar), Vec::<&str>::new());
+        // Outside an Arabic file each index is still SEC0122 (fixable to ASCII).
+        assert_eq!(codes("t.٠.١\n", Skin::En), vec!["SEC0122", "SEC0122"]);
+        // One digit system per index (SEC0120).
+        assert_eq!(codes("ت.٠1\n", Skin::Ar), vec!["SEC0120"]);
         assert_eq!(
             kinds("0x1e+5\n", Skin::En),
             vec![T::Int, T::Op(Plus), T::Int, T::Newline, T::Eof]

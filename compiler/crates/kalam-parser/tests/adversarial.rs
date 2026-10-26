@@ -610,3 +610,33 @@ fn shape_of_a_max_height_tree_fits_a_1mib_stack() {
         .join()
         .expect("shape within 1 MiB");
 }
+
+/// FOUNDER-QUEUE Q5: a word glued to a string is a tagged literal (spec §5.6), and a tag
+/// that is not one of the built-in tags (DR-29) is a parse error. Otherwise `foo"x"`, or
+/// `return"x"` in an English file, checked clean and then could not run.
+#[test]
+fn an_unknown_tag_before_a_string_is_a_parse_error() {
+    for src in [
+        "fn main():\n    let a = foo\"x\"\n",
+        "fn f() -> String:\n    return\"big\"\n",
+        "fn main():\n    let a = my_tag\"\"\"\n    x\n    \"\"\"\n",
+    ] {
+        let r = run(src, Skin::En);
+        assert_eq!(r.lex, NONE, "{src}");
+        assert_eq!(r.parse, vec![codes::UNEXPECTED_TOKEN], "{src}");
+    }
+    // The built-in tags, and `f"…"` (K0913), are not affected.
+    for tag in ["sql", "html", "cmd", "url", "path", "regex"] {
+        let src = format!("fn main():\n    let a = {tag}\"x\"\n");
+        assert_eq!(codes_of(&src, Skin::En), (NONE, NONE), "{src}");
+    }
+    assert_eq!(
+        codes_of("fn main():\n    let a = f\"x\"\n", Skin::En),
+        (NONE, vec![codes::F_STRING])
+    );
+    // A non-ASCII keyword glued to a string is that keyword and a string.
+    assert_eq!(
+        codes_of("دالة f() -> نص:\n    أرجع\"x\"\n", Skin::Ar),
+        (NONE, NONE)
+    );
+}

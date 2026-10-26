@@ -2,11 +2,14 @@
 //!
 //! A declaration that reuses a visible name gets a fix that renames it, at its declaring
 //! occurrences (an or-pattern repeats one) and at every use that resolves to it. The new
-//! name follows the skin's convention first (§10.1: in Arabic a value takes the article,
-//! `الشكل: شكل`; in Franco `el_`, `el_donya: donya`; in English a value is lowercase), then
-//! `name_2`, `name_3`, …; it is never spelled, or skeleton-folded (SEC0104), like any name
-//! of the file, a prelude or core name, or a keyword, so applying the fix cannot cause a new
-//! K0405, K0413, K0201 or SEC0104.
+//! name is the first free one of `name_2`, `name_3`, … in every skin and for every kind of
+//! declaration (FOUNDER-QUEUE Q51). It is never spelled, or skeleton-folded (SEC0104), like
+//! any name of the file, a prelude or core name of any skin, or a keyword of any skin, so
+//! applying the fix cannot cause a new K0405, K0413, K0201 or SEC0104. None of that depends
+//! on the file's skin (conversion keeps identifiers as written), so a fixed file converts to
+//! the same fixed file in every skin. The skins' naming conventions for values (§10.1: the
+//! Arabic article, `الشكل: شكل`; Franco `el_`) are left to the person: a per-skin rename
+//! would make `fix` and `convert` disagree.
 //!
 //! The fix is machine-applicable when every occurrence is in the file and nothing outside
 //! the file can name the declaration. A function's parameter is also its label at call
@@ -67,14 +70,7 @@ impl Builder<'_> {
         if spans.is_empty() {
             return None;
         }
-        let skin = self.sources.iter().find(|s| s.file == file)?.skin;
-        // The skins' naming conventions are for values (§10.1, §13.3); a type, trait or
-        // type parameter just gets a number.
-        let value = matches!(
-            d.kind,
-            DefKind::Local | DefKind::Param | DefKind::LocalFn | DefKind::Fn | DefKind::Const
-        );
-        let new = self.fresh_name(&d.name, file, skin, value);
+        let new = self.fresh_name(&d.name, file);
         Some(Fix {
             title: format!("rename this `{}` to `{new}`", d.name),
             applicability: if machine {
@@ -93,9 +89,9 @@ impl Builder<'_> {
     }
 
     /// A name for the renamed declaration that no name of `file`, of the prelude or of the
-    /// core vocabulary is spelled or skeleton-folded like, and that is no keyword. A value
-    /// (`value`) first tries its skin's convention.
-    fn fresh_name(&self, name: &str, file: FileId, skin: Skin, value: bool) -> String {
+    /// core vocabulary is spelled or skeleton-folded like, and that is no keyword: the first
+    /// free `name_2`, `name_3`, … (Q51).
+    fn fresh_name(&self, name: &str, file: FileId) -> String {
         let mut names: HashSet<String> = self
             .p
             .defs
@@ -115,32 +111,9 @@ impl Builder<'_> {
                     .iter()
                     .all(|s| self.table.skin(*s).lookup_word(n).is_none())
         };
-        let first = name.chars().next().unwrap_or('_');
-        let conventional = match skin {
-            _ if !value => None,
-            Skin::Ar if is_arabic_letter(first) && !name.starts_with("ال") => {
-                Some(format!("ال{name}"))
-            }
-            Skin::Franco if first.is_ascii_lowercase() && !name.starts_with("el_") => {
-                Some(format!("el_{name}"))
-            }
-            Skin::En if first.is_ascii_uppercase() => {
-                Some(first.to_ascii_lowercase().to_string() + &name[first.len_utf8()..])
-            }
-            _ => None,
-        };
-        if let Some(c) = conventional.filter(|c| free(c)) {
-            return c;
-        }
         (2..)
             .map(|i| format!("{name}_{i}"))
             .find(|c| free(c))
             .unwrap_or_else(|| format!("{name}_2"))
     }
-}
-
-/// A letter of the Arabic block (the article goes only before an Arabic word: before a Latin
-/// one it would make a mixed-script name, SEC0105).
-fn is_arabic_letter(c: char) -> bool {
-    ('\u{0620}'..='\u{064A}').contains(&c) || ('\u{066E}'..='\u{06D3}').contains(&c)
 }

@@ -116,7 +116,7 @@
       "code": "K0252",
       "id": "K0252/franco",
       "message_language": "franco",
-      "rendered": "-- BLOCK NA2ES ------------------------------------------- main.franco.kl  K0252\n\nEl satr da beyekhlas b `:`, fa kont mestanni block maza7 f el satr elly ba3do, mostawa wa7ed agwa (4 masafat), bas mafeesh.\n\n3│ dala ra2isi():\n   ^^^^\n\nMosa3da: Zo77 el sotoor elly tab3a lo 4 masafat zyada. W law 3ayez el block fady delwa2ty, ekteb feeh `fot`.\n\nE3raf aktar: kalam explain K0252",
+      "rendered": "-- BLOCK NA2ES ------------------------------------------- main.franco.kl  K0252\n\nEl satr da beyekhlas b `:`, fa kont mestanni block maza7 f el satr elly ba3do, mostawa wa7ed agwa (4 masafat), bas mafeesh.\n\n1│ dala helper():\n                ^\n\nMosa3da: Zo77 el sotoor elly tab3a lo 4 masafat zyada. W law 3ayez el block fady delwa2ty, ekteb feeh `fot`.\n\nE3raf aktar: kalam explain K0252",
       "skin": "franco",
       "source": "dala helper():\n\ndala ra2isi():\n    helper()\n"
     },
@@ -918,7 +918,7 @@
   "rubric_sha256": "f0cba998336a5b48e4f2ff88719bff0282cd7b4a490970e607adc66cfe4829c4",
   "rubric_version": "becker-2026.1",
   "rule": "one item per eval/goldens code; skin = Skin::ALL[sha256(seed + code)[0] % 3]; rendered = the committed .expected text",
-  "sample_sha256": "66c85dc33751a18e48fc5b7286ce1dcc6b8dd6b366b1d9902a7f6fe4a5821b5d",
+  "sample_sha256": "6a43ff2db65dcb3311b3e0cd92ef57e4fd5d4850d0caf7b4654dd4d2d78a97e7",
   "schema": "kalam-judge-sample/1",
   "seed": "kalam-judge-sample/1"
 }

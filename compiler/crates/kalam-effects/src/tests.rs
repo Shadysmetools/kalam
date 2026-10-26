@@ -28,6 +28,7 @@ const STD: &[(&str, &str)] = &[
     ("set", include_str!("../../../../stdlib/src/set.kl")),
     ("sql", include_str!("../../../../stdlib/src/sql.kl")),
     ("string", include_str!("../../../../stdlib/src/string.kl")),
+    ("task", include_str!("../../../../stdlib/src/task.kl")),
     ("time", include_str!("../../../../stdlib/src/time.kl")),
 ];
 

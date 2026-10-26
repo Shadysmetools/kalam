@@ -296,6 +296,97 @@ impl Big {
     }
 }
 
+/// The bit-length bound of `BigInt.pow` results, as the interpreter applies it
+/// (`kalam_interp::num::BIG_POW_MAX_BITS`, FOUNDER-QUEUE Q45 erratum).
+const BIG_POW_MAX_BITS: u128 = 1 << 16;
+
+/// The interpreter's panic message for a `BigInt.pow` past [`BIG_POW_MAX_BITS`].
+pub(crate) const BIG_POW_TOO_LARGE: &str = "BigInt.pow result too large (65536 bits or more)";
+
+/// The outcome of `BigInt.pow` for the constant evaluator.
+#[derive(Debug, PartialEq)]
+pub(crate) enum BigPow {
+    Value(Big),
+    NegativeExponent,
+    /// The interpreter refuses the size and panics with [`BIG_POW_TOO_LARGE`].
+    TooLarge,
+    /// Allowed, but beyond [`MAX_BIG_BITS`]: not evaluated.
+    Unknown,
+}
+
+impl Big {
+    /// `self.pow(k)` with the interpreter's rules (Q45): exact; `x.pow(0)` is 1; the bases
+    /// 0, 1 and −1 take any exponent; for |x| >= 2 a result of at least
+    /// `(bits - 1) × k + 1` bits reaching [`BIG_POW_MAX_BITS`] is refused.
+    pub(crate) fn pow(&self, k: i64) -> BigPow {
+        if k < 0 {
+            return BigPow::NegativeExponent;
+        }
+        let one = Big::from_u128(1);
+        if k == 0 {
+            return BigPow::Value(one);
+        }
+        if self.is_zero() {
+            return BigPow::Value(Big::zero());
+        }
+        if self.clone().abs() == one {
+            return BigPow::Value(if self.neg && k % 2 == 1 {
+                self.clone()
+            } else {
+                one
+            });
+        }
+        let bits = self.bits() as u128;
+        let k = k as u128;
+        if (bits - 1) * k + 1 >= BIG_POW_MAX_BITS {
+            return BigPow::TooLarge;
+        }
+        if bits * k > MAX_BIG_BITS as u128 {
+            return BigPow::Unknown;
+        }
+        let (mut acc, mut base, mut e) = (one, self.clone(), k);
+        while e > 0 {
+            if e & 1 == 1 {
+                acc = acc.mul(&base);
+            }
+            e >>= 1;
+            if e > 0 {
+                base = base.mul(&base);
+            }
+        }
+        BigPow::Value(acc)
+    }
+}
+
+/// The decimal digits of an integer literal's ASCII-normalized text (`_` separators,
+/// `0x`/`0o`/`0b` prefixes allowed), for a literal too large for `u128`.
+pub(crate) fn literal_digits(text: &str) -> String {
+    let clean: String = text.chars().filter(|c| *c != '_').collect();
+    let (radix, digits, chunk) = match clean.get(..2) {
+        Some("0x") => (16, &clean[2..], 7),
+        Some("0o") => (8, &clean[2..], 10),
+        Some("0b") => (2, &clean[2..], 31),
+        _ => return clean,
+    };
+    // Several digits per step: `radix^chunk` fits in a `u32`.
+    let mut v = Big::zero();
+    let chars: Vec<u32> = digits.chars().filter_map(|c| c.to_digit(radix)).collect();
+    for part in chars.chunks(chunk) {
+        let mut scale = 1u32;
+        let mut add = 0u32;
+        for d in part {
+            scale *= radix;
+            add = add * radix + d;
+        }
+        v = v.mul_small(scale).add(&Big::from_u128(u128::from(add)));
+    }
+    v.decimal_digits()
+        .iter()
+        .rev()
+        .map(|d| char::from(b'0' + d))
+        .collect()
+}
+
 impl Ord for Big {
     fn cmp(&self, o: &Big) -> Ordering {
         match (self.neg, o.neg) {
@@ -324,6 +415,50 @@ const DEC_EXP_MAX: i64 = 6111;
 /// Above this exponent gap, an exact sum of two non-zero values needs more than 34 digits
 /// (it has at least `gap - 33` significant digits), so it is decided without aligning.
 const DEC_ALIGN_LIMIT: i64 = 80;
+/// An exponent beyond this magnitude is read as this magnitude, as the interpreter reads it:
+/// a non-zero value there is out of range either way, and zero clamps either way.
+const EXP_SATURATE: i64 = 1_000_000_000_000_000;
+
+/// Why a `Decimal` result cannot be held (FOUNDER-QUEUE Q48), with the interpreter's panic
+/// messages.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum DecFail {
+    /// The exact value needs more than 34 significant digits.
+    Digits,
+    /// The exponent is outside the decimal128 range even after clamping.
+    Exponent,
+}
+
+impl DecFail {
+    pub(crate) fn message(self) -> &'static str {
+        match self {
+            DecFail::Digits => "Decimal overflow (more than 34 digits)",
+            DecFail::Exponent => "Decimal exponent out of range",
+        }
+    }
+}
+
+/// An `i128` exponent saturated to [`EXP_SATURATE`].
+fn saturate(e: i128) -> i64 {
+    e.clamp(-i128::from(EXP_SATURATE), i128::from(EXP_SATURATE)) as i64
+}
+
+/// An exponent's text: an optional sign, then ASCII digits; saturates at [`EXP_SATURATE`].
+fn parse_exponent(text: &str) -> Option<i64> {
+    let (neg, digits) = match text.as_bytes().first() {
+        Some(b'-') => (true, &text[1..]),
+        Some(b'+') => (false, &text[1..]),
+        _ => (false, text),
+    };
+    if digits.is_empty() || !digits.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    let mut v: i64 = 0;
+    for b in digits.bytes() {
+        v = (v * 10 + i64::from(b - b'0')).min(EXP_SATURATE);
+    }
+    Some(if neg { -v } else { v })
+}
 
 /// A `Decimal` value as the interpreter holds it: the coefficient keeps its scale (`1.50`
 /// is 150 × 10^-2), and equality and order compare values.
@@ -334,46 +469,89 @@ pub(crate) struct Dec {
 }
 
 impl Dec {
-    /// `None` when the value needs more than 34 digits or leaves the exponent range.
-    fn make(coef: Big, exp: i64) -> Option<Dec> {
-        let digits = coef.decimal_digits();
+    /// `coef × 10^exp` as decimal128 holds it: trailing zeros leave a coefficient longer than
+    /// 34 digits (anything else is [`DecFail::Digits`]), then the exponent is clamped into
+    /// range by moving zeros into, or exactly out of, the coefficient (otherwise
+    /// [`DecFail::Exponent`]). Zero takes any exponent, clamped.
+    fn make(coef: Big, exp: i64) -> Result<Dec, DecFail> {
         let mut d = Dec { coef, exp };
-        if digits.len() > DEC_DIGITS {
-            // Exact reductions only: drop just as many trailing zeros as the length needs.
-            let need = digits.len() - DEC_DIGITS;
-            if digits.iter().take(need).any(|&x| x != 0) {
-                return None;
+        let n = d.coef.decimal_digits().len();
+        if n > DEC_DIGITS {
+            let extra = n - DEC_DIGITS;
+            let (q, r) = d
+                .coef
+                .divmod_trunc(&Big::pow10(extra as u32))
+                .expect("10^k is not 0");
+            if !r.is_zero() {
+                return Err(DecFail::Digits);
             }
-            let (q, _) = d.coef.divmod_trunc(&Big::pow10(need as u32))?;
             d.coef = q;
-            d.exp = d.exp.checked_add(need as i64)?;
+            d.exp = d.exp.saturating_add(extra as i64);
         }
         if d.coef.is_zero() {
             d.exp = d.exp.clamp(DEC_EXP_MIN, DEC_EXP_MAX);
+            return Ok(d);
         }
-        if !(DEC_EXP_MIN..=DEC_EXP_MAX).contains(&d.exp) {
-            return None;
+        if d.exp > DEC_EXP_MAX {
+            // Fold-down clamping: `1e6144` is 10^33 × 10^6111.
+            let pad = d.exp - DEC_EXP_MAX;
+            if pad > (DEC_DIGITS - d.coef.decimal_digits().len()) as i64 {
+                return Err(DecFail::Exponent);
+            }
+            d.coef = d.coef.mul(&Big::pow10(pad as u32));
+            d.exp = DEC_EXP_MAX;
+        } else if d.exp < DEC_EXP_MIN {
+            // Exact only: a non-zero coefficient of at most 34 digits has at most 33
+            // trailing zeros to give up.
+            let need = DEC_EXP_MIN - d.exp;
+            if need >= DEC_DIGITS as i64 {
+                return Err(DecFail::Exponent);
+            }
+            let (q, r) = d
+                .coef
+                .divmod_trunc(&Big::pow10(need as u32))
+                .expect("10^k is not 0");
+            if !r.is_zero() {
+                return Err(DecFail::Exponent);
+            }
+            d.coef = q;
+            d.exp = DEC_EXP_MIN;
         }
-        Some(d)
+        Ok(d)
     }
 
-    /// An integer literal typed `Decimal` (§5.6): exactly `v`, or `None` when it cannot be
-    /// held.
-    pub(crate) fn from_u128(v: u128) -> Option<Dec> {
+    /// `make(coef × 10^zeros, exp)` (`zeros` >= 0, `coef` of at most 34 digits) without
+    /// building zeros that `make` would drop again.
+    fn make_padded(coef: Big, zeros: i128, exp: i128) -> Result<Dec, DecFail> {
+        if coef.is_zero() {
+            return Dec::make(coef, saturate(exp));
+        }
+        let room = (DEC_DIGITS - coef.decimal_digits().len().min(DEC_DIGITS)) as i128;
+        let pad = zeros.clamp(0, room);
+        Dec::make(
+            coef.mul(&Big::pow10(pad as u32)),
+            saturate(exp + zeros - pad),
+        )
+    }
+
+    /// An integer literal typed `Decimal` (§5.6): exactly `v`, or why it cannot be held.
+    pub(crate) fn from_u128(v: u128) -> Result<Dec, DecFail> {
         Dec::make(Big::from_u128(v), 0)
     }
 
-    /// A float literal typed `Decimal` (§5.6: the exact value written): ASCII digits, an
-    /// optional `.` and fraction, an optional exponent, `_` separators allowed. `None` when
-    /// the text is not one or the value cannot be held.
-    pub(crate) fn parse(text: &str) -> Option<Dec> {
+    /// A literal typed `Decimal` (§5.6: the exact value written), with the interpreter's
+    /// `Decimal.parse` rules: ASCII digits, an optional `.` and fraction, an optional
+    /// exponent (an optional sign and digits), `_` separators allowed. `None` when the text
+    /// is not one; otherwise the value clamped as decimal128 clamps, or why it cannot be
+    /// held (K0126). Only the first 34 significant digits are ever built.
+    pub(crate) fn parse(text: &str) -> Option<Result<Dec, DecFail>> {
         let text: String = text.chars().filter(|c| *c != '_').collect();
         let (neg, body) = match text.strip_prefix('-') {
             Some(r) => (true, r),
             None => (false, text.as_str()),
         };
         let (mantissa, exp) = match body.find(['e', 'E']) {
-            Some(i) => (&body[..i], body[i + 1..].parse::<i64>().ok()?),
+            Some(i) => (&body[..i], parse_exponent(&body[i + 1..])?),
             None => (body, 0),
         };
         let (int, frac) = mantissa.split_once('.').unwrap_or((mantissa, ""));
@@ -381,20 +559,70 @@ impl Dec {
         if int.is_empty() || !ok(int) || !ok(frac) || (mantissa.contains('.') && frac.is_empty()) {
             return None;
         }
+        let mut exp = saturate(i128::from(exp) - frac.len() as i128);
+        let all: Vec<u8> = int.bytes().chain(frac.bytes()).collect();
+        let first = all.iter().position(|&b| b != b'0').unwrap_or(all.len());
+        let mut digits = &all[first..];
+        if digits.len() > DEC_DIGITS {
+            // Only trailing zeros may go (into the exponent), as `make` drops them.
+            if digits[DEC_DIGITS..].iter().any(|&b| b != b'0') {
+                return Some(Err(DecFail::Digits));
+            }
+            exp = saturate(i128::from(exp) + (digits.len() - DEC_DIGITS) as i128);
+            digits = &digits[..DEC_DIGITS];
+        }
         let mut coef = Big::zero();
-        for c in int.chars().chain(frac.chars()) {
+        for b in digits {
             coef = coef
                 .mul_small(10)
-                .add(&Big::from_u128(u128::from(c as u32 - '0' as u32)));
-            if coef.bits() > MAX_BIG_BITS {
-                return None;
-            }
+                .add(&Big::from_u128(u128::from(b - b'0')));
         }
         if neg {
             coef = coef.negated();
         }
-        let exp = exp.checked_sub(i64::try_from(frac.len()).ok()?)?;
-        Dec::make(coef, exp)
+        Some(Dec::make(coef, exp))
+    }
+
+    /// `self.pow(k)` (FOUNDER-QUEUE Q45), as the interpreter computes it: exactly
+    /// `coef^k × 10^(exp·k)`, held as `make` holds it. `None` for a negative exponent.
+    pub(crate) fn pow(&self, k: i64) -> Option<Result<Dec, DecFail>> {
+        if k < 0 {
+            return None;
+        }
+        if k == 0 {
+            return Some(Dec::from_u128(1));
+        }
+        if self.coef.is_zero() {
+            let exp = saturate(i128::from(self.exp) * i128::from(k));
+            return Some(Dec::make(Big::zero(), exp));
+        }
+        // coef = sig × 10^tz, where `sig` has no factor 10 (nor has any power of it).
+        let (mut sig, mut tz) = (self.coef.clone(), 0i128);
+        loop {
+            let (q, r) = sig.divmod_trunc(&Big::from_u128(10)).expect("10 is not 0");
+            if !r.is_zero() {
+                break;
+            }
+            sig = q;
+            tz += 1;
+        }
+        let one = Big::from_u128(1);
+        let mut p = one.clone();
+        if sig.clone().abs() == one {
+            if sig.is_negative() && k % 2 == 1 {
+                p = p.negated();
+            }
+        } else {
+            // |sig| >= 2: at most 113 rounds before the power passes 34 digits.
+            for _ in 0..k {
+                p = p.mul(&sig);
+                if p.decimal_digits().len() > DEC_DIGITS {
+                    return Some(Err(DecFail::Digits));
+                }
+            }
+        }
+        let k = i128::from(k);
+        Some(Dec::make_padded(p, tz * k, i128::from(self.exp) * k))
     }
 
     pub(crate) fn negated(&self) -> Dec {
@@ -404,8 +632,8 @@ impl Dec {
         }
     }
 
-    /// `self + o` (`o` negated for `-`), or `None` when the exact result cannot be held.
-    fn add_signed(&self, o: &Dec) -> Option<Dec> {
+    /// `self + o` (`o` negated for `-`), or why the exact result cannot be held.
+    fn add_signed(&self, o: &Dec) -> Result<Dec, DecFail> {
         let e = self.exp.min(o.exp);
         let gap = (self.exp - o.exp).abs();
         if gap > DEC_ALIGN_LIMIT {
@@ -418,7 +646,7 @@ impl Dec {
                 return Dec::make(lo.coef.clone(), e);
             }
             if !lo.coef.is_zero() {
-                return None;
+                return Err(DecFail::Digits);
             }
             // `hi` aligned down to `lo`'s exponent and reduced again: as many of the added
             // zeros as fit stay in the coefficient.
@@ -432,16 +660,16 @@ impl Dec {
         Dec::make(a.add(&b), e)
     }
 
-    pub(crate) fn add(&self, o: &Dec) -> Option<Dec> {
+    pub(crate) fn add(&self, o: &Dec) -> Result<Dec, DecFail> {
         self.add_signed(o)
     }
 
-    pub(crate) fn sub(&self, o: &Dec) -> Option<Dec> {
+    pub(crate) fn sub(&self, o: &Dec) -> Result<Dec, DecFail> {
         self.add_signed(&o.negated())
     }
 
-    pub(crate) fn mul(&self, o: &Dec) -> Option<Dec> {
-        Dec::make(self.coef.mul(&o.coef), self.exp.checked_add(o.exp)?)
+    pub(crate) fn mul(&self, o: &Dec) -> Result<Dec, DecFail> {
+        Dec::make(self.coef.mul(&o.coef), self.exp.saturating_add(o.exp))
     }
 
     /// The order of the two values (`1.5 == 1.50`).
@@ -482,7 +710,10 @@ mod tests {
     use super::*;
 
     fn dec(s: &str) -> Dec {
-        Dec::parse(s).unwrap_or_else(|| panic!("{s} parses"))
+        match Dec::parse(s) {
+            Some(Ok(d)) => d,
+            other => panic!("{s} parses: {other:?}"),
+        }
     }
 
     fn show(d: &Dec) -> String {
@@ -523,13 +754,13 @@ mod tests {
         // 34 nines with a `.0`: the trailing zero goes into the exponent.
         let nines = dec("9999999999999999999999999999999999.0");
         assert_eq!(show(&nines), "9999999999999999999999999999999999e0");
-        assert!(nines.mul(&nines).is_none());
+        assert_eq!(nines.mul(&nines).unwrap_err(), DecFail::Digits);
         let one = dec("1");
         assert_eq!(
             show(&nines.add(&one).unwrap()),
             "1000000000000000000000000000000000e1"
         );
-        assert!(nines.add(&dec("2")).is_none());
+        assert_eq!(nines.add(&dec("2")).unwrap_err(), DecFail::Digits);
         // Scale is kept where it fits: 1.50 + 1 = 2.50.
         assert_eq!(show(&dec("1.50").add(&one).unwrap()), "250e-2");
         assert_eq!(dec("1.50").cmp_value(&dec("1.5")), Ordering::Equal);
@@ -545,10 +776,16 @@ mod tests {
             "1000000000000000000000000000000000e9"
         );
         // The exponent range.
-        assert!(dec("1e6111").mul(&dec("1e6111")).is_none());
+        assert_eq!(
+            dec("1e6111").mul(&dec("1e6111")).unwrap_err(),
+            DecFail::Exponent
+        );
         assert_eq!(show(&dec("1e6111").mul(&dec("10")).unwrap()), "10e6111");
-        assert!(dec("1e-6176").mul(&dec("0.1")).is_none());
-        assert!(Dec::parse("1e6112").is_none());
+        assert_eq!(
+            dec("1e-6176").mul(&dec("0.1")).unwrap_err(),
+            DecFail::Exponent
+        );
+        assert_eq!(show(&dec("1e6112")), "10e6111");
         assert_eq!(show(&dec("0e9999")), "0e6111");
     }
 
@@ -575,5 +812,119 @@ mod tests {
             assert_eq!(a.add(&b).map(|d| show(&d)), exact(&a, &b), "{a:?} + {b:?}");
             assert_eq!(b.add(&a).map(|d| show(&d)), exact(&b, &a), "{b:?} + {a:?}");
         }
+    }
+
+    /// The interpreter's table (`kalam-interp` `num::tests::decimal128_clamping_vectors`):
+    /// literals at the edges of decimal128 (Q48, Q52).
+    #[test]
+    fn decimal128_clamping_vectors() {
+        let thousand_zeros = format!("1{}", "0".repeat(2000));
+        let not_zeros = format!("1{}1", "0".repeat(2000));
+        let ok = |coef: String, exp: i64| Some(Ok(format!("{coef}e{exp}")));
+        let out = Some(Err(()));
+        let cases: Vec<(&str, Option<Result<String, ()>>)> = vec![
+            ("1e6111", ok("1".into(), 6111)),
+            ("1e6112", ok("10".into(), 6111)),
+            ("1e6144", ok(format!("1{}", "0".repeat(33)), 6111)),
+            ("12e6143", ok(format!("12{}", "0".repeat(32)), 6111)),
+            ("1e6145", out.clone()),
+            ("123e6143", out.clone()),
+            ("1e-6176", ok("1".into(), -6176)),
+            ("1e-6177", out.clone()),
+            ("10e-6177", ok("1".into(), -6176)),
+            ("1.0e-6176", ok("1".into(), -6176)),
+            ("0e99999999999999999999999", ok("0".into(), 6111)),
+            ("0.000e-99999", ok("0".into(), -6176)),
+            ("1e99999999999999999999999", out.clone()),
+            ("1e-99999999999999999999999", out.clone()),
+            (&thousand_zeros, ok(format!("1{}", "0".repeat(33)), 1967)),
+            (&not_zeros, out.clone()),
+            (
+                "00000000000000000000000000000000000000001.5",
+                ok("15".into(), -1),
+            ),
+            ("1.50", ok("150".into(), -2)),
+            ("-2.5e+3", ok("-25".into(), 2)),
+            ("1_000.5", ok("10005".into(), -1)),
+            ("1e", None),
+            ("1e+", None),
+            ("1e+-5", None),
+            ("1.", None),
+            (".5", None),
+        ];
+        for (text, want) in cases {
+            let got = Dec::parse(text).map(|r| r.map(|d| show(&d)).map_err(|_| ()));
+            assert_eq!(got, want, "{text}");
+        }
+        assert_eq!(
+            dec("1e6144").mul(&dec("10")).unwrap_err(),
+            DecFail::Exponent
+        );
+        assert_eq!(
+            Dec::parse("1e6145").unwrap().unwrap_err().message(),
+            "Decimal exponent out of range"
+        );
+        assert_eq!(
+            Dec::parse(&not_zeros).unwrap().unwrap_err().message(),
+            "Decimal overflow (more than 34 digits)"
+        );
+        assert_eq!(Dec::from_u128(u128::MAX).unwrap_err(), DecFail::Digits);
+        assert!(Dec::from_u128(10u128.pow(38)).is_ok());
+    }
+
+    #[test]
+    fn decimal_pow_is_repeated_multiplication() {
+        for base in [
+            "1.50",
+            "-2",
+            "0.00",
+            "10",
+            "-1.0",
+            "7e-3",
+            "123456789",
+            "1e6000",
+            "2e-3000",
+            "9999999999999999",
+            "100",
+        ] {
+            let x = dec(base);
+            let mut acc: Result<Dec, DecFail> = Ok(dec("1"));
+            for k in 0..=6 {
+                let pow = x.pow(k).expect("k >= 0");
+                assert_eq!(
+                    pow.map(|d| show(&d)),
+                    acc.clone().map(|d| show(&d)),
+                    "{base}.pow({k})"
+                );
+                acc = acc.and_then(|a| a.mul(&x));
+            }
+        }
+        assert_eq!(show(&dec("1.50").pow(2).unwrap().unwrap()), "22500e-4");
+        assert_eq!(dec("2").pow(113).unwrap().unwrap_err(), DecFail::Digits);
+        assert_eq!(dec("10").pow(6145).unwrap().unwrap_err(), DecFail::Exponent);
+        assert_eq!(
+            dec("0.1").pow(6177).unwrap().unwrap_err(),
+            DecFail::Exponent
+        );
+        assert_eq!(show(&dec("-1").pow(i64::MAX).unwrap().unwrap()), "-1e0");
+        assert!(dec("3").pow(-1).is_none());
+    }
+
+    #[test]
+    fn bigint_pow_follows_the_interpreter() {
+        let b = |v: i64| Big::from_i64(v);
+        assert_eq!(b(-3).pow(3), BigPow::Value(b(-27)));
+        assert_eq!(b(0).pow(0), BigPow::Value(b(1)));
+        assert_eq!(b(-1).pow(i64::MAX), BigPow::Value(b(-1)));
+        assert_eq!(b(2).pow(-1), BigPow::NegativeExponent);
+        assert_eq!(b(2).pow(65535), BigPow::TooLarge);
+        assert_eq!(b(2).pow(65534), BigPow::Unknown);
+        // Evaluated while `bits × k` stays within `MAX_BIG_BITS`.
+        let mut two_2000 = b(1);
+        for _ in 0..2000 {
+            two_2000 = two_2000.mul_small(2);
+        }
+        assert_eq!(b(2).pow(2000), BigPow::Value(two_2000));
+        assert_eq!(b(2).pow(4000), BigPow::Unknown);
     }
 }

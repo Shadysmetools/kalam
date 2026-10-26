@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use kalam_ast::{shape, Ast, ShapeOptions, TriviaKind};
 use kalam_base::{FileId, Skin};
-use kalam_fmt::FmtConfig;
+use kalam_fmt::{ArDigits, FmtConfig};
 
 pub fn repo_root() -> PathBuf {
     // compiler/crates/kalam-fmt → new-language
@@ -178,4 +178,90 @@ pub fn convert_path(text: &str, path: &[Skin]) -> Result<Vec<String>, String> {
         out.push(cur.clone());
     }
     Ok(out)
+}
+
+/// Both `[skin.ar] digits` settings.
+pub fn configs() -> [FmtConfig; 2] {
+    [
+        FmtConfig::default(),
+        FmtConfig {
+            ar_digits: ArDigits::ArabicIndic,
+        },
+    ]
+}
+
+/// The lexer and parser error codes of `text` read in `skin`.
+pub fn errors(text: &str, skin: Skin) -> Vec<&'static str> {
+    let out = kalam_parser::parse_source(text, skin, FileId(0));
+    out.diagnostics
+        .iter()
+        .filter(|d| d.is_error())
+        .map(|d| d.code)
+        .collect()
+}
+
+/// The fuzzer's convert oracles (`kalam-fuzz` `target.rs`, spec §4.3 G1/G2) on one clean input:
+/// `X→X` and every `X→Y` conversion pass their own lexer and parser and keep the AST, and
+/// `convert(convert(src, X→Y), Y→X) == convert(src, X→X)`. Empty when it passes.
+pub fn oracle_failures(name: &str, text: &str, from: Skin, config: &FmtConfig) -> Vec<String> {
+    let digits = format!("{:?}", config.ar_digits);
+    let name = &format!("{name} [{digits}]");
+    let mut failures = Vec::new();
+    let source_tree = match parse_clean(text, from) {
+        Some(ast) => tree(&ast),
+        None => return vec![format!("{name}: not clean in {from}")],
+    };
+    let canon = match kalam_fmt::convert(text, from, from, config) {
+        Ok(c) => c,
+        Err(d) => {
+            let codes: Vec<_> = d.iter().map(|d| d.code).collect();
+            return vec![format!("{name}: {from}->{from} refused: {codes:?}")];
+        }
+    };
+    let e = errors(&canon, from);
+    if !e.is_empty() {
+        failures.push(format!("{name}: {from}->{from} gives {e:?}\n{canon}"));
+    }
+    for to in Skin::ALL {
+        let out = match kalam_fmt::convert(text, from, to, config) {
+            Ok(o) => o,
+            Err(d) => {
+                let codes: Vec<_> = d.iter().map(|d| d.code).collect();
+                failures.push(format!("{name}: {from}->{to} refused: {codes:?}"));
+                continue;
+            }
+        };
+        let e = errors(&out, to);
+        if !e.is_empty() {
+            failures.push(format!("{name}: {from}->{to} gives {e:?}\n{out}"));
+            continue;
+        }
+        let out_tree = parse_clean(&out, to).map(|a| tree(&a));
+        if out_tree.as_deref() != Some(source_tree.as_str()) {
+            failures.push(format!("{name}: {from}->{to} changed the program\n{out}"));
+            continue;
+        }
+        // `kalam fmt` of the conversion, with the same setting, passes its own lexer and
+        // parser too (the printer re-spells digits on its own path).
+        match kalam_fmt::format(&out, to, config) {
+            Ok(f) => {
+                let e = errors(&f, to);
+                if !e.is_empty() {
+                    failures.push(format!("{name}: fmt of {from}->{to} gives {e:?}\n{f}"));
+                }
+            }
+            Err(_) => failures.push(format!("{name}: fmt refused the {from}->{to} output")),
+        }
+        match kalam_fmt::convert(&out, to, from, config) {
+            Ok(back) if back == canon => {}
+            Ok(back) => failures.push(format!(
+                "{name}: {from}->{to}->{from} != {from}->{from}\n--- via {to}:\n{out}\n--- back:\n{back}\n--- canon:\n{canon}"
+            )),
+            Err(d) => {
+                let codes: Vec<_> = d.iter().map(|d| d.code).collect();
+                failures.push(format!("{name}: {to}->{from} refused: {codes:?}"));
+            }
+        }
+    }
+    failures
 }

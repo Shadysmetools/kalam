@@ -4,14 +4,22 @@
 //! model to choose, so it is never applied. The file is checked exactly as `kalam check FILE`
 //! checks it ([`crate::check_bytes`]), and the loop runs to a fixpoint.
 //!
-//! **The acceptance rule** (FOUNDER-QUEUE Q42, the `D5.machine_fix_rate` rule): a fix is
-//! kept only if the file it gives has no error code the file did not have, at any stage
-//! (lexer, parser, name resolution, types), and fewer errors. When the file has no error,
-//! a fix must leave it with none and with fewer warnings. A fix that fails the rule is
-//! *withheld*: the text stays as it was, and the fix is shown as a suggestion. Each stage
-//! runs only when the ones before it are clean, so removing a stray `;` can reveal type
-//! errors the file had all along. Their codes are new to `kalam check`, so that fix is
-//! withheld too, and the person sees what it would expose before choosing it.
+//! **The acceptance rule** (FOUNDER-QUEUE Q42, Q49, Q50; the `D5.machine_fix_rate` rule). A
+//! change is kept only if the file it gives has no error code the file did not have, at any
+//! stage (lexer, parser, name resolution, types), and:
+//! - for a change that fixes an error: strictly fewer errors (Q42);
+//! - for a change that only fixes warnings (hints and lints count as warnings here): no new
+//!   code of any severity, no more errors than before, and fewer diagnostics in all (Q50).
+//!   In a file with no error this is the old rule: it stays error-free with fewer warnings.
+//!
+//! A *chain* of machine fixes counts as one change (Q49): its steps may expose errors (a
+//! stray `;` hides the name and type errors behind it), but its end state is judged against
+//! the text it started from, and must add no error code and have strictly fewer errors. A
+//! fix that fails the rule on its own and in every chain tried is *withheld*: the text stays
+//! as it was, and the fix is shown as a suggestion. Each stage runs only when the ones
+//! before it are clean, so removing a stray `;` can reveal type errors the file had all
+//! along; if no machine fix removes them, their codes are new to `kalam check`, so that fix
+//! is withheld, and the person sees what it would expose before choosing it.
 //!
 //! 1. Check the text. Take the first machine fix of every diagnostic, in source order, and
 //!    keep those whose edits overlap no fix taken before (touching counts as overlapping,
@@ -19,11 +27,15 @@
 //! 2. Apply them together and check again. If the result passes the rule, keep the round.
 //! 3. Otherwise try the round's fixes one at a time; the first that passes on its own is
 //!    kept, and each one tried before it is withheld for now.
-//! 4. After a kept change, every fix is tried again (the text changed, so a fix withheld
+//! 4. Otherwise try chains (Q49): starting from each fix in turn, extend the chain by the
+//!    first fix that ends it (passes the rule against the chain's start), or else by the
+//!    whole batch of step 1 on the current text; at most [`MAX_CHAIN_STEPS`] steps, and
+//!    [`CHAIN_BUDGET`] checks in all. The first chain that ends is kept.
+//! 5. After a kept change, every fix is tried again (the text changed, so a fix withheld
 //!    before may pass now). Stop when a round keeps nothing, when a text repeats, or after
-//!    [`MAX_FIX_ROUNDS`]. Each kept change lowers the error count (or, with no error, the
-//!    warning count), so the loop ends; when it ends because no fix passes, `kalam fix` on
-//!    the result changes nothing.
+//!    [`MAX_FIX_ROUNDS`]. Each kept change lowers the error count, or keeps it and lowers
+//!    the number of diagnostics, so the loop ends; when it ends because no fix passes,
+//!    `kalam fix` on the result changes nothing.
 //!
 //! A file that is not valid UTF-8 is never changed: `check_bytes` reads each invalid run as
 //! U+FFFD, and writing that text back would silently replace the bytes.
@@ -36,6 +48,12 @@ use crate::{check_bytes, CheckedFile, NotKalamFile};
 
 /// The most check-and-apply rounds `kalam fix` runs on one file.
 pub const MAX_FIX_ROUNDS: usize = 32;
+
+/// The most rounds (a single fix, or one step-1 batch) one chain (Q49) may take.
+pub const MAX_CHAIN_STEPS: usize = 4;
+
+/// The most checks one search for a chain may run.
+pub const CHAIN_BUDGET: usize = 64;
 
 /// One fix `kalam fix` applied (or withheld).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -80,6 +98,9 @@ impl FixedFile {
     }
 }
 
+/// How a text is checked: [`check_bytes`], or a stand-in in tests.
+type Checker<'a> = &'a dyn Fn(&str, &[u8]) -> Result<CheckedFile, NotKalamFile>;
+
 /// What a round compares: the file's diagnostics and how many there are.
 struct Snapshot {
     checked: CheckedFile,
@@ -87,8 +108,8 @@ struct Snapshot {
     all: usize,
 }
 
-fn snapshot(path: &str, text: &str) -> Result<Snapshot, NotKalamFile> {
-    let checked = check_bytes(path, text.as_bytes())?;
+fn snapshot(check: Checker, path: &str, text: &str) -> Result<Snapshot, NotKalamFile> {
+    let checked = check(path, text.as_bytes())?;
     Ok(Snapshot {
         errors: error_codes(&checked).count(),
         all: checked.diagnostics.len(),
@@ -116,17 +137,32 @@ fn new_codes(before: &Snapshot, after: &Snapshot) -> Vec<&'static str> {
     out
 }
 
-/// The acceptance rule (module docs): `after` adds no error code and has fewer errors, or,
-/// with no error on either side, fewer warnings.
-fn better(before: &Snapshot, after: &Snapshot) -> bool {
+/// `after` reports a code, of any severity, that `before` does not.
+fn any_new_code(before: &Snapshot, after: &Snapshot) -> bool {
+    let old: HashSet<&str> = before.checked.diagnostics.iter().map(|d| d.code).collect();
+    after
+        .checked
+        .diagnostics
+        .iter()
+        .any(|d| !old.contains(d.code))
+}
+
+/// The acceptance rule (module docs) for one change. `fixes_an_error`: the change applies
+/// at least one fix of an error diagnostic (otherwise only fixes of warnings).
+fn better(before: &Snapshot, after: &Snapshot, fixes_an_error: bool) -> bool {
     if !new_codes(before, after).is_empty() {
         return false;
     }
-    if before.errors > 0 {
+    if fixes_an_error {
         after.errors < before.errors
     } else {
-        after.errors == 0 && after.all < before.all
+        after.errors <= before.errors && after.all < before.all && !any_new_code(before, after)
     }
+}
+
+/// Q49: a chain that started at `start` may end at `end`.
+fn chain_ends(start: &Snapshot, end: &Snapshot) -> bool {
+    new_codes(start, end).is_empty() && end.errors < start.errors
 }
 
 /// What identifies a fix in a check: its code, title and inserted texts.
@@ -145,6 +181,8 @@ struct Candidate {
     fix: Fix,
     info: AppliedFix,
     key: FixKey,
+    /// It fixes an error (not a warning, hint or lint).
+    error: bool,
 }
 
 fn candidates(snap: &Snapshot) -> Vec<Candidate> {
@@ -170,9 +208,27 @@ fn candidates(snap: &Snapshot) -> Vec<Candidate> {
             },
             key: fix_key(d.code, fix),
             fix: fix.clone(),
+            error: d.is_error(),
         });
     }
     out
+}
+
+/// Step 1: the candidates, in order, whose edits touch no candidate taken before them.
+fn disjoint(found: &[Candidate]) -> Vec<&Candidate> {
+    let mut batch: Vec<&Candidate> = Vec::new();
+    for c in found {
+        let free = batch.iter().all(|b| {
+            b.fix
+                .edits
+                .iter()
+                .all(|x| c.fix.edits.iter().all(|y| !touch(x, y)))
+        });
+        if free {
+            batch.push(c);
+        }
+    }
+    batch
 }
 
 /// Every edit lies inside `text`, on character boundaries, and no two of them touch.
@@ -206,7 +262,12 @@ fn apply(text: &str, fixes: &[&Fix]) -> String {
 
 /// `kalam fix` on one file: `bytes` as read from `path` (module docs).
 pub fn fix_file(path: &str, bytes: &[u8]) -> Result<FixedFile, NotKalamFile> {
-    let mut snap = snapshot_bytes(path, bytes)?;
+    fix_with(path, bytes, &check_bytes)
+}
+
+/// [`fix_file`], checking each text with `check`.
+fn fix_with(path: &str, bytes: &[u8], check: Checker) -> Result<FixedFile, NotKalamFile> {
+    let mut snap = snapshot_bytes(check, path, bytes)?;
     let original = snap.checked.text.clone();
     let mut result = FixedFile {
         path: path.to_string(),
@@ -227,28 +288,21 @@ pub fn fix_file(path: &str, bytes: &[u8]) -> Result<FixedFile, NotKalamFile> {
         result.checked = snap.checked;
         return Ok(result);
     }
+    let mut seen: HashSet<String> = HashSet::from([snap.checked.text.clone()]);
     for _ in 0..MAX_FIX_ROUNDS {
         let found = candidates(&snap);
         if found.is_empty() {
             break;
         }
-        // Step 1: a batch of fixes that touch no fix taken before them.
-        let mut batch: Vec<&Candidate> = Vec::new();
-        for c in &found {
-            let free = batch.iter().all(|b| {
-                b.fix
-                    .edits
-                    .iter()
-                    .all(|x| c.fix.edits.iter().all(|y| !touch(x, y)))
-            });
-            if free {
-                batch.push(c);
-            }
-        }
+        // Steps 1-2: a batch of fixes that touch no fix taken before them.
+        let batch = disjoint(&found);
         let text = snap.checked.text.clone();
         let fixes: Vec<&Fix> = batch.iter().map(|c| &c.fix).collect();
-        let after = snapshot(path, &apply(&text, &fixes))?;
-        if better(&snap, &after) {
+        let after = snapshot(check, path, &apply(&text, &fixes))?;
+        if better(&snap, &after, batch.iter().any(|c| c.error)) {
+            if !seen.insert(after.checked.text.clone()) {
+                break;
+            }
             result.applied.extend(batch.iter().map(|c| c.info.clone()));
             snap = after;
             continue;
@@ -257,9 +311,9 @@ pub fn fix_file(path: &str, bytes: &[u8]) -> Result<FixedFile, NotKalamFile> {
         let mut withheld = Vec::new();
         let mut kept = None;
         for c in &found {
-            let after = snapshot(path, &apply(&text, &[&c.fix]))?;
-            if better(&snap, &after) {
-                kept = Some((c.info.clone(), after));
+            let after = snapshot(check, path, &apply(&text, &[&c.fix]))?;
+            if better(&snap, &after, c.error) {
+                kept = Some((vec![c.info.clone()], after));
                 break;
             }
             withheld.push(WithheldFix {
@@ -267,9 +321,16 @@ pub fn fix_file(path: &str, bytes: &[u8]) -> Result<FixedFile, NotKalamFile> {
                 new_codes: new_codes(&snap, &after),
             });
         }
-        if let Some((info, after)) = kept {
-            // Step 4: the text changed, so every fix is tried again.
-            result.applied.push(info);
+        // Step 4: a chain of fixes (Q49).
+        if kept.is_none() {
+            kept = chain(check, path, &snap, &found)?;
+        }
+        if let Some((infos, after)) = kept {
+            if !seen.insert(after.checked.text.clone()) {
+                break;
+            }
+            // Step 5: the text changed, so every fix is tried again.
+            result.applied.extend(infos);
             snap = after;
             continue;
         }
@@ -291,11 +352,73 @@ pub fn fix_file(path: &str, bytes: &[u8]) -> Result<FixedFile, NotKalamFile> {
     Ok(result)
 }
 
-fn snapshot_bytes(path: &str, bytes: &[u8]) -> Result<Snapshot, NotKalamFile> {
+/// Step 4 (Q49): the first chain of machine fixes, starting at `start` with one of `found`,
+/// whose end state passes [`chain_ends`]; its fixes and end state. Each chain is extended by
+/// the first fix that ends it, or else by the whole step-1 batch of the current text.
+fn chain(
+    check: Checker,
+    path: &str,
+    start: &Snapshot,
+    found: &[Candidate],
+) -> Result<Option<(Vec<AppliedFix>, Snapshot)>, NotKalamFile> {
+    let mut budget = CHAIN_BUDGET;
+    let mut spend = || {
+        let ok = budget > 0;
+        budget = budget.saturating_sub(1);
+        ok
+    };
+    for first in found {
+        if !spend() {
+            break;
+        }
+        let mut cur = snapshot(check, path, &apply(&start.checked.text, &[&first.fix]))?;
+        let mut steps = vec![first.info.clone()];
+        let mut seen: HashSet<String> =
+            HashSet::from([start.checked.text.clone(), cur.checked.text.clone()]);
+        let mut rounds = 1;
+        'extend: while rounds < MAX_CHAIN_STEPS {
+            if chain_ends(start, &cur) {
+                return Ok(Some((steps, cur)));
+            }
+            let next = candidates(&cur);
+            if next.is_empty() {
+                break;
+            }
+            for c in &next {
+                if !spend() {
+                    break 'extend;
+                }
+                let end = snapshot(check, path, &apply(&cur.checked.text, &[&c.fix]))?;
+                if chain_ends(start, &end) {
+                    steps.push(c.info.clone());
+                    return Ok(Some((steps, end)));
+                }
+            }
+            let batch = disjoint(&next);
+            if !spend() {
+                break;
+            }
+            let fixes: Vec<&Fix> = batch.iter().map(|c| &c.fix).collect();
+            let after = snapshot(check, path, &apply(&cur.checked.text, &fixes))?;
+            if !seen.insert(after.checked.text.clone()) {
+                break;
+            }
+            steps.extend(batch.iter().map(|c| c.info.clone()));
+            cur = after;
+            rounds += 1;
+        }
+        if chain_ends(start, &cur) {
+            return Ok(Some((steps, cur)));
+        }
+    }
+    Ok(None)
+}
+
+fn snapshot_bytes(check: Checker, path: &str, bytes: &[u8]) -> Result<Snapshot, NotKalamFile> {
     match std::str::from_utf8(bytes) {
-        Ok(text) => snapshot(path, text),
+        Ok(text) => snapshot(check, path, text),
         Err(_) => Ok(Snapshot {
-            checked: check_bytes(path, bytes)?,
+            checked: check(path, bytes)?,
             errors: 0,
             all: 0,
         }),
@@ -482,9 +605,10 @@ mod tests {
     }
 
     #[test]
-    fn a_syntax_fix_that_reveals_a_new_type_error_is_withheld() {
-        // K0904 (parse) hides K1302 (types): removing the `;` would add K1302, a code the
-        // file does not have, so the fix is withheld and shown as a suggestion (Q42).
+    fn a_chain_through_a_revealed_error_is_applied() {
+        // Q49: K0904 (parse) hides K1302 (types). Removing the `;` alone adds K1302, a code
+        // the file does not have, but K1302's own machine fix (`.ok_or(…)`) removes it: the
+        // chain ends with no new code and fewer errors, so both fixes are kept.
         let src = "fn head(xs: List[Int]) -> Result[Int, String]:
     let n = xs.get(0)?;
     return Ok(n)
@@ -493,10 +617,32 @@ fn main():
     let _ = head([2])
 ";
         let f = fix("main.kl", src);
+        assert!(
+            f.fixed
+                .contains("    let n = xs.get(0).ok_or(\"missing value\")?\n"),
+            "{}",
+            f.fixed
+        );
+        assert_eq!(codes(&f.applied), ["K0904", "K1302"]);
+        assert!(f.withheld.is_empty() && !f.checked.has_errors());
+        let again = fix("main.kl", &f.fixed);
+        assert!(!again.changed() && again.applied.is_empty());
+    }
+
+    #[test]
+    fn a_syntax_fix_that_reveals_a_new_type_error_is_withheld() {
+        // K0904 (parse) hides K0600 (types), which has no machine fix: removing the `;`
+        // would add K0600, a code the file does not have, and no chain removes it, so the
+        // fix is withheld and shown as a suggestion (Q42, Q49).
+        let src = "fn main():
+    let a: Int = \"x\";
+    print(\"{a}\")
+";
+        let f = fix("main.kl", src);
         assert!(!f.changed() && f.applied.is_empty(), "{}", f.fixed);
         assert_eq!(f.withheld.len(), 1);
         assert_eq!(f.withheld[0].fix.code, "K0904");
-        assert_eq!(f.withheld[0].new_codes, ["K1302"]);
+        assert_eq!(f.withheld[0].new_codes, ["K0600"]);
         let d = &f.checked.diagnostics[0];
         assert_eq!(d.code, "K0904");
         assert!(d
@@ -521,7 +667,7 @@ fn main():
     }
 
     fn snap(text: &str) -> Snapshot {
-        snapshot("main.kl", text).unwrap()
+        snapshot(&check_bytes, "main.kl", text).unwrap()
     }
 
     #[test]
@@ -539,7 +685,7 @@ fn main():
     print(\"{a}\")
 ",
         );
-        assert!(better(&one_type_error, &clean));
+        assert!(better(&one_type_error, &clean, true));
         let other_code = snap(
             "fn main():
     let a = 1
@@ -547,7 +693,7 @@ fn main():
     print(\"{a + b}\")
 ",
         );
-        assert!(!better(&one_type_error, &other_code));
+        assert!(!better(&one_type_error, &other_code, true));
         assert_eq!(new_codes(&one_type_error, &other_code), ["K0601"]);
         // The stage does not matter: a syntax error that gives way to an error of another
         // code (at a later stage) is a new code, and the other way round too.
@@ -557,10 +703,10 @@ fn main():
     print(\"{a}\")
 ",
         );
-        assert!(!better(&one_type_error, &syntax));
-        assert!(!better(&syntax, &one_type_error));
+        assert!(!better(&one_type_error, &syntax, true));
+        assert!(!better(&syntax, &one_type_error, true));
         // As many errors, same codes: not better.
-        assert!(!better(&one_type_error, &one_type_error));
+        assert!(!better(&one_type_error, &one_type_error, true));
     }
 
     #[test]
@@ -592,6 +738,137 @@ fn main():
         let f = fix_file("main.kl", &bytes).unwrap();
         assert!(f.not_utf8 && !f.changed() && f.applied.is_empty());
         assert!(fix_file("notes.txt", b"").is_err());
+    }
+
+    #[test]
+    fn a_chain_through_a_revealed_shadowing_error_is_applied() {
+        // Q49: the `;` hides K0405 (name resolution), whose rename fix ends the chain.
+        let src = "fn main():
+    let total = 1
+    if total > 0:
+        let total = 2;
+        print(\"{total}\")
+";
+        let f = fix("main.kl", src);
+        assert_eq!(
+            f.fixed,
+            "fn main():
+    let total = 1
+    if total > 0:
+        let total_2 = 2
+        print(\"{total_2}\")
+"
+        );
+        assert_eq!(codes(&f.applied), ["K0904", "K0405"]);
+        assert!(f.withheld.is_empty() && !f.checked.has_errors());
+    }
+
+    #[test]
+    fn a_chain_whose_end_adds_a_code_is_withheld() {
+        // Q49: `;` → K0405 → rename → K0600 (types), which no machine fix removes. Every step
+        // was a machine fix, but the end state has a code the file did not have.
+        let src = "fn main():
+    let total = 1
+    if total > 0:
+        let total: Int = \"x\";
+        print(\"{total}\")
+";
+        let f = fix("main.kl", src);
+        assert!(!f.changed() && f.applied.is_empty(), "{}", f.fixed);
+        assert_eq!(f.withheld.len(), 1);
+        assert_eq!(f.withheld[0].new_codes, ["K0405"]);
+    }
+
+    #[test]
+    fn a_chain_must_end_with_strictly_fewer_errors() {
+        let one = snap("fn main():\n    let a: Int = \"x\"\n    print(\"{a}\")\n");
+        let other_one = snap("fn main():\n    let b: Int = \"y\"\n    print(\"{b}\")\n");
+        let clean = snap("fn main():\n    let a: Int = 1\n    print(\"{a}\")\n");
+        let new_code = snap("fn main():\n    let a = 1\n    print(\"{a + 2.5}\")\n");
+        assert!(chain_ends(&one, &clean));
+        assert!(!chain_ends(&one, &other_one), "as many errors");
+        assert!(!chain_ends(&one, &new_code), "a new code");
+        assert!(!chain_ends(&clean, &clean));
+    }
+
+    /// `check_bytes`, plus a warning W0421 at every `needle` of `rules`, with a machine fix
+    /// that writes its replacement, and one W0403 (no fix) if the text holds `newer`.
+    fn checker_with_warnings(
+        rules: &'static [(&'static str, &'static str)],
+    ) -> impl Fn(&str, &[u8]) -> Result<CheckedFile, NotKalamFile> {
+        move |path, bytes| {
+            let mut c = check_bytes(path, bytes)?;
+            for (needle, replacement) in rules {
+                for (at, _) in c.text.match_indices(needle) {
+                    let span = kalam_base::Span::new(at as u32, (at + needle.len()) as u32);
+                    c.diagnostics.push(
+                        kalam_diagnostics::Diagnostic::new("W0421", kalam_base::FileId(0), span)
+                            .fix(Fix::machine("rename", span, *replacement)),
+                    );
+                }
+            }
+            if let Some(at) = c.text.find("newer") {
+                let span = kalam_base::Span::new(at as u32, at as u32 + 5);
+                c.diagnostics.push(kalam_diagnostics::Diagnostic::new(
+                    "W0403",
+                    kalam_base::FileId(0),
+                    span,
+                ));
+            }
+            Ok(c)
+        }
+    }
+
+    const WITH_ERROR: &str = "fn main():
+    let a: Int = \"x\"
+    let old_name = 2
+    let b: Int = 1
+    print(\"{a} {old_name} {b}\")
+";
+
+    #[test]
+    fn a_warning_fix_in_a_file_with_errors_is_applied() {
+        // Q50: no new code, the error count (one K0600) does not rise, fewer diagnostics.
+        let check = checker_with_warnings(&[("old_name", "new_name")]);
+        let f = fix_with("main.kl", WITH_ERROR.as_bytes(), &check).unwrap();
+        assert_eq!(f.fixed, WITH_ERROR.replace("old_name", "new_name"));
+        assert_eq!(codes(&f.applied), ["W0421", "W0421"]);
+        let left: Vec<&str> = f.checked.diagnostics.iter().map(|d| d.code).collect();
+        assert_eq!(left, ["K0600"]);
+    }
+
+    #[test]
+    fn a_warning_fix_that_adds_an_error_is_withheld() {
+        // Q50: `let b: Int = "y"` is a second K0600: no new code, but more errors.
+        let check = checker_with_warnings(&[("= 1", "= \"y\"")]);
+        let f = fix_with("main.kl", WITH_ERROR.as_bytes(), &check).unwrap();
+        assert!(!f.changed(), "{}", f.fixed);
+        assert_eq!(f.withheld.len(), 1);
+        assert!(f.withheld[0].new_codes.is_empty());
+        // And one that adds an error code is withheld too.
+        let check = checker_with_warnings(&[("= 1", "= 1;")]);
+        let f = fix_with("main.kl", WITH_ERROR.as_bytes(), &check).unwrap();
+        assert!(!f.changed(), "{}", f.fixed);
+        assert_eq!(f.withheld[0].new_codes, ["K0904"]);
+    }
+
+    #[test]
+    fn a_warning_fix_that_adds_a_warning_code_is_withheld() {
+        // Q50 "adds no new code" counts every severity: two W0421 fixed, one W0403 added.
+        let check = checker_with_warnings(&[("old_name", "newer")]);
+        for src in [WITH_ERROR.to_string(), WITH_ERROR.replace("\"x\"", "3")] {
+            let f = fix_with("main.kl", src.as_bytes(), &check).unwrap();
+            assert!(!f.changed(), "{}", f.fixed);
+            assert_eq!(f.withheld.len(), 2);
+        }
+    }
+
+    #[test]
+    fn a_warning_fix_never_rides_on_the_error_rule() {
+        // An error fix must lower the error count even if it also removes warnings.
+        let one = snap("fn main():\n    let a: Int = \"x\"\n    print(\"{a}\")\n");
+        assert!(!better(&one, &one, true));
+        assert!(!better(&one, &one, false), "nothing fewer");
     }
 
     #[test]

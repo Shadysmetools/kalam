@@ -68,6 +68,10 @@ These goldens feed `D5.golden_coverage`. They are also half of the corpus for `D
 - **Each fix leaves a clean file.** `kalam fix` applies the fix in all three skins, and the result re-checks with no diagnostics. With K0405 matching, all 114 goldens match: 114 of the 145 catalog codes, 78.6 %.
 - **The `kalam fix` acceptance rule** (FOUNDER-QUEUE Q42) is now tested over every golden source (`compiler/crates/kalam-driver/tests/fix_rule.rs`). A fixed golden re-checks with fewer errors and no new error code, and a second `kalam fix` run changes nothing.
 
+## Changed in M2 iteration 6 (2026-10-25)
+
+- **K0405 franco re-blessed** (one line). FOUNDER-QUEUE Q51: the rename fix now uses one suffix rule in every skin, so the franco `Try:` line reads `total_2`, not `el_total`, as en and ar already did. Nothing else in the rendering changed. The help line still describes the skins' naming convention for values; it is advice to the person, not the fix (`compiler/crates/kalam-driver/tests/rename_converts.rs` checks that fixing and converting commute).
+
 ## Catalog codes without goldens, and why
 
 ### Rendered text is wrong: not blessed

@@ -106,7 +106,7 @@ fn int_literal_range_is_64_bit_and_unary_minus_admits_min() {
     });
     assert_eq!(codes(b), vec!["K0126"]);
     let b = main_with(|b| {
-        let v = b.e(ExprKind::Int(None));
+        let v = b.e(ExprKind::Int(IntLit::Large(format!("1{}", "0".repeat(40)))));
         vec![let_stmt(b, None, v)]
     });
     assert_eq!(codes(b), vec!["K0126"]);

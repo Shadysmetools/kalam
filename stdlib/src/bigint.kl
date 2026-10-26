@@ -14,3 +14,8 @@ impl BigInt:
     ## The value as an `Int`, or `None` outside the 64-bit range.
     @builtin
     export fn to_int(self) -> Option[Int] => panic("builtin")
+
+    ## `self` raised to the power `exponent` (Kalam has no `**`), exactly. `x.pow(0)` is 1.
+    ## Panics on a negative exponent, and when the result would have 65536 bits or more.
+    @builtin
+    export fn pow(self, exponent: Int) -> BigInt => panic("builtin")

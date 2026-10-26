@@ -1,7 +1,8 @@
-//! `kalam fix` acceptance rule (FOUNDER-QUEUE Q42): a machine fix is applied only when the
-//! file it gives has no error code, at any stage, that the file did not have, and fewer
-//! errors. Otherwise the fix is withheld and reported as a suggestion. The loop runs to a
-//! fixpoint, so a second run changes nothing.
+//! `kalam fix` acceptance rule (FOUNDER-QUEUE Q42, Q49, Q50): a machine fix, or a chain of
+//! them, is applied only when the file it gives has no error code, at any stage, that the
+//! file did not have, and fewer errors (or, for fixes of warnings only, no more errors and
+//! fewer diagnostics). Otherwise the fix is withheld and reported as a suggestion. The loop
+//! runs to a fixpoint, so a second run changes nothing.
 //!
 //! The corpus is every `tests/fixp` case (the M2 iteration 4 verifier's repros) and every
 //! diagnostic golden in `eval/goldens`. The check below recomputes "fewer errors, no new
@@ -17,21 +18,26 @@ fn repo() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..")
 }
 
-fn error_codes(path: &str, text: &str) -> (usize, BTreeSet<&'static str>) {
+/// The error count, the error codes and the number of diagnostics of `text`.
+fn error_codes(path: &str, text: &str) -> (usize, BTreeSet<&'static str>, usize) {
     let checked = check_bytes(path, text.as_bytes()).unwrap();
     let errors: Vec<_> = checked
         .diagnostics
         .iter()
         .filter(|d| d.is_error())
         .collect();
-    (errors.len(), errors.iter().map(|d| d.code).collect())
+    (
+        errors.len(),
+        errors.iter().map(|d| d.code).collect(),
+        checked.diagnostics.len(),
+    )
 }
 
 /// Fixes `text` (checked as `path`) and asserts the Q42 rule and the fixpoint.
 fn check_rule(label: &str, path: &str, text: &str) -> FixedFile {
     let f = fix_file(path, text.as_bytes()).unwrap();
-    let (before_n, before) = error_codes(path, text);
-    let (after_n, after) = error_codes(path, &f.fixed);
+    let (before_n, before, before_all) = error_codes(path, text);
+    let (after_n, after, after_all) = error_codes(path, &f.fixed);
     if f.changed() {
         assert!(
             after.is_subset(&before),
@@ -40,7 +46,7 @@ fn check_rule(label: &str, path: &str, text: &str) -> FixedFile {
             f.fixed
         );
         assert!(
-            after_n < before_n || (before_n == 0 && after_n == 0),
+            after_n < before_n || (after_n == before_n && after_all < before_all),
             "{label}: {before_n} errors before, {after_n} after\n{}",
             f.fixed
         );
@@ -128,9 +134,10 @@ fn fixes_that_only_reveal_nothing_new_are_applied_and_leave_a_clean_file() {
 
 #[test]
 fn a_fix_that_would_reveal_a_new_error_code_is_withheld() {
-    // `d ** 2` → `d.pow(2)` gives K0420 (`Decimal` has no `pow`): withheld.
-    let src = "fn main():\n    let d: Decimal = 2.5\n    let r = d ** 2\n    print(\"{r}\")\n";
-    let f = check_rule("decimal power", "main.kl", src);
+    // `s ** 2` → `s.pow(2)` gives K0420 (`String` has no `pow`): withheld. (`Decimal` has
+    // `pow` since Q45, so `d ** 2` is now fixed.)
+    let src = "fn main():\n    let s = \"ab\"\n    let r = s ** 2\n    print(\"{r}\")\n";
+    let f = check_rule("string power", "main.kl", src);
     assert!(!f.changed() && f.applied.is_empty());
     assert_eq!(f.withheld.len(), 1, "{:?}", f.withheld);
     assert_eq!(f.withheld[0].fix.code, "K0923");

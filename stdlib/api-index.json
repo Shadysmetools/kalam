@@ -158,6 +158,22 @@
       "doc": "The integer written in the text."
     },
     {
+      "path": "BigInt.pow",
+      "module": "std/bigint",
+      "kind": "method",
+      "name": "pow",
+      "owner": "BigInt",
+      "receiver": "impl BigInt",
+      "signature": "fn pow(self, exponent: Int) -> BigInt",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`self` raised to the power `exponent` (Kalam has no `**`), exactly. `x.pow(0)` is 1. Panics on a negative exponent, and when the result would have 65536 bits or more."
+    },
+    {
       "path": "BigInt.to_int",
       "module": "std/bigint",
       "kind": "method",
@@ -883,6 +899,22 @@
       ],
       "spellings": null,
       "doc": "The exact `Decimal` written in the text."
+    },
+    {
+      "path": "Decimal.pow",
+      "module": "std/decimal",
+      "kind": "method",
+      "name": "pow",
+      "owner": "Decimal",
+      "receiver": "impl Decimal",
+      "signature": "fn pow(self, exponent: Int) -> Decimal",
+      "capability": [],
+      "suspends": "no",
+      "attributes": [
+        "builtin"
+      ],
+      "spellings": null,
+      "doc": "`self` raised to the power `exponent` (Kalam has no `**`), exactly: `x.pow(3)` is `x * x * x`. `x.pow(0)` is 1. Panics on a negative exponent, and when the result needs more than 34 digits or its exponent is out of range."
     },
     {
       "path": "Decimal.round",
@@ -6602,6 +6634,20 @@
       "attributes": [],
       "spellings": null,
       "doc": "Why `to_int`, `to_float` or `to_decimal` rejected its text."
+    },
+    {
+      "path": "std/task",
+      "module": "std/task",
+      "kind": "module",
+      "name": "task",
+      "owner": null,
+      "receiver": null,
+      "signature": "use std/task",
+      "capability": [],
+      "suspends": null,
+      "attributes": [],
+      "spellings": null,
+      "doc": "std/task (spec §15.7, §20.1): structured concurrency, plus `Cell`. At M2 it re-exports the prelude's `Cell` (FOUNDER-QUEUE Q46), so `use std/task.{Cell}` works; the §15.7 functions (`task.all`, `task.both`, `task.race`, `task.timeout`, `task.sleep`, `task.scope`) are added with the runtime that runs them."
     },
     {
       "path": "std/time",

@@ -864,7 +864,7 @@ impl<'a> FnLower<'a> {
             }
             PatKind::Int { negative, value } => {
                 let lit = Expr::new(
-                    int_literal(*value, *negative, &scrut.ty, sp)?,
+                    int_literal(&hir::IntLit::Small(*value), *negative, &scrut.ty, sp)?,
                     scrut.ty.clone(),
                     sp,
                 );
@@ -1217,8 +1217,7 @@ impl<'a> FnLower<'a> {
         let ty = self.ty(e)?;
         let sp = e.span;
         let kind = match &e.kind {
-            H::Int(Some(v)) => int_literal(*v, false, &ty, sp)?,
-            H::Int(None) => return unsupported("integer literal out of range", sp),
+            H::Int(lit) => int_literal(lit, false, &ty, sp)?,
             H::Float(text) => {
                 let clean: String = text.chars().filter(|c| *c != '_').collect();
                 match ty {
@@ -1287,8 +1286,8 @@ impl<'a> FnLower<'a> {
                 op: UnOp::Neg,
                 operand,
             } => {
-                if let H::Int(Some(v)) = operand.kind {
-                    int_literal(v, true, &ty, sp)?
+                if let H::Int(lit) = &operand.kind {
+                    int_literal(lit, true, &ty, sp)?
                 } else {
                     let o = self.expr(operand)?;
                     let op = match o.ty {
@@ -1691,7 +1690,9 @@ impl<'a> FnLower<'a> {
                 Some(i) => ordered.push(values[*i].clone()),
                 None => match slots[k].default {
                     Some(d) => {
-                        let v = self.foreign_expr(default_owner, d)?;
+                        let v = self
+                            .foreign_expr(default_owner, d)
+                            .map_err(|e| self.at_call_site(e, default_owner, span))?;
                         ordered.push(v);
                     }
                     None => return unsupported("missing argument", span),
@@ -1699,6 +1700,19 @@ impl<'a> FnLower<'a> {
             }
         }
         Ok((stmts, ordered))
+    }
+
+    /// A default value from another file (a stdlib stub's) that cannot be lowered is
+    /// reported at the call `site`: a span is an offset into its own file only, and the
+    /// error carries no file.
+    fn at_call_site(&self, e: LowerError, owner: DefId, site: Span) -> LowerError {
+        let file = |d: DefId| self.cx.prog.item(d).map(|i| i.file);
+        match e {
+            LowerError::Unsupported { what, .. } if file(owner) != file(self.owner) => {
+                LowerError::Unsupported { what, span: site }
+            }
+            e => e,
+        }
     }
 
     /// Lowers another owner's expression (a default value): its types are keyed by
@@ -2020,18 +2034,30 @@ fn param_slots(params: &[ParamDecl]) -> Vec<Slot<'_>> {
         .collect()
 }
 
-fn int_literal(v: u128, negative: bool, ty: &Ty, sp: Span) -> R<ExprKind> {
-    Ok(match ty {
-        Ty::Int => {
-            let v = if negative { -(v as i128) } else { v as i128 };
+/// An integer literal (negated when it is the operand of unary `-`) of its checked type.
+/// The type checker has range-checked it (K0126), so an `Int` fits in 64 bits, a `Float`
+/// is finite and a `Decimal` is one decimal128 holds; a literal larger than `u128` is
+/// carried as its decimal digits.
+fn int_literal(lit: &hir::IntLit, negative: bool, ty: &Ty, sp: Span) -> R<ExprKind> {
+    let sign = if negative { "-" } else { "" };
+    Ok(match (ty, lit) {
+        (Ty::Int, hir::IntLit::Small(v)) => {
+            let v = if negative { -(*v as i128) } else { *v as i128 };
             match i64::try_from(v) {
                 Ok(v) => ExprKind::Int(v),
                 Err(_) => return unsupported("integer literal out of range", sp),
             }
         }
-        Ty::Float => ExprKind::Float(if negative { -(v as f64) } else { v as f64 }),
-        Ty::Decimal => ExprKind::Decimal(format!("{}{v}", if negative { "-" } else { "" })),
-        Ty::BigInt => ExprKind::BigInt(format!("{}{v}", if negative { "-" } else { "" })),
+        (Ty::Float, hir::IntLit::Small(v)) => {
+            ExprKind::Float(if negative { -(*v as f64) } else { *v as f64 })
+        }
+        (Ty::Float, hir::IntLit::Large(digits)) => match digits.parse::<f64>() {
+            Ok(f) if f.is_finite() => ExprKind::Float(if negative { -f } else { f }),
+            _ => return unsupported("integer literal out of range", sp),
+        },
+        (Ty::Decimal, _) => ExprKind::Decimal(format!("{sign}{}", lit.digits())),
+        (Ty::BigInt, _) => ExprKind::BigInt(format!("{sign}{}", lit.digits())),
+        (Ty::Int, hir::IntLit::Large(_)) => return unsupported("integer literal out of range", sp),
         _ => return unsupported("integer literal of this type", sp),
     })
 }

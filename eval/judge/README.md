@@ -21,6 +21,8 @@ When a golden's rendering, or the rubric, changes after judging, its item is **s
 
 ## Calibration (for the founder)
 
+A step-by-step version, with the exact command, is in `HOW-TO-CALIBRATE.md`. It has you grade a copy of the kit, so regenerating the kit can't overwrite your grades.
+
 The judge's score counts only after a human has graded at least 50 items and the MAE between the human and the judge is 0.5 or less.
 
 1. Open `calibration-kit.csv` in a spreadsheet. It is UTF-8 with a BOM, so the Arabic displays correctly. It does not contain the judge's scores.

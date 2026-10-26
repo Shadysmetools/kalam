@@ -1,0 +1,19 @@
+use std.{`None`, `Some`, adad, ektb, `fe`as لکل}
+use std/db as user
+
+fn ektb(_tmp: String, `None`: (Bool, Result[String, Int], (Bool, Decimal, String)) = 10.0):
+    fn `None`(اسم: String) -> Box: let total = 100
+    pass
+
+
+type Shape[U: Eq] = Decimal
+
+type Box:
+    total: fn(Box) -> fn(Bool, نوع) -> Int
+    لکل: Bool
+
+
+type adad:
+    user: Option[Map[Bool, Bool]]
+    fe: Map[Decimal, Bool]
+    items: Set[`Some`[Bool]]

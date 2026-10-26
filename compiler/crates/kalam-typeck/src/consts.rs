@@ -6,9 +6,11 @@
 //! holes must be constant expressions), `()`, tuples, list and map literals, record and
 //! variant construction (and `.with` on a constant record), lambdas (their bodies are not
 //! evaluated), the names of functions, constants, records and variants, field and
-//! tuple-field access, and the §10.6 operators other than call, index and `?`, all applied
-//! to constant expressions. Calls of functions (stdlib ones included: none is marked
-//! `const` yet), method calls, `if`, `match`, indexing, `?` and `unsafe.*` are not.
+//! tuple-field access, the `pow` methods of `Int`, `Float`, `BigInt` and `Decimal`
+//! (FOUNDER-QUEUE Q45, so the K0923 fix of `a ** b` applies to a constant too), and the
+//! §10.6 operators other than call, index and `?`, all applied to constant expressions.
+//! Calls of functions (stdlib ones included: none is marked `const` yet), other method
+//! calls, `if`, `match`, indexing, `?` and `unsafe.*` are not.
 //!
 //! Each constant is then **evaluated** as far as the checker can, with the reference
 //! interpreter's rules, so that "a constant that would panic is a compile error" (§13.4)
@@ -16,19 +18,27 @@
 //! - `Int` exactly, with the §9.2 rules (checked 64-bit, D18; `//` floors; `%` takes the
 //!   divisor's sign; dividing by zero panics, `Int / Int` included);
 //! - `BigInt` exactly (no overflow; dividing by zero panics), up to a size bound;
-//! - `Decimal` exactly, as decimal128: `+ - *` panic when the exact result needs more than
-//!   34 significant digits or leaves the exponent range (`const_num`);
+//! - `Decimal` exactly, as decimal128: `+ - *` and `pow` panic when the exact result needs
+//!   more than 34 significant digits, or (a separate message, Q48) when its exponent is
+//!   out of range even after clamping (`const_num`);
 //! - `Float` with IEEE arithmetic (it never panics, but its comparisons decide `and`/`or`),
 //!   `Bool`, plain `String` text, `()`;
 //! - records (built by their constructor, read by field, copied by `.with`) and tuples (read
-//!   by `.0`, `.1`, …), so a value flows through them, and `==`/`!=` on them.
+//!   by `.0`, `.1`, …), so a value flows through them;
+//! - lists (and `+` on them), maps (a repeated key keeps its first place and takes the last
+//!   value, as the interpreter's map does), and enum, `Option` and `Result` values (the
+//!   variant and its payload);
+//! - `==`/`!=` on all of these structurally, as the interpreter compares them (a map's
+//!   order is not part of its value; `Decimal` compares by value): two values that differ
+//!   in a known part (a variant, a length, an element) are unequal even when other parts
+//!   are not evaluated.
 //!
 //! A constant whose evaluation would panic is reported at the operation that panics, with
 //! the interpreter's panic message. Values flow through other constants in dependency
 //! order (the checker checks constants in that order), so `let B = A + 1` overflows when
-//! `A` is `Int`'s maximum. What is not evaluated (a field filled from its default, a list,
-//! a variant's payload, an interpolated string, a number beyond the size bound) is
-//! `Other`: it never makes a panic certain, so no verdict is guessed.
+//! `A` is `Int`'s maximum. What is not evaluated (a field filled from its default, an
+//! interpolated string, a map with a key that is not known, a number beyond the size
+//! bound) is `Other`: it never makes a panic certain, so no verdict is guessed.
 //!
 //! A constant that depends on itself (a cycle of constants) has no evaluation order: one
 //! K1204 per cycle. A **module constant** also may not hold a capability or a `Cell`
@@ -47,9 +57,11 @@ use kalam_resolve::DefId;
 
 use crate::adt::AdtKind;
 use crate::check::TypeckResults;
-use crate::const_num::{Big, Dec, MAX_BIG_BITS};
+use crate::const_num::{Big, BigPow, Dec, BIG_POW_TOO_LARGE, MAX_BIG_BITS};
 use crate::error::{TypeError, TypeErrorKind};
-use crate::hir::{BinOp, Expr, ExprKind, HirProgram, ItemKind, LangItem, StrPart, UnOp};
+use crate::hir::{
+    Arg, BinOp, Expr, ExprKind, HirProgram, IntLit, ItemKind, LangItem, StrPart, UnOp,
+};
 use crate::ty::Ty;
 
 /// A constant's value as far as the checker evaluates it.
@@ -69,8 +81,31 @@ enum Val {
     /// A record: the fields given to its constructor (or `.with`), by name. A field left
     /// to its default is absent, so reading it is `Other`.
     Record(Vec<(String, Val)>),
+    /// A list's elements.
+    List(Vec<Val>),
+    /// A map's entries in the interpreter's order: a key's first place, its last value.
+    /// Built only when every key is known (so keys can be told apart).
+    Map(Vec<(Val, Val)>),
+    /// An enum, `Option` or `Result` value: the interpreter's variant number (declaration
+    /// order; `None` and `Ok` are 0, `Some` and `Err` are 1) and the payload in
+    /// declaration order.
+    Variant(u32, Vec<Val>),
     /// Not evaluated (or a value nothing here inspects): it never panics here.
     Other,
+}
+
+/// `Some(false)` when some pair is known to differ, `None` when some pair is not known,
+/// otherwise `Some(true)`: the structural equality of two sequences of one length.
+fn all_equal<'a>(pairs: impl Iterator<Item = (&'a Val, &'a Val)>) -> Option<bool> {
+    let mut known = true;
+    for (x, y) in pairs {
+        match x.equals(y) {
+            Some(false) => return Some(false),
+            Some(true) => {}
+            None => known = false,
+        }
+    }
+    known.then_some(true)
 }
 
 /// The most values (tuple and record parts, counted recursively) or string bytes one value
@@ -82,8 +117,11 @@ impl Val {
     /// The number of parts of the value, for [`MAX_VALUE_SIZE`].
     fn size(&self) -> usize {
         match self {
-            Val::Tuple(xs) => 1 + xs.iter().map(Val::size).sum::<usize>(),
+            Val::Tuple(xs) | Val::List(xs) | Val::Variant(_, xs) => {
+                1 + xs.iter().map(Val::size).sum::<usize>()
+            }
             Val::Record(fs) => 1 + fs.iter().map(|(_, v)| v.size()).sum::<usize>(),
+            Val::Map(es) => 1 + es.iter().map(|(k, v)| k.size() + v.size()).sum::<usize>(),
             Val::Str(s) => 1 + s.len(),
             _ => 1,
         }
@@ -107,8 +145,20 @@ impl Val {
         }
     }
 
-    /// `self == other` when both are known (`None` otherwise): structural for records and
-    /// tuples, by value for `Decimal` (`1.5 == 1.50`), IEEE for `Float`.
+    /// Whether no part of the value is `Other`.
+    fn known(&self) -> bool {
+        match self {
+            Val::Other => false,
+            Val::Tuple(xs) | Val::List(xs) | Val::Variant(_, xs) => xs.iter().all(Val::known),
+            Val::Record(fs) => fs.iter().all(|(_, v)| v.known()),
+            Val::Map(es) => es.iter().all(|(k, v)| k.known() && v.known()),
+            _ => true,
+        }
+    }
+
+    /// `self == other` as the interpreter decides it (`None` when that depends on a part
+    /// that is not known): structural for records, tuples, lists, maps (in any order) and
+    /// variants, by value for `Decimal` (`1.5 == 1.50`), IEEE for `Float`.
     fn equals(&self, other: &Val) -> Option<bool> {
         Some(match (self, other) {
             (Val::Int(x), Val::Int(y)) => x == y,
@@ -118,23 +168,49 @@ impl Val {
             (Val::Bool(x), Val::Bool(y)) => x == y,
             (Val::Str(x), Val::Str(y)) => x == y,
             (Val::Unit, Val::Unit) => true,
-            (Val::Tuple(xs), Val::Tuple(ys)) if xs.len() == ys.len() => {
-                let mut all = true;
-                for (x, y) in xs.iter().zip(ys) {
-                    all &= x.equals(y)?;
-                }
-                all
-            }
-            (Val::Record(xs), Val::Record(ys)) => {
+            (Val::Tuple(xs), Val::Tuple(ys)) | (Val::List(xs), Val::List(ys)) => {
                 if xs.len() != ys.len() {
-                    return None;
+                    return Some(false);
                 }
-                let mut all = true;
-                for (name, x) in xs {
-                    let (_, y) = ys.iter().find(|(n, _)| n == name)?;
-                    all &= x.equals(y)?;
+                return all_equal(xs.iter().zip(ys));
+            }
+            (Val::Variant(t, xs), Val::Variant(u, ys)) => {
+                if t != u || xs.len() != ys.len() {
+                    return Some(false);
                 }
-                all
+                return all_equal(xs.iter().zip(ys));
+            }
+            // A field left to its default is absent: only a given field known to differ
+            // decides.
+            (Val::Record(xs), Val::Record(ys)) => {
+                let shared: Vec<(&Val, &Val)> = xs
+                    .iter()
+                    .filter_map(|(n, x)| ys.iter().find(|(m, _)| m == n).map(|(_, y)| (x, y)))
+                    .collect();
+                return match all_equal(shared.iter().copied()) {
+                    Some(false) => Some(false),
+                    Some(true) if shared.len() == xs.len() && xs.len() == ys.len() => Some(true),
+                    _ => None,
+                };
+            }
+            // Keys are known (see `Val::Map`), so each key of one map is found in the
+            // other, or not, for certain.
+            (Val::Map(xs), Val::Map(ys)) => {
+                if xs.len() != ys.len() {
+                    return Some(false);
+                }
+                let mut known = true;
+                for (k, x) in xs {
+                    match ys.iter().find(|(k2, _)| k.equals(k2) == Some(true)) {
+                        None => return Some(false),
+                        Some((_, y)) => match x.equals(y) {
+                            Some(false) => return Some(false),
+                            Some(true) => {}
+                            None => known = false,
+                        },
+                    }
+                }
+                known
             }
             _ => return None,
         })
@@ -253,7 +329,11 @@ impl ConstEval {
             let at = c.ty.as_ref().map_or(c.value.span, |t| t.span);
             (at, why)
         });
-        let cx = Cx { res, owner: def };
+        let cx = Cx {
+            prog,
+            res,
+            owner: def,
+        };
         let outcome = match held.or_else(|| cx.not_constant(&c.value)) {
             Some(p) => Err(p),
             None => cx.eval(&c.value, &self.values),
@@ -274,6 +354,7 @@ impl ConstEval {
     /// checked as one body; `clean` is false when that body reported an error).
     pub(crate) fn field_default(
         &self,
+        prog: &HirProgram,
         res: &TypeckResults,
         owner: DefId,
         file: FileId,
@@ -283,7 +364,7 @@ impl ConstEval {
         if !clean {
             return None;
         }
-        let cx = Cx { res, owner };
+        let cx = Cx { prog, res, owner };
         cx.not_constant(e)
             .or_else(|| cx.eval(e, &self.values).err())
             .map(|p| error(file, p))
@@ -372,6 +453,7 @@ fn children(e: &Expr) -> Vec<&Expr> {
 }
 
 struct Cx<'a> {
+    prog: &'a HirProgram,
     res: &'a TypeckResults,
     /// The body that owns the expressions (the constant, or the record of a field default).
     owner: DefId,
@@ -398,6 +480,50 @@ impl Cx<'_> {
             .adts
             .values()
             .any(|a| a.variant_by_def(d).is_some())
+    }
+
+    /// The variant `d` names: its number in its enum and how many payload fields it has,
+    /// with their labels.
+    fn variant_of(&self, d: DefId) -> Option<(u32, Vec<Option<String>>)> {
+        self.res.adts.values().find_map(|a| {
+            a.variant_by_def(d)
+                .map(|(i, v)| (i as u32, v.fields.iter().map(|f| f.label.clone()).collect()))
+        })
+    }
+
+    /// The variant `.name` denotes where `e` (the member, or the call of it) has type `ty`.
+    fn implicit_variant(&self, ty: &Ty, name: &str) -> Option<(u32, Vec<Option<String>>)> {
+        let Ty::Adt(d, _) = ty else {
+            return None;
+        };
+        let (i, v) = self.res.adts.get(d)?.variant(name)?;
+        Some((i as u32, v.fields.iter().map(|f| f.label.clone()).collect()))
+    }
+
+    /// Whether the method call `e` (`x.pow(k)`) calls the stdlib's `pow` of a number type
+    /// (Q45): the method the checker picked, not just one with that name. Its body is not
+    /// looked at: single-file mode drops the stdlib's bodies, while project mode keeps the
+    /// `@builtin` stub's `panic("builtin")`, and both modes must agree.
+    fn is_number_pow(&self, e: &Expr, receiver: &Expr, name: &str) -> bool {
+        if name != "pow"
+            || !matches!(
+                self.ty(receiver),
+                Ty::Int | Ty::Float | Ty::BigInt | Ty::Decimal
+            )
+        {
+            return false;
+        }
+        let Some(pick) = self.res.method_picks.get(&(self.owner, e.id)) else {
+            return false;
+        };
+        self.prog.item(*pick).is_some_and(|item| {
+            item.name == "pow"
+                && matches!(
+                    item.module.0.as_str(),
+                    "std/prelude" | "std/bigint" | "std/decimal"
+                )
+                && matches!(&item.kind, ItemKind::Fn(_))
+        })
     }
 
     /// A constructor: a record, a variant, `Some`, `Ok` or `Err`.
@@ -465,7 +591,7 @@ impl Cx<'_> {
             } => {
                 let update = name == "with"
                     && matches!(self.ty(receiver), Ty::Adt(d, _) if self.is_record(d));
-                if !update {
+                if !update && !self.is_number_pow(e, receiver, name) {
                     return here("a method call is not a constant expression");
                 }
                 self.not_constant(receiver)
@@ -497,15 +623,28 @@ impl Cx<'_> {
         let panics = |why: &str| (e.span, format!("this panics: {why}"));
         Ok(match &e.kind {
             // Literals take their type from the context (§5.6), as KIR's lowering does.
-            ExprKind::Int(Some(v)) => match self.ty(e) {
+            ExprKind::Int(IntLit::Small(v)) => match self.ty(e) {
                 Ty::Int => i64::try_from(*v).map_or(Val::Other, Val::Int),
                 Ty::BigInt => Val::big(Big::from_u128(*v)),
                 Ty::Decimal => Dec::from_u128(*v).map_or(Val::Other, Val::Dec),
                 Ty::Float => Val::Float(*v as f64),
                 _ => Val::Other,
             },
+            // Beyond `u128`: a `BigInt` past the size bound, or a `Float`/`Decimal` value
+            // read from its digits (an `Int` is K0126, and is not evaluated).
+            ExprKind::Int(IntLit::Large(digits)) => match self.ty(e) {
+                Ty::Decimal => match Dec::parse(digits) {
+                    Some(Ok(d)) => Val::Dec(d),
+                    _ => Val::Other,
+                },
+                Ty::Float => digits.parse::<f64>().map_or(Val::Other, Val::Float),
+                _ => Val::Other,
+            },
             ExprKind::Float(text) => match self.ty(e) {
-                Ty::Decimal => Dec::parse(text).map_or(Val::Other, Val::Dec),
+                Ty::Decimal => match Dec::parse(text) {
+                    Some(Ok(d)) => Val::Dec(d),
+                    _ => Val::Other,
+                },
                 Ty::Float => {
                     let clean: String = text.chars().filter(|c| *c != '_').collect();
                     clean.parse::<f64>().map_or(Val::Other, Val::Float)
@@ -515,7 +654,17 @@ impl Cx<'_> {
             ExprKind::Str(s) => Val::Str(s.clone()).bounded(),
             ExprKind::Bool(b) => Val::Bool(*b),
             ExprKind::Unit => Val::Unit,
-            ExprKind::Def(d) => values.get(d).cloned().flatten().unwrap_or(Val::Other),
+            ExprKind::Def(d) => match self.variant_of(*d) {
+                // A payload-free variant is a value; one with a payload is a function.
+                Some((tag, fields)) if fields.is_empty() => Val::Variant(tag, Vec::new()),
+                Some(_) => Val::Other,
+                None => values.get(d).cloned().flatten().unwrap_or(Val::Other),
+            },
+            ExprKind::Lang(LangItem::None) => Val::Variant(0, Vec::new()),
+            ExprKind::ImplicitMember(name) => match self.implicit_variant(&self.ty(e), name) {
+                Some((tag, fields)) if fields.is_empty() => Val::Variant(tag, Vec::new()),
+                _ => Val::Other,
+            },
             ExprKind::Unary {
                 op: UnOp::Not,
                 operand,
@@ -540,7 +689,9 @@ impl Cx<'_> {
                 operand,
             } => {
                 // `-9223372036854775808` is a literal of `Int` (§5.6, D18).
-                if let (ExprKind::Int(Some(v)), Ty::Int) = (&operand.kind, self.ty(operand)) {
+                if let (ExprKind::Int(IntLit::Small(v)), Ty::Int) =
+                    (&operand.kind, self.ty(operand))
+                {
                     if *v == 1u128 << 63 {
                         return Ok(Val::Int(i64::MIN));
                     }
@@ -561,22 +712,50 @@ impl Cx<'_> {
                 binary(*op, &a, &b).map_err(panics)?
             }
             // A record built by its constructor holds the fields given to it; a variant,
-            // `Some`, `Ok` or `Err` is not inspected, but its arguments still run.
+            // `Some`, `Ok` or `Err` holds its payload in declaration order. Arguments run in
+            // source order.
             ExprKind::Call { callee, args } => {
-                let mut fields = Vec::with_capacity(args.len());
+                let mut given = Vec::with_capacity(args.len());
                 for a in args {
-                    let v = self.eval(&a.value, values)?;
-                    if let Some(label) = &a.label {
-                        fields.push((label.clone(), v));
-                    }
+                    given.push(self.eval(&a.value, values)?);
                 }
-                match callee.kind {
-                    ExprKind::Def(d) if self.is_record(d) => Val::Record(fields).bounded(),
-                    _ => Val::Other,
+                let variant = match &callee.kind {
+                    ExprKind::Def(d) if self.is_record(*d) => {
+                        let fields = args
+                            .iter()
+                            .zip(given)
+                            .filter_map(|(a, v)| a.label.clone().map(|l| (l, v)))
+                            .collect();
+                        return Ok(Val::Record(fields).bounded());
+                    }
+                    ExprKind::Lang(LangItem::Some | LangItem::Err) => Some((1, vec![None])),
+                    ExprKind::Lang(LangItem::Ok) => Some((0, vec![None])),
+                    ExprKind::Def(d) => self.variant_of(*d),
+                    ExprKind::ImplicitMember(name) => self.implicit_variant(&self.ty(e), name),
+                    _ => None,
+                };
+                match variant
+                    .and_then(|(tag, labels)| payload(&labels, args, given).map(|p| (tag, p)))
+                {
+                    Some((tag, payload)) => Val::Variant(tag, payload).bounded(),
+                    None => Val::Other,
                 }
             }
-            // `.with` (the only method call a constant may make): a copy of the record with
-            // the fields given replaced.
+            // `x.pow(k)` on a number type (Q45), with the interpreter's rules and messages.
+            ExprKind::MethodCall {
+                receiver,
+                name,
+                args,
+            } if self.is_number_pow(e, receiver, name) => {
+                let base = self.eval(receiver, values)?;
+                let mut k = Val::Other;
+                for a in args {
+                    k = self.eval(&a.value, values)?;
+                }
+                pow(&self.ty(receiver), &base, &k).map_err(|why| panics(&why))?
+            }
+            // `.with` (the only other method call a constant may make): a copy of the record
+            // with the fields given replaced.
             ExprKind::MethodCall { receiver, args, .. } => {
                 let base = self.eval(receiver, values)?;
                 let mut given = Vec::with_capacity(args.len());
@@ -617,6 +796,35 @@ impl Cx<'_> {
                 }
                 Val::Tuple(out).bounded()
             }
+            ExprKind::List(xs) => {
+                let mut out = Vec::with_capacity(xs.len());
+                for x in xs {
+                    out.push(self.eval(x, values)?);
+                }
+                Val::List(out).bounded()
+            }
+            // Each key, then its value, in source order (as the interpreter builds a map).
+            ExprKind::Map(pairs) => {
+                let mut out: Vec<(Val, Val)> = Vec::with_capacity(pairs.len());
+                let mut keys_known = true;
+                for (k, v) in pairs {
+                    let k = self.eval(k, values)?;
+                    let v = self.eval(v, values)?;
+                    keys_known &= k.known();
+                    if !keys_known {
+                        continue;
+                    }
+                    match out.iter_mut().find(|(k2, _)| k.equals(k2) == Some(true)) {
+                        Some(slot) => slot.1 = v,
+                        None => out.push((k, v)),
+                    }
+                }
+                if keys_known {
+                    Val::Map(out).bounded()
+                } else {
+                    Val::Other
+                }
+            }
             _ => {
                 for c in children(e) {
                     self.eval(c, values)?;
@@ -640,6 +848,9 @@ fn binary(op: BinOp, a: &Val, b: &Val) -> Result<Val, &'static str> {
         (Val::Big(x), Val::Big(y)) => big_op(op, x, y),
         (Val::Dec(x), Val::Dec(y)) => dec_op(op, x, y),
         (Val::Str(x), Val::Str(y)) if op == BinOp::Add => Ok(Val::Str(format!("{x}{y}")).bounded()),
+        (Val::List(x), Val::List(y)) if op == BinOp::Add => {
+            Ok(Val::List(x.iter().chain(y).cloned().collect()).bounded())
+        }
         // A divisor known to be zero panics whatever the other operand is.
         (_, Val::Int(0)) if matches!(op, BinOp::IntDiv | BinOp::Div) => Err("division by zero"),
         (_, Val::Int(0)) if op == BinOp::Rem => Err("modulo by zero"),
@@ -733,15 +944,78 @@ fn big_op(op: BinOp, x: &Big, y: &Big) -> Result<Val, &'static str> {
 }
 
 /// `x op y` on two `Decimal`s: exact, and a result that needs more than 34 significant
-/// digits (or leaves the exponent range) panics, as decimal128 arithmetic does (§9.2).
+/// digits, or whose exponent leaves the range even after clamping, panics with the
+/// interpreter's message for that case (§9.2, Q48).
 fn dec_op(op: BinOp, x: &Dec, y: &Dec) -> Result<Val, &'static str> {
-    let overflow = "Decimal overflow (more than 34 digits)";
-    Ok(match op {
-        BinOp::Add => Val::Dec(x.add(y).ok_or(overflow)?),
-        BinOp::Sub => Val::Dec(x.sub(y).ok_or(overflow)?),
-        BinOp::Mul => Val::Dec(x.mul(y).ok_or(overflow)?),
-        _ => compare(op, x.cmp_value(y)),
+    let held = |r: Result<Dec, crate::const_num::DecFail>| r.map(Val::Dec).map_err(|f| f.message());
+    match op {
+        BinOp::Add => held(x.add(y)),
+        BinOp::Sub => held(x.sub(y)),
+        BinOp::Mul => held(x.mul(y)),
+        _ => Ok(compare(op, x.cmp_value(y))),
+    }
+}
+
+/// A variant's payload in declaration order from a call's arguments (`labels` are the
+/// fields' labels; a positional argument takes the next field). `None` when they do not
+/// line up (the checker reported it).
+fn payload(labels: &[Option<String>], args: &[Arg], given: Vec<Val>) -> Option<Vec<Val>> {
+    if labels.len() != args.len() {
+        return None;
+    }
+    let mut out: Vec<Option<Val>> = vec![None; labels.len()];
+    for (i, (a, v)) in args.iter().zip(given).enumerate() {
+        let at = match &a.label {
+            Some(l) => labels
+                .iter()
+                .position(|x| x.as_deref() == Some(l.as_str()))?,
+            None => i,
+        };
+        if out[at].replace(v).is_some() {
+            return None;
+        }
+    }
+    out.into_iter().collect()
+}
+
+/// `base.pow(k)` for a receiver of type `ty` (Q45), as the interpreter computes it: the
+/// value (`Other` when not evaluated) or the panic message. Every `pow` but `Float`'s
+/// checks the exponent first, so a negative one panics whatever the base is.
+fn pow(ty: &Ty, base: &Val, k: &Val) -> Result<Val, String> {
+    let negative = |owner: &str, k: i64| format!("negative exponent {k} in `{owner}.pow`");
+    Ok(match (ty, base, k) {
+        (Ty::Float, Val::Float(x), Val::Float(y)) => Val::Float(x.powf(*y)),
+        (Ty::Int, _, Val::Int(k)) if *k < 0 => return Err(negative("Int", *k)),
+        (Ty::BigInt, _, Val::Int(k)) if *k < 0 => return Err(negative("BigInt", *k)),
+        (Ty::Decimal, _, Val::Int(k)) if *k < 0 => return Err(negative("Decimal", *k)),
+        (Ty::Int, Val::Int(x), Val::Int(k)) => match int_pow(*x, *k) {
+            Some(v) => Val::Int(v),
+            None => return Err("integer overflow".to_string()),
+        },
+        (Ty::BigInt, Val::Big(x), Val::Int(k)) => match x.pow(*k) {
+            BigPow::Value(v) => Val::big(v),
+            BigPow::TooLarge => return Err(BIG_POW_TOO_LARGE.to_string()),
+            BigPow::NegativeExponent | BigPow::Unknown => Val::Other,
+        },
+        (Ty::Decimal, Val::Dec(x), Val::Int(k)) => match x.pow(*k) {
+            Some(Ok(d)) => Val::Dec(d),
+            Some(Err(f)) => return Err(f.message().to_string()),
+            None => Val::Other,
+        },
+        _ => Val::Other,
     })
+}
+
+/// `Int.pow` for a non-negative exponent (the interpreter's `num::int_pow`): `None` on
+/// overflow. The bases 0, 1 and −1 take any exponent.
+fn int_pow(base: i64, k: i64) -> Option<i64> {
+    match base {
+        0 => return Some(if k == 0 { 1 } else { 0 }),
+        1 => return Some(1),
+        -1 => return Some(if k % 2 == 0 { 1 } else { -1 }),
+        _ => {}
+    }
+    base.checked_pow(u32::try_from(k).ok()?)
 }
 
 /// Strongly connected components of a small graph (Tarjan, iterative), each as node

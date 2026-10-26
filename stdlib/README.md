@@ -25,6 +25,7 @@ One file is one module (spec §13.1). The package is `std`, so `src/http.kl` is 
 | `src/random.kl` | `std/random` | `Rand` methods, `SeededRand` |
 | `src/http.kl` | `std/http` | routes, requests, responses, server, client |
 | `src/sql.kl` | `std/sql` | `Db`, `sqlite`, `postgres`, `DbError` |
+| `src/task.kl` | `std/task` | re-exports the prelude's `Cell` (FOUNDER-QUEUE Q46); the §15.7 functions come with their runtime |
 
 **Where methods live.** Inherent methods of a prelude type are declared in the module that
 spec §20.1 names for them (`impl String:` is in `std/string`). Method resolution never

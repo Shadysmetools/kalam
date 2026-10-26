@@ -743,19 +743,21 @@ fn decimal_constants_are_evaluated_exactly_with_34_digits() {
     );
     // 10^21 * 10^21 has 43 digits, but 42 of them are trailing zeros: it fits.
     clean("let A: Decimal = 1000000000000000000000.0\nlet B = A * A * 3\n\nfn main():\n    print(\"{B}\")\n");
-    // The exponent range of decimal128 counts too, at both ends.
-    clean("let E: Decimal = 1e6111\nlet F = E * 10\nlet T: Decimal = 1e-6176\nlet U = T * 1\n\nfn main():\n    print(\"{F} {U}\")\n");
+    // The exponent range of decimal128 counts too, at both ends, after clamping (1e6144 is
+    // 10^33 × 10^6111), with its own message (Q48).
+    clean("let E: Decimal = 1e6111\nlet F = E * 10\nlet T: Decimal = 1e-6176\nlet U = T * 1\nlet G: Decimal = 1e6144\n\nfn main():\n    print(\"{F} {U} {G}\")\n");
+    let exponent = "Decimal exponent out of range";
     panics_at(
         "let E: Decimal = 1e6111\nlet F = E * E\n\nfn main():\n    print(\"{F}\")\n",
         2,
         "E * E",
-        overflow,
+        exponent,
     );
     panics_at(
         "let T: Decimal = 1e-6176\nlet U = T * 0.1\n\nfn main():\n    print(\"{U}\")\n",
         2,
         "T * 0.1",
-        overflow,
+        exponent,
     );
     // Through a record field and a tuple.
     panics_at(
@@ -814,11 +816,10 @@ fn std_members_and_modules_resolve_against_the_stubs_in_both_modes() {
         codes("use std/http\n\nfn main():\n    let r = http.nope()\n    print(\"x\")\n"),
         vec![("K0401", 4)]
     );
-    // p05: the stubs have no `std/task` module (spec §20.1 lists it; `Cell` is in the
-    // prelude).
+    // p05 (Q46): `std/task` (spec §20.1) re-exports the prelude's `Cell`.
     assert_eq!(
         codes("use std/task.{Cell}\n\nfn main():\n    let c = Cell.new(0)\n    print(\"x\")\n"),
-        vec![("K0401", 1)]
+        vec![]
     );
     // p06: a module that does not exist.
     assert_eq!(

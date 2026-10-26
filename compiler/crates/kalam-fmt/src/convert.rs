@@ -17,7 +17,7 @@ use kalam_lexer::{Op, Token, TokenKind};
 use kalam_skins::{Concept, KeywordTable};
 
 use crate::roles::{Role, Roles};
-use crate::{convert_digits, FmtConfig};
+use crate::{convert_digits, to_ascii_digits, FmtConfig};
 
 pub(crate) struct Rewriter<'a> {
     pub from: Skin,
@@ -46,12 +46,31 @@ impl Rewriter<'_> {
             }
             let original = &text[s..e];
             let replacement = match tok.kind {
+                TokenKind::Keyword(_) | TokenKind::Core(_) if self.respelled(tok, base) => {
+                    let mut w = self.word(tok, original, base, false);
+                    if let Some(p) = solid_before(tokens, i) {
+                        if !self.boundary_holds(p, tok, text, base) {
+                            w.insert(0, ' ');
+                        }
+                    }
+                    if let Some(n) = solid_after(tokens, i) {
+                        if !self.boundary_holds(tok, n, text, base) {
+                            w.push(' ');
+                        }
+                    }
+                    Some(w)
+                }
                 TokenKind::Ident | TokenKind::Keyword(_) | TokenKind::Core(_) => {
                     Some(self.word(tok, original, base, glued(tokens, i)))
                 }
                 TokenKind::Op(Op::Comma) => Some(self.punct(Concept::PunctComma)),
                 TokenKind::Op(Op::Question) => Some(self.punct(Concept::PunctTry)),
-                // Member indices (`t.0`) are plain decimals, so they follow the same rule.
+                // DR-26: the lexer reads only an ASCII digit run right after `.` as a member
+                // index, so a chain of numeric member indices (`t.0.1`) stays ASCII in every
+                // skin: with Arabic-Indic digits, `t.٠.١` would re-lex as `t . ٠.١`, one
+                // float (SEC0120). A lone index (`t.0`) follows the digit setting like any
+                // other literal.
+                TokenKind::Int if in_index_chain(tokens, i) => Some(to_ascii_digits(original)),
                 TokenKind::Int | TokenKind::Float => {
                     Some(convert_digits(original, self.to, self.config))
                 }
@@ -67,6 +86,65 @@ impl Rewriter<'_> {
             }
         }
         out.push_str(&text[copied..range.end]);
+    }
+
+    /// A keyword or core-name token spelled from the keyword table (not one standing as a
+    /// name, which [`crate::roles`] spells).
+    fn respelled(&self, tok: &Token, base: u32) -> bool {
+        self.roles.get(base + tok.span.start).is_none()
+    }
+
+    /// How `tok` is written in `skin`, as far as a re-spelled word touching it can tell: a
+    /// string literal is `""` (only its opening quote touches the word), and every token this
+    /// converter does not re-spell is its own text.
+    fn sample(&self, tok: &Token, text: &str, base: u32, skin: Skin) -> String {
+        let original = &text[tok.span.range()];
+        match tok.kind {
+            TokenKind::Keyword(c) | TokenKind::Core(c) if self.respelled(tok, base) => {
+                self.table.spelling(c, skin).to_string()
+            }
+            TokenKind::Op(Op::Comma) => self.table.spelling(Concept::PunctComma, skin).into(),
+            TokenKind::Op(Op::Question) => self.table.spelling(Concept::PunctTry, skin).into(),
+            TokenKind::Int | TokenKind::Float => convert_digits(original, skin, self.config),
+            TokenKind::Str => "\"\"".to_string(),
+            TokenKind::TaggedStr => {
+                let tag = original.find('"').unwrap_or(original.len());
+                format!("{}\"\"", &original[..tag])
+            }
+            _ => original.to_string(),
+        }
+    }
+
+    /// The general rule for glued tokens (spec §4.3 G1/G2). Conversion copies the bytes
+    /// between tokens, so two tokens written with nothing between them stay glued, and the
+    /// pair must re-lex as the same two tokens once either is re-spelled. `a` and `b` touch;
+    /// this is true if, in every skin, their spellings lex as two tokens of the same kinds,
+    /// split at the same place. Otherwise the converter separates them with one space, in
+    /// every target skin (the source skin included), so the decision never depends on the
+    /// target and every round trip stays byte-identical. Example: `أرجع"x"` is a keyword
+    /// and a string, but `return"x"` and `rag3"x"`/`law"x"` lex as tagged literals.
+    /// (A glued identifier keeps its backticks instead, see [`glued`].)
+    fn boundary_holds(&self, a: &Token, b: &Token, text: &str, base: u32) -> bool {
+        let samples: Vec<(Skin, String, String)> = Skin::ALL
+            .into_iter()
+            .map(|s| {
+                (
+                    s,
+                    self.sample(a, text, base, s),
+                    self.sample(b, text, base, s),
+                )
+            })
+            .collect();
+        let key = samples
+            .iter()
+            .map(|(_, l, r)| format!("{l}\u{0}{r}"))
+            .collect::<Vec<_>>()
+            .join("\u{1}");
+        self.roles.boundary(key, || {
+            samples
+                .iter()
+                .all(|(skin, l, r)| relexes_as_pair(l, r, a.kind, b.kind, *skin))
+        })
     }
 
     fn punct(&self, c: Concept) -> String {
@@ -207,6 +285,65 @@ fn glued(tokens: &[Token], i: usize) -> bool {
             n.span.start == tok.span.end
                 && (wordish(n.kind) || matches!(n.kind, TokenKind::Str | TokenKind::TaggedStr))
         })
+}
+
+/// The solid token right before `tokens[i]`, if nothing separates them.
+fn solid_before(tokens: &[Token], i: usize) -> Option<&Token> {
+    let tok = tokens.get(i)?;
+    tokens[..i]
+        .iter()
+        .rev()
+        .find(|t| t.span.end > t.span.start)
+        .filter(|p| p.span.end == tok.span.start && !layout(p.kind))
+}
+
+/// The solid token right after `tokens[i]`, if nothing separates them.
+fn solid_after(tokens: &[Token], i: usize) -> Option<&Token> {
+    let tok = tokens.get(i)?;
+    tokens[i + 1..]
+        .iter()
+        .find(|t| t.span.end > t.span.start)
+        .filter(|n| n.span.start == tok.span.end && !layout(n.kind))
+}
+
+fn layout(k: TokenKind) -> bool {
+    matches!(
+        k,
+        TokenKind::Newline | TokenKind::Indent | TokenKind::Dedent | TokenKind::Eof
+    )
+}
+
+/// `tokens[i]` is a numeric member index (it follows a `.`, DR-26) next to another one:
+/// `.` and a number come right after it, or right before its own `.`.
+fn in_index_chain(tokens: &[Token], i: usize) -> bool {
+    let solid = |t: &&Token| t.span.end > t.span.start;
+    let mut before = tokens[..i].iter().rev().filter(solid).map(|t| t.kind);
+    let mut after = tokens[i + 1..].iter().filter(solid).map(|t| t.kind);
+    let dot = TokenKind::Op(Op::Dot);
+    if before.next() != Some(dot) {
+        return false;
+    }
+    let index_before = before.next() == Some(TokenKind::Int) && before.next() == Some(dot);
+    let index_after = after.next() == Some(dot) && after.next() == Some(TokenKind::Int);
+    index_before || index_after
+}
+
+/// `left` followed directly by `right` lexes in `skin` as exactly two tokens, split between
+/// them, of kinds `a` and `b` (a number may come back as either number kind).
+fn relexes_as_pair(left: &str, right: &str, a: TokenKind, b: TokenKind, skin: Skin) -> bool {
+    let joined = format!("{left}{right}");
+    let lexed = kalam_lexer::lex_fragment(&joined, skin, FileId(0));
+    let solid: Vec<&Token> = lexed
+        .tokens
+        .iter()
+        .filter(|t| t.span.end > t.span.start)
+        .collect();
+    let number = |k: TokenKind| matches!(k, TokenKind::Int | TokenKind::Float);
+    let same = |x: TokenKind, y: TokenKind| x == y || (number(x) && number(y));
+    solid.len() == 2
+        && solid[0].span.end as usize == left.len()
+        && same(solid[0].kind, a)
+        && same(solid[1].kind, b)
 }
 
 pub(crate) fn strip_backticks(word: &str) -> &str {

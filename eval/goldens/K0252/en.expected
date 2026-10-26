@@ -2,8 +2,8 @@
 
 This line ends with `:`, so I expected an indented block on the next line, one level (4 spaces) deeper, but there isn't one.
 
-3│ fn main():
-   ^^
+1│ fn helper():
+              ^
 
 Help: Indent the lines that belong to it by 4 more spaces. If the block is meant to be empty for now, write `pass` in it.
 

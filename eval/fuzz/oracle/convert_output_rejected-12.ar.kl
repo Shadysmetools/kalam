@@ -1,0 +1,11 @@
+استخدم std.{wala}
+استخدم db/نصوص بصفة value
+استخدم notes.{عداد ، user}
+
+
+استخدم std.{None, Some, ektb، else, in، law, lekol، `walla`, `اطبع`بصفه `فی`، `لكل`، `ليكن`, `و`}
+
+
+لیکن user: نتیجە[کسری، نص] = (٢)?
+
+دالة wala(عداد: نص = ٠) -> كسري: `y`.`x`.value = total

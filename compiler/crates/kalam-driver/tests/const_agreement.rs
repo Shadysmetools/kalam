@@ -69,6 +69,9 @@ fn agree(decls: &str, lets: &[&str], at: &str, why: &str) {
 const PT: &str = "type Pt:\n    x: Int\n    y: Int\n\n";
 const OVERFLOW: &str = "integer overflow";
 const DECIMAL: &str = "Decimal overflow (more than 34 digits)";
+/// FOUNDER-QUEUE Q48: a result whose exponent is out of range even after clamping has its
+/// own message.
+const EXPONENT: &str = "Decimal exponent out of range";
 
 #[test]
 fn n04_through_a_record_field() {
@@ -129,13 +132,13 @@ fn decimal_sums_and_the_exponent_range() {
         "",
         &["let E: Decimal = 1e6111", "let F = E * E"],
         "E * E",
-        DECIMAL,
+        EXPONENT,
     );
     agree(
         "",
         &["let T: Decimal = 1e-6176", "let U = T * 0.1"],
         "T * 0.1",
-        DECIMAL,
+        EXPONENT,
     );
 }
 

@@ -726,8 +726,8 @@ impl<'p, 'o> Interp<'p, 'o> {
                     _ => x.mul(y),
                 };
                 match r {
-                    Some(d) => V::Decimal(Rc::new(d)),
-                    None => return self.panic("Decimal overflow (more than 34 digits)", sp),
+                    Ok(d) => V::Decimal(Rc::new(d)),
+                    Err(f) => return self.panic(f.message(), sp),
                 }
             }
             (DecNeg, [V::Decimal(x)]) => V::Decimal(Rc::new(x.negated())),

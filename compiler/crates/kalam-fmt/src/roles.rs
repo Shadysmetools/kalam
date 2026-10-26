@@ -43,6 +43,8 @@ pub(crate) struct Roles {
     declared: HashSet<String>,
     /// [`lexes_bare`] by name.
     bare: Mutex<HashMap<String, bool>>,
+    /// [`crate::convert`]'s glued-boundary verdicts, keyed by the pair's spellings.
+    boundaries: Mutex<HashMap<String, bool>>,
 }
 
 impl Roles {
@@ -57,6 +59,12 @@ impl Roles {
 
     pub fn get(&self, start: u32) -> Option<Role> {
         self.map.get(&start).copied()
+    }
+
+    /// `check()`, memoized under `key` for this file.
+    pub fn boundary(&self, key: String, check: impl FnOnce() -> bool) -> bool {
+        let mut cache = self.boundaries.lock().unwrap_or_else(|e| e.into_inner());
+        *cache.entry(key).or_insert_with(check)
     }
 
     fn lexes_bare(&self, name: &str) -> bool {

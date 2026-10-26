@@ -1,0 +1,16 @@
+hat std.{Some, `khali`, إذا}
+
+ekhtebar "":
+    قيمة(قيمة.total)
+    rag3`Some`
+ta3dad نوع:
+    Empty()
+    
+
+
+haykal Point = nass
+
+dala x[U: Show + Eq, T](إذا: Box[mante2i], اسم: mante2i, count: ekhtiyari[natiga[kasri, mante2i]]):
+    motghayer قيمة = hasab y:
+        lama إذا | `khali` | naga7(_) law "\{\t":
+            items /= 0x1F

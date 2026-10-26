@@ -453,10 +453,38 @@ pub struct Expr {
     pub span: Span,
 }
 
+/// An integer literal's value (spec §5.6).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum IntLit {
+    /// The exact value, when it fits in `u128`.
+    Small(u128),
+    /// A larger value, as its decimal digits (whatever base it was written in): a `BigInt`,
+    /// `Float` or `Decimal` literal of any size, and always K0126 as an `Int`.
+    Large(String),
+}
+
+impl IntLit {
+    /// The value when it fits in `u128`.
+    pub fn small(&self) -> Option<u128> {
+        match self {
+            IntLit::Small(v) => Some(*v),
+            IntLit::Large(_) => None,
+        }
+    }
+
+    /// The decimal digits of the value.
+    pub fn digits(&self) -> String {
+        match self {
+            IntLit::Small(v) => v.to_string(),
+            IntLit::Large(d) => d.clone(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExprKind {
-    /// An integer literal; `None` when it does not fit in `u128` (always K0126).
-    Int(Option<u128>),
+    /// An integer literal.
+    Int(IntLit),
     /// A float literal: ASCII-normalized source text (exact for `Decimal` context).
     Float(String),
     Str(String),
