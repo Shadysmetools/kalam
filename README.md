@@ -87,4 +87,4 @@ kalam explain K0601              # long explanation, in en / ar / franco
 
 ## License
 
-Open-source core under MIT or Apache-2.0 (decision D9). The license files will be added before the first code is published.
+Open-source core, dual-licensed under [MIT](LICENSE-MIT) or [Apache-2.0](LICENSE-APACHE), at your option (decision D9).
