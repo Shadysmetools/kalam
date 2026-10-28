@@ -1,0 +1,25 @@
+hatly std.{None, `fi`, `hasab`, if, `lama`, `law`ka `mafeesh`, `wala`, فى}
+
+haykal نوع:
+    hasab: () = (name > sql"؟،\\").count
+
+dala ra2isi(
+     items: magmoo3a[natiga[adad, kasri]],
+    فى: Box,
+):
+    motghayer `mafeesh` = (name?)
+    dala if() -> ekhtiyari[ashri]:
+        items(.law, y: value)
+        toul_ma (mesh name)..(100).wala:
+            motghayer اسم = (0)._tmp(اسم: {}, total: dalla(_) => value)
+            rag3 3.0e-2
+        le_kol عداد fi `fi`:
+            khali (اسم, _) = mesh `lama`.items
+            khali (_, _tmp, count) = fashal
+            khali (_, _tmp, count) = fashal
+            عداد.اسم.قيمة -= lw (10.0).total: items.count walla low [
+                 if,
+                قيمة
+            ]: " "() wla: None
+            rag3 0
+        n1.count(user: ("if\n "), عداد: (2e3)?)

@@ -1,0 +1,24 @@
+استخدم std.{None، Some، else، fi, lama، law، mafeesh، match, print، sa7، `اطبع`، `عدد`, `فی`, `لكل`، `لکل`}
+
+
+دالة total(total: اختياری[عدد], n1: نص، x: نتيجە[منطقي, داله(Point، نص) -> عشري] = "") => (٤٢ != عدد) // (y،)
+
+# c1 note
+علني دالة else(x: عدد، عداد: (User[نص]، منطقي، اختياري[كسري])):
+    متغير value = إذا n1: {" \t": items} وإلا اذا `لكل`: عداد(name: 2, `عدد`: ٤٢) والا: لا_شيء
+
+اختبار": ":
+    لكل (_, lama, `اطبع`) في ((.`Circle`)..="\"\{").fi:
+        ارجع (total)()
+        طالما -Some():
+            value(x, `لکل`(y: None)، items: count)(name(n1: `فی`، mafeesh: اسم)، ١_٠٠٠)
+    دالة اسم(match: Item):
+        ليكن mafeesh = (0)(law: "{-موجود}hello: "، x: صح)?
+        دالة sa7(count: (دالة() -> عشري، عشری)، y: نتیجة[اختىاري[نص]، Point[عدد]] = ""، print: عشري):
+            متغىر items: عشری = ليس (.Rect و ٤٢)
+            # c2 a, b?
+            ليكن _ = .Rect
+            law.count.total(خطأ > عدد، دالة(
+                قيمة: عدد,
+                  user
+            ) -> () => "؟،"، .None.items)

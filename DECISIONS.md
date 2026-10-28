@@ -31,6 +31,7 @@ Interview with founder, 2026-10-24.
 | D25 | Roadmap | Accept ~28 months to 1.0 with C/WASM backend before 1.0 |
 | D14 | Dev process | Dynamic workflow + /loop: build slice → evaluate against scorecard → fix weakest → repeat |
 | D26 | M1 review (2026-10-25) | Founder approved M1 work, ratified FOUNDER-QUEUE Q1–Q18 (incl. Q15 split_seed `d3abd2d`), signed G-INT on manifest `c98e68cb…`; M1 closes when the 24h fuzz clock completes. Go for M2 |
+| D27 | M1 closed (2026-10-28) | 24h fuzz complete on binary `b7e78029d315`: 24.07 h crash-free, 0 crashes, 95.1M execs over 4 runs. 22 convert-oracle violations (SEC0105 on ar conversion x18, franco round trip x4) were found on the frozen M1 binary; per Q26 they do not reset the clock and are fixed in M2 code. Archived in eval/fuzz-archive/M1-final |
 
 ## Research inputs
 - research/01-english-like-languages.md — controlled English, ~25–35 keywords, no synonyms, Elm-grade errors

@@ -1,0 +1,4 @@
+fn main():
+    let`match` = 1
+    let potal = `match` + 1
+    print("{total}")

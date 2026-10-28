@@ -1,0 +1,16 @@
+use std.{`Some`, `khali`, إذا}
+
+test "":
+    قيمة(قيمة.total)
+    return`Some`
+enum نوع:
+    Empty()
+    
+
+
+type Point = String
+
+fn x[U: Show + Eq, T](إذا: Box[Bool], اسم: Bool, count: Option[Result[Float, Bool]]):
+    var قيمة = match y:
+        case إذا | khali | Ok(_) if "\{\t":
+            items /= 0x1F
