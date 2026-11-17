@@ -48,12 +48,12 @@ Milestones follow [`ROADMAP.md`](ROADMAP.md); each one closes only on its exit g
 
 **Works today** (`kalam` binary, built from `compiler/`):
 - `kalam check`: source-text security checks (Trojan Source, bidi and invisible characters), lexing in all three skins, parsing, name resolution and full static type checking: records, enums, generics, traits, exhaustive `match`, `Result` and `?`, inferred suspension, capabilities and SQL/HTML sink types. `--json` for editors and agents.
-- `kalam fmt`, `kalam convert --to en|ar|franco` (lossless), `kalam fix` (machine-applicable fixes) and `kalam explain` (every diagnostic in English, Arabic and Franco).
+- `kalam fmt`, `kalam convert --to en|ar|franco` (designed to be lossless; the 22 converter bugs the M1 fuzz run found are fixed in M2 code, and the pending M2 fuzz run re-checks them), `kalam fix` (machine-applicable fixes) and `kalam explain` (every diagnostic in English, Arabic and Franco).
 - `kalam run --interp`: runs `main` on a reference interpreter, **prelude only** (core types, `print`, `panic`, `assert`).
 
 **Does not work yet:** JavaScript output, `kalam run`/`build`/`new`/`test`, the stdlib beyond the prelude (the rest exists only as type signatures, so code that uses it type-checks but cannot run), the web framework, the LSP, the MCP server and the package manager.
 
-`cargo test --workspace` (in `compiler/`, run 2026-11-17 on Windows 11, Rust stable): **914 passed, 0 failed, 1 ignored**.
+`cargo test --workspace` (in `compiler/`, run 2026-11-17 on Windows 11, rustc 1.99.1, LF checkout): **914 passed, 0 failed, 1 ignored**. On a default Windows checkout (`core.autocrlf=true`) one formatter test, `fmt_is_idempotent_on_the_spec_examples`, fails on CRLF line endings because the repository has no `.gitattributes` yet; clone with `git -c core.autocrlf=false clone …` to avoid it.
 
 ## Try it
 
